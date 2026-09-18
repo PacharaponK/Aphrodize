@@ -1,0 +1,3 @@
+# Raw datasets and user observations must remain local.
+*
+!.gitignore

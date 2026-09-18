@@ -12,6 +12,7 @@
 - [AI and Data](AI%20and%20Data.md) — image pipeline, model, dataset และ evaluation
 - [System and MLOps](System%20and%20MLOps.md) — architecture, API, database และ deployment
 - [Safety and Governance](Safety%20and%20Governance.md) — consent, privacy, fairness และข้อจำกัดการใช้งาน
+- [FFHQ-Wrinkle EDA](EDA.md) — ตรวจความพร้อมของภาพและ manual wrinkle masks ก่อน train
 
 ## ภาพรวมการทำงาน
 
