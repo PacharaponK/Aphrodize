@@ -1,20 +1,21 @@
----
-type: readme
-aliases: [Aphrodox Project — คู่มือโฟลเดอร์]
----
+# Aphrodize Project
 
-# Aphrodox Project
+โฟลเดอร์นี้เก็บเอกสารออกแบบโครงการ Aphrodize โดยเริ่มอ่านได้จาก [ภาพรวมโครงการ](Aphrodize.md)
 
-โฟลเดอร์นี้เก็บเอกสารออกแบบโครงการ AphrodoX โดยมี [[AphrodoX]] เป็นหน้าทางเข้าหลัก
+## เอกสาร
+
+- [Product and Scope](Product%20and%20Scope.md)
+- [AI and Data](AI%20and%20Data.md)
+- [System and MLOps](System%20and%20MLOps.md)
+- [Safety and Governance](Safety%20and%20Governance.md)
 
 ## อะไรควรอยู่ที่นี่
 
 - ขอบเขตและแผนส่งมอบของโครงการ
-- การออกแบบ AI, data, system และ MLOps ที่เฉพาะกับ AphrodoX
+- การออกแบบ AI, data, system และ MLOps ที่เฉพาะกับ Aphrodize
 - ข้อกำหนดด้าน privacy, safety และ governance
 
 ## อะไรไม่ควรอยู่ที่นี่
 
-- Concept ทั่วไปที่ใช้ข้ามโครงการ ให้เก็บใน `Concepts/` แล้วเชื่อมด้วย `[[ชื่อ Concept]]`
-- Dataset, model artifact, source code หรือ git repository ให้เก็บนอก vault
-- โน้ตจากคาบเรียน ให้เก็บในโฟลเดอร์ของอาจารย์ตาม [[Vault Workflow]]
+- Dataset, model artifact และ source code
+- โน้ตหรือเอกสารที่ไม่เกี่ยวข้องกับโครงการ

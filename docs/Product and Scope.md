@@ -1,16 +1,12 @@
----
-type: moc
----
-
 # Product and Scope
 
-> ขอบเขตของ [[AphrodoX]] ตั้งแต่ปัญหาที่ต้องแก้ ผลลัพธ์ที่ผู้ใช้เห็น ไปจนถึงเกณฑ์ส่งมอบ MVP
+> ขอบเขตของ [Aphrodize](Aphrodize.md) ตั้งแต่ปัญหาที่ต้องแก้ ผลลัพธ์ที่ผู้ใช้เห็น ไปจนถึงเกณฑ์ส่งมอบ MVP
 
 ## ปัญหาและผู้ใช้
 
 ผู้ใช้มักประเมินว่าผิวดีขึ้นหรือแย่ลงจากความรู้สึกหรือภาพที่ถ่ายต่างแสง ต่างกล้อง และต่างมุม ทำให้เปรียบเทียบผลได้ยาก ขณะเดียวกันแอปจำนวนมากแสดงอายุหรือคำแนะนำแบบฟันธง โดยไม่บอก uncertainty, ข้อจำกัดของภาพ หรือที่มาของคำแนะนำ
 
-AphrodoX จึงวิเคราะห์ภาพภายใต้เงื่อนไขที่ควบคุมได้ วัดผลด้วยเกณฑ์เดิมทุกครั้ง เก็บประวัติเป็น time series และแยก observation, model estimate, user-reported data และ interpretation ออกจากกัน
+Aphrodize จึงวิเคราะห์ภาพภายใต้เงื่อนไขที่ควบคุมได้ วัดผลด้วยเกณฑ์เดิมทุกครั้ง เก็บประวัติเป็น time series และแยก observation, model estimate, user-reported data และ interpretation ออกจากกัน
 
 ผู้ใช้เป้าหมายคือผู้ใหญ่ที่ต้องการติดตาม visible signs of skin aging หรือเปรียบเทียบ skincare routine ด้วยภาพมาตรฐาน ระบบไม่ได้ออกแบบสำหรับเด็ก การวินิจฉัยโรค หรือการเลือกวิธีรักษาทางการแพทย์
 
@@ -50,7 +46,7 @@ Wrinkle score: 37/100
 - พิจารณา retinol ความเข้มข้นต่ำเมื่อไม่มีข้อห้าม
 ```
 
-UI และ API ต้องใช้คำว่า **apparent age**, **ปัจจัยที่อาจเกี่ยวข้อง** และ **คำแนะนำทั่วไป** เสมอ ข้อกำหนดเกี่ยวกับถ้อยคำอยู่ใน [[Safety and Governance]]
+UI และ API ต้องใช้คำว่า **apparent age**, **ปัจจัยที่อาจเกี่ยวข้อง** และ **คำแนะนำทั่วไป** เสมอ ข้อกำหนดเกี่ยวกับถ้อยคำอยู่ใน [Safety and Governance](Safety%20and%20Governance.md)
 
 ## MVP scope
 
@@ -88,7 +84,7 @@ UI และ API ต้องใช้คำว่า **apparent age**, **ปั
 
 ## Development phases
 
-1. **Define and inspect data** — ตรวจ license, ทำ [[EDA]], กำหนด capture protocol และ output schema
+1. **Define and inspect data** — ตรวจ license, ทำ EDA, กำหนด capture protocol และ output schema
 2. **Establish baselines** — train/evaluate wrinkle และ apparent-age baseline พร้อม subgroup report
 3. **Build inference API** — upload → queue → inference → result พร้อม model version และ failure tests
 4. **Add questionnaire and recommendations** — สร้าง rule table, contraindication และ referral rules

@@ -1,10 +1,6 @@
----
-type: moc
----
-
 # AI and Data
 
-> การออกแบบ AI และข้อมูลของ [[AphrodoX]] ตั้งแต่ตรวจคุณภาพภาพจนถึง model evaluation และ longitudinal analysis
+> การออกแบบ AI และข้อมูลของ [Aphrodize](Aphrodize.md) ตั้งแต่ตรวจคุณภาพภาพจนถึง model evaluation และ longitudinal analysis
 
 ## Pipeline
 
@@ -29,7 +25,7 @@ Region of interest ขั้นต่ำคือ forehead, glabella, left/right
 
 ## Wrinkle segmentation
 
-ใช้ [[Encoder-Decoder|U-Net]] หรือ pretrained segmentation model รับ aligned face image และสร้าง wrinkle probability map ก่อน threshold เป็น binary mask
+ใช้ U-Net หรือ pretrained segmentation model รับ aligned face image และสร้าง wrinkle probability map ก่อน threshold เป็น binary mask
 
 Output คือ wrinkle mask, wrinkle area ratio ต่อ region, line density/length โดยประมาณ, severity ระดับ none/mild/moderate/high, confidence และ image-quality flags
 
@@ -47,7 +43,7 @@ Output คือ wrinkle mask, wrinkle area ratio ต่อ region, line density
 
 ผู้ใช้ถ่ายภาพด้วย protocol เดิมทุก 1–2 สัปดาห์ ระบบเก็บ timestamp, wrinkle score ราย region, apparent age, image-quality score, UV exposure, sleep, sunscreen, moisturizer, retinol และ smoking status
 
-ขั้นแรกใช้ [[Resampling]] และ [[Moving Average]] แสดงแนวโน้มและลด noise โดยเก็บ raw score ไว้เสมอ เริ่มจาก last value/seasonal naive baseline ก่อนทดลอง ARIMA/SARIMA หรือโมเดลที่รองรับ covariates เมื่อข้อมูลมากพอ
+ขั้นแรกใช้ resampling และ moving average แสดงแนวโน้มและลด noise โดยเก็บ raw score ไว้เสมอ เริ่มจาก last value/seasonal naive baseline ก่อนทดลอง ARIMA/SARIMA หรือโมเดลที่รองรับ covariates เมื่อข้อมูลมากพอ
 
 แบ่ง train/validation/test ตามเวลา ห้าม random split และห้ามใช้ข้อมูลอนาคตเป็น feature:
 
@@ -77,7 +73,7 @@ AND sunscreen_adherence = low
 → “UV exposure เป็นปัจจัยที่อาจเกี่ยวข้อง”
 ```
 
-ไม่ใช้ correlation เป็น causation และไม่สร้าง causal model หากไม่มี longitudinal/interventional data ที่เหมาะสม ดู [[Correlation]] และ [[Causation]]
+ไม่ใช้ correlation เป็น causation และไม่สร้าง causal model หากไม่มี longitudinal/interventional data ที่เหมาะสม
 
 แหล่งอ้างอิงเริ่มต้น:
 
@@ -109,7 +105,7 @@ Recommendation engine แนะนำประเภทผลิตภัณฑ�
 | Questionnaire | ผู้ใช้กรอก | explanation และ safety filtering |
 | Product knowledge | curated references | recommendation rules |
 
-Segmentation split ตามบุคคล, age estimation ใช้ official split ของ APPA-REAL และ longitudinal data split ตามเวลาโดยแยกผู้ใช้สำหรับ external test เมื่อทำได้ ตรวจ distribution ของ age group, skin tone, lighting และ image quality ด้วย [[EDA]]
+Segmentation split ตามบุคคล, age estimation ใช้ official split ของ APPA-REAL และ longitudinal data split ตามเวลาโดยแยกผู้ใช้สำหรับ external test เมื่อทำได้ ตรวจ distribution ของ age group, skin tone, lighting และ image quality ด้วย EDA
 
 ## Evaluation plan
 
@@ -121,4 +117,4 @@ Segmentation split ตามบุคคล, age estimation ใช้ official s
 | Time-series | MAE/RMSE | error แยกตาม horizon |
 | Recommendation rules | safety-rule coverage | expert review agreement |
 
-ต้องรายงานผลแยกตาม subgroup เท่าที่ label อนุญาต และเชื่อม model metrics กับ system metrics ใน [[System and MLOps]]
+ต้องรายงานผลแยกตาม subgroup เท่าที่ label อนุญาต และเชื่อม model metrics กับ system metrics ใน [System and MLOps](System%20and%20MLOps.md)

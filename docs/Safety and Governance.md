@@ -1,14 +1,10 @@
----
-type: moc
----
-
 # Safety and Governance
 
-> ข้อกำหนดด้าน consent, privacy, fairness และขอบเขตการกล่าวอ้างของ [[AphrodoX]]
+> ข้อกำหนดด้าน consent, privacy, fairness และขอบเขตการกล่าวอ้างของ [Aphrodize](Aphrodize.md)
 
 ## Product boundary
 
-AphrodoX เป็น wellness/educational prototype ไม่วิเคราะห์ skin lesion ไม่วินิจฉัยโรค และไม่ใช้แทน dermatologist ซอฟต์แวร์ที่ให้ข้อมูลวินิจฉัยจากภาพผิวอาจเข้าขอบเขต medical device ซึ่งต้องผ่านการประเมินความปลอดภัยและประสิทธิผลสูงกว่าโครงการนี้
+Aphrodize เป็น wellness/educational prototype ไม่วิเคราะห์ skin lesion ไม่วินิจฉัยโรค และไม่ใช้แทน dermatologist ซอฟต์แวร์ที่ให้ข้อมูลวินิจฉัยจากภาพผิวอาจเข้าขอบเขต medical device ซึ่งต้องผ่านการประเมินความปลอดภัยและประสิทธิผลสูงกว่าโครงการนี้
 
 ระบบต้องไม่ใช้ apparent age เพื่อจัดอันดับคุณค่า ความสวย หรือความเหมาะสมของบุคคล และไม่ทำ face recognition หรือสร้าง biometric identity embedding
 
@@ -29,7 +25,7 @@ AphrodoX เป็น wellness/educational prototype ไม่วิเครา
 - จำกัดสิทธิ์การอ่าน object ใน MinIO
 - ใช้ pseudonymous ID แทนชื่อจริง
 - ไม่บันทึก face embedding สำหรับระบุตัวตน
-- ไม่บันทึกภาพ token หรือ questionnaire ลง [[Logging|log]]
+- ไม่บันทึกภาพ token หรือ questionnaire ลง log
 - ไม่ใช้ภาพผู้ใช้ทำ retraining โดยอัตโนมัติ
 - แยก consent สำหรับ inference กับ annotation/research
 
@@ -48,7 +44,7 @@ AphrodoX เป็น wellness/educational prototype ไม่วิเครา
 
 วัด error แยกตาม age group, skin tone และ sex/gender representation เท่าที่ label อนุญาต รายงาน sample size และ limitation เมื่อข้อมูลบางกลุ่มน้อย ไม่สรุปว่าระบบ fair จาก aggregate metric เพียงค่าเดียว
 
-Dataset split ต้องป้องกัน identity leakage และ temporal leakage ตาม [[AI and Data]] ส่วน dashboard/monitoring ต้องแสดง subgroup performance ตาม [[System and MLOps]]
+Dataset split ต้องป้องกัน identity leakage และ temporal leakage ตาม [AI and Data](AI%20and%20Data.md) ส่วน dashboard/monitoring ต้องแสดง subgroup performance ตาม [System and MLOps](System%20and%20MLOps.md)
 
 ## Risk register
 

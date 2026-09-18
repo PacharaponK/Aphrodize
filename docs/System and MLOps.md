@@ -1,25 +1,21 @@
----
-type: moc
----
-
 # System and MLOps
 
-> โครงสร้างระบบและวงจร [[MLOps]] ของ [[AphrodoX]] ตั้งแต่รับภาพจนถึง monitoring, feedback และ retraining
+> โครงสร้างระบบและวงจร MLOps ของ [Aphrodize](Aphrodize.md) ตั้งแต่รับภาพจนถึง monitoring, feedback และ retraining
 
 ## Architecture
 
-ระบบใช้ [[AI Ecosystem Architecture]] แบบ Modular Monolith เพื่อให้ deploy ง่ายแต่ยังแยกหน้าที่ชัดเจน
+ระบบใช้ AI ecosystem architecture แบบ modular monolith เพื่อให้ deploy ง่ายแต่ยังแยกหน้าที่ชัดเจน
 
 ```text
 Web/Mobile Client
        ↓
-[[FastAPI]] Central API
+FastAPI Central API
        ├── consent / validation
        ├── analysis API
        ├── history API
        └── recommendation API
               ↓
-        [[Redis]] + [[ARQ]]
+        Redis + ARQ
               ├── quality-check job
               ├── wrinkle-inference job
               ├── age-inference job
@@ -27,23 +23,23 @@ Web/Mobile Client
                      ↓
      ┌───────────────┴───────────────┐
      ↓                               ↓
-[[MinIO]]                        [[PostgreSQL]]
+MinIO                            PostgreSQL
 images/models/masks             users/consents/results/history
      ↓                               ↓
-confidence ต่ำ → [[Label Studio]] → corrected labels → retraining
+confidence ต่ำ → Label Studio → corrected labels → retraining
 ```
 
 | Component | หน้าที่ |
 |---|---|
-| [[FastAPI]] | request, validation, response schema และ authorization |
-| [[MinIO]] | ภาพต้นฉบับ normalized image, mask และ model artifact |
-| [[PostgreSQL]] | metadata, consent, questionnaire, prediction และ recommendation |
-| [[Redis]] | cache สถานะ job และ queue backend |
-| [[ARQ]] | inference/trend jobs นอก HTTP process |
-| [[Label Studio]] | แก้ wrinkle mask ของภาพใน feedback set |
-| [[Docker Compose]] | เปิด services เป็น stack เดียว |
-| [[Logging]] | บันทึกเหตุการณ์โดยไม่เก็บภาพ token หรือข้อมูลอ่อนไหว |
-| [[Health Check]] | readiness ของ API, storage, database, queue และ model |
+| FastAPI | request, validation, response schema และ authorization |
+| MinIO | ภาพต้นฉบับ normalized image, mask และ model artifact |
+| PostgreSQL | metadata, consent, questionnaire, prediction และ recommendation |
+| Redis | cache สถานะ job และ queue backend |
+| ARQ | inference/trend jobs นอก HTTP process |
+| Label Studio | แก้ wrinkle mask ของภาพใน feedback set |
+| Docker Compose | เปิด services เป็น stack เดียว |
+| Logging | บันทึกเหตุการณ์โดยไม่เก็บภาพ token หรือข้อมูลอ่อนไหว |
+| Health check | readiness ของ API, storage, database, queue และ model |
 
 ## End-to-end workflows
 
@@ -98,7 +94,7 @@ confidence ต่ำหรือ error ที่ผู้ใช้รายง�
 | `DELETE` | `/users/{user_id}/images` | ลบภาพตามสิทธิ์ของผู้ใช้ |
 | `GET` | `/health` | ตรวจสถานะระบบ |
 
-ทุก endpoint ต้องมี Pydantic schema และ [[OpenAPI]] documentation โดย error response ห้ามเปิดเผย object path ภายใน credential หรือ stack trace
+ทุก endpoint ต้องมี Pydantic schema และ OpenAPI documentation โดย error response ห้ามเปิดเผย object path ภายใน credential หรือ stack trace
 
 ## Database entities
 
@@ -115,7 +111,7 @@ confidence ต่ำหรือ error ที่ผู้ใช้รายง�
 | `recommendations` | rule version, result, rationale และ reference |
 | `feedback` | user report, review status และ annotation eligibility |
 
-ไม่เก็บชื่อจริงในตารางวิเคราะห์หากระบบ demo ไม่จำเป็นต้องใช้ รายละเอียด data minimization อยู่ใน [[Safety and Governance]]
+ไม่เก็บชื่อจริงในตารางวิเคราะห์หากระบบ demo ไม่จำเป็นต้องใช้ รายละเอียด data minimization อยู่ใน [Safety and Governance](Safety%20and%20Governance.md)
 
 ## Model lifecycle
 
@@ -131,7 +127,7 @@ Dataset version
 → rollback/retrain เมื่อ metric ต่ำกว่าเกณฑ์
 ```
 
-ใช้ TensorBoard สำหรับ training metrics และ [[Model Serialization]] สำหรับ model artifact ส่วน [[ONNX]] และ [[Quantization]] ทำหลัง baseline ใช้งานได้แล้ว ไม่ควร optimize โมเดลที่ยังวัดความถูกต้องไม่ได้
+ใช้ TensorBoard สำหรับ training metrics และ model serialization สำหรับ model artifact ส่วน ONNX และ quantization ทำหลัง baseline ใช้งานได้แล้ว ไม่ควร optimize โมเดลที่ยังวัดความถูกต้องไม่ได้
 
 ## System monitoring
 
@@ -143,4 +139,4 @@ Dataset version
 - dependency availability
 - model version และ error แยกตาม image quality/subgroup
 
-Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [[Product and Scope]] และข้อกำหนดด้านข้อมูลใน [[Safety and Governance]]
+Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](Safety%20and%20Governance.md)
