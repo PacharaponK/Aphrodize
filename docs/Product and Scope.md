@@ -1,52 +1,51 @@
 # Product and Scope
 
-> ขอบเขตของ [Aphrodize](Aphrodize.md) ตั้งแต่ปัญหาที่ต้องแก้ ผลลัพธ์ที่ผู้ใช้เห็น ไปจนถึงเกณฑ์ส่งมอบ MVP
+> ขอบเขตของ [Aphrodize](Aphrodize.md) สำหรับตรวจและติดตามริ้วรอยจากภาพใบหน้า
 
 ## ปัญหาและผู้ใช้
 
-ผู้ใช้มักประเมินว่าผิวดีขึ้นหรือแย่ลงจากความรู้สึกหรือภาพที่ถ่ายต่างแสง ต่างกล้อง และต่างมุม ทำให้เปรียบเทียบผลได้ยาก ขณะเดียวกันแอปจำนวนมากแสดงอายุหรือคำแนะนำแบบฟันธง โดยไม่บอก uncertainty, ข้อจำกัดของภาพ หรือที่มาของคำแนะนำ
+ผู้ใช้มักเปรียบเทียบสภาพผิวจากภาพที่ถ่ายต่างแสง ต่างกล้อง และต่างมุม ทำให้แยกการเปลี่ยนแปลงของริ้วรอยออกจากความต่างของภาพได้ยาก
 
-Aphrodize จึงวิเคราะห์ภาพภายใต้เงื่อนไขที่ควบคุมได้ วัดผลด้วยเกณฑ์เดิมทุกครั้ง เก็บประวัติเป็น time series และแยก observation, model estimate, user-reported data และ interpretation ออกจากกัน
+Aphrodize จึงกำหนด capture protocol ตรวจคุณภาพภาพ แบ่งบริเวณริ้วรอย และเก็บ score ด้วยเกณฑ์เดียวกันทุกครั้ง เพื่อช่วยให้ผู้ใช้ดูแนวโน้มจากภาพของตนเองได้อย่างสม่ำเสมอ
 
-ผู้ใช้เป้าหมายคือผู้ใหญ่ที่ต้องการติดตาม visible signs of skin aging หรือเปรียบเทียบ skincare routine ด้วยภาพมาตรฐาน ระบบไม่ได้ออกแบบสำหรับเด็ก การวินิจฉัยโรค หรือการเลือกวิธีรักษาทางการแพทย์
+ผู้ใช้เป้าหมายคือผู้ใหญ่ที่ต้องการติดตาม visible wrinkles ด้วยภาพมาตรฐาน และรับคำแนะนำผลิตภัณฑ์จากผลโมเดลร่วมกับแบบสอบถาม ระบบไม่ประเมินอายุ ไม่วินิจฉัยโรค และไม่รับรองผลของผลิตภัณฑ์หรือหัตถการ
 
 ## Objectives
 
-1. ตรวจและแบ่งบริเวณริ้วรอยจากภาพใบหน้าด้วย image segmentation
-2. ประเมิน apparent age เป็นช่วงพร้อม uncertainty
-3. ติดตาม wrinkle score และปัจจัยแวดล้อมตามเวลา
-4. พยากรณ์แนวโน้มเมื่อมี longitudinal data เพียงพอ
-5. อธิบายปัจจัยที่อาจเกี่ยวข้องโดยไม่กล่าวอ้าง causal diagnosis
-6. แนะนำ product category หรือ active ingredient จากกฎที่มีแหล่งอ้างอิง
-7. สร้างวงจร data → annotation → training → deployment → monitoring → feedback
+1. ปฏิเสธภาพที่ไม่เหมาะกับการวิเคราะห์พร้อมเหตุผล
+2. แบ่งบริเวณริ้วรอยด้วย image segmentation
+3. คำนวณ wrinkle score และ confidence รายบริเวณ
+4. ใช้แบบสอบถามและกฎที่ตรวจสอบได้เพื่อแสดงปัจจัยที่อาจเกี่ยวข้องกับสุขภาพผิว
+5. แนะนำ product category หรือ active ingredient จากผลโมเดลและกฎที่มี safety checks
+6. แสดงประวัติและแนวโน้มจากภาพที่ผ่านเกณฑ์เดียวกัน
+7. ประเมินความถูกต้อง ความปลอดภัย และความสม่ำเสมอของผลลัพธ์
 
 ## User-visible result
 
 ```text
 Image quality: ผ่าน
-Apparent age: 28–34 ปี
 Wrinkle score: 37/100
 
 บริเวณที่พบ:
-- รอบดวงตา: ปานกลาง
-- หน้าผาก: เล็กน้อย
-- ร่องแก้ม: ปานกลาง
+- รอบดวงตา: ปานกลาง (confidence 0.86)
+- หน้าผาก: เล็กน้อย (confidence 0.79)
+- ร่องแก้ม: ปานกลาง (confidence 0.82)
 
 แนวโน้ม 12 สัปดาห์:
 - Wrinkle score ค่อนข้างคงที่
-- ความไม่แน่นอนสูงในสัปดาห์ที่ภาพมืด
+- ไม่นำภาพที่มืดหรือเบลอมาคำนวณแนวโน้ม
 
 ปัจจัยที่อาจเกี่ยวข้อง:
-- UV exposure สูง และรายงานว่าใช้ sunscreen ไม่สม่ำเสมอ
-- ผิวแห้งตามข้อมูลที่ผู้ใช้รายงาน
+- รายงานว่าได้รับ UV exposure สูงและใช้ sunscreen ไม่สม่ำเสมอ
+- เป็นข้อมูลประกอบจากแบบสอบถาม ไม่ใช่การยืนยันสาเหตุ
 
-คำแนะนำทั่วไป:
-- Broad-spectrum sunscreen SPF 30+
-- Moisturizer ที่เหมาะกับสภาพผิว
-- พิจารณา retinol ความเข้มข้นต่ำเมื่อไม่มีข้อห้าม
+คำแนะนำผลิตภัณฑ์:
+- Broad-spectrum sunscreen SPF 30+ ตามคำแนะนำการใช้
+- ใช้ wrinkle score/confidence ร่วมกับคำตอบแบบสอบถาม
+- ไม่แสดงเมื่อมี contraindication หรือผู้ใช้รายงานอาการรุนแรง
 ```
 
-UI และ API ต้องใช้คำว่า **apparent age**, **ปัจจัยที่อาจเกี่ยวข้อง** และ **คำแนะนำทั่วไป** เสมอ ข้อกำหนดเกี่ยวกับถ้อยคำอยู่ใน [Safety and Governance](Safety%20and%20Governance.md)
+ผลลัพธ์ต้องใช้คำว่า **ตรวจพบจากภาพ**, **wrinkle score**, **ปัจจัยที่อาจเกี่ยวข้อง** และ **แนวโน้ม** โดยไม่กล่าวอ้างอายุ สาเหตุ โรค หรือผลการรักษา ดูข้อกำหนดใน [Safety and Governance](Safety%20and%20Governance.md)
 
 ## MVP scope
 
@@ -55,61 +54,57 @@ UI และ API ต้องใช้คำว่า **apparent age**, **ปั
 - [ ] Consent และ image upload
 - [ ] Image-quality validation
 - [ ] Wrinkle segmentation
-- [ ] Apparent-age estimation พร้อมช่วง
-- [ ] Questionnaire
-- [ ] Rule-based possible-factor explanation
-- [ ] Product-category recommendation พร้อม safety filters
+- [ ] Wrinkle score และ confidence รายบริเวณ
+- [ ] Questionnaire สำหรับข้อมูลสุขภาพผิวและพฤติกรรม
+- [ ] Rule-based possible-factor explanation พร้อม rule version
+- [ ] Product-category recommendation พร้อม contraindication และ safety rules
 - [ ] History และ trend visualization
-- [ ] FastAPI + PostgreSQL + MinIO + Redis/ARQ
-- [ ] Docker Compose, health check, logging และ OpenAPI
+- [ ] การลบภาพและ derived artifacts
+- [ ] API, health check, logging และ model version
 - [ ] Model/system evaluation report
 
 ### Should have
 
-- [ ] Label Studio feedback workflow
-- [ ] Forecast เมื่อ longitudinal data เพียงพอ
-- [ ] Monitoring แยกตาม image quality และ subgroup
-- [ ] Model version/rollback metadata
+- [ ] Monitoring แยกตาม image quality และ subgroup ที่ dataset รองรับ
+- [ ] Model rollback metadata
 
 ### Out of scope
 
-- face recognition
+- การทำนายอายุหรือ apparent age จากใบหน้า
+- face recognition และ biometric identification
 - skin disease/cancer diagnosis
-- prescription recommendation
-- before/after treatment guarantee
-- brand ranking หรือ affiliate recommendation
+- การยืนยันสาเหตุของริ้วรอยหรือ causal diagnosis
+- prescription recommendation, brand ranking หรือ affiliate recommendation
+- การพยากรณ์อนาคตและการรับรองผลการรักษา
 - generative face de-aging
-- mobile application แบบ native
-- microservices แยกทุก component
+- automated annotation/retraining workflow
+- native mobile application และ microservices
 
 ## Development phases
 
-1. **Define and inspect data** — ตรวจ license, ทำ EDA, กำหนด capture protocol และ output schema
-2. **Establish baselines** — train/evaluate wrinkle และ apparent-age baseline พร้อม subgroup report
-3. **Build inference API** — upload → queue → inference → result พร้อม model version และ failure tests
-4. **Add questionnaire and recommendations** — สร้าง rule table, contraindication และ referral rules
-5. **Add longitudinal tracking** — เก็บ observation, แสดง raw trend, moving average และ uncertainty
-6. **Feedback and monitoring** — annotation queue, drift/latency monitoring และ retraining demo
+1. **Define data and protocol** — ตรวจ license, ทำ EDA, กำหนด capture protocol และ output schema
+2. **Build baseline** — train/evaluate wrinkle segmentation และกำหนดวิธีคำนวณ score
+3. **Build application flow** — consent → upload → quality gate → inference → result
+4. **Add context and tracking** — เพิ่ม questionnaire, rule table, recommendation safety, observation, raw trend และ system metrics
 
 ## Demo scenario
 
-1. ผู้ใช้ยอมรับ consent และกรอก skin profile
-2. อัปโหลดภาพที่เบลอ ระบบปฏิเสธและบอกให้ถ่ายใหม่
-3. อัปโหลดภาพที่ผ่าน ระบบตอบ job ID
-4. Worker วิเคราะห์ wrinkle mask และ apparent age
-5. Dashboard แสดงผลราย region พร้อม uncertainty
-6. Recommendation engine แนะนำ product category ตาม rule พร้อมแหล่งอ้างอิง
-7. เปิดประวัติหลายครั้งเพื่อดู trend
-8. ผู้ใช้แจ้งผลผิด ภาพเข้าสู่ feedback queue เมื่อมี consent
-9. หน้า monitoring แสดง model metrics, latency และ job failure
+1. ผู้ใช้ยอมรับ consent และกรอกแบบสอบถามสุขภาพผิว
+2. อัปโหลดภาพที่เบลอ ระบบปฏิเสธพร้อมเหตุผล
+3. อัปโหลดภาพที่ผ่าน ระบบแสดง wrinkle mask, score, confidence และปัจจัยที่อาจเกี่ยวข้อง
+4. ระบบแสดง recommendation จาก model signals และ questionnaire เมื่อผ่าน safety rules
+5. ผู้ใช้อัปโหลดภาพครั้งต่อไปภายใต้ capture protocol เดิม
+6. Dashboard แสดงประวัติและแนวโน้ม
+7. ผู้ใช้ลบภาพและผลลัพธ์ของตนได้
 
 ## Acceptance criteria
 
 - Pipeline ตั้งแต่ upload ถึง result ทำงานจบผ่าน API
-- Wrinkle result มี mask และ confidence ที่ตรวจสอบได้
-- Age result แสดงเป็นช่วง ไม่แสดงเลขฟันธง
 - ภาพคุณภาพต่ำถูกปฏิเสธพร้อมเหตุผล
-- History เรียงตามเวลาโดยไม่มี future leakage
-- Recommendation ทุกข้อมี rationale, source และ safety rule
-- ผู้ใช้ลบภาพของตนได้
+- ผลลัพธ์มี mask, score รายบริเวณ, confidence และ model version
+- Possible factor ทุกข้ออ้างถึงคำตอบของผู้ใช้และมี rule version โดยไม่ยืนยันสาเหตุ
+- Recommendation ทุกข้อมี rationale, source, rule version และ contraindication check
+- History เรียงตามเวลาและไม่นำภาพที่ไม่ผ่าน quality gate มาคำนวณ trend
+- ไม่มี age prediction, diagnosis หรือการรับรองผลการรักษา
+- ผู้ใช้ลบ original image และ derived artifacts ได้
 - Log และ API response ไม่มีภาพ secret หรือข้อมูลส่วนบุคคลที่ไม่จำเป็น

@@ -1,17 +1,17 @@
 # Aphrodize
 
-> **Aphrodize — Facial Aging Analysis and Longitudinal Skin Tracking** คือระบบวิเคราะห์ริ้วรอยและ **apparent age** จากภาพใบหน้า ติดตามการเปลี่ยนแปลงของผิวเป็น time-series data อธิบายปัจจัยที่อาจเกี่ยวข้องจากข้อมูลที่ผู้ใช้รายงาน และให้คำแนะนำทั่วไปด้าน skincare โดยแสดง uncertainty และข้อจำกัดอย่างชัดเจน
+> **Aphrodize — Facial Skin Analysis and Longitudinal Tracking** คือระบบวิเคราะห์ริ้วรอยและคัดกรองภาวะผิวจากภาพใบหน้า ใช้แบบสอบถามประกอบการพิจารณาสุขภาพผิว ให้คำแนะนำผลิตภัณฑ์ตาม safety rules และติดตามการเปลี่ยนแปลงตามเวลา
 
 ## Research question
 
-> เราสามารถใช้ภาพใบหน้าหนึ่งครั้งร่วมกับประวัติภาพและพฤติกรรมตามเวลา เพื่อวัดแนวโน้มริ้วรอยอย่างสม่ำเสมอและให้คำแนะนำด้าน skincare ที่โปร่งใสและปลอดภัยได้หรือไม่?
+> เราสามารถตรวจและติดตามแนวโน้มริ้วรอยจากภาพใบหน้าที่ถ่ายด้วย protocol เดิม แล้วใช้ผลลัพธ์ประกอบคำแนะนำผลิตภัณฑ์อย่างปลอดภัยเพียงใด?
 
 ## Project documents
 
-- [Product and Scope](Product%20and%20Scope.md) — ปัญหา ผู้ใช้เป้าหมาย requirements ขอบเขต และแผนส่งมอบ
-- [AI and Data](AI%20and%20Data.md) — image pipeline, models, datasets, longitudinal analysis และ evaluation
-- [System and MLOps](System%20and%20MLOps.md) — architecture, API, database, deployment, monitoring และ feedback loop
-- [Safety and Governance](Safety%20and%20Governance.md) — consent, privacy, fairness, ข้อจำกัดการใช้งาน และความเสี่ยง
+- [Product and Scope](Product%20and%20Scope.md) — ปัญหา ผู้ใช้เป้าหมาย ขอบเขต และเกณฑ์ส่งมอบ
+- [AI and Data](AI%20and%20Data.md) — image pipeline, model, dataset และ evaluation
+- [System and MLOps](System%20and%20MLOps.md) — architecture, API, database และ deployment
+- [Safety and Governance](Safety%20and%20Governance.md) — consent, privacy, fairness และข้อจำกัดการใช้งาน
 
 ## ภาพรวมการทำงาน
 
@@ -19,40 +19,35 @@
 Consent + questionnaire + standardized face image
 → image-quality gate
 → face alignment and region mapping
-→ wrinkle segmentation + apparent-age estimation
-→ possible-factor explanation + safety-filtered recommendation
-→ history, trend and uncertainty
-→ feedback, monitoring and retraining
+→ wrinkle segmentation and regional scores
+→ rule-based possible factors and recommendations
+→ history and trend visualization
 ```
 
-ระบบแยกข้อมูลออกเป็นสี่ประเภทเสมอ:
+ระบบแยกผลลัพธ์ออกเป็นสี่ส่วน:
 
-- **สิ่งที่มองเห็นจากภาพ**: ตำแหน่งและระดับของริ้วรอย
-- **สิ่งที่โมเดลประมาณ**: apparent age และ confidence
-- **ข้อมูลที่ผู้ใช้รายงาน**: พฤติกรรมและ skincare routine
-- **การตีความ**: ปัจจัยที่อาจเกี่ยวข้องและคำแนะนำทั่วไป ไม่ใช่ causal diagnosis
+- **สิ่งที่ตรวจพบจากภาพ**: wrinkle mask และตำแหน่งของริ้วรอย
+- **ค่าที่โมเดลคำนวณ**: score รายบริเวณและ confidence
+- **ข้อมูลประกอบ**: คำตอบจากแบบสอบถามและปัจจัยที่ rule-based system ระบุว่าอาจเกี่ยวข้อง
+- **คำแนะนำผลิตภัณฑ์**: category/active ingredient ที่ผ่าน safety rules
+- **แนวโน้มตามเวลา**: การเปลี่ยนแปลงของ score จากภาพที่ผ่าน quality gate
 
 ## Current scope
 
-MVP ต้องรองรับ consent, image-quality validation, wrinkle segmentation, apparent-age estimation แบบช่วง, questionnaire, rule-based explanation, product-category recommendation, history/trend และระบบ API ที่ deploy และตรวจสอบได้ รายละเอียดอยู่ใน [Product and Scope](Product%20and%20Scope.md)
+MVP รองรับ consent, questionnaire, image-quality validation, wrinkle segmentation, score รายบริเวณ, rule-based possible factors, product-category recommendation, history/trend, การลบข้อมูล และ API สำหรับใช้งานระบบ รายละเอียดอยู่ใน [Product and Scope](Product%20and%20Scope.md)
 
-โครงการไม่ครอบคลุม face recognition, การวินิจฉัยโรคผิวหนัง, prescription recommendation, การรับรองผลการรักษา, brand ranking หรือ generative face de-aging ดูข้อจำกัดทั้งหมดใน [Safety and Governance](Safety%20and%20Governance.md)
+ระบบไม่ทำนายอายุจากใบหน้า เพราะศัลยกรรม หัตถการ พันธุกรรม และปัจจัยอื่นทำให้ลักษณะใบหน้าไม่จำเป็นต้องสอดคล้องกับอายุจริง อีกทั้งไม่วินิจฉัยโรค ผลจากโมเดลใช้เป็นสัญญาณประกอบคำแนะนำผลิตภัณฑ์แบบ category/active ingredient ไม่ใช่ prescription หรือการรับรองผล ดูข้อจำกัดทั้งหมดใน [Safety and Governance](Safety%20and%20Governance.md)
 
 ## Open decisions
 
-- [ ] กลุ่มผู้ใช้เป้าหมายและช่วงอายุ
-- [ ] เน้น wrinkle segmentation หรือ apparent age เป็น primary model
-- [ ] ระยะเวลาและความถี่ในการเก็บ longitudinal data
-- [ ] ใช้ product category เท่านั้นหรือ curate product catalog จริง
+- [ ] กลุ่มผู้ใช้เป้าหมาย
+- [ ] ระยะเวลาและความถี่ในการถ่ายภาพติดตาม
 - [ ] เกณฑ์ image quality ที่ถือว่าผ่าน
-- [ ] เกณฑ์ที่ต้องหยุด recommendation และแนะนำพบแพทย์
+- [ ] วิธีคำนวณ wrinkle score จาก segmentation mask
+- [ ] product knowledge source และ contraindication rules
 - [ ] Retention period ของ original image และ derived mask
 - [ ] Dataset/model license ตรงกับรูปแบบการเผยแพร่โครงการหรือไม่
 
 ## Definition of done
 
-โครงการถือว่าเสร็จเมื่อผู้ใช้สามารถ upload ภาพที่ได้รับ consent แล้วได้รับผล wrinkle/apparent-age ที่มี uncertainty อ่าน possible factors และคำแนะนำที่มีแหล่งอ้างอิง กลับมาดูแนวโน้มตามเวลา และลบภาพของตนได้ ขณะเดียวกันผู้ดูแลตรวจ health, log, model version, metrics และ feedback workflow ได้ครบโดยไม่ต้องเปิด notebook
-
-## แนวคิดที่เชื่อมกัน
-
-งานภาพใช้ encoder-decoder, up-sampling/down-sampling, feature-map resolution และ ground truth การประเมินใช้ evaluation และ system metrics ข้อมูลประวัติใช้ time-series data, resampling และ moving average ส่วนระบบจริงใช้ FastAPI, ARQ, Redis, PostgreSQL, MinIO, Label Studio, Docker Compose, health checks, logging และ OpenAPI ตามวงจร MLOps
+โครงการถือว่าเสร็จเมื่อผู้ใช้ upload ภาพที่ได้รับ consent แล้วได้รับ wrinkle mask, score รายบริเวณ, confidence, ปัจจัยที่อาจเกี่ยวข้อง และคำแนะนำที่ผ่าน safety rules ได้ ผู้ใช้ดูแนวโน้มจากภาพหลายครั้งและลบข้อมูลของตนได้ ขณะเดียวกันผู้ดูแลตรวจ health, log, model version และ metrics ได้โดยไม่ต้องเปิด notebook

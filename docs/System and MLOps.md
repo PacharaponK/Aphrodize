@@ -1,45 +1,35 @@
 # System and MLOps
 
-> โครงสร้างระบบและวงจร MLOps ของ [Aphrodize](Aphrodize.md) ตั้งแต่รับภาพจนถึง monitoring, feedback และ retraining
+> โครงสร้างระบบขั้นต่ำของ [Aphrodize](Aphrodize.md) ตั้งแต่รับภาพจนถึงแสดงผลและติดตามแนวโน้ม
 
 ## Architecture
 
-ระบบใช้ AI ecosystem architecture แบบ modular monolith เพื่อให้ deploy ง่ายแต่ยังแยกหน้าที่ชัดเจน
+ใช้ modular monolith เพื่อให้พัฒนาและ deploy ได้เป็นระบบเดียว:
 
 ```text
-Web/Mobile Client
-       ↓
-FastAPI Central API
-       ├── consent / validation
-       ├── analysis API
-       ├── history API
-       └── recommendation API
-              ↓
-        Redis + ARQ
-              ├── quality-check job
-              ├── wrinkle-inference job
-              ├── age-inference job
-              └── trend/forecast job
-                     ↓
-     ┌───────────────┴───────────────┐
-     ↓                               ↓
-MinIO                            PostgreSQL
-images/models/masks             users/consents/results/history
-     ↓                               ↓
-confidence ต่ำ → Label Studio → corrected labels → retraining
+Web client
+    ↓
+FastAPI
+    ├── consent and access control
+    ├── questionnaire and rule engine
+    ├── image-quality gate
+    ├── face alignment
+    ├── wrinkle segmentation
+    ├── recommendation safety checks
+    └── history and trend
+         ↓              ↓
+       MinIO        PostgreSQL
+   images/masks   metadata/results
 ```
 
 | Component | หน้าที่ |
 |---|---|
-| FastAPI | request, validation, response schema และ authorization |
-| MinIO | ภาพต้นฉบับ normalized image, mask และ model artifact |
-| PostgreSQL | metadata, consent, questionnaire, prediction และ recommendation |
-| Redis | cache สถานะ job และ queue backend |
-| ARQ | inference/trend jobs นอก HTTP process |
-| Label Studio | แก้ wrinkle mask ของภาพใน feedback set |
-| Docker Compose | เปิด services เป็น stack เดียว |
-| Logging | บันทึกเหตุการณ์โดยไม่เก็บภาพ token หรือข้อมูลอ่อนไหว |
-| Health check | readiness ของ API, storage, database, queue และ model |
+| FastAPI | validation, inference flow, response schema และ authorization |
+| MinIO | original image, normalized image, mask และ model artifact |
+| PostgreSQL | consent, questionnaire, recommendation, image metadata และ observation history |
+| Docker Compose | เปิด application, database และ storage เป็น stack เดียว |
+| Logging | บันทึกสถานะและ error โดยไม่เก็บภาพหรือข้อมูลอ่อนไหว |
+| Health check | ตรวจ API, storage, database และ model readiness |
 
 ## End-to-end workflows
 
@@ -47,36 +37,23 @@ confidence ต่ำ → Label Studio → corrected labels → retraining
 
 ```text
 1. ผู้ใช้อ่าน notice และให้ consent
-2. Client ขอ upload URL
-3. ภาพถูกเก็บใน MinIO
-4. FastAPI สร้าง analysis record และ enqueue job
-5. Worker ตรวจคุณภาพภาพ
-6. ภาพผ่าน → รัน wrinkle และ age models
-7. บันทึก result/confidence ลง PostgreSQL
-8. Rule engine รวม result กับ questionnaire
-9. Client อ่านผลผ่าน analysis ID
+2. ผู้ใช้กรอก questionnaire
+3. Client ส่งภาพเข้า analysis API
+4. ระบบตรวจคุณภาพภาพ
+5. ภาพผ่าน → จัดแนวใบหน้าและรัน wrinkle segmentation
+6. Rule engine รวม wrinkle score/confidence กับคำตอบเพื่อสร้าง possible factors และ recommendation ที่ผ่าน safety checks
+7. บันทึก mask, score, confidence, model version และ rule version
+8. Client อ่านผลผ่าน analysis ID
 ```
 
 ### Follow-up analysis
 
 ```text
 ภาพครั้งใหม่
-→ normalize ด้วย protocol เดิม
-→ inference
+→ ตรวจด้วย quality gate เดิม
+→ inference ด้วย score definition เดิม
 → เพิ่ม observation ใน history
-→ resample/quality-weighted trend
-→ แสดงการเปลี่ยนแปลงพร้อม uncertainty
-```
-
-### Feedback and retraining
-
-```text
-confidence ต่ำหรือ error ที่ผู้ใช้รายงาน
-→ ส่งเฉพาะภาพที่ได้รับอนุญาตเข้า Label Studio
-→ ผู้กำกับแก้ mask
-→ export dataset version ใหม่
-→ train/evaluate
-→ deploy เมื่อผ่าน acceptance criteria
+→ แสดง raw trend และ moving average
 ```
 
 ## API draft
@@ -84,17 +61,15 @@ confidence ต่ำหรือ error ที่ผู้ใช้รายง�
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/consents` | บันทึก consent version |
-| `POST` | `/uploads` | ขอ URL สำหรับ upload ภาพ |
-| `POST` | `/analyses` | สร้าง analysis job |
-| `GET` | `/analyses/{analysis_id}` | อ่านสถานะและผลวิเคราะห์ |
-| `POST` | `/questionnaires` | บันทึกข้อมูลประกอบและ safety flags |
+| `POST` | `/questionnaires` | บันทึกข้อมูลสุขภาพผิวและพฤติกรรมที่ผู้ใช้รายงาน |
+| `POST` | `/analyses` | รับภาพและสร้างผลวิเคราะห์ |
+| `GET` | `/analyses/{analysis_id}` | อ่านสถานะ mask, score, confidence และ possible factors |
+| `GET` | `/analyses/{analysis_id}/recommendations` | อ่านคำแนะนำที่ผ่าน safety rules |
 | `GET` | `/users/{user_id}/trends` | อ่านประวัติและแนวโน้ม |
-| `GET` | `/analyses/{analysis_id}/recommendations` | อ่านคำแนะนำพร้อมเหตุผล/แหล่งอ้างอิง |
-| `POST` | `/analyses/{analysis_id}/feedback` | แจ้งผลผิดหรือขอลบออกจาก feedback |
-| `DELETE` | `/users/{user_id}/images` | ลบภาพตามสิทธิ์ของผู้ใช้ |
+| `DELETE` | `/users/{user_id}/images` | ลบภาพและ derived artifacts |
 | `GET` | `/health` | ตรวจสถานะระบบ |
 
-ทุก endpoint ต้องมี Pydantic schema และ OpenAPI documentation โดย error response ห้ามเปิดเผย object path ภายใน credential หรือ stack trace
+ทุก endpoint ต้องมี Pydantic schema และ OpenAPI documentation โดย error response ห้ามเปิดเผย object path, credential หรือ stack trace
 
 ## Database entities
 
@@ -103,13 +78,12 @@ confidence ต่ำหรือ error ที่ผู้ใช้รายง�
 | `users` | pseudonymous user ID และ account metadata ขั้นต่ำ |
 | `consents` | user ID, consent version, accepted/revoked time |
 | `images` | object key, capture time, quality score, retention status |
-| `analyses` | job/model version/status/error category |
-| `wrinkle_results` | region, score, mask key, confidence |
-| `age_results` | apparent-age estimate, interval, confidence |
-| `questionnaires` | exposure, routine, skin type และ safety flags |
-| `observations` | timestamped scores สำหรับ time series |
-| `recommendations` | rule version, result, rationale และ reference |
-| `feedback` | user report, review status และ annotation eligibility |
+| `analyses` | model version, status และ error category |
+| `wrinkle_results` | region, score, mask key และ confidence |
+| `questionnaires` | skin profile, exposure, routine และ consented procedure history |
+| `factor_results` | rule ID/version, matched inputs และ explanation |
+| `recommendations` | category/ingredient, rationale, source, rule version และ safety status |
+| `observations` | timestamped regional scores สำหรับ trend |
 
 ไม่เก็บชื่อจริงในตารางวิเคราะห์หากระบบ demo ไม่จำเป็นต้องใช้ รายละเอียด data minimization อยู่ใน [Safety and Governance](Safety%20and%20Governance.md)
 
@@ -119,24 +93,20 @@ confidence ต่ำหรือ error ที่ผู้ใช้รายง�
 Dataset version
 → preprocess
 → train
-→ evaluate by subgroup
+→ evaluate
 → save model + metrics + config
-→ register version
-→ deploy candidate
+→ deploy version
 → monitor
-→ rollback/retrain เมื่อ metric ต่ำกว่าเกณฑ์
+→ rollback เมื่อไม่ผ่านเกณฑ์
 ```
-
-ใช้ TensorBoard สำหรับ training metrics และ model serialization สำหรับ model artifact ส่วน ONNX และ quantization ทำหลัง baseline ใช้งานได้แล้ว ไม่ควร optimize โมเดลที่ยังวัดความถูกต้องไม่ได้
 
 ## System monitoring
 
+- end-to-end success/failure rate
 - p50/p95 inference latency
-- throughput ต่อ worker
-- queue waiting time
-- failed/retried job rate
 - model loading time และ memory usage
 - dependency availability
 - model version และ error แยกตาม image quality/subgroup
+- recommendation safety failures และ low-confidence block rate
 
 Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](Safety%20and%20Governance.md)

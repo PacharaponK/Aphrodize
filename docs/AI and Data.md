@@ -1,6 +1,6 @@
 # AI and Data
 
-> การออกแบบ AI และข้อมูลของ [Aphrodize](Aphrodize.md) ตั้งแต่ตรวจคุณภาพภาพจนถึง model evaluation และ longitudinal analysis
+> การออกแบบ AI และข้อมูลของ [Aphrodize](Aphrodize.md) สำหรับ wrinkle segmentation และ longitudinal tracking
 
 ## Pipeline
 
@@ -10,14 +10,15 @@ Input image
 → face detection and landmark detection
 → alignment and crop
 → region mapping
-→ wrinkle segmentation + apparent-age estimation
-→ questionnaire-based explanation and recommendation
+→ wrinkle segmentation
+→ regional scores and confidence
+→ questionnaire + rule-based possible factors and recommendations
 → longitudinal observation
 ```
 
 ## Image-quality gate
 
-ก่อน inference ระบบต้องตรวจว่าภาพมีใบหน้าหนึ่งใบ หันตรง ไม่ถูกบัง ไม่มืดหรือสว่างเกิน ไม่เบลอหรือ resolution ต่ำ ไม่มี beauty filter และมีสีหน้าเป็นกลาง ภาพที่ไม่ผ่านต้องให้ถ่ายใหม่ ไม่ฝืนส่งต่อเข้าโมเดล
+ก่อน inference ระบบต้องตรวจว่าภาพมีใบหน้าหนึ่งใบ หันตรง ไม่ถูกบัง ไม่มืดหรือสว่างเกิน ไม่เบลอหรือ resolution ต่ำ ไม่มี beauty filter และมีสีหน้าเป็นกลาง ภาพที่ไม่ผ่านต้องให้ถ่ายใหม่และไม่นำไปคำนวณ trend
 
 ## Face preprocessing
 
@@ -27,29 +28,15 @@ Region of interest ขั้นต่ำคือ forehead, glabella, left/right
 
 ใช้ U-Net หรือ pretrained segmentation model รับ aligned face image และสร้าง wrinkle probability map ก่อน threshold เป็น binary mask
 
-Output คือ wrinkle mask, wrinkle area ratio ต่อ region, line density/length โดยประมาณ, severity ระดับ none/mild/moderate/high, confidence และ image-quality flags
+Output คือ wrinkle mask, wrinkle area ratio ต่อ region, wrinkle score, severity ระดับ none/mild/moderate/high, confidence และ image-quality flags สูตรคำนวณ score ต้องคงที่และบันทึก version เพื่อให้เปรียบเทียบข้ามเวลาได้
 
-[FFHQ-Wrinkle](https://github.com/labhai/ffhq-wrinkle-dataset) มี manual wrinkle masks 1,000 ภาพและ weak masks 50,000 ภาพ ภายใต้ license CC BY-NC-SA 4.0 ใช้ Dice เป็น primary metric และรายงาน IoU, precision/recall พร้อมผลแยกตาม face region, age group และ skin tone
-
-## Apparent-age estimation
-
-โมเดลรับ aligned face crop และประเมิน apparent age ไม่ใช่อายุจริง ใช้ ordinal classification หรือ regression พร้อม uncertainty และแสดงเป็นช่วง เช่น `28–34 ปี`
-
-[APPA-REAL](https://chalearnlap.cvc.uab.cat/dataset/26/description/) มี 7,591 ภาพพร้อม real-age และ apparent-age labels จากประมาณ 250,000 votes ใช้ MAE เป็น primary metric และรายงาน accuracy ภายใน ±5 ปี, interval calibration/coverage และ MAE แยกตาม age group และ skin tone
-
-โมเดลอายุและโมเดลริ้วรอยแยกกันใน MVP เพราะใช้ dataset และ target คนละแบบ ยังไม่มีประโยชน์ที่พิสูจน์ได้จาก multi-task model ในขอบเขตนี้
+[FFHQ-Wrinkle](https://github.com/labhai/ffhq-wrinkle-dataset) มี manual wrinkle masks 1,000 ภาพและ weak masks 50,000 ภาพ ภายใต้ license CC BY-NC-SA 4.0 ใช้ Dice เป็น primary metric และรายงาน IoU, precision/recall พร้อมผลแยกตาม face region และ subgroup เท่าที่ label รองรับ
 
 ## Longitudinal tracking
 
-ผู้ใช้ถ่ายภาพด้วย protocol เดิมทุก 1–2 สัปดาห์ ระบบเก็บ timestamp, wrinkle score ราย region, apparent age, image-quality score, UV exposure, sleep, sunscreen, moisturizer, retinol และ smoking status
+ผู้ใช้ถ่ายภาพด้วย protocol เดิมทุก 1–2 สัปดาห์ ระบบเก็บ timestamp, wrinkle score ราย region, confidence, image-quality score และ model version
 
-ขั้นแรกใช้ resampling และ moving average แสดงแนวโน้มและลด noise โดยเก็บ raw score ไว้เสมอ เริ่มจาก last value/seasonal naive baseline ก่อนทดลอง ARIMA/SARIMA หรือโมเดลที่รองรับ covariates เมื่อข้อมูลมากพอ
-
-แบ่ง train/validation/test ตามเวลา ห้าม random split และห้ามใช้ข้อมูลอนาคตเป็น feature:
-
-- ประวัติน้อย: แสดง trend และ uncertainty เท่านั้น
-- ประวัติหลายเดือนและภาพสม่ำเสมอ: ทดลอง forecast
-- ห้ามตีความ forecast เป็นผลการรักษาหรือผลรับรองผลิตภัณฑ์
+แสดง raw score และ moving average เพื่อช่วยอ่านแนวโน้มโดยไม่พยากรณ์อนาคต การเปลี่ยนแปลงจากศัลยกรรม หัตถการ skincare หรือปัจจัยอื่นอาจปรากฏใน score แต่ระบบไม่สรุปสาเหตุ ไม่ประเมินอายุ และไม่รับรองผลการรักษา
 
 ### Capture protocol
 
@@ -60,52 +47,47 @@ Output คือ wrinkle mask, wrinkle area ratio ต่อ region, line density
 5. ถ่ายในช่วงเวลาใกล้เคียงกัน
 6. ถ่ายใหม่หาก quality gate ไม่ผ่าน
 
-## Possible-factor explanation
+## Questionnaire and rule-based factors
 
-ภาพอย่างเดียวไม่สามารถยืนยันสาเหตุได้ ระบบจึงใช้ข้อมูลที่ผู้ใช้รายงาน เช่น อายุจริง, skin type, sensitivity, UV exposure, sunscreen adherence, smoking, sleep, skin dryness, routine, active ingredients, allergy/irritation และ pregnancy status
+แบบสอบถามเก็บข้อมูลที่ผู้ใช้รายงาน เช่น skin type, sensitivity, UV exposure, sunscreen use, smoking, sleep, skin dryness, skincare routine, active ingredients, allergy/irritation และประวัติศัลยกรรมหรือหัตถการที่ผู้ใช้ยินยอมเปิดเผย
 
-MVP ใช้ rule-based explanation ที่ตรวจสอบย้อนหลังได้:
+MVP ใช้กฎที่ตรวจสอบย้อนหลังได้เพื่อแสดงข้อมูลประกอบ ไม่ใช้กฎเพื่อวินิจฉัยหรือยืนยันสาเหตุ:
 
 ```text
 wrinkle_region = periocular
 AND outdoor_exposure = high
-AND sunscreen_adherence = low
-→ “UV exposure เป็นปัจจัยที่อาจเกี่ยวข้อง”
+AND sunscreen_use = inconsistent
+→ “UV exposure อาจเป็นปัจจัยที่เกี่ยวข้องตามข้อมูลที่ผู้ใช้รายงาน”
 ```
 
-ไม่ใช้ correlation เป็น causation และไม่สร้าง causal model หากไม่มี longitudinal/interventional data ที่เหมาะสม
-
-แหล่งอ้างอิงเริ่มต้น:
-
-- [AAD — 11 ways to reduce premature skin aging](https://www.aad.org/public/everyday-care/skin-care-secrets/anti-aging/reduce-premature-aging-skin)
-- [National Institute on Aging — Skin care and aging](https://www.nia.nih.gov/health/skin-care/skin-care-and-aging)
+ทุกผลลัพธ์ต้องเก็บ rule ID, rule version, input fields และข้อความอธิบาย ห้ามอนุมานข้อมูลที่ผู้ใช้ไม่ได้ตอบ
 
 ## Product recommendation
 
-Recommendation engine แนะนำประเภทผลิตภัณฑ์หรือ active ingredient จาก concern, skin type, routine เดิม และ contraindication ไม่เลือกยี่ห้อตามยอดนิยมหรือค่าโฆษณา
+ระบบแนะนำเฉพาะ product category หรือ active ingredient จาก wrinkle score/confidence, concern, skin type, routine และ contraindication ไม่จัดอันดับ brand และไม่แนะนำ prescription
 
-| เงื่อนไข | Recommendation candidate | Safety rule |
-|---|---|---|
-| ป้องกัน photoaging | Broad-spectrum sunscreen SPF 30+ | ใช้ตามฉลากและทาซ้ำเมื่ออยู่กลางแจ้ง |
-| ผิวแห้ง/fine lines | Moisturizer ตาม skin type | patch test ผลิตภัณฑ์ใหม่ |
-| Mild fine lines | Retinol ความเข้มข้นต่ำ | เริ่มช้า ระวัง irritation และใช้ sun protection |
-| แดง อักเสบ หรือ sensitive มาก | Routine อ่อนโยน | ไม่เสนอ active หลายตัวพร้อมกัน |
-| ตั้งครรภ์/วางแผนตั้งครรภ์ | ไม่เสนอ retinoid | แนะนำปรึกษาแพทย์ |
-| อาการรุนแรงหรือสงสัยโรค | ไม่เสนอการรักษา | แนะนำพบ dermatologist |
+ตัวอย่างกฎที่ใช้ผลโมเดลเป็นข้อมูลประกอบ:
 
-แหล่งอ้างอิงเริ่มต้น: [AAD — Selecting products](https://www.aad.org/public/everyday-care/skin-care-secrets/anti-aging/selecting-anti-aging-products), [AAD — Wrinkle remedies](https://www.aad.org/public/everyday-care/skin-care-secrets/anti-aging/wrinkle-remedies) และ [AAD — Retinoid or retinol](https://www.aad.org/public/everyday-care/skin-care-secrets/anti-aging/retinoid-retinol)
+```text
+periocular_wrinkle_score >= threshold
+AND confidence >= 0.80
+AND skin_dryness = high
+AND retinoid_contraindication = false
+→ recommend moisturizer category + broad-spectrum sunscreen category
+```
+
+ห้ามแสดง recommendation เมื่อ image quality หรือ model confidence ต่ำ ผู้ใช้รายงาน allergy/irritation รุนแรง มี contraindication หรือ rule ไม่มี source/rationale ที่ตรวจสอบได้ ทุกคำแนะนำต้องเก็บ rule version และ source
 
 ## Data sources and split
 
 | Data | Source | Purpose |
 |---|---|---|
-| Face + wrinkle mask | FFHQ-Wrinkle | wrinkle segmentation |
-| Face + apparent age | APPA-REAL | apparent-age model |
-| User face image | ผู้ใช้ให้ consent | inference และ tracking |
-| Questionnaire | ผู้ใช้กรอก | explanation และ safety filtering |
-| Product knowledge | curated references | recommendation rules |
+| Face + wrinkle mask | FFHQ-Wrinkle | train/evaluate wrinkle segmentation |
+| User face image | ผู้ใช้ให้ consent | inference และ tracking เท่านั้น |
+| Questionnaire | ผู้ใช้กรอก | rule-based contextual factors |
+| Product knowledge | reviewed clinical guidance | recommendation rules |
 
-Segmentation split ตามบุคคล, age estimation ใช้ official split ของ APPA-REAL และ longitudinal data split ตามเวลาโดยแยกผู้ใช้สำหรับ external test เมื่อทำได้ ตรวจ distribution ของ age group, skin tone, lighting และ image quality ด้วย EDA
+แบ่ง train/validation/test ตามบุคคลเพื่อป้องกัน identity leakage และตรวจ distribution ของ skin tone, lighting, face region และ image quality ด้วย EDA ภาพผู้ใช้ไม่ถูกนำไป train โดยอัตโนมัติ
 
 ## Evaluation plan
 
@@ -113,8 +95,9 @@ Segmentation split ตามบุคคล, age estimation ใช้ official s
 |---|---|---|
 | Image quality | rejection precision/recall | false-accept rate |
 | Wrinkle segmentation | Dice | IoU, precision, recall |
-| Apparent age | MAE | ±5-year accuracy, interval coverage |
-| Time-series | MAE/RMSE | error แยกตาม horizon |
-| Recommendation rules | safety-rule coverage | expert review agreement |
+| Score consistency | ความต่างของ score จากภาพซ้ำภายใต้ protocol เดิม | ผลแยกตาม region และ image quality |
+| Rule-based factors | rule coverage และ unsafe-output tests | expert review agreement |
+| Recommendation rules | safety-rule coverage | contraindication and low-confidence block tests |
+| System | end-to-end success rate | latency และ failure rate |
 
 ต้องรายงานผลแยกตาม subgroup เท่าที่ label อนุญาต และเชื่อม model metrics กับ system metrics ใน [System and MLOps](System%20and%20MLOps.md)
