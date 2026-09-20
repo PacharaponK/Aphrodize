@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).parents[1]))
 from wrinkle_prototype import PreprocessConfig, analyze, preprocess, score_mask
 
 
@@ -30,4 +30,3 @@ class WrinklePrototypeTests(unittest.TestCase):
             result = analyze(image_path, mask_path, PreprocessConfig(image_size=16))
             self.assertEqual(result["image"]["preprocessed_shape"], [16, 16, 3])
             self.assertAlmostEqual(result["wrinkle_area_ratio"], 0.5)
-
