@@ -20,6 +20,12 @@ x-api-environment: &api-environment
   MLFLOW_TRACKING_URI: http://mlflow:5000
   MODEL_VERSION: ${MODEL_VERSION:-unconfigured}
 
+x-container-logging: &container-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -35,6 +41,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    logging: *container-logging
 
   redis:
     image: redis:7-alpine
@@ -48,6 +55,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    logging: *container-logging
 
   minio:
     image: quay.io/minio/minio:latest
@@ -60,6 +68,7 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    logging: *container-logging
 
   minio-init:
     image: quay.io/minio/mc:latest
@@ -73,6 +82,7 @@ services:
     depends_on:
       minio:
         condition: service_started
+    logging: *container-logging
 
   label-studio:
     image: heartexlabs/label-studio:latest
@@ -89,6 +99,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    logging: *container-logging
 
   mlflow:
     build:
@@ -116,6 +127,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    logging: *container-logging
 
   api:
     build:
@@ -141,6 +153,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    logging: *container-logging
 
   inference-worker:
     build:
@@ -158,6 +171,7 @@ services:
         condition: service_started
       minio-init:
         condition: service_completed_successfully
+    logging: *container-logging
 
   trainer-worker:
     build:
@@ -177,6 +191,7 @@ services:
         condition: service_completed_successfully
       mlflow:
         condition: service_started
+    logging: *container-logging
 
 volumes:
   postgres_data:

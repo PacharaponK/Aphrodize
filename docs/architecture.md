@@ -57,3 +57,13 @@ After starting the stack, run this from PowerShell at the repository root:
 ```
 
 It checks expected containers, PostgreSQL readiness, authenticated Redis access, MinIO's liveness endpoint, Label Studio's login route, MLflow's health endpoint, FastAPI's health endpoint, and the completed bucket-initialization job. It exits with code `1` if any required check fails.
+
+## Local logs
+
+To save the latest logs from all Compose services under [`logs/`](../logs/README.md), run:
+
+```powershell
+.\scripts\export-logs.ps1
+```
+
+Docker rotates each container's local logs at 10 MB and retains five files. This is local log capture only; no external log collector or observability service is deployed.

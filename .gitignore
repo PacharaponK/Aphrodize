@@ -12,6 +12,8 @@ htmlcov/
 .DS_Store
 data/
 mlruns/
+logs/*.log
+logs/*.jsonl
 models/**/artifacts/
 models/**/checkpoints/
 models/**/*.onnx
