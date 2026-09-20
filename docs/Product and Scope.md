@@ -64,7 +64,6 @@ Wrinkle score: 37/100
 
 ### Should have
 
-- [ ] Monitoring แยกตาม image quality และ subgroup ที่ dataset รองรับ
 - [ ] Model rollback metadata
 
 ### Out of scope

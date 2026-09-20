@@ -28,7 +28,6 @@ FastAPI
 | MinIO | original image, normalized image, mask และ model artifact |
 | PostgreSQL | consent, questionnaire, recommendation, image metadata และ observation history |
 | Docker Compose | เปิด application, database และ storage เป็น stack เดียว |
-| Logging | บันทึกสถานะและ error โดยไม่เก็บภาพหรือข้อมูลอ่อนไหว |
 | Health check | ตรวจ API, storage, database และ model readiness |
 
 ## End-to-end workflows
@@ -95,18 +94,11 @@ Dataset version
 → train
 → evaluate
 → save model + metrics + config
+→ approval
 → deploy version
-→ monitor
-→ rollback เมื่อไม่ผ่านเกณฑ์
+→ rollback metadata เมื่อไม่ผ่านเกณฑ์
 ```
 
-## System monitoring
+## Operations scope
 
-- end-to-end success/failure rate
-- p50/p95 inference latency
-- model loading time และ memory usage
-- dependency availability
-- model version และ error แยกตาม image quality/subgroup
-- recommendation safety failures และ low-confidence block rate
-
-Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](Safety%20and%20Governance.md)
+ระยะนี้ Docker Compose ไม่มี Grafana, Prometheus, OpenTelemetry, Loki, Tempo หรือ alerting service. Health check ใช้ตรวจ readiness ของ API และ dependencies เท่านั้น ส่วน model evaluation และ approval ต้องถูกบันทึกใน MLflow ก่อน deploy.

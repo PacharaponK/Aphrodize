@@ -65,12 +65,9 @@ Aphrodize
 │   ├── wrinkle mask
 │   └── model artifact
 │
-└── Operations
-    ├── OpenTelemetry
-    ├── Grafana dashboards and alerts
-    ├── Loki logs
-    ├── Tempo traces
+└── Deployment controls
     ├── administrator health checks
+    ├── model approval metadata
     └── deletion / retention controls
 ```
 
@@ -126,18 +123,6 @@ FFHQ-Wrinkle dataset
 
 User images are for inference and tracking only; they are not added to training automatically.
 
-## Observability direction
-
-```text
-FastAPI / worker / storage / database
-  → OpenTelemetry
-  → metrics and traces
-  → Grafana / Tempo
-  → safe logs → Loki
-```
-
-Do not put face images, face embeddings, raw questionnaire answers, secrets, or unnecessary personal data into logs.
-
 ## Safety boundary
 
 The system may report:
@@ -160,7 +145,5 @@ The system must not provide age prediction, face recognition, biometric identity
 | Face landmarks | MediaPipe Face Landmarker |
 | Object storage | MinIO |
 | Model tracking | MLflow |
-| Telemetry | OpenTelemetry, Grafana, Loki, Tempo |
 | Packaging | Docker Compose |
 | Testing | pytest, HTTPX, Testcontainers |
-
