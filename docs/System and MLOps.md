@@ -99,6 +99,14 @@ Dataset version
 → rollback metadata เมื่อไม่ผ่านเกณฑ์
 ```
 
-## Operations scope
+## System monitoring
 
-ระยะนี้ Docker Compose ไม่มี Grafana, Prometheus, OpenTelemetry, Loki, Tempo หรือ alerting service. Health check ใช้ตรวจ readiness ของ API และ dependencies เท่านั้น ส่วน model evaluation และ approval ต้องถูกบันทึกใน MLflow ก่อน deploy.
+- end-to-end success/failure rate
+- p50/p95 inference latency
+- model loading time และ memory usage
+- dependency availability
+- model versions และ error แยกตาม image quality/subgroup
+- acne และ wrinkle metrics แยกตาม model version ของแต่ละงาน
+- recommendation safety failures และ low-confidence block rate
+
+Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](Safety%20and%20Governance.md)
