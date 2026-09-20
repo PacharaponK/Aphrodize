@@ -15,6 +15,8 @@ FastAPI
     ├── image-quality gate
     ├── face alignment
     ├── wrinkle segmentation
+    ├── acne detection
+    ├── concern and questionnaire signals
     ├── recommendation safety checks
     └── history and trend
          ↓              ↓
@@ -40,9 +42,9 @@ FastAPI
 2. ผู้ใช้กรอก questionnaire
 3. Client ส่งภาพเข้า analysis API
 4. ระบบตรวจคุณภาพภาพ
-5. ภาพผ่าน → จัดแนวใบหน้าและรัน wrinkle segmentation
-6. Rule engine รวม wrinkle score/confidence กับคำตอบเพื่อสร้าง possible factors และ recommendation ที่ผ่าน safety checks
-7. บันทึก mask, score, confidence, model version และ rule version
+5. ภาพผ่าน → จัดแนวใบหน้าแล้วรัน wrinkle segmentation และ acne detection
+6. Rule engine รวมผลภาพที่ confidence ผ่านเกณฑ์กับ concern/questionnaire ที่ผู้ใช้รายงาน เพื่อสร้าง possible factors และ recommendation ที่ผ่าน safety checks
+7. บันทึก acne result, wrinkle mask, score, confidence, input source, model versions และ rule version
 8. Client อ่านผลผ่าน analysis ID
 ```
 
@@ -51,7 +53,7 @@ FastAPI
 ```text
 ภาพครั้งใหม่
 → ตรวจด้วย quality gate เดิม
-→ inference ด้วย score definition เดิม
+→ inference ด้วย model และ score definition เดิม
 → เพิ่ม observation ใน history
 → แสดง raw trend และ moving average
 ```
@@ -63,7 +65,7 @@ FastAPI
 | `POST` | `/consents` | บันทึก consent version |
 | `POST` | `/questionnaires` | บันทึกข้อมูลสุขภาพผิวและพฤติกรรมที่ผู้ใช้รายงาน |
 | `POST` | `/analyses` | รับภาพและสร้างผลวิเคราะห์ |
-| `GET` | `/analyses/{analysis_id}` | อ่านสถานะ mask, score, confidence และ possible factors |
+| `GET` | `/analyses/{analysis_id}` | อ่าน acne result, wrinkle mask, score, confidence, signal source และ possible factors |
 | `GET` | `/analyses/{analysis_id}/recommendations` | อ่านคำแนะนำที่ผ่าน safety rules |
 | `GET` | `/users/{user_id}/trends` | อ่านประวัติและแนวโน้ม |
 | `DELETE` | `/users/{user_id}/images` | ลบภาพและ derived artifacts |
@@ -78,12 +80,13 @@ FastAPI
 | `users` | pseudonymous user ID และ account metadata ขั้นต่ำ |
 | `consents` | user ID, consent version, accepted/revoked time |
 | `images` | object key, capture time, quality score, retention status |
-| `analyses` | model version, status และ error category |
+| `analyses` | acne/wrinkle model versions, status และ error category |
+| `acne_results` | location, count, severity และ confidence |
 | `wrinkle_results` | region, score, mask key และ confidence |
-| `questionnaires` | skin profile, exposure, routine และ consented procedure history |
+| `questionnaires` | self-reported concerns, skin profile, exposure, routine และ consented procedure history |
 | `factor_results` | rule ID/version, matched inputs และ explanation |
-| `recommendations` | category/ingredient, rationale, source, rule version และ safety status |
-| `observations` | timestamped regional scores สำหรับ trend |
+| `recommendations` | category/ingredient, rationale, input sources, knowledge source, rule version และ safety status |
+| `observations` | timestamped acne count/severity และ regional wrinkle scores สำหรับ trend |
 
 ไม่เก็บชื่อจริงในตารางวิเคราะห์หากระบบ demo ไม่จำเป็นต้องใช้ รายละเอียด data minimization อยู่ใน [Safety and Governance](Safety%20and%20Governance.md)
 
@@ -106,7 +109,8 @@ Dataset version
 - p50/p95 inference latency
 - model loading time และ memory usage
 - dependency availability
-- model version และ error แยกตาม image quality/subgroup
+- model versions และ error แยกตาม image quality/subgroup
+- acne และ wrinkle metrics แยกตาม model version ของแต่ละงาน
 - recommendation safety failures และ low-confidence block rate
 
 Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](Safety%20and%20Governance.md)
