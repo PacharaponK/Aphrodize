@@ -9,4 +9,6 @@
 
 เปิด `client/index.html` ใน browser ได้ทันที โดยไม่ต้อง install dependency.
 
+สำหรับส่งให้เพื่อนดู ให้เปิด `showcase.html` เพื่อเลือกทุกหน้าใน static prototype: login, dashboard, capture, quality-rejected, result detail, trend และ recommendation.
+
 `theme.css` กำหนด pastel glass theme (ฟ้า–ลาเวนเดอร์–ชมพูอ่อน) สำหรับ visual style ของ client.
