@@ -94,7 +94,7 @@ topbarControls.className = "topbar-controls";
 const homeButton = document.createElement("button");
 homeButton.type = "button";
 homeButton.className = "home-button";
-homeButton.innerHTML = icons["#dashboard"];
+homeButton.innerHTML = '<img src="assets/home.svg" alt="" />';
 homeButton.setAttribute("aria-label", "หน้าแรก");
 homeButton.title = "หน้าแรก";
 homeButton.addEventListener("click", () => window.location.assign("index.html"));
@@ -119,7 +119,7 @@ menuButton.addEventListener("click", () => {
   menuButton.setAttribute("aria-label", isOpen ? "ปิดเมนู" : "เปิดเมนู");
 });
 topbar?.prepend(menuButton);
-profileButton.textContent = "";
+profileButton.innerHTML = '<img src="assets/profile-login.svg" alt="" />';
 
 function openDialog(id) {
   const target = document.getElementById(id);
