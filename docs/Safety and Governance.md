@@ -4,16 +4,18 @@
 
 ## Product boundary
 
-Aphrodize เป็น wellness/educational system สำหรับตรวจและติดตาม visible wrinkles จากภาพ แล้วใช้ผลลัพธ์เป็นข้อมูลประกอบคำแนะนำผลิตภัณฑ์ ไม่ใช้แทน dermatologist หรือการตัดสินใจทางคลินิกของผู้เชี่ยวชาญ
+Aphrodize เป็น wellness/educational system สำหรับตรวจและติดตาม visible acne-like spots และ wrinkles จากภาพ แล้วใช้ผลลัพธ์ร่วมกับ concern และบริบทที่ผู้ใช้รายงานเพื่อประกอบคำแนะนำผลิตภัณฑ์ ไม่ใช้แทน dermatologist หรือการตัดสินใจทางคลินิกของผู้เชี่ยวชาญ
 
 ระบบไม่ทำนายอายุหรือ apparent age จากใบหน้า เพราะศัลยกรรม หัตถการ พันธุกรรม และปัจจัยแวดล้อมทำให้ลักษณะใบหน้าไม่จำเป็นต้องสอดคล้องกับอายุจริง อีกทั้งผลลัพธ์ดังกล่าวอาจก่อให้เกิดการตีความและผลกระทบทางจิตใจที่ไม่จำเป็น
 
-ระบบไม่ทำ face recognition ไม่สร้าง biometric identity embedding ไม่ยืนยันสาเหตุของริ้วรอย และไม่ประเมินประสิทธิผลของผลิตภัณฑ์หรือหัตถการ แบบสอบถามใช้เพื่อแสดงปัจจัยที่อาจเกี่ยวข้องตามข้อมูลที่ผู้ใช้รายงานเท่านั้น
+ระบบไม่ทำ face recognition ไม่สร้าง biometric identity embedding ไม่ยืนยันชนิดหรือสาเหตุของสิวและริ้วรอย และไม่ประเมินประสิทธิผลของผลิตภัณฑ์หรือหัตถการ แบบสอบถามใช้เพื่อแสดงปัจจัยที่อาจเกี่ยวข้องตามข้อมูลที่ผู้ใช้รายงานเท่านั้น
 
 ## Required wording
 
 - ใช้ **ตรวจพบจากภาพ** ไม่ใช้ถ้อยคำวินิจฉัย
+- ใช้ **ลักษณะคล้ายสิวที่ตรวจพบจากภาพ** ไม่ระบุชนิดสิวหรือโรค
 - ใช้ **wrinkle score** และอธิบายว่าเป็นค่าจากโมเดล ไม่ใช่คะแนนสุขภาพหรือความงาม
+- แยก **ผู้ใช้รายงาน** ออกจากผลที่โมเดลตรวจพบ และแสดง source ของ signal
 - ใช้ **แนวโน้ม** เฉพาะการเปรียบเทียบภาพที่ผ่าน capture protocol และ quality gate
 - ใช้ **ปัจจัยที่อาจเกี่ยวข้องตามข้อมูลที่ผู้ใช้รายงาน** ไม่ใช้ถ้อยคำยืนยันสาเหตุ
 - แสดง confidence, image-quality limitation และ model version ใกล้ผลลัพธ์
@@ -45,7 +47,9 @@ Dataset split ต้องป้องกัน identity leakage ตาม [AI a
 
 - แนะนำเฉพาะ product category หรือ active ingredient ที่มี source และ rationale
 - ตรวจ allergy, irritation, sensitivity, routine เดิม และ contraindication ก่อนแสดงทุกครั้ง
-- ไม่แสดง recommendation เมื่อ image quality/confidence ต่ำ ผู้ใช้รายงานอาการรุนแรง หรือมี contraindication
+- Recommendation ที่อ้างผลภาพต้องไม่แสดงเมื่อ image quality/confidence ต่ำ
+- Recommendation จาก concern ที่ผู้ใช้รายงานต้องระบุว่าไม่ได้เป็นผลตรวจจากภาพ
+- ไม่แสดง recommendation เมื่อผู้ใช้รายงานอาการรุนแรง มี contraindication หรือข้อมูลไม่พอสำหรับกฎนั้น
 - ไม่แนะนำ prescription หรือการรักษาเฉพาะโรค
 
 ## Risk register
@@ -54,6 +58,8 @@ Dataset split ต้องป้องกัน identity leakage ตาม [AI a
 |---|---|---|
 | แสง กล้อง มุม หรือสีหน้าเปลี่ยน | score เปลี่ยนทั้งที่ผิวไม่เปลี่ยน | capture protocol + quality gate |
 | Dataset bias | error สูงในบาง subgroup | subgroup evaluation และรายงาน limitation |
+| สับสนระหว่างผลภาพกับข้อมูลที่ผู้ใช้รายงาน | ผู้ใช้เชื่อว่า AI ตรวจพบสิ่งที่ไม่ได้รองรับ | เก็บและแสดง source เป็น `image` หรือ `self_reported` |
+| ลักษณะคล้ายสิวถูกตีความเป็นการวินิจฉัย | ผู้ใช้รักษาตนเองผิด | ใช้ถ้อยคำไม่วินิจฉัย แสดง confidence และส่งต่อเมื่อรายงานอาการรุนแรง |
 | ตีความ score เป็นสุขภาพหรือความงาม | ผลกระทบทางจิตใจ | ใช้ถ้อยคำเป็นกลางและอธิบายขอบเขต |
 | ตีความ possible factor เป็นสาเหตุ | ข้อมูลสุขภาพที่ทำให้เข้าใจผิด | แสดงที่มาจากแบบสอบถาม ใช้ถ้อยคำว่าอาจเกี่ยวข้อง และเก็บ rule version |
 | ผลโมเดลถูกตีความเป็น diagnosis | delay หรือรักษาผิด | ใช้ถ้อยคำเป็นกลาง ไม่แสดง disease claim และแนะนำพบ dermatologist เมื่อผู้ใช้รายงานอาการรุนแรง |
@@ -68,6 +74,7 @@ Dataset split ต้องป้องกัน identity leakage ตาม [AI a
 - Consent version และ retention period ถูกกำหนดแล้ว
 - มีเกณฑ์ image quality ที่ตรวจสอบได้
 - Rule table ผ่าน unsafe-output tests และตรวจสอบย้อนกลับด้วย rule version ได้
+- ทุก recommendation ตรวจสอบย้อนกลับได้ว่าใช้ image signal, self-reported signal และ knowledge source ใด
 - Model card ระบุ dataset, metrics, subgroup limitations และ intended use
 - UI/API ไม่มี age prediction, diagnosis หรือ treatment claim
 - API response และ log ไม่มี secret หรือข้อมูลส่วนบุคคลเกินจำเป็น
