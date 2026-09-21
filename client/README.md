@@ -7,3 +7,5 @@
 - `styles.css` และ `app.js` — styles และ interactions สำหรับ prototype
 
 เปิด `client/index.html` ใน browser ได้ทันที โดยไม่ต้อง install dependency.
+
+`theme.css` กำหนด pastel glass theme (ฟ้า–ลาเวนเดอร์–ชมพูอ่อน) สำหรับ visual style ของ client.
