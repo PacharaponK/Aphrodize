@@ -89,7 +89,10 @@ function applyLanguage(language) {
   languageToggle.setAttribute("aria-label", language === "th" ? "Change language to English" : "เปลี่ยนภาษาเป็นไทย");
 }
 languageToggle.addEventListener("click", () => applyLanguage(document.documentElement.lang === "th" ? "en" : "th"));
-topbar?.insertBefore(languageToggle, themeToggle);
+const topbarControls = document.createElement("div");
+topbarControls.className = "topbar-controls";
+topbarControls.append(languageToggle, themeToggle, topbar.querySelector(".avatar"));
+topbar?.append(topbarControls);
 applyLanguage(localStorage.getItem("aphrodize-language") || "th");
 
 const sidebar = document.querySelector(".sidebar");
