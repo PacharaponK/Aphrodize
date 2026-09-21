@@ -12,3 +12,5 @@
 สำหรับส่งให้เพื่อนดู ให้เปิด `showcase.html` เพื่อเลือกทุกหน้าใน static prototype: login, dashboard, capture, quality-rejected, result detail, trend และ recommendation.
 
 `theme.css` กำหนด pastel glass theme (ฟ้า–ลาเวนเดอร์–ชมพูอ่อน) สำหรับ visual style ของ client.
+
+`mobile-menu.css` รองรับ hamburger drawer และการวาง theme toggle บน topbar.

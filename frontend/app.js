@@ -19,16 +19,34 @@ document.querySelectorAll("a[href^='#']").forEach((link) => {
 
 const themeToggle = document.createElement("button");
 themeToggle.type = "button";
-themeToggle.className = "theme-toggle";
+themeToggle.className = "theme-toggle top-theme-toggle";
 function updateThemeLabel() {
-  themeToggle.innerHTML = window.AphrodizeTheme.current() === "black" ? "☾ Black theme <span>เปลี่ยนเป็น Pastel</span>" : "✦ Pastel theme <span>เปลี่ยนเป็น Black</span>";
+  const isBlack = window.AphrodizeTheme.current() === "black";
+  themeToggle.textContent = isBlack ? "☀ Pastel" : "☾ Black";
+  themeToggle.setAttribute("aria-label", isBlack ? "เปลี่ยนเป็น Pastel theme" : "เปลี่ยนเป็น Black theme");
+  themeToggle.title = themeToggle.getAttribute("aria-label");
 }
 themeToggle.addEventListener("click", () => {
   window.AphrodizeTheme.setTheme(window.AphrodizeTheme.current() === "black" ? "pastel" : "black");
   updateThemeLabel();
 });
-document.querySelector(".sidebar nav")?.after(themeToggle);
+const topbar = document.querySelector(".topbar");
+topbar?.insertBefore(themeToggle, topbar.querySelector(".avatar"));
 updateThemeLabel();
+
+const sidebar = document.querySelector(".sidebar");
+const menuButton = document.createElement("button");
+menuButton.type = "button";
+menuButton.className = "mobile-menu-button";
+menuButton.innerHTML = "<span></span><span></span><span></span>";
+menuButton.setAttribute("aria-label", "เปิดเมนู");
+menuButton.setAttribute("aria-expanded", "false");
+menuButton.addEventListener("click", () => {
+  const isOpen = sidebar.classList.toggle("mobile-open");
+  menuButton.setAttribute("aria-expanded", String(isOpen));
+  menuButton.setAttribute("aria-label", isOpen ? "ปิดเมนู" : "เปิดเมนู");
+});
+topbar?.prepend(menuButton);
 
 function openDialog(id) {
   const target = document.getElementById(id);
