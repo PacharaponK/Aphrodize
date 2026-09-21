@@ -1,6 +1,6 @@
 # Aphrodize UI wireframe
 
-`aphrodize-ui-wireframe.svg` เป็นแนวทางหน้าบ้านสำหรับนำเข้า Figma หรือใช้เป็น reference ตอนทำ client.
+`aphrodize-ui-wireframe.svg` เป็นแนวทางหน้าบ้านสำหรับนำเข้า Figma หรือใช้เป็น reference ตอนทำ client. มี desktop dashboard และ mobile capture/result flows.
 
 ## Information architecture
 
@@ -9,6 +9,12 @@
 3. **Separated sources** — ใช้ส่วนที่ต่างกันสำหรับ `ตรวจพบจากภาพ`, `คุณรายงาน`, และ `คำแนะนำจากกฎ`
 4. **History** — trend ตามเวลาโดยตัดภาพที่ไม่ผ่าน quality gate ออก
 5. **Privacy controls** — เปลี่ยน consent และลบ original image, masks และ derived results ได้
+
+## Mobile states included
+
+- Capture guide: checklist ก่อนเปิดกล้อง, consent version และ bottom navigation
+- Quality rejection: เหตุผลที่ตรวจได้และปุ่มถ่ายใหม่ โดยไม่สร้าง analysis/trend
+- Result detail: score/confidence/model version, deep link ไป mask overlay และ empty trend ที่ระบุว่าต้องมีภาพผ่านอย่างน้อย 2 ครั้ง
 
 ## Content rules
 
