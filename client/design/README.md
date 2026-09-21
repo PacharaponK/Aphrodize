@@ -22,3 +22,11 @@
 - วาง confidence, quality limitation และ model version ใกล้ผลการวิเคราะห์
 - คำแนะนำต้องแสดง rule/version, source ที่ใช้ และสถานะ safety check
 - หาก image quality ต่ำหรือมี contraindication ให้แสดงเหตุผล/วิธีแก้ ไม่แสดง recommendation
+
+## Logo concepts
+
+ดูตัวเลือกได้ที่ `aphrodize-logo-concepts.svg`:
+
+1. **Contour A** (แนะนำ) — A แบบเส้นโค้งซ้อน สื่อถึง tracking/visual signal ใช้เป็น app icon ได้ดี
+2. **Calm Orbit** — จุด observation และเส้นโคจร เหมาะกับ narrative เรื่อง longitudinal trend
+3. **Protected Signal** — privacy-first เหมาะใช้เป็นสัญลักษณ์ของ consent/data controls มากกว่าโลโก้หลัก
