@@ -41,7 +41,7 @@ Aphrodize เป็น wellness/educational system สำหรับตรว�
 
 วัด error แยกตาม skin tone, sex/gender representation, face region และ image quality เท่าที่ label อนุญาต รายงาน sample size และ limitation เมื่อข้อมูลบางกลุ่มน้อย ไม่สรุปว่าระบบ fair จาก aggregate metric เพียงค่าเดียว
 
-Dataset split ต้องป้องกัน identity leakage ตาม [AI and Data](AI%20and%20Data.md) ส่วน monitoring ต้องแสดง subgroup performance ตาม [System and MLOps](System%20and%20MLOps.md)
+Dataset split ต้องป้องกัน identity leakage ตาม [AI and Data](AI%20and%20Data.md) และเก็บรายงานผลแยกตาม subgroup พร้อม model artifact ใน MLflow ตาม [System and MLOps](System%20and%20MLOps.md)
 
 ## Recommendation safety
 
