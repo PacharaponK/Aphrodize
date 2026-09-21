@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Sign in to Aphrodize" />
+    <title>เข้าสู่ระบบ — Aphrodize</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="login.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-shell">
+      <section class="auth-intro" aria-label="เกี่ยวกับ Aphrodize">
+        <a class="auth-brand" href="login.html"><img src="assets/aphrodize-contour-a.svg" alt="" />Aphrodize</a>
+        <div class="intro-copy"><p class="eyebrow">WELLNESS SKIN TRACKING</p><h1>ติดตามผิวของคุณ<br /><span>อย่างอ่อนโยน</span></h1><p>เปรียบเทียบลักษณะผิวจากภาพภายใต้ protocol เดิม พร้อมแยกสิ่งที่ตรวจจากภาพออกจากข้อมูลที่คุณรายงาน</p></div>
+        <div class="intro-points"><span>✓ ไม่ใช่การวินิจฉัยโรค</span><span>✓ คุณจัดการ consent และข้อมูลได้</span></div>
+      </section>
+      <section class="auth-card" aria-labelledby="login-title">
+        <div class="auth-card-heading"><p class="eyebrow">WELCOME BACK</p><h2 id="login-title">เข้าสู่ระบบ</h2><p>เข้าสู่ระบบเพื่อดูผลและแนวโน้มของคุณ</p></div>
+        <form id="login-form" novalidate>
+          <label for="email">อีเมล</label>
+          <input id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required />
+          <label for="password">รหัสผ่าน</label>
+          <div class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" placeholder="อย่างน้อย 8 ตัวอักษร" minlength="8" required /><button type="button" id="toggle-password" aria-label="แสดงรหัสผ่าน">แสดง</button></div>
+          <div class="form-row"><label class="checkbox"><input type="checkbox" name="remember" /> <span>จดจำการเข้าสู่ระบบ</span></label><a href="#reset">ลืมรหัสผ่าน?</a></div>
+          <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
+          <button class="primary-button auth-submit" type="submit">เข้าสู่ระบบ <span>→</span></button>
+        </form>
+        <p class="signup-link">ยังไม่มีบัญชี? <a href="#signup">สร้างบัญชี</a></p>
+        <p class="auth-privacy">การเข้าสู่ระบบหมายถึงคุณยอมรับ <a href="#privacy">Privacy notice</a> และจัดการ consent ได้ทุกเมื่อ</p>
+      </section>
+    </main>
+    <script src="login.js"></script>
+  </body>
+</html>
