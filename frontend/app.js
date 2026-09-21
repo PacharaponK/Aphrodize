@@ -91,7 +91,18 @@ function applyLanguage(language) {
 languageToggle.addEventListener("click", () => applyLanguage(document.documentElement.lang === "th" ? "en" : "th"));
 const topbarControls = document.createElement("div");
 topbarControls.className = "topbar-controls";
-topbarControls.append(languageToggle, themeToggle, topbar.querySelector(".avatar"));
+const homeButton = document.createElement("button");
+homeButton.type = "button";
+homeButton.className = "home-button";
+homeButton.innerHTML = icons["#dashboard"];
+homeButton.setAttribute("aria-label", "หน้าแรก");
+homeButton.title = "หน้าแรก";
+homeButton.addEventListener("click", () => window.location.assign("index.html"));
+const profileButton = topbar.querySelector(".avatar");
+profileButton.setAttribute("aria-label", "เข้าสู่ระบบ");
+profileButton.title = "เข้าสู่ระบบ";
+profileButton.addEventListener("click", () => window.location.assign("login.html"));
+topbarControls.append(homeButton, languageToggle, themeToggle, profileButton);
 topbar?.append(topbarControls);
 applyLanguage(localStorage.getItem("aphrodize-language") || "th");
 
@@ -108,7 +119,7 @@ menuButton.addEventListener("click", () => {
   menuButton.setAttribute("aria-label", isOpen ? "ปิดเมนู" : "เปิดเมนู");
 });
 topbar?.prepend(menuButton);
-document.querySelector(".avatar").textContent = "";
+profileButton.textContent = "";
 
 function openDialog(id) {
   const target = document.getElementById(id);
