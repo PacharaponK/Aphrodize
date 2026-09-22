@@ -1,0 +1,15 @@
+{
+  "policy_version": "wrinkle-confidence-gate-v1",
+  "method": "mean-binary-decision-margin",
+  "status": "not_calibrated",
+  "minimum_confidence": null,
+  "calibration_version": null,
+  "validation_dataset": null,
+  "sample_count": 0,
+  "notes": "Requires a held-out, target-user validation set that is independent of training and the official test set.",
+  "model_architecture": null,
+  "checkpoint_sha256": null,
+  "prediction_version": null,
+  "preprocessing_version": null,
+  "threshold_version": null
+}
