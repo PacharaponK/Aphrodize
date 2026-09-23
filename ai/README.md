@@ -1,9 +1,23 @@
 # AI
 
-โค้ดและงานทดลองด้าน AI/Data ของ Aphrodize อยู่ในโฟลเดอร์นี้
+โฟลเดอร์นี้เก็บเฉพาะ source code, CLI, environment specification และ tests
+ของระบบ AI ไม่เก็บ dataset หรือ model binary ขนาดใหญ่
 
-- `wrinkle_prototype.py` — โหลดภาพและ wrinkle mask, preprocessing และคำนวณ preliminary wrinkle score
-- `wrinkle_evaluation.ipynb` — รัน prototype กับ dataset, สรุปผล และวาด distribution สำหรับงาน evaluation
-- `tests/` — unit tests ของ prototype
+โครงสร้างหลัก:
 
-EDA outputs อยู่ที่ `storage/artifacts/non_time_serie/ffhq_wrinkle_eda/`; raw data ต้องอยู่ใน `storage/data/` และห้าม commit.
+- `ffhq_wrinkle/` — preprocessing, inference, evaluation, scoring,
+  calibration และ FastAPI adapter
+- `predict_wrinkle.py` — single-image inference CLI
+- `evaluate_ffhq_wrinkle.py` — official-test evaluation CLI
+- `calibrate_ffhq_wrinkle_confidence.py` — target-user confidence calibration CLI
+- `tests/` — unit, integration และ API contract tests
+- `environment-ffhq-wrinkle.yml` — reproducible Python environment
+
+ตำแหน่ง local artifacts ที่ถูก ignore โดย Git:
+
+- Dataset: `storage/data/ffhq-wrinkle/`
+- Checkpoints: `storage/models/ffhq-wrinkle/`
+- Generated results: `storage/artifacts/ffhq_wrinkle_phase*/`
+
+Legacy prototype และ notebook ถูกย้ายไป `archive/ai_prototype/` เพื่อเก็บ
+historical reproducibility โดยไม่ปะปนกับ production pipeline

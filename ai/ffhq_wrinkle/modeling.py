@@ -12,6 +12,7 @@ import torch
 
 from .official.unet.swin_unetr import SwinUNETR
 from .official.unet.unet_model import UNet
+from .paths import MODEL_ROOT
 
 ARCHITECTURES = ("UNet", "SwinUNETR")
 OFFICIAL_STAGE2 = {
@@ -61,8 +62,7 @@ def canonical_architecture(value: str) -> str:
 
 def default_checkpoint(architecture: str) -> Path:
     architecture = canonical_architecture(architecture)
-    data_root = Path(__file__).resolve().parent.parent / "ffhq-wrinkle" / "pretrained_ckpt"
-    return data_root / str(OFFICIAL_STAGE2[architecture]["relative_path"])
+    return MODEL_ROOT / str(OFFICIAL_STAGE2[architecture]["relative_path"])
 
 
 def sha256_file(path: Path) -> str:

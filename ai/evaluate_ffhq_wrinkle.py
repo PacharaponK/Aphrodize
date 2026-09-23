@@ -11,16 +11,16 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ai.ffhq_wrinkle.evaluation import run_evaluation
+from ai.ffhq_wrinkle.paths import DATA_ROOT
 from ai.ffhq_wrinkle.prediction import ThresholdConfig
 
 
 def build_parser() -> argparse.ArgumentParser:
-    repository_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--data-root",
         type=Path,
-        default=repository_root / "ai" / "ffhq-wrinkle",
+        default=DATA_ROOT,
     )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(

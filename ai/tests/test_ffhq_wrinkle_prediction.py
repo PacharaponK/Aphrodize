@@ -22,10 +22,10 @@ from ai.ffhq_wrinkle.prediction import (
     threshold_probability,
 )
 from ai.ffhq_wrinkle.preprocess import PreprocessResult
+from ai.ffhq_wrinkle.paths import DATA_ROOT, MODEL_ROOT
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = REPOSITORY_ROOT / "ai" / "ffhq-wrinkle"
 
 
 class FixedSegmentationModel(torch.nn.Module):
@@ -169,13 +169,12 @@ class OfficialArtifactIntegrationTests(unittest.TestCase):
     def test_official_unet_end_to_end(self):
         image = DATA_ROOT / "images1024x1024" / "00000" / "00001.png"
         checkpoint = (
-            DATA_ROOT
-            / "pretrained_ckpt"
+            MODEL_ROOT
             / "stage2_wrinkle_finetune_unet"
             / "stage2_unet.pth"
         )
-        yunet = DATA_ROOT / "pretrained_ckpt" / "face_detection_yunet_2023mar.onnx"
-        bisenet = DATA_ROOT / "pretrained_ckpt" / "79999_iter.pth"
+        yunet = MODEL_ROOT / "face_detection_yunet_2023mar.onnx"
+        bisenet = MODEL_ROOT / "79999_iter.pth"
         if not all(path.is_file() for path in (image, checkpoint, yunet, bisenet)):
             self.skipTest("gitignored official inference artifacts are not available")
         with tempfile.TemporaryDirectory() as temp_dir:

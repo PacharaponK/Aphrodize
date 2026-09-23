@@ -70,7 +70,6 @@ Concern ที่ผู้ใช้รายงาน:
 
 ### Should have
 
-- [ ] Monitoring แยกตาม image quality และ subgroup ที่ dataset รองรับ
 - [ ] Model rollback metadata
 - [ ] Experimental evaluation สำหรับ pigmentation/dark spots หรือ redness เมื่อมี dataset ที่ผ่านการตรวจสอบ
 

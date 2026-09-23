@@ -22,6 +22,7 @@ from .alignment import YuNetFaceDetector
 from .face_parsing import face_mask_from_labels, load_label_map
 from .metrics import BinaryConfusion, binary_confusion, metrics_from_confusion, summarize_rows
 from .modeling import ModelBundle, load_wrinkle_model
+from .paths import MODEL_ROOT
 from .prediction import THRESHOLD_VERSION, ThresholdConfig, infer_logits_and_probability
 from .preprocess import build_four_channel_tensor
 from .quality import pose_metrics
@@ -348,7 +349,7 @@ def run_evaluation(
         image_ids = image_ids[:limit]
     validate_dataset(image_ids, data_root)
     output_dir.mkdir(parents=True, exist_ok=True)
-    yunet = data_root / "pretrained_ckpt" / "face_detection_yunet_2023mar.onnx"
+    yunet = MODEL_ROOT / "face_detection_yunet_2023mar.onnx"
     characteristics = analyze_dataset(image_ids, data_root, yunet)
     summaries: list[dict[str, object]] = []
     all_rows: list[dict[str, object]] = []

@@ -10,6 +10,8 @@ from pathlib import Path
 import cv2
 import requests
 
+from .paths import MODEL_ROOT
+
 OPENCV_ZOO_COMMIT = "47534e27c9851bb1128ccc0102f1145e27f23f98"
 YUNET_FILENAME = "face_detection_yunet_2023mar.onnx"
 YUNET_URL = (
@@ -59,12 +61,11 @@ def download_model(destination: Path) -> Path:
 
 
 def main() -> int:
-    data_root = Path(__file__).resolve().parent.parent / "ffhq-wrinkle"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
         type=Path,
-        default=data_root / "pretrained_ckpt" / YUNET_FILENAME,
+        default=MODEL_ROOT / YUNET_FILENAME,
     )
     args = parser.parse_args()
     path = download_model(args.output)

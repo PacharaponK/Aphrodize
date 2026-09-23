@@ -58,13 +58,14 @@
 
 ## 4. สถานะทรัพยากรปัจจุบัน
 
-มีอยู่แล้วใน `ai/ffhq-wrinkle/`:
+ข้อมูล local อยู่ใน `storage/data/ffhq-wrinkle/` และ checkpoints อยู่ใน
+`storage/models/ffhq-wrinkle/` เพื่อแยก binary/data artifacts ออกจาก source code:
 
 - `manual_wrinkle_masks/` จำนวน 1,000 ไฟล์
 - `weak_wrinkle_masks/`
 - `face-parsed-labels/` จำนวน 1,000 ไฟล์
 - `test_file_lists.txt`
-- `pretrained_ckpt/checkpoints.zip`
+- `storage/models/ffhq-wrinkle/checkpoints.zip`
 
 ยังขาด:
 

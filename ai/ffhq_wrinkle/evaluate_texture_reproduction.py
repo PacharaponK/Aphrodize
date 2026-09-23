@@ -11,6 +11,7 @@ from PIL import Image
 
 from .face_parsing import face_mask_from_labels, load_label_map
 from .texture_map import TextureMapConfig, generate_texture_map
+from .paths import DATA_ROOT
 
 
 def image_path_for_id(root: Path, image_id: str) -> Path:
@@ -63,12 +64,11 @@ def evaluate_config(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    data_root = Path(__file__).resolve().parent.parent / "ffhq-wrinkle"
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ids", type=Path, default=data_root / "test_file_lists.txt")
-    parser.add_argument("--images", type=Path, default=data_root / "images1024x1024")
-    parser.add_argument("--labels", type=Path, default=data_root / "face-parsed-labels")
-    parser.add_argument("--weak", type=Path, default=data_root / "weak_wrinkle_masks")
+    parser.add_argument("--ids", type=Path, default=DATA_ROOT / "test_file_lists.txt")
+    parser.add_argument("--images", type=Path, default=DATA_ROOT / "images1024x1024")
+    parser.add_argument("--labels", type=Path, default=DATA_ROOT / "face-parsed-labels")
+    parser.add_argument("--weak", type=Path, default=DATA_ROOT / "weak_wrinkle_masks")
     parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--intensity",

@@ -7,7 +7,12 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parents[1]))
-from wrinkle_prototype import PreprocessConfig, analyze, preprocess, score_mask
+from archive.ai_prototype.wrinkle_prototype import (
+    PreprocessConfig,
+    analyze,
+    preprocess,
+    score_mask,
+)
 
 
 class WrinklePrototypeTests(unittest.TestCase):

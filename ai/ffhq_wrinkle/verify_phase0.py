@@ -15,12 +15,11 @@ from pathlib import Path
 from typing import Any
 
 from .reproducibility import DEFAULT_SEED, seed_everything
+from .paths import MODEL_ROOT
 
 PACKAGE_DIR = Path(__file__).resolve().parent
-AI_DIR = PACKAGE_DIR.parent
-DATA_DIR = AI_DIR / "ffhq-wrinkle"
 DEFAULT_MANIFEST = PACKAGE_DIR / "checkpoints.sha256"
-DEFAULT_ARCHIVE = DATA_DIR / "pretrained_ckpt" / "checkpoints.zip"
+DEFAULT_ARCHIVE = MODEL_ROOT / "checkpoints.zip"
 
 IMPORTS = {
     "numpy": "numpy",
@@ -256,4 +255,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

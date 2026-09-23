@@ -12,6 +12,8 @@ __pycache__/
 .venv/
 venv/
 env/
+.uv-cache/
+.uv-python/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -27,6 +29,9 @@ dist/
 
 # Local datasets and ML model binaries
 ai/ffhq-wrinkle/
+storage/data/ffhq-wrinkle/
+storage/models/ffhq-wrinkle/
+data/
 *.ckpt
 *.h5
 *.joblib
@@ -35,15 +40,15 @@ ai/ffhq-wrinkle/
 *.pt
 *.pth
 
-# JavaScript / frontend
-node_modules/
-.next/
-.nuxt/
-.svelte-kit/
-coverage/
-*.tsbuildinfo
+# Generated FFHQ-Wrinkle pipeline outputs
+storage/artifacts/ffhq_wrinkle_phase*/
 
-# Runtime files and local databases
+# Experiment and runtime outputs
+mlruns/
+logs/*.log
+logs/*.jsonl
+models/**/artifacts/
+models/**/checkpoints/
 *.log
 *.pid
 *.sqlite
@@ -52,8 +57,13 @@ coverage/
 tmp/
 temp/
 
-# Generated FFHQ-Wrinkle pipeline outputs
-storage/artifacts/ffhq_wrinkle_phase*/
+# JavaScript / frontend
+node_modules/
+.next/
+.nuxt/
+.svelte-kit/
+coverage/
+*.tsbuildinfo
 
 # Editors and operating systems
 .idea/

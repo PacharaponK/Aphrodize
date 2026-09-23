@@ -19,7 +19,7 @@ SHA-256 values below are calculated after LF normalization:
 
 ## Licensing
 
-- FFHQ-Wrinkle repository and dataset notice: CC BY-NC-SA 4.0; see `ai/ffhq-wrinkle/License.txt` and `../THIRD_PARTY.md`.
+- FFHQ-Wrinkle repository and dataset notice: CC BY-NC-SA 4.0; see `storage/data/ffhq-wrinkle/License.txt` and `../THIRD_PARTY.md`.
 - The NVIDIA FFHQ dataset notice is preserved as `FFHQ-LICENSE.txt`.
 - `unet/unet_model.py` states that it is adapted from `milesial/Pytorch-UNet` under GPL-3.0.
 - `unet/swin_unetr.py` states that it is adapted from MONAI under Apache-2.0.
@@ -31,12 +31,12 @@ Run the script by file path so its absolute `unet` import resolves from this dir
 
 ```powershell
 python ai/ffhq_wrinkle/official/inference.py `
-  --image_path ai/ffhq-wrinkle/masked_face_images/00001.png `
-  --texture_path ai/ffhq-wrinkle/weak_wrinkle_masks/00000/00001.png `
+  --image_path storage/data/ffhq-wrinkle/masked_face_images/00001.png `
+  --texture_path storage/data/ffhq-wrinkle/weak_wrinkle_masks/00000/00001.png `
   --network UNet `
   --num_channels 4 `
   --num_classes 2 `
-  --checkpoint ai/ffhq-wrinkle/pretrained_ckpt/stage2_wrinkle_finetune_unet/stage2_unet.pth `
+  --checkpoint storage/models/ffhq-wrinkle/stage2_wrinkle_finetune_unet/stage2_unet.pth `
   --gpu_id 0 `
   --img_size 1024 `
   --output_dir storage/artifacts/ffhq_wrinkle_phase1/run

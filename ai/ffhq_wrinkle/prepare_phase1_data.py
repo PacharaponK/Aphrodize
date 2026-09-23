@@ -13,13 +13,13 @@ from typing import Any
 
 import requests
 
+from .paths import DATA_ROOT
+
 MIRROR_REPOSITORY = "marcosv/ffhq-dataset"
 MIRROR_REVISION = "505f94e2ecc6db64e967e8e6c8e2c2079ea0876b"
 MIRROR_BASE_URL = f"https://huggingface.co/datasets/{MIRROR_REPOSITORY}/resolve/{MIRROR_REVISION}"
 
-PACKAGE_DIR = Path(__file__).resolve().parent
-AI_DIR = PACKAGE_DIR.parent
-DEFAULT_DATA_ROOT = AI_DIR / "ffhq-wrinkle"
+DEFAULT_DATA_ROOT = DATA_ROOT
 DEFAULT_TEST_IDS = DEFAULT_DATA_ROOT / "test_file_lists.txt"
 DEFAULT_MANIFEST = DEFAULT_DATA_ROOT / "phase1_test_images.json"
 
@@ -159,4 +159,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -8,6 +8,9 @@ from typing import Iterable
 import cv2
 import numpy as np
 
+from .bisenet import BiSeNet
+from .paths import MODEL_ROOT
+
 # CelebAMask-HQ / face-parsing.PyTorch labels used by the upstream script.
 FACE_SKIN_LABEL = 1
 NOSE_LABEL = 10
@@ -80,8 +83,6 @@ def load_bisenet(checkpoint_path: str | Path, device: str = "cpu"):
 
     import torch
 
-    from .bisenet import BiSeNet
-
     checkpoint = Path(checkpoint_path)
     if not checkpoint.is_file():
         raise FileNotFoundError(f"BiSeNet checkpoint not found: {checkpoint}")
@@ -149,14 +150,13 @@ def parse_face_file(
 def build_parser():
     import argparse
 
-    data_root = Path(__file__).resolve().parent.parent / "ffhq-wrinkle"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=data_root / "pretrained_ckpt" / "79999_iter.pth",
+        default=MODEL_ROOT / "79999_iter.pth",
     )
     parser.add_argument("--device", default="cpu")
     return parser

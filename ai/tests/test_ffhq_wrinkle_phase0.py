@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from ai.ffhq_wrinkle.reproducibility import seed_everything
+from ai.ffhq_wrinkle.paths import DATA_ROOT, MODEL_ROOT, REPOSITORY_ROOT
 from ai.ffhq_wrinkle.verify_phase0 import parse_manifest
 
 
@@ -18,6 +19,11 @@ class ReproducibilityTests(unittest.TestCase):
     def test_negative_seed_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "non-negative"):
             seed_everything(-1)
+
+    def test_large_artifacts_live_outside_source_tree(self):
+        self.assertEqual(DATA_ROOT, REPOSITORY_ROOT / "storage" / "data" / "ffhq-wrinkle")
+        self.assertEqual(MODEL_ROOT, REPOSITORY_ROOT / "storage" / "models" / "ffhq-wrinkle")
+        self.assertFalse((REPOSITORY_ROOT / "ai" / "ffhq-wrinkle").exists())
 
 
 class ManifestTests(unittest.TestCase):

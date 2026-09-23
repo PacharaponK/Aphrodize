@@ -12,10 +12,10 @@ from ai.ffhq_wrinkle.preprocess import (
     load_user_image,
     preprocess_image,
 )
+from ai.ffhq_wrinkle.paths import DATA_ROOT, MODEL_ROOT
 from ai.ffhq_wrinkle.quality import QualityGateError
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = REPOSITORY_ROOT / "ai" / "ffhq-wrinkle"
 
 
 def valid_detection(width=320, height=320, confidence=0.99):
@@ -188,8 +188,8 @@ class TensorTests(unittest.TestCase):
 class OfficialArtifactIntegrationTests(unittest.TestCase):
     def test_real_detector_parser_and_alignment_pipeline(self):
         image = DATA_ROOT / "images1024x1024" / "00000" / "00001.png"
-        yunet = DATA_ROOT / "pretrained_ckpt" / "face_detection_yunet_2023mar.onnx"
-        bisenet = DATA_ROOT / "pretrained_ckpt" / "79999_iter.pth"
+        yunet = MODEL_ROOT / "face_detection_yunet_2023mar.onnx"
+        bisenet = MODEL_ROOT / "79999_iter.pth"
         if not all(path.is_file() for path in (image, yunet, bisenet)):
             self.skipTest("gitignored Phase 3 integration artifacts are not available")
         with tempfile.TemporaryDirectory() as temp_dir:

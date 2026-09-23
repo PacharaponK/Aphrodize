@@ -9,6 +9,8 @@ from pathlib import Path
 
 import requests
 
+from .paths import MODEL_ROOT
+
 BISENET_CHECKPOINT_URL = (
     "https://drive.usercontent.google.com/download"
     "?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812&export=download&confirm=t"
@@ -64,12 +66,11 @@ def download_checkpoint(destination: Path) -> Path:
 
 
 def main() -> int:
-    data_root = Path(__file__).resolve().parent.parent / "ffhq-wrinkle"
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output",
         type=Path,
-        default=data_root / "pretrained_ckpt" / "79999_iter.pth",
+        default=MODEL_ROOT / "79999_iter.pth",
     )
     args = parser.parse_args()
     path = download_checkpoint(args.output)

@@ -20,10 +20,10 @@ from ai.ffhq_wrinkle.texture_map import (
     generate_from_files,
     generate_texture_map,
 )
+from ai.ffhq_wrinkle.paths import DATA_ROOT, MODEL_ROOT
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-DATA_ROOT = REPOSITORY_ROOT / "ai" / "ffhq-wrinkle"
 
 
 class TextureFormulaTests(unittest.TestCase):
@@ -105,7 +105,7 @@ class OfficialArtifactIntegrationTests(unittest.TestCase):
         self.assertLess(mae, 1.0)
 
     def test_bisenet_checkpoint_is_compatible_with_official_labels(self):
-        checkpoint = DATA_ROOT / "pretrained_ckpt" / "79999_iter.pth"
+        checkpoint = MODEL_ROOT / "79999_iter.pth"
         image_path = DATA_ROOT / "images1024x1024" / "00000" / "00001.png"
         labels_path = DATA_ROOT / "face-parsed-labels" / "00001.npy"
         if not all(path.is_file() for path in (checkpoint, image_path, labels_path)):

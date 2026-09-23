@@ -9,7 +9,7 @@
 - Paper: *Facial Wrinkle Segmentation for Cosmetic Dermatology: Pretraining with Texture Map-Based Weak Supervision*, ICPR 2024
 - License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)
 
-The local dataset notice is stored at `ai/ffhq-wrinkle/License.txt`. FFHQ source images retain their per-image Flickr attribution and license metadata. This material is restricted to research and non-commercial prototyping until a separate legal/license review approves another use.
+The local dataset notice is stored at `storage/data/ffhq-wrinkle/License.txt`. FFHQ source images retain their per-image Flickr attribution and license metadata. This material is restricted to research and non-commercial prototyping until a separate legal/license review approves another use.
 
 Phase 0 did not vendor upstream source. Phase 1 added an LF-normalized, otherwise unchanged source snapshot under `ai/ffhq_wrinkle/official/`. Source hashes, file-level license notes, and the only local additions are documented in `official/README.md`.
 
@@ -72,7 +72,7 @@ The official Google Drive downloader returned content with a size that did not m
 - Mirror path: `Part1/00001.png`
 - Size: 1,278,693 bytes
 - LFS SHA-256: `b3bf86efd287f8ee9c7bab9718369e305a80a4983471620f33086d991d3a002e`
-- Local dataset path: `ai/ffhq-wrinkle/images1024x1024/00000/00001.png`
+- Local dataset path: `storage/data/ffhq-wrinkle/images1024x1024/00000/00001.png`
 
 The mirror describes the artifact as the original NVIDIA FFHQ dataset. FFHQ licensing and per-image Flickr attribution obligations still apply. The fixture remains in the gitignored dataset directory and is not committed as source code.
 

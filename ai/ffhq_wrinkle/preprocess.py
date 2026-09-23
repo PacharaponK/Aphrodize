@@ -26,6 +26,7 @@ from .quality import (
     assess_source_quality,
     quality_config_dict,
 )
+from .paths import MODEL_ROOT
 from .texture_map import PREPROCESSING_VERSION as TEXTURE_VERSION
 from .texture_map import generate_texture_map
 
@@ -120,10 +121,9 @@ def preprocess_image(
     image_path = Path(image_path)
     output_dir = Path(output_dir)
     image, image_format = load_user_image(image_path)
-    data_root = Path(__file__).resolve().parent.parent / "ffhq-wrinkle" / "pretrained_ckpt"
     if detector is None:
         detector = YuNetFaceDetector(
-            yunet_checkpoint or data_root / "face_detection_yunet_2023mar.onnx"
+            yunet_checkpoint or MODEL_ROOT / "face_detection_yunet_2023mar.onnx"
         )
     detections: list[FaceDetection] = detector.detect(image)
     if len(detections) != 1:
@@ -143,7 +143,7 @@ def preprocess_image(
     try:
         if parser is None:
             model = load_bisenet(
-                bisenet_checkpoint or data_root / "79999_iter.pth", device="cpu"
+                bisenet_checkpoint or MODEL_ROOT / "79999_iter.pth", device="cpu"
             )
             labels = parse_face(aligned, model, device="cpu")
         else:
