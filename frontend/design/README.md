@@ -1,6 +1,6 @@
 # Aphrodize UI wireframe
 
-`aphrodize-ui-wireframe.svg` เป็นแนวทางหน้าบ้านสำหรับนำเข้า Figma หรือใช้เป็น reference ตอนทำ client. มี desktop dashboard และ mobile capture/result flows.
+`aphrodize-ui-wireframe.svg` เป็นแนวทางหน้าบ้านสำหรับนำเข้า Figma หรือใช้เป็น reference ตอนทำ frontend. มี desktop dashboard และ mobile capture/result flows.
 
 ## Information architecture
 

@@ -1,5 +1,0 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-:root{--font-ui:"Plus Jakarta Sans","Noto Sans Thai",system-ui,sans-serif}
-body,button,input{font-family:var(--font-ui)}
-h1,h2,h3,.brand,.page-brand,.auth-brand{font-family:var(--font-ui);letter-spacing:-.55px}

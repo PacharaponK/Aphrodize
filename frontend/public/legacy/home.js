@@ -1,11 +1,24 @@
+(function () {
+  const storageKey = "aphrodize-theme";
+  const root = document.documentElement;
+
+  function setTheme(theme) {
+    root.dataset.theme = theme;
+    localStorage.setItem(storageKey, theme);
+  }
+
+  setTheme(localStorage.getItem(storageKey) || "pastel");
+  window.AphrodizeTheme = { setTheme, current: () => root.dataset.theme };
+}());
+
 const dialogs = document.querySelectorAll("dialog");
 
 const routes = {
-  "#dashboard": "index.html",
-  "#capture": "capture.html",
-  "#trend": "trend.html",
-  "#profile": "profile.html",
-  "#privacy": "profile.html#privacy",
+  "#dashboard": "/",
+  "#capture": "/capture",
+  "#trend": "/trend",
+  "#profile": "/profile",
+  "#privacy": "/profile#privacy",
 };
 
 const icons = {
@@ -30,7 +43,7 @@ function renderNavigation(language) {
 document.querySelectorAll("a[href^='#']").forEach((link) => {
   link.addEventListener("click", (event) => {
     const route = routes[link.getAttribute("href")];
-    if (!route || route === "index.html") return;
+    if (!route || route === "/") return;
     event.preventDefault();
     window.location.assign(route);
   });
@@ -94,14 +107,14 @@ topbarControls.className = "topbar-controls";
 const homeButton = document.createElement("button");
 homeButton.type = "button";
 homeButton.className = "home-button";
-homeButton.innerHTML = '<img src="assets/home.svg" alt="" />';
+homeButton.innerHTML = '<img src="/assets/home.svg" alt="" />';
 homeButton.setAttribute("aria-label", "หน้าแรก");
 homeButton.title = "หน้าแรก";
-homeButton.addEventListener("click", () => window.location.assign("index.html"));
+homeButton.addEventListener("click", () => window.location.assign("/"));
 const profileButton = topbar.querySelector(".avatar");
 profileButton.setAttribute("aria-label", "เข้าสู่ระบบ");
 profileButton.title = "เข้าสู่ระบบ";
-profileButton.addEventListener("click", () => window.location.assign("login.html"));
+profileButton.addEventListener("click", () => window.location.assign("/login"));
 topbarControls.append(homeButton, languageToggle, themeToggle, profileButton);
 topbar?.append(topbarControls);
 applyLanguage(localStorage.getItem("aphrodize-language") || "th");
@@ -119,7 +132,7 @@ menuButton.addEventListener("click", () => {
   menuButton.setAttribute("aria-label", isOpen ? "ปิดเมนู" : "เปิดเมนู");
 });
 topbar?.prepend(menuButton);
-profileButton.innerHTML = '<img src="assets/profile-login.svg" alt="" />';
+profileButton.innerHTML = '<img src="/assets/profile-login.svg" alt="" />';
 
 function openDialog(id) {
   const target = document.getElementById(id);

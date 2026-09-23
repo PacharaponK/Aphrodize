@@ -105,18 +105,17 @@ All FastAPI routes except `/api/v1/health` require HTTP Basic authentication. Us
 
 ## Run the web client
 
-The `client/` directory contains the Next.js web workspace. It uses Tailwind CSS and shadcn/ui, and runs separately from the Docker Compose stack.
+The `frontend/` directory contains the Next.js web workspace and the skin-tracking UI prototype. It runs separately from the Docker Compose stack.
 
-First start the backend services as shown above, then open another PowerShell window:
+Open a PowerShell window from the repository root:
 
 ```powershell
-Set-Location client
-Copy-Item .env.example .env.local
+Set-Location frontend
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). `client/.env.local` defaults `NEXT_PUBLIC_API_BASE_URL` to `http://localhost:8000`. This value is public browser configuration; do not put credentials or private API keys in it. See [client/README.md](client/README.md) for build, lint, and shadcn component commands.
+Open [http://localhost:3000](http://localhost:3000). The Next.js pages are a UI prototype and do not yet connect to the API. See [frontend/README.md](frontend/README.md) for the available routes and commands.
 
 ## Typical workflow
 
