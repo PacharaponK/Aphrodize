@@ -10,7 +10,7 @@ from pathlib import Path
 import cv2
 import requests
 
-from .paths import MODEL_ROOT
+from ai.ffhq_wrinkle.paths import MODEL_ROOT
 
 OPENCV_ZOO_COMMIT = "47534e27c9851bb1128ccc0102f1145e27f23f98"
 YUNET_FILENAME = "face_detection_yunet_2023mar.onnx"

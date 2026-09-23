@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from ffhq_wrinkle.calibration import (
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from ai.ffhq_wrinkle.calibration import (
     CalibrationRequirements,
     calibrate_confidence,
     load_and_validate_dataset,
@@ -39,9 +43,7 @@ def main() -> int:
         target_precision=args.target_precision,
         dice_target=args.dice_target,
     )
-    policy, report = calibrate_confidence(
-        records, manifest, args.calibration_version, requirements
-    )
+    policy, report = calibrate_confidence(records, manifest, args.calibration_version, requirements)
     args.output.mkdir(parents=True, exist_ok=True)
     _write_json(args.output / "candidate_confidence_policy.json", policy)
     _write_json(args.output / "calibration_report.json", report)

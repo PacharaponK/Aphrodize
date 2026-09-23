@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ai.ffhq_wrinkle.evaluation import run_evaluation
 from ai.ffhq_wrinkle.paths import DATA_ROOT
@@ -38,7 +38,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = build_parser().parse_args()
     if args.output.exists() and any(args.output.iterdir()) and not args.overwrite:
-        print(json.dumps({"status": "refused", "error": "output directory is not empty; use --overwrite"}))
+        print(
+            json.dumps(
+                {"status": "refused", "error": "output directory is not empty; use --overwrite"}
+            )
+        )
         return 3
     architectures = ["UNet", "SwinUNETR"] if args.network == "both" else [args.network]
     result = run_evaluation(

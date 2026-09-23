@@ -8,8 +8,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from ai.ffhq_wrinkle.prepare_phase1_data import image_location, read_image_ids
-
+from ai.scripts.prepare_phase1_data import image_location, read_image_ids
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 OFFICIAL_ROOT = REPOSITORY_ROOT / "ai" / "ffhq_wrinkle" / "official"
@@ -65,7 +64,7 @@ class OfficialInputTests(unittest.TestCase):
             checkpoint_path = Path(temp_dir) / "checkpoint.pth"
             torch.save({"model": prefixed}, checkpoint_path)
             self.official.load_checkpoint(target, checkpoint_path, torch.device("cpu"))
-        for expected, actual in zip(source.parameters(), target.parameters()):
+        for expected, actual in zip(source.parameters(), target.parameters(), strict=False):
             self.assertTrue(torch.equal(expected, actual))
 
 

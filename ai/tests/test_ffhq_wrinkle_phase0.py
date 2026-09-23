@@ -3,9 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ai.ffhq_wrinkle.reproducibility import seed_everything
 from ai.ffhq_wrinkle.paths import DATA_ROOT, MODEL_ROOT, REPOSITORY_ROOT
-from ai.ffhq_wrinkle.verify_phase0 import parse_manifest
+from ai.ffhq_wrinkle.reproducibility import seed_everything
+from ai.scripts.verify_phase0 import parse_manifest
 
 
 class ReproducibilityTests(unittest.TestCase):

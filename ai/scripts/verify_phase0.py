@@ -14,8 +14,8 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
-from .reproducibility import DEFAULT_SEED, seed_everything
-from .paths import MODEL_ROOT
+from ai.ffhq_wrinkle.paths import MODEL_ROOT
+from ai.ffhq_wrinkle.reproducibility import DEFAULT_SEED, seed_everything
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_MANIFEST = PACKAGE_DIR / "checkpoints.sha256"
@@ -99,9 +99,7 @@ def verify_checkpoints(archive_path: Path, manifest_path: Path) -> dict[str, Any
                 }
             )
 
-    results["ok"] = results["archive"]["ok"] and all(
-        member["ok"] for member in results["members"]
-    )
+    results["ok"] = results["archive"]["ok"] and all(member["ok"] for member in results["members"])
     return results
 
 
@@ -153,7 +151,9 @@ def inspect_environment(requested_device: str) -> dict[str, Any]:
         report["error"] = "CUDA was explicitly requested but is unavailable"
     else:
         report["selected_device"] = (
-            "cuda" if requested_device == "cuda" or (requested_device == "auto" and cuda_available) else "cpu"
+            "cuda"
+            if requested_device == "cuda" or (requested_device == "auto" and cuda_available)
+            else "cpu"
         )
 
     report["ok"] = all(item["ok"] for item in dependencies.values()) and "error" not in report
@@ -161,10 +161,13 @@ def inspect_environment(requested_device: str) -> dict[str, Any]:
 
 
 def _normalized_state_dict(checkpoint: Any) -> OrderedDict[str, Any]:
-    state_dict = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
+    state_dict = (
+        checkpoint["model"]
+        if isinstance(checkpoint, dict) and "model" in checkpoint
+        else checkpoint
+    )
     return OrderedDict(
-        (key[7:] if key.startswith("module.") else key, value)
-        for key, value in state_dict.items()
+        (key[7:] if key.startswith("module.") else key, value) for key, value in state_dict.items()
     )
 
 
@@ -197,7 +200,9 @@ def verify_strict_model_loading(archive_path: Path, official_repo: Path) -> dict
                 except TypeError:  # Compatibility with a future/older torch API.
                     checkpoint = torch.load(checkpoint_path, map_location="cpu")
                 model = constructors[architecture]()
-                incompatible = model.load_state_dict(_normalized_state_dict(checkpoint), strict=True)
+                incompatible = model.load_state_dict(
+                    _normalized_state_dict(checkpoint), strict=True
+                )
                 output[architecture] = {
                     "ok": not incompatible.missing_keys and not incompatible.unexpected_keys,
                     "missing_keys": incompatible.missing_keys,
@@ -222,7 +227,9 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Pinned official checkout; enables strict Stage-2 U-Net and SwinUNETR loading",
     )
-    parser.add_argument("--skip-checksums", action="store_true", help="Skip the large archive hash pass")
+    parser.add_argument(
+        "--skip-checksums", action="store_true", help="Skip the large archive hash pass"
+    )
     return parser
 
 
@@ -239,7 +246,9 @@ def main() -> int:
             report["checkpoints"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
     if args.official_repo:
         try:
-            report["model_loading"] = verify_strict_model_loading(args.archive, args.official_repo.resolve())
+            report["model_loading"] = verify_strict_model_loading(
+                args.archive, args.official_repo.resolve()
+            )
         except Exception as exc:
             report["model_loading"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 

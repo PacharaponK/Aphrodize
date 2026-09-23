@@ -9,15 +9,13 @@ from pathlib import Path
 
 import requests
 
-from .paths import MODEL_ROOT
+from ai.ffhq_wrinkle.paths import MODEL_ROOT
 
 BISENET_CHECKPOINT_URL = (
     "https://drive.usercontent.google.com/download"
     "?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812&export=download&confirm=t"
 )
-BISENET_CHECKPOINT_SHA256 = (
-    "468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567"
-)
+BISENET_CHECKPOINT_SHA256 = "468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567"
 BISENET_CHECKPOINT_BYTES = 53_289_463
 
 
@@ -32,14 +30,12 @@ def sha256_file(path: Path) -> str:
 def verify_checkpoint(path: Path) -> None:
     if path.stat().st_size != BISENET_CHECKPOINT_BYTES:
         raise ValueError(
-            f"BiSeNet checkpoint size mismatch: {path.stat().st_size} "
-            f"!= {BISENET_CHECKPOINT_BYTES}"
+            f"BiSeNet checkpoint size mismatch: {path.stat().st_size} != {BISENET_CHECKPOINT_BYTES}"
         )
     actual = sha256_file(path)
     if actual != BISENET_CHECKPOINT_SHA256:
         raise ValueError(
-            f"BiSeNet checkpoint SHA-256 mismatch: {actual} "
-            f"!= {BISENET_CHECKPOINT_SHA256}"
+            f"BiSeNet checkpoint SHA-256 mismatch: {actual} != {BISENET_CHECKPOINT_SHA256}"
         )
 
 

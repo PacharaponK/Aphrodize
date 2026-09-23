@@ -9,9 +9,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from .face_parsing import face_mask_from_labels, load_label_map
-from .texture_map import TextureMapConfig, generate_texture_map
-from .paths import DATA_ROOT
+from ai.ffhq_wrinkle.face_parsing import face_mask_from_labels, load_label_map
+from ai.ffhq_wrinkle.paths import DATA_ROOT
+from ai.ffhq_wrinkle.texture_map import TextureMapConfig, generate_texture_map
 
 
 def image_path_for_id(root: Path, image_id: str) -> Path:
@@ -86,9 +86,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         default=TextureMapConfig().intensity_method,
     )
-    parser.add_argument("--blur-dtype", choices=("uint8", "float32"), default=TextureMapConfig().blur_dtype)
-    parser.add_argument("--border", choices=("reflect101", "reflect", "replicate", "constant"), default="reflect101")
-    parser.add_argument("--rounding", choices=("truncate", "round"), default=TextureMapConfig().rounding)
+    parser.add_argument(
+        "--blur-dtype", choices=("uint8", "float32"), default=TextureMapConfig().blur_dtype
+    )
+    parser.add_argument(
+        "--border", choices=("reflect101", "reflect", "replicate", "constant"), default="reflect101"
+    )
+    parser.add_argument(
+        "--rounding", choices=("truncate", "round"), default=TextureMapConfig().rounding
+    )
     parser.add_argument(
         "--response-mode",
         choices=("clip", "absolute", "wrap", "dark_only_floor"),
@@ -111,7 +117,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
-    image_ids = [line.strip() for line in args.ids.read_text(encoding="utf-8").splitlines() if line.strip()]
+    image_ids = [
+        line.strip() for line in args.ids.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
     if args.limit is not None:
         image_ids = image_ids[: args.limit]
     config = TextureMapConfig(
@@ -127,7 +135,11 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded + "\n", encoding="utf-8")
-    displayed = {key: value for key, value in result.items() if key != "per_image"} if args.summary_only else result
+    displayed = (
+        {key: value for key, value in result.items() if key != "per_image"}
+        if args.summary_only
+        else result
+    )
     print(json.dumps(displayed, indent=2, sort_keys=True))
     return 0
 

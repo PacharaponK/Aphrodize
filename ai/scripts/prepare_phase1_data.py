@@ -13,7 +13,7 @@ from typing import Any
 
 import requests
 
-from .paths import DATA_ROOT
+from ai.ffhq_wrinkle.paths import DATA_ROOT
 
 MIRROR_REPOSITORY = "marcosv/ffhq-dataset"
 MIRROR_REVISION = "505f94e2ecc6db64e967e8e6c8e2c2079ea0876b"
@@ -25,7 +25,9 @@ DEFAULT_MANIFEST = DEFAULT_DATA_ROOT / "phase1_test_images.json"
 
 
 def read_image_ids(path: Path) -> list[str]:
-    image_ids = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    image_ids = [
+        line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
     invalid = [image_id for image_id in image_ids if len(image_id) != 5 or not image_id.isdigit()]
     if invalid:
         raise ValueError(f"invalid FFHQ image IDs: {invalid}")
@@ -86,7 +88,9 @@ def download_image(image_id: str, data_root: Path, timeout: float) -> dict[str, 
             digest = hashlib.sha256()
             actual_size = 0
             try:
-                with session.get(metadata_response.headers["Location"], stream=True, timeout=timeout) as response:
+                with session.get(
+                    metadata_response.headers["Location"], stream=True, timeout=timeout
+                ) as response:
                     response.raise_for_status()
                     for chunk in response.iter_content(chunk_size=1024 * 1024):
                         if chunk:

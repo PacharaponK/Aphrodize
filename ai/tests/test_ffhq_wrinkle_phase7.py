@@ -77,10 +77,7 @@ class CalibrationTests(unittest.TestCase):
         ConfidencePolicy.from_dict(policy)
 
     def test_no_passing_threshold_remains_fail_closed(self):
-        poor = [
-            ValidationRecord(f"s-{i}", f"p-{i}", 0.9, 0.1, True)
-            for i in range(120)
-        ]
+        poor = [ValidationRecord(f"s-{i}", f"p-{i}", 0.9, 0.1, True) for i in range(120)]
         policy, report = calibrate_confidence(poor, manifest(), "calibration-v1")
         self.assertEqual(report["status"], "failed")
         self.assertEqual(policy["status"], "not_calibrated")
@@ -175,7 +172,7 @@ class ValidationDatasetTests(unittest.TestCase):
             completed = subprocess.run(
                 [
                     sys.executable,
-                    str(repository / "ai" / "calibrate_ffhq_wrinkle_confidence.py"),
+                    str(repository / "ai" / "scripts" / "calibrate_ffhq_wrinkle_confidence.py"),
                     "--records",
                     str(csv_path),
                     "--manifest",

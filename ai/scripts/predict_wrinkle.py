@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 if __package__ in (None, ""):
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from ai.ffhq_wrinkle.prediction import ThresholdConfig, predict_image
 from ai.ffhq_wrinkle.quality import QualityGateError
