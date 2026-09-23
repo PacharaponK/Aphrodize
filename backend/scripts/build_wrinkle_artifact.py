@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-from ffhq_wrinkle.prediction import PredictionResult
-from ffhq_wrinkle.service import WrinkleAnalysisService
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from ai.ffhq_wrinkle.prediction import PredictionResult
+from backend.wrinkle.service import WrinkleAnalysisService
 
 
 def build_public_response(prediction_dir: Path) -> dict[str, object]:
@@ -37,9 +41,7 @@ def main() -> int:
     args = parser.parse_args()
     response = build_public_response(args.prediction)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(
-        json.dumps(response, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    args.output.write_text(json.dumps(response, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"status": response["status"], "output": str(args.output)}))
     return 0
 

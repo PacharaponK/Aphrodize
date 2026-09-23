@@ -3,20 +3,25 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from threading import Lock
-from typing import Callable
 from uuid import uuid4
 
 import numpy as np
 from PIL import Image
 
-from .calibration import load_released_policy_bundle
-from .confidence import ConfidencePolicy, evaluate_confidence, load_confidence_policy
-from .modeling import ModelBundle, load_wrinkle_model
-from .prediction import PredictionResult, ThresholdConfig, predict_image
+from ai.ffhq_wrinkle.calibration import load_released_policy_bundle
+from ai.ffhq_wrinkle.confidence import (
+    ConfidencePolicy,
+    evaluate_confidence,
+    load_confidence_policy,
+)
+from ai.ffhq_wrinkle.modeling import ModelBundle, load_wrinkle_model
+from ai.ffhq_wrinkle.prediction import PredictionResult, predict_image
+from ai.ffhq_wrinkle.scoring import ScoreConfig, derive_scores
+
 from .schemas import AnalysisResponse
-from .scoring import ScoreConfig, derive_scores
 
 LIMITATIONS = [
     "The research model segments image patterns associated with facial wrinkles.",
@@ -36,7 +41,8 @@ class WrinkleAnalysisService:
         confidence_policy: ConfidencePolicy | None = None,
         released_policy_bundle: str | Path | None = None,
         score_config: ScoreConfig = ScoreConfig(),
-        recommendation_provider: Callable[[dict[str, object]], list[dict[str, object]]] | None = None,
+        recommendation_provider: Callable[[dict[str, object]], list[dict[str, object]]]
+        | None = None,
         predictor: Callable[..., PredictionResult] = predict_image,
         model_loader: Callable[..., ModelBundle] = load_wrinkle_model,
     ) -> None:
@@ -44,13 +50,10 @@ class WrinkleAnalysisService:
         self.requested_device = requested_device
         if confidence_policy is not None and released_policy_bundle is not None:
             raise ValueError("provide confidence_policy or released_policy_bundle, not both")
-        self.confidence_policy = (
-            confidence_policy
-            or (
-                load_released_policy_bundle(released_policy_bundle)
-                if released_policy_bundle is not None
-                else load_confidence_policy()
-            )
+        self.confidence_policy = confidence_policy or (
+            load_released_policy_bundle(released_policy_bundle)
+            if released_policy_bundle is not None
+            else load_confidence_policy()
         )
         self.score_config = score_config
         self.recommendation_provider = recommendation_provider or (lambda _score: [])

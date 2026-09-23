@@ -7,7 +7,6 @@ import numpy as np
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from ai.ffhq_wrinkle.api import MAX_UPLOAD_BYTES, create_app
 from ai.ffhq_wrinkle.confidence import (
     ConfidencePolicy,
     decision_margin_confidence,
@@ -22,7 +21,8 @@ from ai.ffhq_wrinkle.scoring import (
     build_regional_rois,
     derive_scores,
 )
-from ai.ffhq_wrinkle.service import WrinkleAnalysisService
+from backend.wrinkle.api import MAX_UPLOAD_BYTES, create_app
+from backend.wrinkle.service import WrinkleAnalysisService
 
 
 def calibrated_policy(threshold=0.5):

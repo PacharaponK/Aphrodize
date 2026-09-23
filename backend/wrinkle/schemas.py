@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,9 +16,9 @@ class ConfidenceResult(StrictModel):
     method: str
     policy_version: str
     calibration_status: Literal["calibrated", "not_calibrated"]
-    calibration_version: Optional[str]
-    minimum_confidence: Optional[float]
-    validation_dataset: Optional[str]
+    calibration_version: str | None
+    minimum_confidence: float | None
+    validation_dataset: str | None
     validation_sample_count: int = Field(ge=0)
     passed: bool
     reasons: list[str]
@@ -72,7 +72,7 @@ class AnalysisResponse(StrictModel):
     analysis_id: str
     status: Literal["completed", "abstained"]
     model_output: ResearchModelOutput
-    derived_score: Optional[DerivedScore]
+    derived_score: DerivedScore | None
     recommendation_gate: RecommendationGate
     recommendations: list[dict[str, Any]]
     limitations: list[str]

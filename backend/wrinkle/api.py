@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import os
-from typing import Union
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from PIL import UnidentifiedImageError
 
-from .quality import QualityGateError
+from ai.ffhq_wrinkle.quality import QualityGateError
+
 from .schemas import AnalysisResponse, QualityRejection
 from .service import WrinkleAnalysisService
 
@@ -39,7 +39,7 @@ def create_app(service: WrinkleAnalysisService | None = None) -> FastAPI:
     async def analyze(
         image: UploadFile = File(...),
         consent_accepted: bool = Form(...),
-    ) -> Union[AnalysisResponse, JSONResponse]:
+    ) -> AnalysisResponse | JSONResponse:
         if not consent_accepted:
             raise HTTPException(status_code=403, detail="explicit consent is required")
         if image.content_type not in ALLOWED_MEDIA_TYPES:
@@ -56,12 +56,12 @@ def create_app(service: WrinkleAnalysisService | None = None) -> FastAPI:
                 ALLOWED_MEDIA_TYPES[image.content_type],
             )
         except QualityGateError as error:
-            detail = QualityRejection(
-                quality_flags=list(error.assessment.issues)
-            ).model_dump()
+            detail = QualityRejection(quality_flags=list(error.assessment.issues)).model_dump()
             return JSONResponse(status_code=422, content=detail)
         except UnidentifiedImageError as error:
-            raise HTTPException(status_code=400, detail="image content could not be decoded") from error
+            raise HTTPException(
+                status_code=400, detail="image content could not be decoded"
+            ) from error
 
     return app
 
