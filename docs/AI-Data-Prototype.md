@@ -10,7 +10,9 @@ The repository intentionally contains no raw images or masks. Place a locally ob
 
 ## Implemented experiment
 
-`archive/ai_prototype/wrinkle_prototype.py` is the archived predecessor of the current FFHQ-Wrinkle pipeline. It loads an RGB face image and a grayscale wrinkle mask, resizes image/mask together to 512×512 (bilinear / nearest-neighbour), thresholds the mask at 127, records simple image-quality flags, and calculates a deterministic whole-face score.
+> Historical note: the preliminary prototype and notebook described below were removed after the Phase 0–7 FFHQ-Wrinkle pipeline superseded them. Use `ai/README.md` for the current setup and inference instructions.
+
+The former prototype loaded an RGB face image and a grayscale wrinkle mask, resized image/mask together to 512×512 (bilinear / nearest-neighbour), thresholded the mask at 127, recorded simple image-quality flags, and calculated a deterministic whole-face score.
 
 ```text
 wrinkle_area_ratio = positive_mask_pixels / evaluated_pixels
@@ -22,13 +24,13 @@ This is a preliminary, label-density score—not a clinical severity assessment 
 Run a real pair:
 
 ```powershell
-py archive/ai_prototype/wrinkle_prototype.py --image path\to\face.png --mask path\to\wrinkle-mask.png
+# Historical command; implementation removed.
 ```
 
 Run up to 10 manual pairs from the expected FFHQ layout:
 
 ```powershell
-py archive/ai_prototype/wrinkle_prototype.py --data-root storage\data\non_time_serie\ffhq_wrinkle --limit 10
+# Historical command; implementation removed.
 ```
 
 Results are written to `storage/artifacts/non_time_serie/wrinkle_prototype/results.json`, which contains only paths and aggregate measurements—not copied image data.
