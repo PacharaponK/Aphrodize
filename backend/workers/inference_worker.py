@@ -1,3 +1,6 @@
+import asyncio
+import logging
+import os
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -5,36 +8,65 @@ from arq.connections import RedisSettings
 
 from backend.core.db.models import Analysis, AnalysisStatus, InferenceRun
 from backend.core.db.session import SessionLocal, close_database
+from backend.libs.minio_client import get_bytes
 from backend.libs.redis_client import redis_settings
 
+logger = logging.getLogger(__name__)
 
-async def startup(_: dict) -> None:
-    return None
+
+async def startup(ctx: dict) -> None:
+    from backend.wrinkle.service import WrinkleAnalysisService
+
+    ctx["wrinkle_service"] = WrinkleAnalysisService(
+        released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE")
+    )
 
 
 async def shutdown(_: dict) -> None:
     await close_database()
 
 
-async def run_inference(_: dict, analysis_id: str) -> None:
-    """Reserve the inference worker contract without fabricating medical-quality predictions.
-
-    Mount a reviewed model artifact from MLflow and replace this status with real, validated
-    regional results before exposing the feature to users.
-    """
+async def run_inference(ctx: dict, analysis_id: str) -> None:
     async with SessionLocal() as session:
         analysis = await session.get(Analysis, UUID(analysis_id))
         if analysis is None or analysis.status != AnalysisStatus.queued:
             return
         analysis.status = AnalysisStatus.running
         await session.commit()
-        analysis.status = AnalysisStatus.failed
-        analysis.error_category = "model_not_deployed"
+
+        try:
+            payload = await asyncio.to_thread(get_bytes, analysis.object_key)
+            suffix = {
+                "image/jpeg": ".jpg",
+                "image/png": ".png",
+                "image/webp": ".webp",
+            }.get(analysis.content_type, ".jpg")
+            response = await asyncio.to_thread(
+                ctx["wrinkle_service"].analyze_bytes, payload, suffix
+            )
+        except Exception as error:
+            from ai.ffhq_wrinkle.quality import QualityGateError
+
+            if isinstance(error, QualityGateError):
+                analysis.status = AnalysisStatus.rejected
+                analysis.error_category = "image_quality"
+                analysis.quality_flags = list(error.assessment.issues)
+                analysis.result = {
+                    "status": "rejected",
+                    "quality_flags": analysis.quality_flags,
+                }
+            else:
+                logger.exception("Wrinkle inference failed for analysis %s", analysis.id)
+                analysis.status = AnalysisStatus.failed
+                analysis.error_category = "inference_failed"
+                analysis.result = {"message": "Wrinkle inference failed."}
+        else:
+            analysis.status = AnalysisStatus.completed
+            analysis.error_category = None
+            analysis.result = response.model_dump(mode="json")
+            analysis.result["analysis_id"] = str(analysis.id)
+
         analysis.completed_at = datetime.now(UTC)
-        analysis.result = {
-            "message": "No approved inference model is deployed.",
-            "model_version": analysis.model_version,
-        }
         await session.commit()
 
 
@@ -57,3 +89,5 @@ class WorkerSettings:
     on_shutdown = shutdown
     redis_settings: RedisSettings = redis_settings()
     queue_name = "inference"
+    # ponytail: one model job at a time; raise after measuring worker memory and latency.
+    max_jobs = 1

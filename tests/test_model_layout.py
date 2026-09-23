@@ -11,4 +11,5 @@ def test_required_model_family_directories_exist() -> None:
 def test_model_artifacts_are_not_tracked_in_source_tree() -> None:
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8")
     assert "models/**/checkpoints/" in ignored
-    assert "models/**/*.pt" in ignored
+    assert "*.pt" in ignored
+    assert "*.pth" in ignored
