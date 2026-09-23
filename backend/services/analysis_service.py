@@ -73,6 +73,9 @@ def recommendations_for(analysis: Analysis, answers: dict) -> dict:
         return {"recommendations": [], "blocked_reason": "Analysis is not complete."}
     if analysis.image_quality_score is None or analysis.image_quality_score < 0.8:
         return {"recommendations": [], "blocked_reason": "Image quality is insufficient."}
+    gate = (analysis.result or {}).get("recommendation_gate", {})
+    if not gate.get("eligible", False):
+        return {"recommendations": [], "blocked_reason": "AI confidence gate did not pass."}
     if answers.get("severe_irritation") or answers.get("retinoid_contraindication"):
         return {"recommendations": [], "blocked_reason": "Safety rule blocked a recommendation."}
     return {

@@ -18,7 +18,7 @@ x-api-environment: &api-environment
   API_USERNAME: ${API_USERNAME:-aphrodize}
   API_PASSWORD: ${API_PASSWORD:?Set API_PASSWORD in .env}
   MLFLOW_TRACKING_URI: http://mlflow:5000
-  MODEL_VERSION: ${MODEL_VERSION:-unconfigured}
+  MODEL_VERSION: ${MODEL_VERSION:-ffhq-wrinkle-stage2-unet}
 
 x-container-logging: &container-logging
   driver: local
@@ -162,6 +162,8 @@ services:
     command: arq backend.workers.inference_worker.WorkerSettings
     restart: unless-stopped
     environment: *api-environment
+    volumes:
+      - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
     depends_on:
       redis:
         condition: service_healthy
