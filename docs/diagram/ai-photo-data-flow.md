@@ -49,7 +49,7 @@ flowchart TD
 
 ## 2. เส้นทาง AI วิเคราะห์ริ้วรอยที่มีอยู่ใน `ai/ffhq_wrinkle`
 
-เส้นทางนี้เรียกได้ผ่าน CLI `ai/predict_wrinkle.py` หรือ API แยก `ai/ffhq_wrinkle/api.py` ที่ endpoint `POST /v1/wrinkle/analyze` (ต้องส่ง `consent_accepted=true`) เมื่อมี checkpoints ที่ถูกต้อง
+เส้นทางนี้เรียกได้ผ่าน CLI `ai/scripts/predict_wrinkle.py` หรือ API แยก `backend/wrinkle/api.py` ที่ endpoint `POST /v1/wrinkle/analyze` (ต้องส่ง `consent_accepted=true`) เมื่อมี checkpoints ที่ถูกต้อง
 
 ```mermaid
 flowchart TD
@@ -88,8 +88,8 @@ flowchart TD
 
 | ลำดับ | ไฟล์ | หน้าที่ | ผลลัพธ์/ข้อมูลสำคัญ |
 |---:|---|---|---|
-| 1 | `ai/ffhq_wrinkle/api.py` | FastAPI adapter; ตรวจ consent, content type, ขนาดไม่เกิน 10 MiB และเรียก service ใน threadpool | รับ `UploadFile` แล้วคืน JSON หรือ 422 หาก quality ไม่ผ่าน |
-| 2 | `ai/ffhq_wrinkle/service.py` | orchestrator สำหรับภาพหนึ่งรูป; สร้าง temporary directory, cache model ใน memory และประกอบ public response | รูป/artefacts ดิบอยู่ชั่วคราวเท่านั้น; response ไม่เปิด URL ของ artifacts |
+| 1 | `backend/wrinkle/api.py` | FastAPI adapter; ตรวจ consent, content type, ขนาดไม่เกิน 10 MiB และเรียก service ใน threadpool | รับ `UploadFile` แล้วคืน JSON หรือ 422 หาก quality ไม่ผ่าน |
+| 2 | `backend/wrinkle/service.py` | orchestrator สำหรับภาพหนึ่งรูป; สร้าง temporary directory, cache model ใน memory และประกอบ public response | รูป/artefacts ดิบอยู่ชั่วคราวเท่านั้น; response ไม่เปิด URL ของ artifacts |
 | 3 | `ai/ffhq_wrinkle/preprocess.py` | โหลดภาพ, ตรวจคุณภาพ, align, face parsing, mask และสร้าง input tensor | `aligned_face.png`, `face_mask.png`, `masked_face.png`, `texture_map.png`, `model_input.npy`, `result.json` |
 | 4 | `ai/ffhq_wrinkle/alignment.py` | ตรวจใบหน้าด้วย YuNet และใช้ 5 landmarks จัดแนวใบหน้า | ต้องพบเพียง 1 ใบหน้า; ภาพ align ขนาด 1024×1024 |
 | 5 | `ai/ffhq_wrinkle/quality.py` | quality gate ของภาพและ face mask | flags เช่น รูปเล็ก/เบลอ, แสงไม่เหมาะ, มุมหน้าเกิน, ไม่มีหรือหลายใบหน้า |
@@ -99,7 +99,7 @@ flowchart TD
 | 9 | `ai/ffhq_wrinkle/prediction.py` | รัน PyTorch, softmax, threshold, จำกัด mask ให้อยู่ในส่วนหน้า และสร้าง overlay | `wrinkle_logits.npy`, `wrinkle_probability.npy/.png`, `wrinkle_mask.png`, `overlay.png`, `result.json` |
 | 10 | `ai/ffhq_wrinkle/confidence.py` และ `confidence_policy.json` | วัด decision margin และบังคับ policy/lineage gate | หากยังไม่ calibrated (ค่าเริ่มต้นใน repository) จะไม่ผ่าน gate |
 | 11 | `ai/ffhq_wrinkle/scoring.py` | สร้างคะแนนพื้นที่ 0–100 ทั้งภาพรวมและ 8 regions เมื่อ gate ผ่าน | `derived_score` พร้อม area ratio และ disclaimer |
-| 12 | `ai/ffhq_wrinkle/schemas.py` | Pydantic schema ที่จำกัดข้อมูล public | `AnalysisResponse`: model metadata, confidence, score, recommendations, limitations |
+| 12 | `backend/wrinkle/schemas.py` | Pydantic schema ที่จำกัดข้อมูล public | `AnalysisResponse`: model metadata, confidence, score, recommendations, limitations |
 
 ## 4. Artifact ที่ถูกสร้างใน pipeline AI
 
@@ -136,7 +136,7 @@ flowchart TD
 โค้ดปัจจุบันยังไม่มีส่วนนี้ แต่ integration ที่สอดคล้องกับโครงสร้างเดิมควรทำใน `backend/workers/inference_worker.py` ดังนี้:
 
 1. อ่านรูป private จาก MinIO ด้วย `backend.libs.minio_client.get_bytes(analysis.object_key)`
-2. เรียก `WrinkleAnalysisService.analyze_bytes()` จาก `ai.ffhq_wrinkle.service` โดยใช้ model checkpoint และ confidence policy ที่ผ่านการอนุมัติ
+2. เรียก `WrinkleAnalysisService.analyze_bytes()` จาก `backend.wrinkle.service` โดยใช้ model checkpoint และ confidence policy ที่ผ่านการอนุมัติ
 3. เขียนเฉพาะ response ที่ปลอดภัยและ metadata ที่จำเป็นลง `Analysis.result`; ตั้ง status เป็น `completed` หรือ `rejected/failed` ตามผล
 4. กำหนดนโยบาย retention ก่อนเลือกเก็บหรืออัปโหลด derived artifacts ไป MinIO เพราะ service ปัจจุบันตั้งใจลบทิ้งหลัง request
 5. คงหลักการ fail closed: หาก checkpoint, hash หรือ policy ไม่ผ่าน ต้องไม่สร้าง score/recommendation

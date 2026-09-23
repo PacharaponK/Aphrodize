@@ -48,7 +48,7 @@ ResNet-18 definitions. It deliberately does not download torchvision's
 ImageNet ResNet weights during construction because the complete face-parsing
 checkpoint replaces all model parameters. The checkpoint remains in the
 gitignored research-data directory and is downloaded and verified by
-`python -m ai.ffhq_wrinkle.prepare_phase2_data`.
+`python -m ai.scripts.prepare_phase2_data`.
 
 ## YuNet face detector used by Phase 3
 
@@ -63,7 +63,7 @@ gitignored research-data directory and is downloaded and verified by
 Phase 3 uses YuNet for face count, bounding box, five landmarks, and detector
 confidence. The model remains in the gitignored research-data directory and is
 downloaded from the pinned commit and verified by
-`python -m ai.ffhq_wrinkle.prepare_phase3_data`.
+`python -m ai.scripts.prepare_phase3_data`.
 
 ## FFHQ image used by Phase 1
 
@@ -95,13 +95,13 @@ From the repository root:
 conda env create --file ai/environment-ffhq-wrinkle.yml
 conda activate ffhq-wrinkle
 $env:PYTHONHASHSEED = "2024"
-python -m ai.ffhq_wrinkle.verify_phase0 --device auto
+python -m ai.scripts.verify_phase0 --device auto
 ```
 
 After checking out the official repository at the pinned commit, strict checkpoint compatibility can also be tested:
 
 ```powershell
-python -m ai.ffhq_wrinkle.verify_phase0 `
+python -m ai.scripts.verify_phase0 `
   --device auto `
   --official-repo C:\path\to\ffhq-wrinkle-dataset
 ```

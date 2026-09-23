@@ -23,7 +23,7 @@ U-Net ดีกว่าเล็กน้อยในทุก quality metric �
 
 - `ai/ffhq_wrinkle/metrics.py` — binary confusion counts, Dice, IoU, precision, recall และ area metrics
 - `ai/ffhq_wrinkle/evaluation.py` — official dataset validation, inference loop, stratification, memory sampling และ error visualizations
-- `ai/evaluate_ffhq_wrinkle.py` — evaluation CLI
+- `ai/scripts/evaluate_ffhq_wrinkle.py` — evaluation CLI
 - `ai/tests/test_ffhq_wrinkle_metrics.py` — deterministic metric tests และ fixed-bin tests
 
 ## Evaluation protocol
@@ -222,7 +222,7 @@ Validation:
 Full evaluation:
 
 ```powershell
-python ai/evaluate_ffhq_wrinkle.py `
+python ai/scripts/evaluate_ffhq_wrinkle.py `
   --network both `
   --device cpu `
   --output storage/artifacts/ffhq_wrinkle_phase5/full-official-test

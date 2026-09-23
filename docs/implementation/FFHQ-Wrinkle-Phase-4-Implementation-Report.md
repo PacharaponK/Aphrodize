@@ -14,7 +14,7 @@ Phase ก่อนหน้า: `docs/implementation/FFHQ-Wrinkle-Phase-3-Implem
 
 - `ai/ffhq_wrinkle/modeling.py` — architecture factory, official checksum verification, strict checkpoint loading และ CPU/CUDA selection
 - `ai/ffhq_wrinkle/prediction.py` — logits/probability inference, thresholding, overlay และ metadata
-- `ai/predict_wrinkle.py` — CLI ตามเป้าหมายใน implementation plan
+- `ai/scripts/predict_wrinkle.py` — CLI ตามเป้าหมายใน implementation plan
 - `ai/tests/test_ffhq_wrinkle_prediction.py` — unit, output-safety และ official integration tests
 
 ## Model loader
@@ -187,7 +187,7 @@ wrinkle_prediction/
 ตัวอย่าง U-Net:
 
 ```powershell
-python ai/predict_wrinkle.py `
+python ai/scripts/predict_wrinkle.py `
   --image samples/face.jpg `
   --network UNet `
   --device auto `
@@ -197,7 +197,7 @@ python ai/predict_wrinkle.py `
 ตัวอย่าง SwinUNETR:
 
 ```powershell
-python ai/predict_wrinkle.py `
+python ai/scripts/predict_wrinkle.py `
   --image samples/face.webp `
   --network SwinUNETR `
   --threshold 0.5 `

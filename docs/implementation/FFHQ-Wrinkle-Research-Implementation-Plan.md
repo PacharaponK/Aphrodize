@@ -240,7 +240,7 @@ Acceptance criteria:
 CLI เป้าหมาย:
 
 ```powershell
-python ai\predict_wrinkle.py `
+python ai\scripts\predict_wrinkle.py `
   --image samples\face.jpg `
   --network UNet `
   --output storage\artifacts\wrinkle_prediction
@@ -315,7 +315,7 @@ Metrics:
 
 Deliverables:
 
-- `ai/evaluate_ffhq_wrinkle.py`
+- `ai/scripts/evaluate_ffhq_wrinkle.py`
 - machine-readable metrics JSON/CSV
 - evaluation report พร้อมตัวอย่าง true positive, false positive และ false negative
 

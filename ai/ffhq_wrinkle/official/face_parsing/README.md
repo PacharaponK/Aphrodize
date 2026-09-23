@@ -12,4 +12,4 @@ The local `ai.ffhq_wrinkle.bisenet` implementation is adapted from
 - License: MIT; preserved in `LICENSE.txt`
 
 The checkpoint is downloaded into the gitignored research-data tree by
-`python -m ai.ffhq_wrinkle.prepare_phase2_data` and is verified before use.
+`python -m ai.scripts.prepare_phase2_data` and is verified before use.

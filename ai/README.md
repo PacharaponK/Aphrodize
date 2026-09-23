@@ -11,7 +11,7 @@
 
 Git repository มี:
 
-- source code สำหรับ preprocessing, inference, evaluation และ API
+- source code สำหรับ preprocessing, inference และ evaluation
 - Conda environment specification
 - automated tests
 - model/dataset verification tools
@@ -34,12 +34,14 @@ Dataset จำเป็นเฉพาะเมื่อจะทำ official ev
 
 ```text
 ai/
-├── ffhq_wrinkle/                       # Python package
-├── tests/                              # unit/integration/API tests
-├── predict_wrinkle.py                  # single-image CLI
-├── evaluate_ffhq_wrinkle.py            # official-test evaluation
-├── calibrate_ffhq_wrinkle_confidence.py
+├── ffhq_wrinkle/                       # reusable model/pipeline package
+├── scripts/                            # command-line tools
+├── tests/                              # unit/integration tests
 └── environment-ffhq-wrinkle.yml
+
+backend/
+├── wrinkle/                            # FastAPI adapter, service, schemas
+└── scripts/build_wrinkle_artifact.py
 
 storage/
 ├── models/ffhq-wrinkle/                # local model weights; Git ignored
@@ -91,8 +93,8 @@ storage/models/ffhq-wrinkle/
 ดาวน์โหลดและตรวจสอบ BiSeNet/YuNet ด้วย scripts ที่มีให้:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase2_data
-python -m ai.ffhq_wrinkle.prepare_phase3_data
+python -m ai.scripts.prepare_phase2_data
+python -m ai.scripts.prepare_phase3_data
 ```
 
 `stage2_unet.pth` ต้องได้มาจาก official FFHQ-Wrinkle checkpoint distribution
@@ -107,13 +109,13 @@ storage/models/ffhq-wrinkle/checkpoints.zip
 แล้วตรวจ environment และ archive:
 
 ```powershell
-python -m ai.ffhq_wrinkle.verify_phase0 --device auto
+python -m ai.scripts.verify_phase0 --device auto
 ```
 
 ถ้ามีเฉพาะ extracted runtime models และไม่มี archive ใช้:
 
 ```powershell
-python -m ai.ffhq_wrinkle.verify_phase0 --device auto --skip-checksums
+python -m ai.scripts.verify_phase0 --device auto --skip-checksums
 ```
 
 ### SwinUNETR แบบ optional
@@ -137,7 +139,7 @@ b8f6a46c49d52f5725d0d79740d2c9508b4f8aa6400ea4fe0b27f7a6cd8bdd12
 รองรับ JPEG, PNG และ WebP โดยภาพต้องมีใบหน้าหนึ่งใบและผ่าน quality gate
 
 ```powershell
-python ai/predict_wrinkle.py `
+python ai/scripts/predict_wrinkle.py `
   --image path/to/face.jpg `
   --network UNet `
   --device auto `
@@ -185,7 +187,7 @@ Quality rejection มีสาเหตุได้ เช่น:
 รันจาก repository root:
 
 ```powershell
-conda run -n ffhq-wrinkle python -m uvicorn server.app:app `
+conda run -n ffhq-wrinkle python -m uvicorn backend.wrinkle.api:app `
   --host 127.0.0.1 `
   --port 8000
 ```
@@ -265,7 +267,7 @@ storage/data/ffhq-wrinkle/
 เตรียม FFHQ images ที่อยู่ใน official test list:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase1_data
+python -m ai.scripts.prepare_phase1_data
 ```
 
 คำสั่งนี้ต้องมี `storage/data/ffhq-wrinkle/test_file_lists.txt` ก่อน และจะ
@@ -274,7 +276,7 @@ python -m ai.ffhq_wrinkle.prepare_phase1_data
 รัน evaluation:
 
 ```powershell
-python ai/evaluate_ffhq_wrinkle.py `
+python ai/scripts/evaluate_ffhq_wrinkle.py `
   --network both `
   --device cpu `
   --output storage/artifacts/ffhq_wrinkle_evaluation
@@ -298,7 +300,7 @@ ai/ffhq_wrinkle/validation_manifest.template.json
 Calibration CLI:
 
 ```powershell
-python ai/calibrate_ffhq_wrinkle_confidence.py `
+python ai/scripts/calibrate_ffhq_wrinkle_confidence.py `
   --records path/to/validation.csv `
   --manifest path/to/validation-manifest.json `
   --calibration-version target-user-calibration-v1 `
@@ -337,7 +339,7 @@ storage/models/ffhq-wrinkle/stage2_wrinkle_finetune_unet/stage2_unet.pth
 รัน:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase2_data
+python -m ai.scripts.prepare_phase2_data
 ```
 
 ### YuNet model หาย
@@ -345,7 +347,7 @@ python -m ai.ffhq_wrinkle.prepare_phase2_data
 รัน:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase3_data
+python -m ai.scripts.prepare_phase3_data
 ```
 
 ### `output directory is not empty`

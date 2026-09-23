@@ -39,7 +39,7 @@ Phase ก่อนหน้า: `docs/implementation/FFHQ-Wrinkle-Phase-6-Implem
   - เลือก threshold ตาม coverage ภายใต้ release criteria
   - สร้าง candidate policy และ machine-readable calibration report
   - ตรวจ policy/report bundle ก่อนให้ service โหลด
-- `ai/calibrate_ffhq_wrinkle_confidence.py`
+- `ai/scripts/calibrate_ffhq_wrinkle_confidence.py`
   - CLI สำหรับ calibration run
   - ไม่เขียนทับ output directory ที่ไม่ว่าง
   - exit code `0` เมื่อผ่าน และ `2` เมื่อ release gate ไม่ผ่าน
@@ -50,10 +50,10 @@ Phase ก่อนหน้า: `docs/implementation/FFHQ-Wrinkle-Phase-6-Implem
 - `ai/ffhq_wrinkle/confidence.py`
   - เพิ่ม model-lineage fields ใน calibrated policy
   - ตรวจ compatibility ระหว่าง policy กับ inference run
-- `ai/ffhq_wrinkle/service.py`
+- `backend/wrinkle/service.py`
   - รองรับ released policy bundle
   - abstain เมื่อ policy lineage ไม่ตรงกับ model/checkpoint/config ที่กำลังรัน
-- `ai/ffhq_wrinkle/api.py`
+- `backend/wrinkle/api.py`
   - รองรับ environment variable `APHRODIZE_WRINKLE_POLICY_BUNDLE`
 - `ai/tests/test_ffhq_wrinkle_phase7.py`
   - เพิ่ม calibration, provenance, release-bundle และ CLI tests
@@ -176,7 +176,7 @@ Bundle verification เป็น structural and lineage control ไม่ใช�
 ## CLI
 
 ```powershell
-python ai/calibrate_ffhq_wrinkle_confidence.py `
+python ai/scripts/calibrate_ffhq_wrinkle_confidence.py `
   --records path/to/validation.csv `
   --manifest path/to/validation-manifest.json `
   --calibration-version target-user-calibration-v1 `
@@ -197,7 +197,7 @@ python ai/calibrate_ffhq_wrinkle_confidence.py `
 
 ```powershell
 $env:APHRODIZE_WRINKLE_POLICY_BUNDLE = "C:\path\to\approved-policy-bundle"
-python -m uvicorn server.app:app --host 127.0.0.1 --port 8000
+python -m uvicorn backend.wrinkle.api:app --host 127.0.0.1 --port 8000
 ```
 
 หากไม่กำหนด environment variable ระบบใช้ default `not_calibrated` policy ต่อไป

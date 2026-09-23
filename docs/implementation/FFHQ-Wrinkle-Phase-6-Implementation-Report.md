@@ -26,20 +26,20 @@ Phase ก่อนหน้า: `docs/implementation/FFHQ-Wrinkle-Phase-5-Implem
 - `ai/ffhq_wrinkle/confidence_policy.json`
   - policy เริ่มต้น `wrinkle-confidence-gate-v1`
   - สถานะ `not_calibrated` และไม่มีการตั้ง threshold สมมติ
-- `ai/ffhq_wrinkle/schemas.py`
+- `backend/wrinkle/schemas.py`
   - Pydantic response contract แบบ `extra=forbid`
   - แยก `model_output`, `derived_score`, `recommendation_gate` และ `recommendations`
-- `ai/ffhq_wrinkle/service.py`
+- `backend/wrinkle/service.py`
   - lazy-load และ cache U-Net model
   - ใช้ temporary directory สำหรับ upload และ raw artifacts
   - ลบ source/probability/mask/overlay เมื่อ request สิ้นสุด
   - เรียก recommendation provider เฉพาะหลัง gate ผ่าน
-- `ai/ffhq_wrinkle/api.py` และ `server/app.py`
+- `backend/wrinkle/api.py` และ `backend/wrinkle/api.py`
   - FastAPI endpoint `POST /v1/wrinkle/analyze`
   - health endpoint `GET /health`
   - ตรวจ consent, MIME type และขนาดไม่เกิน 10 MiB ก่อนเข้า pipeline
   - คืน quality rejection แบบ sanitized โดยไม่เผย path, metric ภายใน หรือ stack trace
-- `ai/build_phase6_artifact.py`
+- `backend/scripts/build_wrinkle_artifact.py`
   - สร้างตัวอย่าง public response จาก Phase 4 artifact โดยไม่รันโมเดลซ้ำ
 - `ai/tests/test_ffhq_wrinkle_phase6.py`
   - เพิ่ม unit/contract/gating/privacy tests 12 รายการ
@@ -95,7 +95,7 @@ decision_margin = mean(abs(2 × wrinkle_probability - 1)) within face mask
 รันจาก repository root:
 
 ```powershell
-conda run -n ffhq-wrinkle python -m uvicorn server.app:app --host 127.0.0.1 --port 8000
+conda run -n ffhq-wrinkle python -m uvicorn backend.wrinkle.api:app --host 127.0.0.1 --port 8000
 ```
 
 Request:

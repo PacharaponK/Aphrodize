@@ -80,7 +80,7 @@ C:\Users\student\AppData\Local\AphrodizeMiniconda\envs\ffhq-wrinkle
 
 ### 5. สร้าง Phase 0 verification CLI
 
-สร้าง `ai/ffhq_wrinkle/verify_phase0.py` สำหรับตรวจ:
+สร้าง `ai/scripts/verify_phase0.py` สำหรับตรวจ:
 
 - Python และ dependency imports
 - Dependency versions
@@ -97,13 +97,13 @@ C:\Users\student\AppData\Local\AphrodizeMiniconda\envs\ffhq-wrinkle
 ```powershell
 conda activate ffhq-wrinkle
 $env:PYTHONHASHSEED = "2024"
-python -m ai.ffhq_wrinkle.verify_phase0 --device auto
+python -m ai.scripts.verify_phase0 --device auto
 ```
 
 คำสั่งตรวจ strict model loading:
 
 ```powershell
-python -m ai.ffhq_wrinkle.verify_phase0 `
+python -m ai.scripts.verify_phase0 `
   --device auto `
   --official-repo C:\path\to\ffhq-wrinkle-dataset
 ```

@@ -25,8 +25,8 @@ Phase ก่อนหน้า: `docs/implementation/FFHQ-Wrinkle-Phase-1-Implem
 - `ai/ffhq_wrinkle/texture_map.py` — สูตร texture, Gaussian blur, masking, debug artifacts และ CLI
 - `ai/ffhq_wrinkle/face_parsing.py` — โหลด/resize labels, masking และ BiSeNet inference
 - `ai/ffhq_wrinkle/bisenet.py` — BiSeNet 19 classes ที่เข้ากันได้กับ checkpoint ทางการ
-- `ai/ffhq_wrinkle/evaluate_texture_reproduction.py` — ประเมิน pixel-to-pixel หลาย configuration
-- `ai/ffhq_wrinkle/prepare_phase2_data.py` — ดาวน์โหลดและตรวจ checksum ของ BiSeNet checkpoint
+- `ai/scripts/evaluate_texture_reproduction.py` — ประเมิน pixel-to-pixel หลาย configuration
+- `ai/scripts/prepare_phase2_data.py` — ดาวน์โหลดและตรวจ checksum ของ BiSeNet checkpoint
 - `ai/tests/test_ffhq_wrinkle_texture_map.py` — unit และ integration tests ของ Phase 2
 - `ai/ffhq_wrinkle/official/face_parsing/` — provenance และ MIT license ของ BiSeNet upstream
 - `ai/environment-ffhq-wrinkle.yml` — เพิ่ม `opencv-python-headless==4.8.1.78`
@@ -145,7 +145,7 @@ pixel นอก face mask เป็นศูนย์ทั้งหมด แ�
 ดาวน์โหลดและตรวจ BiSeNet checkpoint:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase2_data
+python -m ai.scripts.prepare_phase2_data
 ```
 
 สร้าง parsing label 512×512:
@@ -169,7 +169,7 @@ python -m ai.ffhq_wrinkle.texture_map `
 ประเมินกับ official test list ทั้งหมด:
 
 ```powershell
-python -m ai.ffhq_wrinkle.evaluate_texture_reproduction `
+python -m ai.scripts.evaluate_texture_reproduction `
   --summary-only `
   --output storage/artifacts/ffhq_wrinkle_phase2/evaluation/selected_v1.json
 ```

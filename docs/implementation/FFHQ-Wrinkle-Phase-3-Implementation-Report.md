@@ -21,7 +21,7 @@ ffhq-user-image-v1+ffhq-wrinkle-texture-v1-bt709-dark-floor
 - `ai/ffhq_wrinkle/alignment.py` — YuNet face detection, landmarks และ deterministic FFHQ-style alignment
 - `ai/ffhq_wrinkle/quality.py` — quality metrics, thresholds และ rejection reasons
 - `ai/ffhq_wrinkle/preprocess.py` — end-to-end one-image preprocessing และ CLI
-- `ai/ffhq_wrinkle/prepare_phase3_data.py` — ดาวน์โหลดและตรวจ YuNet ONNX model
+- `ai/scripts/prepare_phase3_data.py` — ดาวน์โหลดและตรวจ YuNet ONNX model
 - `ai/tests/test_ffhq_wrinkle_preprocess.py` — passing/rejected fixtures และ integration test
 - `ai/ffhq_wrinkle/THIRD_PARTY.md` — OpenCV Zoo/YuNet provenance
 
@@ -193,13 +193,13 @@ git diff --check: passed
 ดาวน์โหลดและตรวจ YuNet model:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase3_data
+python -m ai.scripts.prepare_phase3_data
 ```
 
 BiSeNet checkpoint จาก Phase 2:
 
 ```powershell
-python -m ai.ffhq_wrinkle.prepare_phase2_data
+python -m ai.scripts.prepare_phase2_data
 ```
 
 ประมวลผลภาพผู้ใช้หนึ่งภาพ:

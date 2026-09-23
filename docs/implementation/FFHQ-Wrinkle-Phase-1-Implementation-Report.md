@@ -80,7 +80,7 @@ official Google Drive downloader ถูกทดลองใช้งานก�
 - Hosting: Hugging Face
 - Pinned revision: `505f94e2ecc6db64e967e8e6c8e2c2079ea0876b`
 
-สร้าง `ai/ffhq_wrinkle/prepare_phase1_data.py` เพื่อ:
+สร้าง `ai/scripts/prepare_phase1_data.py` เพื่อ:
 
 - อ่าน IDs จาก `test_file_lists.txt`
 - ตรวจว่า ID เป็นตัวเลขห้าหลักและไม่มีค่าซ้ำ
