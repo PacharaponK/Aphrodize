@@ -105,6 +105,8 @@ services:
     build:
       context: .
       dockerfile: docker/mlflow.Dockerfile
+      additional_contexts:
+        api_image: service:api
     command: ["/app/start.sh"]
     environment:
       POSTGRES_HOST: postgres
