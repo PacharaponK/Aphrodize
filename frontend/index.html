@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Aphrodize wellness skin tracking interface prototype" />
+    <title>Aphrodize — Skin tracking</title>
+    <link rel="stylesheet" href="styles.css" /><link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="mobile-menu.css" />
+    <link rel="stylesheet" href="polish.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="เมนูหลัก">
+        <a class="brand" href="#dashboard" aria-label="Aphrodize home"><img class="brand-mark" src="assets/aphrodize-contour-a.svg" alt="" />Aphrodize</a>
+        <nav>
+          <a class="nav-link active" href="#dashboard">ภาพรวม</a>
+          <a class="nav-link" href="#capture">วิเคราะห์ภาพ</a>
+          <a class="nav-link" href="#trend">แนวโน้ม</a>
+          <a class="nav-link" href="#profile">Skin profile</a>
+        </nav>
+        <div class="privacy-card"><strong>ข้อมูลของคุณ</strong><span>เก็บตาม consent ที่คุณเลือก</span><a href="#privacy">จัดการข้อมูล</a></div>
+      </aside>
+
+      <main id="dashboard">
+        <header class="topbar"><div><p class="eyebrow">ภาพล่าสุด · 20 ก.ย. 2026</p><h1>สวัสดี, Ink</h1></div><button class="avatar" aria-label="เปิดโปรไฟล์">I</button></header>
+        <section class="notice" aria-label="ข้อจำกัดของผลลัพธ์"><span>i</span><p>ผลนี้ใช้สำหรับติดตามลักษณะผิว ไม่ใช่การวินิจฉัยโรคหรือยืนยันสาเหตุ</p></section>
+
+        <section class="hero-grid" aria-label="สรุปผลล่าสุด">
+          <article class="score-card"><p class="eyebrow">WRINKLE SCORE</p><div class="score-line"><strong>37</strong><span>/ 100</span></div><p class="status moderate">ปานกลาง</p><p class="metadata">confidence 0.86 · Model v0.1</p><button class="text-button" data-open="details">ดูผลรายบริเวณ <span>→</span></button></article>
+          <article class="capture-card" id="capture"><div><p class="eyebrow">ติดตามครั้งต่อไป</p><h2>พร้อมบันทึกภาพใหม่ไหม?</h2><p>หน้าสด · หน้าตรง · แสงกระจาย เพื่อให้เทียบผลได้ดีขึ้น</p></div><button class="primary-button" data-open="capture-panel">ถ่ายภาพใหม่ <span>→</span></button></article>
+        </section>
+
+        <section class="section-heading" id="trend"><div><p class="eyebrow">HISTORY</p><h2>แนวโน้มของคุณ</h2></div><button class="text-button" data-open="trend-detail">ดูทั้งหมด →</button></section>
+        <article class="trend-card"><div class="trend-info"><span class="trend-icon">⌁</span><div><h3>เริ่มติดตามแนวโน้มได้แล้ว</h3><p>มีภาพที่ผ่าน quality gate 1 ครั้ง อีก 1 ครั้งจะแสดงแนวโน้มเปรียบเทียบให้</p></div></div><div class="chart" aria-label="ตัวอย่างกราฟแนวโน้ม"><span>สัปดาห์ 1</span><i></i><i></i><i></i><span>สัปดาห์ 12</span></div></article>
+
+        <section class="section-heading"><div><p class="eyebrow">LATEST ANALYSIS</p><h2>สิ่งที่ตรวจพบจากภาพ</h2></div><button class="text-button" data-open="details">ดูรายละเอียด →</button></section>
+        <section class="result-grid"><article class="result-card"><span class="result-icon purple">◌</span><div><p class="eyebrow">รอบดวงตา</p><h3>ปานกลาง</h3><p class="metadata">confidence 0.86</p></div></article><article class="result-card"><span class="result-icon blue">⌁</span><div><p class="eyebrow">หน้าผาก</p><h3>เล็กน้อย</h3><p class="metadata">confidence 0.79</p></div></article><article class="result-card"><span class="result-icon green">✓</span><div><p class="eyebrow">คุณภาพภาพ</p><h3>ผ่าน</h3><p class="metadata">ใช้ในแนวโน้มได้</p></div></article></section>
+
+        <section class="sources-grid" id="profile"><article><p class="eyebrow">คุณรายงาน</p><h2>ผิวแห้ง · ระคายง่าย</h2><p>UV exposure สูง · ใช้ sunscreen ไม่สม่ำเสมอ</p><button class="text-button">แก้ไขข้อมูล →</button></article><article><p class="eyebrow">คำแนะนำจากกฎ</p><h2>ดูแลเกราะป้องกันผิว</h2><p>แสดงจากข้อมูลที่คุณรายงานร่วมกับผลภาพที่ confidence ผ่านเกณฑ์</p><button class="text-button" data-open="recommendation">ดูเหตุผลและ safety check →</button></article></section>
+      </main>
+    </div>
+
+    <nav class="mobile-nav" aria-label="เมนูมือถือ"><a class="active" href="#dashboard">⌂<span>ภาพรวม</span></a><a href="#capture">＋<span>วิเคราะห์</span></a><a href="#trend">⌁<span>แนวโน้ม</span></a><a href="#profile">☷<span>โปรไฟล์</span></a></nav>
+
+    <dialog id="capture-panel"><button class="close-button" data-close aria-label="ปิด">×</button><p class="eyebrow">ก่อนวิเคราะห์</p><h2>ถ่ายภาพให้เทียบกันได้</h2><div class="face-guide"><div class="face-shape">◡</div><p>หน้าสด · หน้าตรง · แสงกระจาย</p></div><ul class="checklist"><li>ไม่ใช้ beauty filter และไม่แต่งหน้าหนัก</li><li>สีหน้าเป็นกลาง และภาพไม่เบลอ</li><li>ใช้ระยะและแสงใกล้เคียงครั้งก่อน</li></ul><button class="primary-button" data-open="quality-panel">เปิดกล้อง / เลือกภาพ →</button><p class="metadata">Consent version 1.0 · <a href="#privacy">ดูหรือถอน consent</a></p></dialog>
+    <dialog id="quality-panel"><button class="close-button" data-close aria-label="ปิด">×</button><div class="warning-icon">!</div><p class="eyebrow">QUALITY GATE</p><h2>ภาพนี้ยังใช้เปรียบเทียบไม่ได้</h2><p>จึงไม่นำไปคำนวณผลหรือแนวโน้ม</p><ul class="warning-list"><li>แสงน้อยเกินไป</li><li>ภาพอาจเบลอ</li></ul><p class="metadata">ลองหันหน้าเข้าหาแสงที่นุ่มและวางกล้องให้นิ่ง</p><button class="primary-button" data-open="capture-panel">ถ่ายภาพใหม่ →</button></dialog>
+    <dialog id="details"><button class="close-button" data-close aria-label="ปิด">×</button><p class="eyebrow">ตรวจพบจากภาพ</p><h2>ผลรายบริเวณ</h2><div class="mask-preview"><span>Wrinkle mask overlay</span></div><dl><div><dt>รอบดวงตา</dt><dd>ปานกลาง · confidence 0.86</dd></div><div><dt>หน้าผาก</dt><dd>เล็กน้อย · confidence 0.79</dd></div><div><dt>ร่องแก้ม</dt><dd>ปานกลาง · confidence 0.82</dd></div></dl><p class="metadata">Model version: v0.1 · score version: mask-area-v1</p></dialog>
+    <dialog id="trend-detail"><button class="close-button" data-close aria-label="ปิด">×</button><p class="eyebrow">HISTORY</p><h2>แนวโน้มของคุณ</h2><div class="mask-preview"><span>Trend visualization จะพร้อมเมื่อมีภาพผ่านอย่างน้อย 2 ครั้ง</span></div><p>ภาพล่าสุดผ่าน quality gate แล้ว อีก 1 ภาพที่ถ่ายภายใต้ protocol เดิมจะช่วยให้เปรียบเทียบได้</p><button class="primary-button" data-open="capture-panel">ถ่ายภาพครั้งถัดไป →</button></dialog>
+    <dialog id="recommendation"><button class="close-button" data-close aria-label="ปิด">×</button><p class="eyebrow">คำแนะนำจากกฎ</p><h2>ดูแลเกราะป้องกันผิวและป้องกันแดด</h2><p>หมวดผลิตภัณฑ์: moisturizer และ broad-spectrum sunscreen SPF 30+</p><hr /><h3>เหตุผลและแหล่งข้อมูล</h3><p>ผลภาพ: periocular wrinkle score ผ่าน confidence threshold</p><p>คุณรายงาน: ผิวแห้ง, UV exposure สูง และใช้ sunscreen ไม่สม่ำเสมอ</p><p class="metadata">Rule R-UV-001 · v1.0 · ไม่ยืนยันว่า UV เป็นสาเหตุ</p></dialog>
+    <script src="theme-switcher.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
