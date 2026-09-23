@@ -4,7 +4,7 @@
 
 Aphrodize is a Docker Compose–based modular monolith for managing private data, annotation, asynchronous inference and training jobs, and experiment tracking. It provides the platform foundation; production model packages, datasets, checkpoints, and trained weights are intentionally out of scope for this repository.
 
-> Current status: the local service stack is runnable. Training records an MLflow run and awaits a reviewed model package. Inference fails safely with `model_not_deployed` until an approved model artifact is integrated.
+> Current status: image analyses run the checked FFHQ-Wrinkle model through the inference worker. Generic time-series and tabular inference still fails safely with `model_not_deployed` until an approved MLflow model is integrated.
 
 ## Included services
 
@@ -67,6 +67,8 @@ API_PASSWORD=replace-me
 
 You may also change the matching usernames, plus `MINIO_ACCESS_KEY`, `LABEL_STUDIO_USERNAME`, and `API_USERNAME`. Keep the values in `.env`; do not commit this file.
 
+The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ffhq-wrinkle/`; see [ai/README.md](ai/README.md) for the required layout and checksums. Compose mounts this directory read-only.
+
 ### 2. Build and start services
 
 ```powershell
@@ -119,8 +121,8 @@ Open [http://localhost:3000](http://localhost:3000). `client/.env.local` default
 ## Typical workflow
 
 1. Create a consent record with `POST /api/v1/consents`.
-2. Use the returned pseudonymous `user_id` to submit questionnaire data or request an analysis.
-3. Create training jobs at `POST /api/v1/training/runs` or inference jobs at `POST /api/v1/inference/runs`.
+2. Use the returned pseudonymous `user_id` to submit an image at `POST /api/v1/analyses/users/{user_id}`.
+3. Create generic training jobs at `POST /api/v1/training/runs` or inference jobs at `POST /api/v1/inference/runs`.
 4. Poll the corresponding run endpoint for its state.
 5. Use Label Studio for human-managed annotation. Add `LABEL_STUDIO_API_KEY` to `.env` only when the backend needs SDK access.
 

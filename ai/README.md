@@ -245,7 +245,7 @@ Tests ที่ต้องใช้ model/data artifacts จะ skip เมื�
 ตรวจ Python syntax:
 
 ```powershell
-python -m compileall -q ai server
+python -m compileall -q ai backend/wrinkle
 ```
 
 ## 6. Dataset สำหรับ evaluation — ไม่จำเป็นต่อ inference

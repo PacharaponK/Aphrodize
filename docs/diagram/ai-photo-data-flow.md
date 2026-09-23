@@ -2,10 +2,10 @@
 
 เอกสารนี้อธิบายเส้นทางของรูปถ่ายตั้งแต่อัปโหลดจนได้ผลวิเคราะห์ โดยอ้างอิงจากโค้ดใน repository นี้ ณ ปัจจุบัน
 
-> สถานะสำคัญ: มี 2 เส้นทางที่ยัง **ไม่ได้เชื่อมกันโดยตรง**
+> สถานะสำคัญ: Platform API เชื่อมกับ FFHQ-Wrinkle pipeline ผ่าน inference worker แล้ว
 >
-> - **Platform API** (`backend/`) รับรูป เก็บรูป และจัดคิวงานได้จริง แต่ worker ปัจจุบันตั้งใจตอบ `model_not_deployed` เพื่อ fail closed; จึงยังไม่เรียกโมเดล AI
-> - **Wrinkle research pipeline** (`ai/ffhq_wrinkle/`) มีขั้นตอน AI ครบตั้งแต่ตรวจคุณภาพจนคำนวณคะแนน แต่เป็น FastAPI/CLI แยกต่างหาก และใช้ไฟล์ชั่วคราว ไม่ได้อยู่ใน `compose.yml`
+> - **Platform API** (`backend/`) รับรูป เก็บรูปใน MinIO จัดคิว และให้ worker เรียกโมเดล
+> - **Wrinkle pipeline** (`ai/ffhq_wrinkle/`) ใช้ได้ทั้งจาก worker, CLI และ FastAPI adapter โดยเก็บ artifacts ระหว่าง inference ไว้ชั่วคราว
 
 ## 1. เส้นทางรูปใน Platform API ที่รันด้วย Docker Compose
 
@@ -24,7 +24,8 @@ flowchart TD
     G -->|ไม่ผ่าน| REJ[status = rejected\nerror_category = image_quality]
     G -->|ผ่าน| J[Redis / ARQ queue: inference\njob run_inference(analysis_id)]
     J --> W[inference-worker\nbackend/workers/inference_worker.py]
-    W --> F[status = failed\nerror_category = model_not_deployed]
+    W --> AI[อ่านรูปจาก MinIO\nWrinkleAnalysisService.analyze_bytes]
+    AI --> F[status = completed / rejected / failed\nresult = public AI response]
     F --> D
     U -->|GET /api/v1/analyses/{analysis_id}| R
     R -->|อ่านสถานะ/ผลลัพธ์| D
@@ -40,12 +41,12 @@ flowchart TD
 | `backend/libs/minio_client.py` | wrapper สำหรับอ่าน/เขียน object ใน MinIO | รูปต้นฉบับเป็น private object; key รูปแบบ `users/<user_id>/original/<uuid>` |
 | `backend/core/db/models.py` | นิยามตาราง SQLAlchemy | `analyses` เก็บ object key, content type, quality flags, model version, status และ result แต่ไม่เก็บ bytes ของรูป |
 | `backend/libs/redis_client.py` | สร้าง connection ไป Redis สำหรับ ARQ | ส่ง job ชื่อ `run_inference` ไป queue `inference` |
-| `backend/workers/inference_worker.py` | consumer ของ inference queue | ปัจจุบันเปลี่ยนงานเป็น `failed/model_not_deployed` โดยไม่โหลด MinIO หรือโมเดล |
+| `backend/workers/inference_worker.py` | consumer ของ inference queue | อ่านรูปจาก MinIO เรียก `WrinkleAnalysisService` และบันทึกผลลัพธ์ที่ปลอดภัยลง PostgreSQL |
 | `backend/api/schemas/analysis.py` | กำหนด response ของ API | ส่ง id, status, quality flags, result และ error category กลับผู้ใช้ |
 
-### จุดที่ข้อมูลหยุดในปัจจุบัน
+### การประมวลผลใน worker
 
-แม้รูปที่ผ่าน preflight จะถูกเก็บใน MinIO และมี job ใน Redis แล้ว แต่ `run_inference()` ยังไม่มีโค้ดเรียก `get_bytes()` เพื่ออ่านรูปจาก MinIO และไม่เรียก `ai.ffhq_wrinkle` ดังนั้นยังไม่มี mask, score หรือผล AI ถูกเขียนกลับ PostgreSQL จากเส้นทางนี้
+`run_inference()` อ่านรูปด้วย `get_bytes()` แล้วเรียก pipeline ใน thread แยกจาก event loop ผล public response ถูกเขียนลง `Analysis.result`; raw mask และ probability artifacts ยังคงเป็นไฟล์ชั่วคราวและถูกลบเมื่อจบงาน
 
 ## 2. เส้นทาง AI วิเคราะห์ริ้วรอยที่มีอยู่ใน `ai/ffhq_wrinkle`
 
@@ -127,18 +128,16 @@ flowchart TD
 | รูป/ใบหน้าไม่ผ่าน quality gate | HTTP 422 พร้อม `quality_flags`; ไม่สร้าง model-ready tensor |
 | ผ่าน quality แต่ confidence policy ไม่ calibrated หรือค่าต่ำ | `status: abstained`; งดคะแนนและคำแนะนำ |
 | ผ่าน quality และ confidence/policy gate | `status: completed`; คืน probability/mask metadata, overall/regional area scores และคำแนะนำที่ผ่าน gate |
-| Platform worker ปัจจุบัน | `status: failed`, `error_category: model_not_deployed` |
+| Worker พบข้อผิดพลาดภายในหรือโมเดลไม่พร้อม | `status: failed`, `error_category: inference_failed` |
 
 ผลลัพธ์นี้เป็นการ segment รูปแบบภาพที่เกี่ยวข้องกับริ้วรอย ไม่ใช่การวินิจฉัยทางการแพทย์ และรูปอัปโหลดของผู้ใช้ไม่ถูกนำไป train อัตโนมัติ
 
-## 6. จุดเชื่อมที่ต้องมี หากต้องการใช้ AI pipeline กับ Platform API
+## 6. จุดเชื่อมกับ Platform API
 
-โค้ดปัจจุบันยังไม่มีส่วนนี้ แต่ integration ที่สอดคล้องกับโครงสร้างเดิมควรทำใน `backend/workers/inference_worker.py` ดังนี้:
+Integration อยู่ใน `backend/workers/inference_worker.py` และทำงานดังนี้:
 
 1. อ่านรูป private จาก MinIO ด้วย `backend.libs.minio_client.get_bytes(analysis.object_key)`
 2. เรียก `WrinkleAnalysisService.analyze_bytes()` จาก `backend.wrinkle.service` โดยใช้ model checkpoint และ confidence policy ที่ผ่านการอนุมัติ
 3. เขียนเฉพาะ response ที่ปลอดภัยและ metadata ที่จำเป็นลง `Analysis.result`; ตั้ง status เป็น `completed` หรือ `rejected/failed` ตามผล
-4. กำหนดนโยบาย retention ก่อนเลือกเก็บหรืออัปโหลด derived artifacts ไป MinIO เพราะ service ปัจจุบันตั้งใจลบทิ้งหลัง request
-5. คงหลักการ fail closed: หาก checkpoint, hash หรือ policy ไม่ผ่าน ต้องไม่สร้าง score/recommendation
-
-การเพิ่มขั้นตอนเหล่านี้ต้องมีการ deploy โมเดลที่ผ่านการทบทวนและ validation ก่อน จึงไม่ควรถือว่าเกิดขึ้นแล้วในระบบปัจจุบัน
+4. ไม่อัปโหลด derived artifacts กลับ MinIO; service ลบไฟล์ชั่วคราวหลังงานเสร็จ
+5. คงหลักการ fail closed: หาก checkpoint, hash หรือ policy ไม่ผ่าน จะไม่สร้าง score/recommendation

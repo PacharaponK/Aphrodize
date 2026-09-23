@@ -27,7 +27,7 @@ Client
 
 ## Model families
 
-`POST /api/v1/training/runs` accepts `time_series`, `tabular`, and `image_segmentation`. `POST /api/v1/inference/runs` accepts approved `time_series` and `tabular` model URIs. The trainer creates an MLflow run and waits for a reviewed model package; it does not train on user uploads. The inference worker intentionally fails safe with `model_not_deployed` until an approved model artifact is loaded and validated.
+`POST /api/v1/training/runs` accepts `time_series`, `tabular`, and `image_segmentation`. Image analyses use the checked FFHQ-Wrinkle model mounted read-only in the inference worker. `POST /api/v1/inference/runs` accepts generic `time_series` and `tabular` model URIs and still fails safe with `model_not_deployed` until an approved MLflow model is available. The trainer records an MLflow run but does not train on user uploads.
 
 The reserved model workspace lives in [`models/`](../models/README.md): `models/time-series/modelx/` is for ordered-observation workloads and `models/non-time-series/u-net/` is for image-segmentation work.
 
