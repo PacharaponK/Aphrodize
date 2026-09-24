@@ -6,4 +6,5 @@ COPY backend ./backend
 RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --no-cache-dir -r ai/requirements-runtime.txt
 COPY ai ./ai
+COPY models ./models
 CMD ["arq", "backend.workers.inference_worker.WorkerSettings"]

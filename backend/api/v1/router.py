@@ -4,6 +4,7 @@ from backend.api.deps import require_api_credentials
 from backend.api.v1.routes import (
     analyses,
     consents,
+    forecasts,
     health,
     inference,
     questionnaires,
@@ -25,6 +26,12 @@ api_router.include_router(
 )
 api_router.include_router(
     analyses.router, prefix="/analyses", tags=["analyses"], dependencies=protected
+)
+api_router.include_router(
+    forecasts.router,
+    prefix="/lifestyle-forecast",
+    tags=["lifestyle-forecast"],
+    dependencies=protected,
 )
 api_router.include_router(
     training.router, prefix="/training", tags=["training"], dependencies=protected

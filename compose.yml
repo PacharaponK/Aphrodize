@@ -139,6 +139,7 @@ services:
     environment: *api-environment
     volumes:
       - ./backend:/app/backend
+      - ./models:/app/models
     depends_on:
       postgres:
         condition: service_healthy

@@ -18,7 +18,7 @@ Client
 
 | Service | Responsibility |
 |---|---|
-| FastAPI | Validates requests, captures consent, stores questionnaire data, queues jobs, and exposes result APIs. |
+| FastAPI | Validates requests, captures consent, stores questionnaire data, invokes approved time-series model code, queues jobs, and exposes result APIs. |
 | PostgreSQL / SQLAlchemy | Stores pseudonymous identifiers and all workflow metadata. |
 | MinIO | Stores private images and future derived/model artifacts. Objects are never included in API logs. |
 | Redis / ARQ | Separates API requests from inference and training work. `inference` and `training` use distinct queues. |
@@ -29,7 +29,7 @@ Client
 
 `POST /api/v1/training/runs` accepts `time_series`, `tabular`, and `image_segmentation`. Image analyses use the checked FFHQ-Wrinkle model mounted read-only in the inference worker. `POST /api/v1/inference/runs` accepts generic `time_series` and `tabular` model URIs and still fails safe with `model_not_deployed` until an approved MLflow model is available. The trainer records an MLflow run but does not train on user uploads.
 
-The reserved model workspace lives in [`models/`](../models/README.md): `models/time-series/modelx/` is for ordered-observation workloads and `models/non-time-series/u-net/` is for image-segmentation work.
+The model workspace lives in [`models/`](../models/README.md): `models/time-series/linear-model/` contains linear ordered-observation models, `models/time-series/non-linear-model/` is reserved for non-linear forecasting models, and `models/non-time-series/` contains image-model source and artifacts. Hyphenated taxonomy folders are loaded explicitly by [`backend/libs/model_loader.py`](../backend/libs/model_loader.py).
 
 ## Local start
 

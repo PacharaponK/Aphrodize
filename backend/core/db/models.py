@@ -1,8 +1,8 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, String, func
+from sqlalchemy import JSON, Date, DateTime, Enum, Float, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.core.db.base import Base
@@ -42,6 +42,24 @@ class Questionnaire(Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     answers: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyLifestyleObservation(Base):
+    """One day of standardized wrinkle scoring and self-reported lifestyle data."""
+
+    __tablename__ = "daily_lifestyle_observations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "date", name="uq_lifestyle_observation_user_date"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    date: Mapped[date] = mapped_column(Date)
+    wrinkle_score: Mapped[float] = mapped_column(Float)
+    sleep_hours: Mapped[float] = mapped_column(Float)
+    water_intake_ml: Mapped[float] = mapped_column(Float)
+    outdoor_minutes: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
