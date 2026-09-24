@@ -60,5 +60,5 @@ imageInput.addEventListener("change", () => {
   setPhoto(URL.createObjectURL(file));
 });
 
-usePhoto.addEventListener("click", () => window.location.assign("quality-rejected.html"));
+usePhoto.addEventListener("click", () => window.location.assign("result-detail.html"));
 window.addEventListener("pagehide", () => stream?.getTracks().forEach((track) => track.stop()));
