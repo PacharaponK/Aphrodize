@@ -71,7 +71,13 @@ class WrinkleAnalysisService:
                     )
         return self._model_bundle
 
-    def analyze_bytes(self, image_bytes: bytes, suffix: str = ".jpg") -> AnalysisResponse:
+    def analyze_bytes(
+        self,
+        image_bytes: bytes,
+        suffix: str = ".jpg",
+        *,
+        artifact_sink: Callable[[dict[str, bytes]], None] | None = None,
+    ) -> AnalysisResponse:
         """Analyze bytes; temporary source and raw model artifacts are deleted on return."""
 
         with tempfile.TemporaryDirectory(prefix="aphrodize-wrinkle-") as directory:
@@ -87,6 +93,11 @@ class WrinkleAnalysisService:
             )
             with Image.open(work / "prediction" / "face_mask.png") as opened:
                 face_mask = np.asarray(opened.convert("L")) > 0
+            if artifact_sink is not None:
+                artifact_sink({
+                    "overlay": (work / "prediction" / "overlay.png").read_bytes(),
+                    "mask": (work / "prediction" / "wrinkle_mask.png").read_bytes(),
+                })
             return self.build_response(result, face_mask)
 
     def build_response(self, result: PredictionResult, face_mask: np.ndarray) -> AnalysisResponse:
@@ -103,12 +114,21 @@ class WrinkleAnalysisService:
         gate_passed = bool(confidence["passed"])
         reasons = list(confidence["reasons"])
         derived = None
+        experimental = None
         recommendations: list[dict[str, object]] = []
         if gate_passed:
             derived = derive_scores(
                 result.mask, face_mask, gate_passed=True, config=self.score_config
             )
             recommendations = self.recommendation_provider(derived)
+        else:
+            experimental = derive_scores(
+                result.mask,
+                face_mask,
+                gate_passed=False,
+                allow_experimental=True,
+                config=self.score_config,
+            )
         response = {
             "analysis_id": str(uuid4()),
             "status": "completed" if gate_passed else "abstained",
@@ -126,6 +146,7 @@ class WrinkleAnalysisService:
                 "artifacts_publicly_available": False,
             },
             "derived_score": derived,
+            "experimental_score": experimental,
             "recommendation_gate": {
                 "eligible": gate_passed,
                 "status": "passed" if gate_passed else "withheld",

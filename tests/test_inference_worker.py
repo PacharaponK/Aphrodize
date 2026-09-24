@@ -27,10 +27,20 @@ class FakeSession:
         self.commits += 1
 
 
+class FakeRedis:
+    def __init__(self):
+        self.jobs = []
+
+    async def enqueue_job(self, *args, **kwargs):
+        self.jobs.append((args, kwargs))
+        return object()
+
+
 @pytest.mark.asyncio
 async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
     analysis = SimpleNamespace(
         id=uuid4(),
+        user_id=uuid4(),
         status=AnalysisStatus.queued,
         object_key="users/example/original/image",
         content_type="image/png",
@@ -42,8 +52,9 @@ async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
     observed = {}
 
     class Service:
-        def analyze_bytes(self, payload, suffix):
+        def analyze_bytes(self, payload, suffix, *, artifact_sink):
             observed.update(payload=payload, suffix=suffix)
+            artifact_sink({"overlay": b"overlay", "mask": b"mask"})
             return SimpleNamespace(
                 model_dump=lambda **_kwargs: {
                     "analysis_id": str(uuid4()),
@@ -53,12 +64,28 @@ async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
 
     monkeypatch.setattr(inference_worker, "SessionLocal", lambda: session)
     monkeypatch.setattr(inference_worker, "get_bytes", lambda _key: b"image")
+    stored = []
+    removed = []
+    monkeypatch.setattr(
+        inference_worker, "put_bytes", lambda *args: stored.append(args)
+    )
+    monkeypatch.setattr(
+        inference_worker, "remove_objects", lambda keys: removed.extend(keys)
+    )
+    redis = FakeRedis()
 
-    await inference_worker.run_inference({"wrinkle_service": Service()}, str(analysis.id))
+    await inference_worker.run_inference(
+        {"wrinkle_service": Service(), "redis": redis}, str(analysis.id)
+    )
 
     assert observed == {"payload": b"image", "suffix": ".png"}
     assert analysis.status == AnalysisStatus.completed
-    assert analysis.result == {"analysis_id": str(analysis.id), "status": "abstained"}
+    assert analysis.result["analysis_id"] == str(analysis.id)
+    assert analysis.result["status"] == "abstained"
+    assert analysis.result["artifacts_expires_at"]
+    assert len(stored) == 2
+    assert removed == [analysis.object_key]
+    assert redis.jobs[0][0][0] == "expire_analysis_artifacts"
     assert analysis.error_category is None
     assert analysis.completed_at is not None
     assert session.commits == 2
@@ -83,6 +110,7 @@ def test_recommendations_require_ai_confidence() -> None:
 async def test_worker_rejects_image_failing_quality_gate(monkeypatch) -> None:
     analysis = SimpleNamespace(
         id=uuid4(),
+        user_id=uuid4(),
         status=AnalysisStatus.queued,
         object_key="users/example/original/image",
         content_type="image/png",
@@ -94,11 +122,15 @@ async def test_worker_rejects_image_failing_quality_gate(monkeypatch) -> None:
     session = FakeSession(analysis)
 
     class Service:
-        def analyze_bytes(self, _payload, _suffix):
+        def analyze_bytes(self, _payload, _suffix, *, artifact_sink):
             raise QualityGateError(QualityAssessment(False, ("no_face_detected",), {}))
 
     monkeypatch.setattr(inference_worker, "SessionLocal", lambda: session)
     monkeypatch.setattr(inference_worker, "get_bytes", lambda _key: b"image")
+    removed = []
+    monkeypatch.setattr(
+        inference_worker, "remove_objects", lambda keys: removed.extend(keys)
+    )
 
     await inference_worker.run_inference({"wrinkle_service": Service()}, str(analysis.id))
 
@@ -109,3 +141,18 @@ async def test_worker_rejects_image_failing_quality_gate(monkeypatch) -> None:
         "status": "rejected",
         "quality_flags": ["no_face_detected"],
     }
+    assert removed == [analysis.object_key]
+
+
+@pytest.mark.asyncio
+async def test_expiry_job_removes_both_private_artifacts(monkeypatch) -> None:
+    user_id, analysis_id = uuid4(), uuid4()
+    removed = []
+    monkeypatch.setattr(inference_worker, "remove_objects", lambda keys: removed.extend(keys))
+
+    await inference_worker.expire_analysis_artifacts({}, str(user_id), str(analysis_id))
+
+    assert removed == [
+        f"users/{user_id}/derived/{analysis_id}/overlay.png",
+        f"users/{user_id}/derived/{analysis_id}/mask.png",
+    ]

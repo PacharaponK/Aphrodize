@@ -1,8 +1,15 @@
 from io import BytesIO
+from uuid import UUID
 
 from minio import Minio
 
 from backend.core.config import settings
+
+
+def analysis_artifact_key(user_id: UUID, analysis_id: UUID, kind: str) -> str:
+    if kind not in {"overlay", "mask"}:
+        raise ValueError("unsupported analysis artifact")
+    return f"users/{user_id}/derived/{analysis_id}/{kind}.png"
 
 
 def get_minio_client() -> Minio:
