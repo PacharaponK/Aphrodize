@@ -26,8 +26,6 @@ def image_quality_flags(payload: bytes) -> tuple[float, list[str]]:
     flags = []
     if min(width, height) < 512:
         flags.append("resolution_too_low")
-    if not 0.75 <= width / height <= 1.33:
-        flags.append("unsupported_aspect_ratio")
     return (0.0 if flags else 1.0), flags
 
 
@@ -46,7 +44,8 @@ async def create_analysis(session: AsyncSession, user_id: UUID, image: UploadFil
         raise HTTPException(status_code=413, detail="Image exceeds upload limit")
     quality_score, quality_flags = image_quality_flags(payload)
     object_key = f"users/{user_id}/original/{uuid.uuid4()}"
-    put_bytes(object_key, payload, image.content_type)
+    if not quality_flags:
+        put_bytes(object_key, payload, image.content_type)
     analysis = Analysis(
         user_id=user_id,
         object_key=object_key,
