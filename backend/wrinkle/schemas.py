@@ -73,6 +73,7 @@ class AnalysisResponse(StrictModel):
     status: Literal["completed", "abstained"]
     model_output: ResearchModelOutput
     derived_score: DerivedScore | None
+    experimental_score: DerivedScore | None = None
     recommendation_gate: RecommendationGate
     recommendations: list[dict[str, Any]]
     limitations: list[str]

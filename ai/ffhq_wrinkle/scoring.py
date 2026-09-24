@@ -9,8 +9,8 @@ import numpy as np
 ROI_VERSION = "ffhq-aligned-roi-v1"
 SCORE_VERSION = "aphrodize-wrinkle-area-v1"
 SCORE_DISCLAIMER = (
-    "A model-derived image measurement for research use; it is not a diagnosis, "
-    "a clinical severity rating, or evidence that any treatment will work."
+    "An experimental, unvalidated image measurement for research use; it is not a "
+    "diagnosis, a clinical severity rating, or evidence that any treatment will work."
 )
 
 
@@ -110,12 +110,13 @@ def derive_scores(
     face_mask: np.ndarray,
     *,
     gate_passed: bool,
+    allow_experimental: bool = False,
     config: ScoreConfig = ScoreConfig(),
 ) -> dict[str, object]:
-    """Derive versioned scores only after quality and confidence gates pass."""
+    """Derive versioned scores after confidence, or explicitly as unvalidated research output."""
 
     config.validate()
-    if not gate_passed:
+    if not gate_passed and not allow_experimental:
         raise PermissionError("derived scores require passed quality and confidence gates")
     if wrinkle_mask.shape != face_mask.shape or wrinkle_mask.ndim != 2:
         raise ValueError("wrinkle_mask and face_mask must be matching 2-D arrays")

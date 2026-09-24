@@ -125,6 +125,7 @@ class ServiceTests(unittest.TestCase):
         payload = response.model_dump()
         self.assertEqual(payload["status"], "abstained")
         self.assertIsNone(payload["derived_score"])
+        self.assertGreaterEqual(payload["experimental_score"]["overall"]["score"], 0)
         self.assertEqual(payload["recommendations"], [])
         self.assertEqual(calls, [])
         encoded = json.dumps(payload)
