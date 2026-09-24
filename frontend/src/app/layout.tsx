@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import "./prototype.css";
+import "./analysis.css";
 
 export const metadata: Metadata = {
   title: "Aphrodize",
   description: "Aphrodize skin tracking prototype.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th">
       <body>
