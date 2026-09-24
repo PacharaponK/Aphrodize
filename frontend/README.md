@@ -4,7 +4,7 @@
 
 - `design/` — wireframe และ design guidance ก่อนเริ่ม implementation
 - `index.html` — responsive, static front-end prototype
-- `login.html` — static login page พร้อม client-side validation (ไม่เชื่อม authentication จริง)
+- `login.html` และ `signup.html` — static authentication prototype พร้อม client-side validation (ไม่เชื่อม authentication จริง)
 - `styles.css` และ `app.js` — styles และ interactions สำหรับ prototype
 
 เปิด `client/index.html` ใน browser ได้ทันที โดยไม่ต้อง install dependency.

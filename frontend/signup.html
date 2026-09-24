@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Create an Aphrodize account" />
+    <title>สร้างบัญชี — Aphrodize</title>
+    <link rel="stylesheet" href="styles.css" /><link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="theme.css" /><link rel="stylesheet" href="login.css" />
+    <link rel="stylesheet" href="signup.css" />
+  </head>
+  <body class="auth-page">
+    <main class="auth-shell signup-shell">
+      <section class="auth-intro" aria-label="เกี่ยวกับการสร้างบัญชี">
+        <a class="auth-brand" href="login.html"><img src="assets/aphrodize-contour-a.svg" alt="" />Aphrodize</a>
+        <div class="intro-copy"><p class="eyebrow">YOUR SKIN, YOUR DATA</p><h1>เริ่มติดตาม<br /><span>ในแบบของคุณ</span></h1><p>เริ่มด้วยข้อมูลที่จำเป็นเท่านั้น ส่วนข้อมูลผิวและสุขภาพเป็นตัวเลือก และแก้ไขหรือลบได้ภายหลัง</p></div>
+        <div class="intro-points"><span>✓ ใช้ติดตามแนวโน้ม ไม่ใช่วินิจฉัยโรค</span><span>✓ ข้ามคำถามส่วนตัวได้ทุกข้อ</span><span>✓ ถอน consent และลบข้อมูลได้</span></div>
+      </section>
+      <section class="auth-card signup-card" aria-labelledby="signup-title">
+        <ol class="signup-progress" aria-label="ขั้นตอนการสร้างบัญชี"><li class="active" aria-current="step"><span>1</span>บัญชี</li><li><span>2</span>โปรไฟล์</li><li><span>3</span>ความเป็นส่วนตัว</li></ol>
+        <form id="signup-form" novalidate>
+          <section class="signup-step active" data-step="1">
+            <div class="auth-card-heading"><p class="eyebrow">STEP 1 OF 3</p><h2 id="signup-title">สร้างบัญชี</h2><p>ข้อมูลที่จำเป็นเพื่อเริ่มต้นใช้งาน</p></div>
+            <label for="display-name">ชื่อที่ต้องการให้แสดง</label>
+            <input id="display-name" name="display-name" type="text" autocomplete="name" placeholder="เช่น May" required />
+            <label for="email">อีเมล</label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required />
+            <label for="password">รหัสผ่าน</label>
+            <div class="password-field"><input id="password" name="password" type="password" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัวอักษร" minlength="8" required /><button type="button" id="toggle-password" aria-label="แสดงรหัสผ่าน">แสดง</button></div>
+            <button class="primary-button auth-submit next-step" type="button">ถัดไป <span>→</span></button>
+          </section>
+          <section class="signup-step" data-step="2" hidden>
+            <div class="auth-card-heading"><p class="eyebrow">STEP 2 OF 3 · OPTIONAL</p><h2>ตั้งค่าโปรไฟล์ผิว</h2><p>ช่วยจัดการการติดตามให้เหมาะกับคุณ และเปลี่ยนได้ภายหลัง</p></div>
+            <label for="age-range">ช่วงอายุ</label>
+            <select id="age-range" name="age-range"><option value="">ไม่ต้องการระบุ</option><option>18–24</option><option>25–34</option><option>35–44</option><option>45–54</option><option>55+</option></select>
+            <label for="skin-type">สภาพผิวที่คุณระบุเอง</label>
+            <select id="skin-type" name="skin-type"><option value="">ไม่แน่ใจ / ข้าม</option><option>ผิวแห้ง</option><option>ผิวมัน</option><option>ผิวผสม</option><option>ผิวปกติ</option><option>ผิวระคายง่าย</option></select>
+            <fieldset><legend>สิ่งที่อยากติดตาม</legend><label class="checkbox"><input type="checkbox" name="goal" value="wrinkle" checked /> <span>ริ้วรอยและลักษณะผิว</span></label><label class="checkbox"><input type="checkbox" name="goal" value="acne" /> <span>สิวและการฟื้นตัว</span></label></fieldset>
+            <div class="signup-actions"><button class="text-button previous-step" type="button">← ย้อนกลับ</button><button class="primary-button next-step" type="button">ถัดไป <span>→</span></button></div>
+          </section>
+          <section class="signup-step" data-step="3" hidden>
+            <div class="auth-card-heading"><p class="eyebrow">STEP 3 OF 3</p><h2>คุณเป็นผู้ควบคุมข้อมูล</h2><p>การบันทึกข้อมูลต่อไปนี้เป็นทางเลือกทั้งหมด</p></div>
+            <label for="smoking">การใช้บุหรี่หรือผลิตภัณฑ์นิโคติน</label>
+            <select id="smoking" name="smoking"><option value="">ไม่ต้องการตอบ</option><option value="no">ไม่ใช้</option><option value="occasional">ใช้เป็นครั้งคราว</option><option value="regular">ใช้เป็นประจำ</option></select>
+            <label class="consent-box"><input id="menstrual-tracking" type="checkbox" name="menstrual-tracking" /><span><strong>เปิดบันทึกรอบเดือน</strong><small>บันทึกสถานะรายวันได้เพื่อดูแนวโน้มผิว คุณปิดหรือลบข้อมูลนี้ได้ทุกเมื่อ</small></span></label>
+            <label class="consent-box required-consent"><input id="analysis-consent" type="checkbox" required /><span><strong>ยินยอมให้ประมวลผลภาพเพื่อวิเคราะห์แนวโน้มผิว</strong><small>ผลเป็นข้อมูลประกอบ ไม่ใช่การวินิจฉัยโรค คุณถอน consent ได้ทุกเมื่อ</small></span></label>
+            <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
+            <div class="signup-actions"><button class="text-button previous-step" type="button">← ย้อนกลับ</button><button class="primary-button" type="submit">สร้างบัญชี <span>→</span></button></div>
+          </section>
+        </form>
+        <p class="signup-link">มีบัญชีอยู่แล้ว? <a href="login.html">เข้าสู่ระบบ</a></p>
+      </section>
+    </main>
+    <script src="signup.js"></script><script src="theme-switcher.js"></script>
+  </body>
+</html>
