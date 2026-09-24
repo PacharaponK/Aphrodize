@@ -1,0 +1,204 @@
+name: aphrodize
+
+x-api-environment: &api-environment
+  APP_ENV: development
+  POSTGRES_HOST: postgres
+  POSTGRES_USER: ${POSTGRES_USER:-aphrodize}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+  POSTGRES_DB: ${POSTGRES_DB:-aphrodize}
+  REDIS_HOST: redis
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-aphrodize}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+  MINIO_SECURE: "false"
+  MINIO_BUCKET: aphrodize-private
+  LABEL_STUDIO_URL: http://label-studio:8080
+  LABEL_STUDIO_API_KEY: ${LABEL_STUDIO_API_KEY:-}
+  API_USERNAME: ${API_USERNAME:-aphrodize}
+  API_PASSWORD: ${API_PASSWORD:?Set API_PASSWORD in .env}
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MODEL_VERSION: ${MODEL_VERSION:-ffhq-wrinkle-stage2-unet}
+
+x-container-logging: &container-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aphrodize
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: aphrodize
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aphrodize -d aphrodize"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *container-logging
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *container-logging
+
+  minio:
+    image: quay.io/minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aphrodize}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    logging: *container-logging
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-aphrodize}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+    entrypoint: >-
+      /bin/sh -c 'until mc alias set local http://minio:9000 "$${MINIO_ACCESS_KEY}" "$${MINIO_SECRET_KEY}";
+      do sleep 1; done; mc mb --ignore-existing local/aphrodize-private;
+      mc mb --ignore-existing local/mlflow'
+    depends_on:
+      minio:
+        condition: service_started
+    logging: *container-logging
+
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    environment:
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "false"
+      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize}
+      LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?Set LABEL_STUDIO_PASSWORD in .env}
+    volumes:
+      - label_studio_data:/label-studio/data
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8080/user/login/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *container-logging
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: docker/mlflow.Dockerfile
+      additional_contexts:
+        api_image: service:api
+    command: ["/app/start.sh"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-aphrodize}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-aphrodize}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *container-logging
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    environment: *api-environment
+    volumes:
+      - ./backend:/app/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *container-logging
+
+  inference-worker:
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+    command: arq backend.workers.inference_worker.WorkerSettings
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    logging: *container-logging
+
+  trainer-worker:
+    build:
+      context: .
+      dockerfile: docker/trainer.Dockerfile
+    command: arq backend.workers.trainer_worker.WorkerSettings
+    restart: unless-stopped
+    environment: *api-environment
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+      mlflow:
+        condition: service_started
+    logging: *container-logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  label_studio_data:

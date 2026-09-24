@@ -1,0 +1,23 @@
+{
+  "manifest_version": "aphrodize-target-user-validation-v1",
+  "dataset_id": "replace-with-approved-dataset-id",
+  "dataset_version": "replace-with-immutable-version",
+  "purpose": "confidence_calibration",
+  "source_kind": "target_user",
+  "consent_scope": ["validation"],
+  "identity_split_method": "replace-with-subject-level-split-procedure",
+  "independent_from_training": true,
+  "independent_from_official_test": true,
+  "official_test_overlap_count": 0,
+  "sample_count": 0,
+  "subject_count": 0,
+  "capture_protocol": "replace-with-versioned-capture-protocol",
+  "annotation_guideline": "replace-with-versioned-annotation-guideline",
+  "model_architecture": "UNet",
+  "checkpoint_sha256": "replace-with-checkpoint-sha256",
+  "prediction_version": "ffhq-wrinkle-inference-v1",
+  "preprocessing_version": "replace-with-preprocessing-version",
+  "threshold_version": "softmax-class1-face-mask-v1",
+  "confidence_method": "mean-binary-decision-margin",
+  "records_sha256": "replace-with-validation-csv-sha256"
+}

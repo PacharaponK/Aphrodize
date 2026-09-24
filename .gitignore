@@ -1,1 +1,76 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+.python-version
+.venv/
+venv/
+env/
+.uv-cache/
+.uv-python/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local datasets and ML model binaries
+ai/ffhq-wrinkle/
+storage/data/ffhq-wrinkle/
+storage/models/ffhq-wrinkle/
+data/
+*.ckpt
+*.h5
+*.joblib
+*.onnx
+*.pkl
+*.pt
+*.pth
+
+# Generated FFHQ-Wrinkle pipeline outputs
+storage/artifacts/ffhq_wrinkle_phase*/
+
+# Experiment and runtime outputs
+mlruns/
+logs/*.log
+logs/*.jsonl
+models/**/artifacts/
+models/**/checkpoints/
+*.log
+*.pid
+*.sqlite
+*.sqlite3
+*.db
+tmp/
+temp/
+
+# JavaScript / frontend
+node_modules/
+.next/
+.nuxt/
+.svelte-kit/
+coverage/
+*.tsbuildinfo
+
+# Editors and operating systems
+.idea/
+.vscode/
+.obsidian/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

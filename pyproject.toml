@@ -1,0 +1,39 @@
+[project]
+name = "aphrodize"
+version = "0.1.0"
+description = "Privacy-first orchestration for time-series and general-purpose ML workflows."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "arq>=0.26,<0.27",
+  "asyncpg>=0.30,<0.31",
+  "fastapi>=0.115,<0.116",
+  "label-studio-sdk>=1.0,<2.0",
+  "minio>=7.2,<8.0",
+  "mlflow>=2.20,<3.0",
+  "pillow>=11.1,<12.0",
+  "pydantic-settings>=2.7,<3.0",
+  "python-multipart>=0.0.20,<0.1",
+  "sqlalchemy>=2.0.36,<2.1",
+  "uvicorn[standard]>=0.34,<0.35",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<0.29",
+  "pytest>=8.3,<9.0",
+  "pytest-asyncio>=0.25,<0.26",
+  "ruff>=0.9,<0.10",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["B008"] # FastAPI declares dependencies and form fields in function signatures.

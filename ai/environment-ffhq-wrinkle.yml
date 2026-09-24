@@ -1,0 +1,35 @@
+name: ffhq-wrinkle
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.9
+  - pip=24.0
+  - setuptools=69.5.1
+  - wheel=0.43.0
+  - pip:
+      # Official requirements at upstream commit
+      # aa3c66c819c91034c72b5272caece92de545257f.
+      - numpy==1.23.5
+      - torch==2.1.2
+      - torchvision==0.16.2
+      - tqdm==4.64.1
+      - typing_extensions==4.16.0
+      - yacs==0.1.8
+      - einops==0.8.1
+      - monai==1.3.2
+      # inference.py imports PIL, but Pillow is absent from the upstream file.
+      - Pillow==10.1.0
+      # Official face_masking.py imports scipy.ndimage, but upstream omits it.
+      - scipy==1.10.1
+      - requests==2.32.5
+      - opencv-python-headless==4.8.1.78
+      # Phase 6 API adapter and contract tests.
+      - fastapi==0.128.8
+      - pydantic==2.13.5
+      - python-multipart==0.0.20
+      - uvicorn==0.39.0
+      - httpx==0.28.1
+variables:
+  PYTHONHASHSEED: "2024"
+  CUBLAS_WORKSPACE_CONFIG: ":4096:8"

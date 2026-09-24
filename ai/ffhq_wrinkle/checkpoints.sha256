@@ -1,0 +1,7 @@
+# SHA-256  bytes  path (paths below archive: refer to ZIP members)
+91bf32293006a7440224b66aff5f77488c55ca9898057b232d2be170421a917b  876737783  pretrained_ckpt/checkpoints.zip
+3f225f3ab4547c7e26c0ae1bf25eb96a2473324ec6babb55a1b8670bbb2a7142  307286564  pretrained_ckpt/checkpoints.zip::stage1_texture_pretrain_swinunetr/stage1_swinunetr.pth
+d85ce197e0b2e649545a45f514593b58e497ace229951fef5aba9689aa3d6197  207287608  pretrained_ckpt/checkpoints.zip::stage1_texture_pretrain_unet/stage1_unet.pth
+b8f6a46c49d52f5725d0d79740d2c9508b4f8aa6400ea4fe0b27f7a6cd8bdd12  307302386  pretrained_ckpt/checkpoints.zip::stage2_wrinkle_finetune_swinunetr/stage2_swinunetr.pth
+883034b3e0726dcdae946c312106dfde1d354ea5455fa21cba045a73058f4a25  207296760  pretrained_ckpt/checkpoints.zip::stage2_wrinkle_finetune_unet/stage2_unet.pth
+
