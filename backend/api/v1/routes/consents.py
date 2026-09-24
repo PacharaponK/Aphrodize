@@ -16,7 +16,9 @@ async def create_consent(
 ) -> ConsentRead:
     user = User(id=uuid.uuid4())
     consent = Consent(user_id=user.id, version=payload.version)
-    session.add_all([user, consent])
+    session.add(user)
+    await session.flush()
+    session.add(consent)
     await session.commit()
     await session.refresh(consent)
     return ConsentRead(
