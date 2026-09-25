@@ -1,143 +1,104 @@
 # การไหลของข้อมูลภาพสู่ AI
 
-เอกสารนี้อธิบายเส้นทางของรูปถ่ายตั้งแต่อัปโหลดจนได้ผลวิเคราะห์ โดยอ้างอิงจากโค้ดใน repository นี้ ณ ปัจจุบัน
+เอกสารนี้อธิบายพฤติกรรมจากโค้ดใน repository ปัจจุบัน เส้นทางหลักของเว็บคือ `frontend/src/app/capture/page.tsx` → Next.js route → Platform API → ARQ worker → FFHQ-Wrinkle pipeline ส่วน CLI และ FastAPI adapter เป็นทางเรียกแยกกัน
 
-> สถานะสำคัญ: Platform API เชื่อมกับ FFHQ-Wrinkle pipeline ผ่าน inference worker แล้ว
->
-> - **Platform API** (`backend/`) รับรูป เก็บรูปใน MinIO จัดคิว และให้ worker เรียกโมเดล
-> - **Wrinkle pipeline** (`ai/ffhq_wrinkle/`) ใช้ได้ทั้งจาก worker, CLI และ FastAPI adapter โดยเก็บ artifacts ระหว่าง inference ไว้ชั่วคราว
-
-## 1. เส้นทางรูปใน Platform API ที่รันด้วย Docker Compose
+## 1. เส้นทางจากเว็บถึงผลวิเคราะห์
 
 ```mermaid
 flowchart TD
-    U[ผู้ใช้ / Web client] -->|multipart image| R[POST /api/v1/analyses/users/{user_id}\nbackend/api/v1/routes/analyses.py]
-    R --> S[create_analysis\nbackend/services/analysis_service.py]
-    S --> C{มี consent ที่ยังใช้งานอยู่?}
-    C -->|ไม่ใช่| X1[403: ไม่รับรูป]
-    C -->|ใช่| V{ชนิดและขนาดไฟล์ถูกต้อง?\nJPEG / PNG / WebP, ไม่เกิน max_upload_bytes}
-    V -->|ไม่ใช่| X2[415 หรือ 413: ไม่รับรูป]
-    V -->|ใช่| Q[image_quality_flags\nตรวจเปิดไฟล์ได้, ความละเอียด, อัตราส่วน]
-    Q --> M[(MinIO: aphrodize-private\nusers/{user_id}/original/{uuid})]
-    Q --> D[(PostgreSQL: analyses\nmetadata, object_key, quality_flags, status)]
-    Q --> G{ผ่าน preflight quality gate?}
-    G -->|ไม่ผ่าน| REJ[status = rejected\nerror_category = image_quality]
-    G -->|ผ่าน| J[Redis / ARQ queue: inference\njob run_inference(analysis_id)]
-    J --> W[inference-worker\nbackend/workers/inference_worker.py]
-    W --> AI[อ่านรูปจาก MinIO\nWrinkleAnalysisService.analyze_bytes]
-    AI --> F[status = completed / rejected / failed\nresult = public AI response]
-    F --> D
-    U -->|GET /api/v1/analyses/{analysis_id}| R
-    R -->|อ่านสถานะ/ผลลัพธ์| D
-    D --> U
+    U[ผู้ใช้เลือกภาพหรือถ่ายภาพ<br/>JPEG / PNG / WebP ไม่เกิน 10 MiB] --> C[หน้า /capture<br/>ตรวจชนิด ขนาด และ consent]
+    C -->|POST /api/analysis| N[Next.js route<br/>frontend/src/app/api/analysis/route.ts]
+    N -->|POST /api/v1/consents<br/>สร้าง user และ consent ใหม่| CO[(PostgreSQL: users, consents)]
+    N -->|POST /api/v1/analyses/users/:user_id<br/>Basic Auth + multipart image| API[Platform API<br/>analyses.py → create_analysis]
+    API --> V{consent ยังใช้งานอยู่<br/>MIME และขนาดถูกต้อง?}
+    V -->|ไม่ผ่าน| E[HTTP 403 / 415 / 413]
+    V -->|ผ่าน| Q[Preflight: เปิดภาพได้<br/>ด้านสั้นอย่างน้อย 512 px]
+    Q -->|ไม่ผ่าน| RJ[(PostgreSQL: rejected<br/>quality_flags, image_quality)]
+    Q -->|ผ่าน| O[(MinIO private: users/:user_id/original/:uuid)]
+    O --> DB[(PostgreSQL: analyses<br/>queued, metadata, object_key)]
+    DB -->|"run_inference(analysis_id)"| REDIS[Redis / ARQ queue: inference]
+    REDIS --> W[inference-worker<br/>running → อ่านภาพจาก MinIO]
+    W --> P[WrinkleAnalysisService.analyze_bytes<br/>สร้างและลบไฟล์ทำงานชั่วคราว]
+    P -->|QualityGateError| R2[(PostgreSQL: rejected<br/>quality_flags)]
+    P -->|ข้อผิดพลาดอื่น| F[(PostgreSQL: failed<br/>inference_failed)]
+    P -->|ผลสำเร็จ| ART[(MinIO private: derived/:analysis_id<br/>overlay.png, mask.png)]
+    ART -->|นัดงานลบหลัง 24 ชั่วโมง| EXP[ARQ: expire_analysis_artifacts]
+    ART --> DONE[(PostgreSQL: completed<br/>public result, artifacts_expires_at)]
+    W -->|finally: ลบ original| O
+    N -->|HTTP 202 + signed HttpOnly cookie<br/>เก็บ analysis id ล่าสุด 24 ชั่วโมง| U
+    U -->|/result-detail: GET /api/analysis<br/>poll ทุก 2.5 วินาทีขณะ queued/running| N
+    N -->|GET /api/v1/analyses/:analysis_id| API
+    API --> RJ
+    API --> R2
+    API --> F
+    API --> DONE
+    U -->|GET /api/analysis?artifact=overlay หรือ mask| N
+    N -->|GET /api/v1/analyses/:analysis_id/artifacts/:kind| API
+    API -->|ตรวจเวลาหมดอายุ แล้วอ่าน PNG| ART
 ```
 
-### ไฟล์และหน้าที่ในเส้นทางนี้
+Next.js route ตรวจ origin, consent จากฟอร์ม, MIME และขนาดก่อนส่งต่อ จากนั้นเรียก `/consents` เพื่อสร้าง user/consent ใหม่ทุกครั้งที่ส่งภาพ แล้วใช้ Basic Auth ที่ฝั่ง server เรียก Platform API เบราว์เซอร์ได้รับ cookie ที่ลงลายเซ็นเพื่ออ่าน **analysis ล่าสุดของเบราว์เซอร์นั้น** ผ่าน proxy เท่านั้น ไม่ได้ส่ง Basic Auth ให้เบราว์เซอร์
 
-| ไฟล์ | หน้าที่ | ข้อมูลที่ส่งต่อ/จัดเก็บ |
+`create_analysis()` ตรวจ active consent อีกชั้นและทำ preflight ด้วย Pillow หากภาพเปิดไม่ได้หรือด้านสั้นต่ำกว่า 512 px จะบันทึก analysis เป็น `rejected` โดย **ไม่เก็บ bytes ใน MinIO และไม่เข้าคิว** ภาพที่ผ่านเท่านั้นจึงถูกเก็บเป็น original, สร้างแถว `queued` แล้วเข้าคิว `run_inference`
+
+Worker อ่าน original และเรียก service ใน thread แยกจาก event loop เมื่อได้ผล จะเก็บเฉพาะ `overlay.png` กับ `wrinkle_mask.png` (ชื่อ object `mask.png`) ใน MinIO, นัดงานลบหลัง 24 ชั่วโมง และบันทึก public response กับ `artifacts_expires_at` ลง PostgreSQL ไม่เก็บ logits/probability ดิบใน MinIO ไม่ว่าผลสำเร็จ ถูกปฏิเสธ หรือผิดพลาด worker พยายามลบ original ใน `finally`; หากอัปโหลดภาพผลได้บางส่วนแล้วเกิดข้อผิดพลาด จะพยายามลบส่วนที่อัปโหลดด้วย
+
+API ภาพผลตอบเฉพาะ `overlay`/`mask` เมื่อยังไม่หมดอายุจากเวลาใน result และอ่าน object private จาก MinIO หลังหมดอายุคืน HTTP 410; งาน ARQ ลบ object ทั้งสองเมื่อถึงกำหนด หน้า `/result-detail` แสดงคะแนนและภาพผลผ่าน Next.js proxy
+
+## 2. การประมวลผลภาพใน FFHQ-Wrinkle
+
+```mermaid
+flowchart TD
+    I[ภาพจาก worker หรือ FastAPI adapter] --> S[WrinkleAnalysisService.analyze_bytes<br/>TemporaryDirectory]
+    S --> P[predict_image → preprocess_image]
+    P --> L[อ่าน JPEG / PNG / WebP<br/>แก้ EXIF orientation และแปลง RGB]
+    L --> Y[YuNet: ตรวจจำนวนหน้าและ landmarks]
+    Y -->|ไม่ใช่หนึ่งหน้า| R[QualityGateError: rejected]
+    Y -->|หนึ่งหน้า| Q[ตรวจ resolution, face size,<br/>exposure, blur, pose, landmark confidence]
+    Q -->|ไม่ผ่าน| R
+    Q -->|ผ่าน| A[align_face 1024 × 1024]
+    A --> B[BiSeNet face parsing<br/>mask เฉพาะ skin + nose]
+    B -->|parsing หรือ mask quality ไม่ผ่าน| R
+    B --> T[masked RGB + texture map<br/>tensor 4 ช่อง normalize -1..1]
+    T --> M[โหลด Stage-2 UNet / SwinUNETR<br/>ตรวจ checkpoint SHA-256]
+    M --> IN[PyTorch logits → softmax class 1]
+    IN --> TH[threshold 0.5 และ face mask<br/>สร้าง mask กับ overlay]
+    TH --> CF[evaluate_confidence + policy compatibility]
+    CF -->|ผ่าน| SC[derived_score + recommendation gate eligible]
+    CF -->|ไม่ผ่าน| EX[experimental_score<br/>recommendation gate withheld]
+    SC --> RESP[AnalysisResponse: status completed]
+    EX --> RESP2[AnalysisResponse: status abstained]
+    RESP --> CLEAN[ลบ TemporaryDirectory หลัง return]
+    RESP2 --> CLEAN
+```
+
+`WrinkleAnalysisService` เขียน source และ artifacts ดิบลง temporary directory, cache model ใน memory แล้วส่ง public response ที่ไม่มี path/URL ของไฟล์ดิบ หาก worker ส่ง `artifact_sink` service จะคัดลอก bytes ของ overlay และ mask ออกมาก่อนลบ directory
+
+ค่าเริ่มต้นใน `ai/ffhq_wrinkle/confidence_policy.json` ยังเป็น `not_calibrated` จึงไม่ผ่าน confidence gate: service คืน `status: abstained`, `experimental_score` และไม่มีคำแนะนำ **แต่ worker บันทึกสถานะของงานในตาราง `analyses` เป็น `completed`** เพราะ pipeline ทำงานสำเร็จ หน้าเว็บจึงยังแสดงคะแนนทดลองและภาพผลได้ `derived_score` และคำแนะนำจะเกิดได้เมื่อ policy ที่ปล่อยใช้งานผ่าน gate เท่านั้น
+
+## 3. Artifacts และอายุข้อมูล
+
+| ตำแหน่ง | ข้อมูล | อายุ/การเข้าถึง |
 |---|---|---|
-| `backend/api/v1/routes/analyses.py` | นิยาม endpoint รับ `UploadFile`, ตรวจว่ามี user และคืนสถานะ analysis | รับรูปจาก HTTP แล้วส่งต่อไป service; endpoint GET อ่านผล |
-| `backend/services/analysis_service.py` | ตรวจ consent, MIME type, ขนาดไฟล์ และ preflight quality; สร้าง analysis และ enqueue งาน | bytes ของรูป → MinIO; metadata/status → PostgreSQL; `analysis.id` → Redis |
-| `backend/libs/minio_client.py` | wrapper สำหรับอ่าน/เขียน object ใน MinIO | รูปต้นฉบับเป็น private object; key รูปแบบ `users/<user_id>/original/<uuid>` |
-| `backend/core/db/models.py` | นิยามตาราง SQLAlchemy | `analyses` เก็บ object key, content type, quality flags, model version, status และ result แต่ไม่เก็บ bytes ของรูป |
-| `backend/libs/redis_client.py` | สร้าง connection ไป Redis สำหรับ ARQ | ส่ง job ชื่อ `run_inference` ไป queue `inference` |
-| `backend/workers/inference_worker.py` | consumer ของ inference queue | อ่านรูปจาก MinIO เรียก `WrinkleAnalysisService` และบันทึกผลลัพธ์ที่ปลอดภัยลง PostgreSQL |
-| `backend/api/schemas/analysis.py` | กำหนด response ของ API | ส่ง id, status, quality flags, result และ error category กลับผู้ใช้ |
+| MinIO `users/<user_id>/original/<uuid>` | ภาพต้นฉบับที่ผ่าน preflight | private; worker พยายามลบหลังจบงานทุกสถานะ |
+| TemporaryDirectory ของ service (`prediction/`) | `aligned_face.png`, `face_mask.png`, `masked_face.png`, `texture_map.png`, `model_input.npy`, `wrinkle_logits.npy`, `wrinkle_probability.npy/.png`, `wrinkle_mask.png`, `overlay.png`, `result.json` | ลบหลัง `analyze_bytes()` จบ |
+| MinIO `users/<user_id>/derived/<analysis_id>/overlay.png` และ `mask.png` | ภาพผลสองชนิดที่ worker คัดลอกออกจาก service | private; API ปฏิเสธหลัง 24 ชั่วโมง และ ARQ มีงานลบ object |
+| PostgreSQL `analyses` | metadata, `object_key`, status, quality flags, public response และเวลาหมดอายุภาพผล | ไม่มี bytes ของภาพหรือ raw model arrays |
 
-### การประมวลผลใน worker
+## 4. จุดเรียกแยกและสถานะผลลัพธ์
 
-`run_inference()` อ่านรูปด้วย `get_bytes()` แล้วเรียก pipeline ใน thread แยกจาก event loop ผล public response ถูกเขียนลง `Analysis.result`; raw mask และ probability artifacts ยังคงเป็นไฟล์ชั่วคราวและถูกลบเมื่อจบงาน
-
-## 2. เส้นทาง AI วิเคราะห์ริ้วรอยที่มีอยู่ใน `ai/ffhq_wrinkle`
-
-เส้นทางนี้เรียกได้ผ่าน CLI `ai/scripts/predict_wrinkle.py` หรือ API แยก `backend/wrinkle/api.py` ที่ endpoint `POST /v1/wrinkle/analyze` (ต้องส่ง `consent_accepted=true`) เมื่อมี checkpoints ที่ถูกต้อง
-
-```mermaid
-flowchart TD
-    I[รูป JPEG / PNG / WebP] --> A[api.py หรือ predict_wrinkle.py]
-    A --> SV[WrinkleAnalysisService.analyze_bytes\nservice.py]
-    SV --> TMP[TemporaryDirectory\nupload.<suffix>]
-    TMP --> PR[predict_image\nprediction.py]
-    PR --> PP[preprocess_image\npreprocess.py]
-    PP --> LI[load_user_image\nแก้ EXIF orientation และแปลง RGB]
-    LI --> FD[YuNetFaceDetector\nalignment.py]
-    FD --> FC{พบหน้าเดียวหรือไม่?}
-    FC -->|ไม่ใช่| RQ[result.json: rejected\nและ QualityGateError]
-    FC -->|ใช่| SQ[quality.py\nresolution, face size, exposure, blur, landmark confidence, pose]
-    SQ --> QG{ผ่าน quality gate?}
-    QG -->|ไม่ผ่าน| RQ
-    QG -->|ผ่าน| AL[align_face เป็น 1024×1024\nalignment.py]
-    AL --> FP[BiSeNet face parsing\nface_parsing.py]
-    FP --> FM[face_mask: skin + nose]
-    FM --> T[texture_map.py\nสร้าง texture channel]
-    T --> TEN[model_input.npy\n4 ช่อง: RGB ที่ mask แล้ว + texture\nnormalize เป็น -1..1]
-    TEN --> ML[modeling.py\nตรวจ SHA-256 checkpoint แล้วโหลด UNet หรือ SwinUNETR]
-    ML --> INF[infer_logits_and_probability\nPyTorch softmax class ริ้วรอย]
-    INF --> TH[threshold_probability และ face mask]
-    TH --> ART[บันทึก artifacts ใน output/prediction]
-    ART --> CO[evaluate_confidence\nconfidence.py + policy JSON]
-    CO --> CG{confidence/policy ผ่านหรือไม่?}
-    CG -->|ไม่ผ่าน| ABS[status = abstained\nงดคะแนนและคำแนะนำ]
-    CG -->|ผ่าน| SC[derive_scores\nscoring.py: overall และ region score]
-    SC --> RESP[AnalysisResponse JSON\nไม่มี raw artifact path/URL]
-    ABS --> RESP
-    RQ --> R422[API: HTTP 422 QualityRejection\nCLI: exit code 2]
-    RESP --> DEL[ออกจาก TemporaryDirectory\nลบรูปและ artifacts ชั่วคราว]
-```
-
-## 3. ไฟล์สำคัญของ pipeline AI และผลลัพธ์ระหว่างทาง
-
-| ลำดับ | ไฟล์ | หน้าที่ | ผลลัพธ์/ข้อมูลสำคัญ |
-|---:|---|---|---|
-| 1 | `backend/wrinkle/api.py` | FastAPI adapter; ตรวจ consent, content type, ขนาดไม่เกิน 10 MiB และเรียก service ใน threadpool | รับ `UploadFile` แล้วคืน JSON หรือ 422 หาก quality ไม่ผ่าน |
-| 2 | `backend/wrinkle/service.py` | orchestrator สำหรับภาพหนึ่งรูป; สร้าง temporary directory, cache model ใน memory และประกอบ public response | รูป/artefacts ดิบอยู่ชั่วคราวเท่านั้น; response ไม่เปิด URL ของ artifacts |
-| 3 | `ai/ffhq_wrinkle/preprocess.py` | โหลดภาพ, ตรวจคุณภาพ, align, face parsing, mask และสร้าง input tensor | `aligned_face.png`, `face_mask.png`, `masked_face.png`, `texture_map.png`, `model_input.npy`, `result.json` |
-| 4 | `ai/ffhq_wrinkle/alignment.py` | ตรวจใบหน้าด้วย YuNet และใช้ 5 landmarks จัดแนวใบหน้า | ต้องพบเพียง 1 ใบหน้า; ภาพ align ขนาด 1024×1024 |
-| 5 | `ai/ffhq_wrinkle/quality.py` | quality gate ของภาพและ face mask | flags เช่น รูปเล็ก/เบลอ, แสงไม่เหมาะ, มุมหน้าเกิน, ไม่มีหรือหลายใบหน้า |
-| 6 | `ai/ffhq_wrinkle/face_parsing.py` และ `bisenet.py` | โหลด BiSeNet 19 classes แล้วสร้าง mask เฉพาะ skin กับ nose | boolean `face_mask`; หาก parsing ล้มเหลวจะ reject |
-| 7 | `ai/ffhq_wrinkle/texture_map.py` | สร้าง texture channel ตามขั้นตอนงานวิจัย | image 1 channel ขนาดเดียวกับใบหน้าที่ align |
-| 8 | `ai/ffhq_wrinkle/modeling.py` | เลือก CPU/CUDA, ตรวจขนาดและ SHA-256 ของ checkpoint แล้วโหลดแบบ strict | `ModelBundle` ของ `UNet` หรือ `SwinUNETR`; ปฏิเสธ checkpoint ที่ไม่ตรง artifact ทางการ |
-| 9 | `ai/ffhq_wrinkle/prediction.py` | รัน PyTorch, softmax, threshold, จำกัด mask ให้อยู่ในส่วนหน้า และสร้าง overlay | `wrinkle_logits.npy`, `wrinkle_probability.npy/.png`, `wrinkle_mask.png`, `overlay.png`, `result.json` |
-| 10 | `ai/ffhq_wrinkle/confidence.py` และ `confidence_policy.json` | วัด decision margin และบังคับ policy/lineage gate | หากยังไม่ calibrated (ค่าเริ่มต้นใน repository) จะไม่ผ่าน gate |
-| 11 | `ai/ffhq_wrinkle/scoring.py` | สร้างคะแนนพื้นที่ 0–100 ทั้งภาพรวมและ 8 regions เมื่อ gate ผ่าน | `derived_score` พร้อม area ratio และ disclaimer |
-| 12 | `backend/wrinkle/schemas.py` | Pydantic schema ที่จำกัดข้อมูล public | `AnalysisResponse`: model metadata, confidence, score, recommendations, limitations |
-
-## 4. Artifact ที่ถูกสร้างใน pipeline AI
-
-```text
-<output>/
-├── aligned_face.png            # ใบหน้าหลังจัดแนว
-├── face_mask.png               # mask ผิวหนังและจมูก
-├── masked_face.png             # รูป RGB นอก mask ถูกปิดเป็นศูนย์
-├── texture_map.png             # texture channel
-├── model_input.npy             # tensor float32 [4, H, W] สำหรับโมเดล
-├── wrinkle_logits.npy          # logits ดิบ 2 classes
-├── wrinkle_probability.npy     # probability ดิบของ class ริ้วรอย
-├── wrinkle_probability.png     # probability map สำหรับดูภาพ
-├── wrinkle_mask.png            # binary wrinkle mask หลัง threshold
-├── overlay.png                 # แสดง mask ทับบนรูป align
-└── result.json                 # metadata, quality, model, threshold และชื่อ artifacts
-```
-
-เมื่อเรียกผ่าน `WrinkleAnalysisService.analyze_bytes()` `<output>` คือ temporary directory ชื่อ `prediction/` และถูกลบเมื่อจบ request; จึงไม่ถูกส่งขึ้น MinIO หรือเปิดให้ผู้ใช้ดาวน์โหลด สำหรับ CLI `<output>` คือค่าที่ระบุใน `--output` และไฟล์จะคงอยู่ตามปกติ
-
-## 5. เงื่อนไขผลลัพธ์และขอบเขตความปลอดภัย
-
-| เงื่อนไข | ผลที่ API AI คืน |
+| ทางเรียก | พฤติกรรม |
 |---|---|
-| รูป/ใบหน้าไม่ผ่าน quality gate | HTTP 422 พร้อม `quality_flags`; ไม่สร้าง model-ready tensor |
-| ผ่าน quality แต่ confidence policy ไม่ calibrated หรือค่าต่ำ | `status: abstained`; งดคะแนนและคำแนะนำ |
-| ผ่าน quality และ confidence/policy gate | `status: completed`; คืน probability/mask metadata, overall/regional area scores และคำแนะนำที่ผ่าน gate |
-| Worker พบข้อผิดพลาดภายในหรือโมเดลไม่พร้อม | `status: failed`, `error_category: inference_failed` |
+| เว็บ `/capture` → `/api/analysis` | เส้นทางหลักตามข้อ 1; หน้า `/result-detail` poll สถานะและขอภาพผลผ่าน cookie ที่ลงลายเซ็น |
+| `backend/wrinkle/api.py` | FastAPI adapter แยกที่ `POST /v1/wrinkle/analyze`; ต้องส่ง `consent_accepted=true`, จำกัด 10 MiB, quality fail คืน HTTP 422; **ไม่ได้ mount ใน `backend/main.py` หรือ Compose ปัจจุบัน** และไม่เก็บภาพผลใน MinIO |
+| `ai/scripts/predict_wrinkle.py` | CLI เรียก `predict_image()` โดยตรง ไม่ผ่าน confidence/scoring service; artifacts คงอยู่ใน `--output`, quality fail exit code 2 |
+| `POST /api/v1/inference/runs` | เส้นทาง generic สำหรับโมเดลชนิดอื่น; `run_model_inference` ปัจจุบันคืน `model_not_deployed` ไม่ใช่เส้นทางวิเคราะห์ภาพนี้ |
 
-ผลลัพธ์นี้เป็นการ segment รูปแบบภาพที่เกี่ยวข้องกับริ้วรอย ไม่ใช่การวินิจฉัยทางการแพทย์ และรูปอัปโหลดของผู้ใช้ไม่ถูกนำไป train อัตโนมัติ
+| เงื่อนไขในเส้นทางหลัก | สถานะ analysis / ผลที่ผู้ใช้เห็น |
+|---|---|
+| Preflight หรือ quality gate ของ pipeline ไม่ผ่าน | `rejected`, `error_category: image_quality`, พร้อม `quality_flags` |
+| Pipeline ผ่าน แต่ confidence policy ไม่ผ่าน | analysis `completed`, result `status: abstained`, มี `experimental_score` และภาพผล; ไม่มีคำแนะนำ |
+| Pipeline และ confidence policy ผ่าน | analysis `completed`, result `status: completed`, มี `derived_score`; คำแนะนำยังขึ้นกับ provider และ safety gate |
+| Worker หรือ model ล้มเหลว | `failed`, `error_category: inference_failed` |
 
-## 6. จุดเชื่อมกับ Platform API
-
-Integration อยู่ใน `backend/workers/inference_worker.py` และทำงานดังนี้:
-
-1. อ่านรูป private จาก MinIO ด้วย `backend.libs.minio_client.get_bytes(analysis.object_key)`
-2. เรียก `WrinkleAnalysisService.analyze_bytes()` จาก `backend.wrinkle.service` โดยใช้ model checkpoint และ confidence policy ที่ผ่านการอนุมัติ
-3. เขียนเฉพาะ response ที่ปลอดภัยและ metadata ที่จำเป็นลง `Analysis.result`; ตั้ง status เป็น `completed` หรือ `rejected/failed` ตามผล
-4. ไม่อัปโหลด derived artifacts กลับ MinIO; service ลบไฟล์ชั่วคราวหลังงานเสร็จ
-5. คงหลักการ fail closed: หาก checkpoint, hash หรือ policy ไม่ผ่าน จะไม่สร้าง score/recommendation
+ผล segmentation และคะแนนพื้นที่เป็นผลทดลอง ไม่ใช่การวินิจฉัยทางการแพทย์ ภาพอัปโหลดของผู้ใช้ไม่ถูกนำไป train อัตโนมัติ
