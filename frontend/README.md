@@ -9,7 +9,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:3000`. The dashboard is at `/`; the other routes are `/login`, `/capture`, `/quality-rejected`, `/result-detail`, `/trend`, `/recommendation`, `/profile`, and `/showcase`.
+Open `http://localhost:3000`. The dashboard is at `/`; the other visible routes are `/login`, `/capture`, `/quality-rejected`, `/result-detail`, `/recommendation`, and `/showcase`. `/trend` and `/profile` redirect to the dashboard while those views are hidden.
 
 Start the root Compose stack first (`docker compose up -d --build`). Create
 `frontend/.env.local` with server-only values matching the root `.env`:

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { WorkspaceShell } from "@/components/workspace-shell";
 
 type AreaScore = { score: number; wrinkle_area_ratio: number };
 type Score = { overall: AreaScore; regions: Record<string, AreaScore>; disclaimer: string };
@@ -45,6 +46,7 @@ export default function ResultDetailPage() {
       try {
         const response = await fetch("/api/analysis", { cache: "no-store" });
         if (!response.ok) {
+          if (response.status === 401) throw new Error("ยังไม่มีผลวิเคราะห์ในเบราว์เซอร์นี้");
           const body = await response.json().catch(() => null);
           throw new Error(typeof body?.detail === "string" ? body.detail : "โหลดผลไม่สำเร็จ");
         }
@@ -67,16 +69,11 @@ export default function ResultDetailPage() {
   const imagesAvailable = Boolean(expiresAt);
 
   return (
-    <div className="simple-page">
-      <main className="page-frame">
-        <header className="page-header">
-          <Link className="page-brand" href="/"><Image width={40} height={40} src="/assets/aphrodize-contour-a.svg" alt="" />Aphrodize</Link>
-          <nav className="page-nav"><Link href="/">ภาพรวม</Link><Link href="/capture">วิเคราะห์ภาพ</Link><Link href="/trend">แนวโน้ม</Link></nav>
-        </header>
-        <section className="page-content">
-          <p className="eyebrow">IMAGE ANALYSIS</p>
-          <h1>ผลวิเคราะห์ภาพ</h1>
-          <p>คะแนนนี้เป็นค่าทดลองจากพื้นที่ที่โมเดลตรวจพบ ยังไม่ผ่านการตรวจสอบความแม่นยำหรือการรับรองทางคลินิก ไม่ใช่การวินิจฉัย</p>
+    <WorkspaceShell active="capture" eyebrow="IMAGE ANALYSIS" title="ผลวิเคราะห์ภาพ" detail="ขั้นตอน 2 จาก 2 · ผลลัพธ์">
+        <section className="page-content workspace-panel">
+          <p className="eyebrow">EXPERIMENTAL RESULT</p>
+          <h2>รายละเอียดผลวิเคราะห์</h2>
+          <p>ดูพื้นที่ที่โมเดลตรวจพบในภาพ และคะแนนทดลองแยกตามบริเวณใบหน้า</p>
           {error && <div className="capture-error" role="alert">{error} <Link href="/capture">เริ่มวิเคราะห์ใหม่</Link></div>}
           {!analysis && !error && <p role="status">กำลังโหลดผล…</p>}
           {analysis && (analysis.status === "queued" || analysis.status === "running") && (
@@ -91,30 +88,53 @@ export default function ResultDetailPage() {
           {analysis?.status === "completed" && (
             <>
               {score ? (
-                <div className="result-score"><p className="eyebrow">EXPERIMENTAL WRINKLE AREA SCORE</p><strong>{score.overall.score.toFixed(1)} <small>/ 100</small></strong><p>คะแนนทดลองที่ยังไม่ผ่านการตรวจสอบ · พื้นที่ตรวจพบ {(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</p></div>
-              ) : <p role="status">ไม่มีคะแนนสำหรับภาพนี้</p>}
-              <div className="detail-grid">
-                <div>
-                  <div className="artifact-tabs"><button type="button" className={artifact === "overlay" ? "active" : ""} onClick={() => { setArtifact("overlay"); setArtifactError(false); }}>ภาพซ้อน mask</button><button type="button" className={artifact === "mask" ? "active" : ""} onClick={() => { setArtifact("mask"); setArtifactError(false); }}>ภาพ mask</button></div>
-                  <div className="overlay-card result-artifact">
-                    {imagesAvailable && !artifactError ? (
-                      <Image key={artifact} unoptimized width={512} height={512} src={`/api/analysis?artifact=${artifact}`} alt={artifact === "overlay" ? "ภาพใบหน้าที่ซ้อนตำแหน่ง mask ริ้วรอย" : "ภาพ mask พื้นที่ริ้วรอย"} onError={() => setArtifactError(true)} />
-                    ) : <p>ภาพผลหมดอายุหรือไม่พร้อมใช้งาน กรุณาวิเคราะห์ภาพใหม่</p>}
+                <>
+                  <div className="analysis-summary">
+                    <div>
+                      <p className="eyebrow">EXPERIMENTAL RESULT</p>
+                      <h3>คะแนนพื้นที่ริ้วรอยรวม</h3>
+                      <p>คะแนนทดลองจากพื้นที่ที่โมเดลตรวจพบ</p>
+                    </div>
+                    <div className="analysis-summary-values">
+                      <div className="analysis-total"><strong>{score.overall.score.toFixed(1)}</strong><span>/ 100</span></div>
+                      <div className="analysis-coverage"><span>พื้นที่ตรวจพบจริง</span><strong>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</strong></div>
+                    </div>
                   </div>
-                  {expiresAt && <p className="metadata">ภาพผลเป็น private และจะถูกลบภายใน 24 ชั่วโมงหลังประมวลผล</p>}
-                </div>
-                <div className="data-list">
-                  {score && Object.entries(score.regions).map(([name, value]) => (
-                    <div key={name}><strong>{REGIONS[name] ?? name}</strong><span>{value.score.toFixed(1)} / 100<br />พื้นที่ตรวจพบ {(value.wrinkle_area_ratio * 100).toFixed(2)}%</span></div>
-                  ))}
-                </div>
-              </div>
-              <p className="metadata">{score?.disclaimer} คำแนะนำจะไม่แสดงจนกว่า confidence calibration ผ่านเกณฑ์</p>
+                  <div className="analysis-detail-grid">
+                    <section className="analysis-section" aria-labelledby="analysis-image-heading">
+                      <div className="analysis-section-heading"><div><p className="eyebrow">VISUAL RESULT</p><h3 id="analysis-image-heading">ภาพผลวิเคราะห์</h3></div></div>
+                      <div className="artifact-tabs" aria-label="เลือกรูปแบบภาพผลวิเคราะห์">
+                        <button type="button" aria-pressed={artifact === "overlay"} className={artifact === "overlay" ? "active" : ""} onClick={() => { setArtifact("overlay"); setArtifactError(false); }}>ภาพซ้อนตำแหน่ง</button>
+                        <button type="button" aria-pressed={artifact === "mask"} className={artifact === "mask" ? "active" : ""} onClick={() => { setArtifact("mask"); setArtifactError(false); }}>เฉพาะพื้นที่ตรวจพบ</button>
+                      </div>
+                      <div className="overlay-card result-artifact">
+                        {imagesAvailable && !artifactError ? (
+                          <Image key={artifact} unoptimized width={512} height={512} src={`/api/analysis?artifact=${artifact}`} alt={artifact === "overlay" ? "ภาพใบหน้าที่ซ้อนตำแหน่งพื้นที่ริ้วรอยที่ตรวจพบ" : "ภาพแสดงเฉพาะพื้นที่ริ้วรอยที่ตรวจพบ"} onError={() => setArtifactError(true)} />
+                        ) : <p>ภาพผลหมดอายุหรือไม่พร้อมใช้งาน กรุณาวิเคราะห์ภาพใหม่</p>}
+                      </div>
+                      <p className="analysis-caption">สีบนภาพแสดงตำแหน่งที่โมเดลตรวจพบ{expiresAt && " · ภาพเป็นส่วนตัวและจะถูกลบภายใน 24 ชั่วโมง"}</p>
+                    </section>
+                    <section className="analysis-section" aria-labelledby="analysis-regions-heading">
+                      <div className="analysis-section-heading"><div><p className="eyebrow">BY REGION</p><h3 id="analysis-regions-heading">คะแนนรายบริเวณ</h3></div><span>{Object.keys(score.regions).length} บริเวณ</span></div>
+                      <p className="analysis-section-intro">คะแนน 0–100 เป็นค่าที่ขยายจากสัดส่วนพื้นที่ตรวจพบ ดูเปอร์เซ็นต์จริงของแต่ละบริเวณประกอบ</p>
+                      <div className="analysis-regions">
+                        {Object.entries(score.regions).map(([name, value]) => (
+                          <div className="analysis-region" key={name}>
+                            <div className="analysis-region-top"><strong>{REGIONS[name] ?? name}</strong><span><b>{value.score.toFixed(1)}</b> / 100</span></div>
+                            <div className="analysis-region-track" aria-hidden="true"><span style={{ width: `${value.score}%` }} /></div>
+                            <p>พื้นที่ตรวจพบจริง <strong>{(value.wrinkle_area_ratio * 100).toFixed(2)}%</strong></p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  </div>
+                  <div className="analysis-disclaimer"><strong>เกี่ยวกับผลนี้</strong><p>คะแนนนี้เป็นการวัดจากภาพเพื่อการทดลอง ยังไม่ผ่านการตรวจสอบความแม่นยำหรือการรับรองทางคลินิก ไม่ใช่การวินิจฉัยหรือหลักฐานว่าการรักษาใดจะได้ผล</p></div>
+                </>
+              ) : <div className="result-wait" role="status">ไม่มีคะแนนสำหรับภาพนี้</div>}
               <div className="page-actions"><Link className="primary-button" href="/capture">วิเคราะห์ภาพใหม่ →</Link><Link className="secondary-button" href="/">กลับหน้าภาพรวม</Link></div>
             </>
           )}
         </section>
-      </main>
-    </div>
+    </WorkspaceShell>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { WorkspaceShell } from "@/components/workspace-shell";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -99,16 +99,12 @@ export default function CapturePage() {
   }
 
   return (
-    <div className="simple-page">
-      <main className="page-frame">
-        <header className="page-header">
-          <Link className="page-brand" href="/"><Image width={40} height={40} src="/assets/aphrodize-contour-a.svg" alt="" />Aphrodize</Link>
-          <nav className="page-nav"><Link href="/">ภาพรวม</Link><Link className="active" href="/capture">วิเคราะห์ภาพ</Link><Link href="/trend">แนวโน้ม</Link></nav>
-        </header>
-        <section className="page-content">
-          <p className="eyebrow">NEW ANALYSIS</p>
-          <h1>แนบภาพหรือถ่ายภาพใบหน้า</h1>
-          <p>หน้าตรง แสงสม่ำเสมอ ไม่มีฟิลเตอร์ และเห็นใบหน้าเพียงหนึ่งคน ภาพต้องมีขนาดอย่างน้อย 512 × 512 พิกเซล</p>
+    <WorkspaceShell active="capture" eyebrow="IMAGE ANALYSIS" title="วิเคราะห์ภาพ" detail="ขั้นตอน 1 จาก 2 · เตรียมภาพ">
+        <div className="capture-layout">
+        <section className="page-content capture-panel" aria-labelledby="capture-title">
+          <p className="eyebrow">เริ่มวิเคราะห์</p>
+          <h2 id="capture-title">แนบภาพหรือถ่ายภาพใบหน้า</h2>
+          <p className="capture-intro">เลือกภาพที่เห็นใบหน้าชัดเจน หรือเปิดกล้องเพื่อถ่ายภาพใหม่</p>
           <div className="upload-box capture-preview">
             {cameraOpen ? (
               <video ref={video} autoPlay muted playsInline aria-label="ภาพจากกล้อง" />
@@ -117,7 +113,7 @@ export default function CapturePage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={preview} alt="ภาพที่เลือกเพื่อวิเคราะห์" />
             ) : (
-              <div><div className="upload-icon">⌁</div><h2>เลือกภาพหรือเปิดกล้อง</h2><p>JPEG, PNG, WebP · ไม่เกิน 10 MB</p></div>
+              <div><div className="upload-icon">⌁</div><h3>เลือกภาพหรือเปิดกล้อง</h3><p>JPEG, PNG, WebP · ไม่เกิน 10 MB</p></div>
             )}
           </div>
           <div className="capture-controls">
@@ -139,7 +135,17 @@ export default function CapturePage() {
           {error && <p className="capture-error" role="alert">{error}</p>}
           <div className="page-actions"><button type="button" className="primary-button" disabled={busy || !file || !consent} onClick={submit}>{busy ? "กำลังส่งภาพ…" : "วิเคราะห์ภาพ →"}</button><Link className="secondary-button" href="/">กลับหน้าภาพรวม</Link></div>
         </section>
-      </main>
-    </div>
+        <aside className="capture-guide" aria-label="คำแนะนำก่อนวิเคราะห์">
+          <p className="eyebrow">ภาพที่เหมาะสม</p>
+          <h2>ถ่ายภาพให้เทียบผลได้ดีขึ้น</h2>
+          <ul>
+            <li><strong>01</strong><span>หันหน้าตรงและเห็นใบหน้าเพียงหนึ่งคน</span></li>
+            <li><strong>02</strong><span>ใช้แสงสม่ำเสมอ ภาพไม่เบลอ</span></li>
+            <li><strong>03</strong><span>ไม่ใช้ฟิลเตอร์ และให้ภาพมีขนาดอย่างน้อย 512 × 512 พิกเซล</span></li>
+          </ul>
+          <div className="capture-guide-note"><strong>ข้อมูลของคุณ</strong><p>ระบบขอความยินยอมก่อนวิเคราะห์ และลบภาพผลภายใน 24 ชั่วโมง</p></div>
+        </aside>
+        </div>
+    </WorkspaceShell>
   );
 }
