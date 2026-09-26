@@ -1,0 +1,7 @@
+user_id,local_date,timezone,baseline_skin_type,sleep_record_status,sleep_duration_hours,sleep_duration_mins,sleep_duration_total_minutes,water_intake_ml,thirst_score_0_10,outdoor_exposure_choice,outdoor_exposure_band,outdoor_minutes_estimate,skin_dryness_score_0_10,data_origin
+synthetic_user_01,2026-08-01,Asia/Bangkok,oily,recorded,3,37,217,889,7.7,1,less_than_1_hour,11,8.5,sandbox_synthetic_rule_based
+synthetic_user_01,2026-08-02,Asia/Bangkok,oily,recorded,8,21,501,847,5.3,1,less_than_1_hour,14,4.5,sandbox_synthetic_rule_based
+synthetic_user_01,2026-08-03,Asia/Bangkok,oily,recorded,4,5,245,2374,3.7,2,1_to_2_hours,99,5.6,sandbox_synthetic_rule_based
+synthetic_user_02,2026-08-01,Asia/Bangkok,oily,recorded,4,42,282,2547,3.2,2,1_to_2_hours,93,6.0,sandbox_synthetic_rule_based
+synthetic_user_02,2026-08-02,Asia/Bangkok,oily,recorded,5,45,345,2113,2.4,1,less_than_1_hour,56,4.1,sandbox_synthetic_rule_based
+synthetic_user_02,2026-08-03,Asia/Bangkok,oily,recorded,6,3,363,2961,2.2,1,less_than_1_hour,11,6.0,sandbox_synthetic_rule_based

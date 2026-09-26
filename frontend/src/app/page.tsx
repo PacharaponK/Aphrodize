@@ -9,7 +9,17 @@ export default function Page() {
     <>
       
 <div className="app-shell">
-<AppNavigation active="dashboard" />
+<aside className="sidebar" aria-label="เมนูหลัก">
+<a className="brand" href="#dashboard" aria-label="Aphrodize home"><Image width={40} height={40} className="brand-mark" src="/assets/aphrodize-contour-a.svg" alt="" />Aphrodize</a>
+<nav>
+<a className="nav-link active" href="#dashboard">ภาพรวม</a>
+<a className="nav-link" href="/capture">วิเคราะห์ภาพ</a>
+<a className="nav-link" href="/clients">สุขภาพรายวัน</a>
+<a className="nav-link" href="#trend">แนวโน้ม</a>
+<a className="nav-link" href="#profile">Skin profile</a>
+</nav>
+<div className="privacy-card"><strong>ข้อมูลของคุณ</strong><span>เก็บตาม consent ที่คุณเลือก</span><a href="#privacy">จัดการข้อมูล</a></div>
+</aside>
 <main id="dashboard">
 <header className="topbar"><div><p className="eyebrow">ภาพล่าสุด · 20 ก.ย. 2026</p><h1>สวัสดี, Ink</h1></div><button className="avatar" aria-label="เปิดโปรไฟล์">I</button></header>
 <section className="notice" aria-label="ข้อจำกัดของผลลัพธ์"><span>i</span><p>แดชบอร์ดหน้านี้ยังเป็นข้อมูลตัวอย่าง หากต้องการผลจากภาพจริงให้ไปที่ <a href="/capture">วิเคราะห์ภาพ</a> คะแนนทดลองยังไม่ผ่านการตรวจสอบและไม่ใช่การวินิจฉัย</p></section>
@@ -22,7 +32,8 @@ export default function Page() {
 <section className="sources-grid"><article><p className="eyebrow">คำแนะนำจากกฎ</p><h2>ดูแลเกราะป้องกันผิว</h2><p>แสดงจากข้อมูลที่คุณรายงานร่วมกับผลภาพที่ confidence ผ่านเกณฑ์</p><button className="text-button" data-open="recommendation">ดูเหตุผลและ safety check →</button></article></section>
 </main>
 </div>
-<dialog id="capture-panel"><button className="close-button" data-close aria-label="ปิด">×</button><p className="eyebrow">ก่อนวิเคราะห์</p><h2>ถ่ายภาพให้เทียบกันได้</h2><div className="face-guide"><div className="face-shape">◡</div><p>หน้าสด · หน้าตรง · แสงกระจาย</p></div><ul className="checklist"><li>ไม่ใช้ beauty filter และไม่แต่งหน้าหนัก</li><li>สีหน้าเป็นกลาง และภาพไม่เบลอ</li><li>ใช้ระยะและแสงใกล้เคียงครั้งก่อน</li></ul><button className="primary-button" data-open="quality-panel">เปิดกล้อง / เลือกภาพ →</button><p className="metadata">Consent version 1.0</p></dialog>
+<nav className="mobile-nav" aria-label="เมนูมือถือ"><a className="active" href="#dashboard">⌂<span>ภาพรวม</span></a><a href="/capture">＋<span>วิเคราะห์</span></a><a href="/clients">◉<span>สุขภาพ</span></a><a href="#profile">☷<span>โปรไฟล์</span></a></nav>
+<dialog id="capture-panel"><button className="close-button" data-close aria-label="ปิด">×</button><p className="eyebrow">ก่อนวิเคราะห์</p><h2>ถ่ายภาพให้เทียบกันได้</h2><div className="face-guide"><div className="face-shape">◡</div><p>หน้าสด · หน้าตรง · แสงกระจาย</p></div><ul className="checklist"><li>ไม่ใช้ beauty filter และไม่แต่งหน้าหนัก</li><li>สีหน้าเป็นกลาง และภาพไม่เบลอ</li><li>ใช้ระยะและแสงใกล้เคียงครั้งก่อน</li></ul><button className="primary-button" data-open="quality-panel">เปิดกล้อง / เลือกภาพ →</button><p className="metadata">Consent version 1.0 · <a href="#privacy">ดูหรือถอน consent</a></p></dialog>
 <dialog id="quality-panel"><button className="close-button" data-close aria-label="ปิด">×</button><div className="warning-icon">!</div><p className="eyebrow">QUALITY GATE</p><h2>ภาพนี้ยังใช้เปรียบเทียบไม่ได้</h2><p>จึงไม่นำไปคำนวณผลหรือแนวโน้ม</p><ul className="warning-list"><li>แสงน้อยเกินไป</li><li>ภาพอาจเบลอ</li></ul><p className="metadata">ลองหันหน้าเข้าหาแสงที่นุ่มและวางกล้องให้นิ่ง</p><button className="primary-button" data-open="capture-panel">ถ่ายภาพใหม่ →</button></dialog>
 <dialog id="details"><button className="close-button" data-close aria-label="ปิด">×</button><p className="eyebrow">ตรวจพบจากภาพ</p><h2>ผลรายบริเวณ</h2><div className="mask-preview"><span>Wrinkle mask overlay</span></div><dl><div><dt>รอบดวงตา</dt><dd>ปานกลาง · confidence 0.86</dd></div><div><dt>หน้าผาก</dt><dd>เล็กน้อย · confidence 0.79</dd></div><div><dt>ร่องแก้ม</dt><dd>ปานกลาง · confidence 0.82</dd></div></dl><p className="metadata">Model version: v0.1 · score version: mask-area-v1</p></dialog>
 <dialog id="recommendation"><button className="close-button" data-close aria-label="ปิด">×</button><p className="eyebrow">คำแนะนำจากกฎ</p><h2>ดูแลเกราะป้องกันผิวและป้องกันแดด</h2><p>หมวดผลิตภัณฑ์: moisturizer และ broad-spectrum sunscreen SPF 30+</p><hr /><h3>เหตุผลและแหล่งข้อมูล</h3><p>ผลภาพ: periocular wrinkle score ผ่าน confidence threshold</p><p>คุณรายงาน: ผิวแห้ง, UV exposure สูง และใช้ sunscreen ไม่สม่ำเสมอ</p><p className="metadata">Rule R-UV-001 · v1.0 · ไม่ยืนยันว่า UV เป็นสาเหตุ</p></dialog>

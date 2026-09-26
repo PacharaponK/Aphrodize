@@ -134,7 +134,8 @@ The repository reserves model-package directories without placing implementation
 ```text
 models/
 ├── time-series/
-│   └── modelx/
+│   ├── linear-model/
+│   └── non-linear-model/
 └── non-time-series/
     └── u-net/
 ```
@@ -142,6 +143,12 @@ models/
 Do not commit datasets, checkpoints, weights, generated artifacts, or MLflow outputs. Store operational artifacts in MinIO through MLflow. See [models/README.md](models/README.md) for the policy.
 
 The supported platform model families are `time_series`, `tabular`, and `image_segmentation`. The `models/` paths are reserved workspace locations, not a claim that a deployable model is already present.
+
+## Lifestyle-aware wrinkle forecast
+
+The API includes a small, explicit proof-of-concept for a single user's daily wrinkle score and self-reported sleep, water intake, and outdoor time. Create one observation per day at `POST /api/v1/lifestyle-forecast/users/{user_id}/observations`, then read the report at `GET /api/v1/lifestyle-forecast/users/{user_id}`. After 30 consecutive daily observations, it evaluates an autoregressive baseline against a leakage-safe lifestyle-aware Ridge model on Days 25–30 and forecasts Days 31–37 using the lower-MAE model.
+
+The result is for short-term prediction only. It is not a diagnosis, a treatment recommendation, or evidence that a lifestyle factor causes a skin change. See [the implementation plan](docs/Lifestyle-Aware-Wrinkle-Forecast.md) for data-collection and interpretation rules.
 
 ## Logs
 

@@ -1,0 +1,4 @@
+user_id,local_date,forecast_skin_dryness_score_0_10,model
+synthetic_user_01,2026-10-01,3.7,"ARX(1) / ARIMAX(1,0,0) baseline"
+synthetic_user_01,2026-10-02,3.7,"ARX(1) / ARIMAX(1,0,0) baseline"
+synthetic_user_01,2026-10-03,3.7,"ARX(1) / ARIMAX(1,0,0) baseline"

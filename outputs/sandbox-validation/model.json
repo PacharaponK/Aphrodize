@@ -1,0 +1,31 @@
+{
+  "model": "ARX(1) / ARIMAX(1,0,0) baseline",
+  "user_id": "synthetic_user_01",
+  "target": "skin_dryness_score_0_10",
+  "features": [
+    "sleep_duration_total_minutes",
+    "water_intake_ml",
+    "outdoor_exposure_choice"
+  ],
+  "ridge": 0.8,
+  "training_rows": 61,
+  "coefficients": [
+    3.445922,
+    -0.027802,
+    -0.113142,
+    -0.765619,
+    0.148022
+  ],
+  "feature_mean": {
+    "sleep_duration_total_minutes": 390.278689,
+    "water_intake_ml": 1692.819672,
+    "outdoor_exposure_choice": 1.721311
+  },
+  "feature_std": {
+    "sleep_duration_total_minutes": 103.937863,
+    "water_intake_ml": 579.659771,
+    "outdoor_exposure_choice": 1.002183
+  },
+  "missing_sleep_strategy": "linear interpolation during model preparation only",
+  "warning": "Sandbox baseline. Promote only after time-based validation on real data."
+}
