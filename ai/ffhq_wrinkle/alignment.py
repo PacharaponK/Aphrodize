@@ -1,4 +1,8 @@
-"""Deterministic single-face detection and FFHQ-style alignment."""
+"""Find one source-image face and map it to a fixed FFHQ coordinate system.
+
+YuNet supplies a bounding box and five landmarks. The landmarks define the
+oriented square that ``align_face`` warps to 1024 x 1024 pixels.
+"""
 
 from __future__ import annotations
 
@@ -54,9 +58,11 @@ class YuNetFaceDetector:
         )
 
     def detect(self, image: np.ndarray) -> list[FaceDetection]:
+        """Return source-coordinate detections, highest confidence first."""
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
             raise ValueError("YuNet expects an HxWx3 uint8 RGB image")
         height, width = image.shape[:2]
+        # Bound detector cost while mapping boxes and landmarks back to source pixels.
         scale = min(1.0, self.maximum_input_side / max(height, width))
         if scale < 1.0:
             detector_image = cv2.resize(
@@ -85,7 +91,7 @@ class YuNetFaceDetector:
 def ffhq_alignment_quad(
     detection: FaceDetection, scale: float = 1.0
 ) -> np.ndarray:
-    """Construct the oriented eye/mouth quad used by FFHQ-style alignment."""
+    """Use the eye and mouth landmarks to locate an oriented face square."""
 
     points = detection.landmarks
     eyes = points[:2][np.argsort(points[:2, 0])]
@@ -124,7 +130,11 @@ def align_face(
     detection: FaceDetection,
     output_size: int = ALIGNMENT_SIZE,
 ) -> np.ndarray:
-    """Warp one detected face into a deterministic square FFHQ coordinate system."""
+    """Return aligned RGB uint8 ``[output_size, output_size, 3]``.
+
+    The same face coordinates are used later for parsing, texture, wrinkle
+    segmentation, region scores, and the displayed overlay.
+    """
 
     if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
         raise ValueError("alignment expects an HxWx3 uint8 RGB image")

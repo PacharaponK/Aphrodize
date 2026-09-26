@@ -1,4 +1,8 @@
-"""One-image FFHQ-Wrinkle segmentation inference and artifact generation."""
+"""Run Stage-2 wrinkle segmentation on a preprocessed four-channel image.
+
+The model produces two logits channels. Class 1 is converted to a probability
+map, thresholded inside the face mask, and visualized as a mask and overlay.
+"""
 
 from __future__ import annotations
 
@@ -37,6 +41,11 @@ class ThresholdConfig:
 
 @dataclass(frozen=True)
 class PredictionResult:
+    """In-memory model output returned to the application service.
+
+    Logits are ``[2,H,W]``; probability and mask are ``[H,W]``; overlay is
+    RGB ``[H,W,3]``. The service scores these arrays without reading NPYs.
+    """
     logits: np.ndarray
     probability: np.ndarray
     mask: np.ndarray
@@ -61,7 +70,11 @@ def infer_logits_and_probability(
     device: torch.device,
     positive_class: int = 1,
 ) -> tuple[np.ndarray, np.ndarray, float]:
-    """Return raw logits and the softmax map for the wrinkle class."""
+    """Return ``[2,H,W]`` logits and ``[H,W]`` class-1 probability.
+
+    PyTorch receives a batch-shaped ``[1,4,H,W]`` tensor. No gradients are
+    needed because this path only performs inference.
+    """
 
     if tensor.shape[0] != 4 or tensor.ndim != 3:
         raise ValueError("model input must have shape (4, height, width)")
@@ -89,6 +102,7 @@ def threshold_probability(
     face_mask: np.ndarray,
     config: ThresholdConfig = ThresholdConfig(),
 ) -> np.ndarray:
+    """Keep pixels above the probability threshold only inside the face."""
     config.validate()
     if probability.shape != face_mask.shape:
         raise ValueError("probability and face mask shapes must match")
@@ -100,6 +114,7 @@ def create_overlay(
     wrinkle_mask: np.ndarray,
     alpha: float = 0.55,
 ) -> np.ndarray:
+    """Tint detected wrinkle pixels red on the aligned RGB face."""
     if aligned_face.shape[:2] != wrinkle_mask.shape:
         raise ValueError("aligned face and wrinkle mask shapes must match")
     if not 0.0 <= alpha <= 1.0:
@@ -128,13 +143,19 @@ def predict_image(
     preprocessor: Callable[..., PreprocessResult] = preprocess_image,
     preprocess_kwargs: dict[str, object] | None = None,
 ) -> PredictionResult:
-    """Preprocess one image, run Stage-2 inference, and save all artifacts."""
+    """Run preprocess -> model -> postprocess and return arrays plus metadata.
+
+    With a service-provided ``model_bundle`` the model is already loaded.
+    Direct CLI calls preprocess first and load the checkpoint afterward.
+    The saved NPY/PNG files aid inspection; later steps use returned arrays.
+    """
 
     threshold.validate()
     output = Path(output_dir)
     ensure_output_available(output, overwrite)
     total_started = perf_counter()
     preprocessing_started = perf_counter()
+    # image_path is the input photo; output is the directory for intermediate files.
     prepared = preprocessor(
         image_path,
         output,
@@ -143,6 +164,7 @@ def predict_image(
     preprocessing_seconds = perf_counter() - preprocessing_started
 
     if model_bundle is None:
+        # CLI calls reach this branch; the service supplies its cached bundle.
         bundle = load_wrinkle_model(architecture, checkpoint_path, requested_device)
     else:
         bundle = model_bundle
@@ -153,9 +175,11 @@ def predict_image(
     logits, probability, inference_seconds = infer_logits_and_probability(
         bundle.model, prepared.tensor, bundle.device, threshold.positive_class
     )
+    # Both the displayed mask and later scores must stay within parsed face skin.
     postprocess_started = perf_counter()
     mask = threshold_probability(probability, prepared.face_mask, threshold)
     overlay = create_overlay(prepared.aligned_face, mask)
+    # Persist research artifacts for CLI runs; the service removes its temporary copy.
     np.save(output / "wrinkle_logits.npy", logits, allow_pickle=False)
     np.save(output / "wrinkle_probability.npy", probability, allow_pickle=False)
     probability_png = np.rint(np.clip(probability, 0.0, 1.0) * 255.0).astype(np.uint8)

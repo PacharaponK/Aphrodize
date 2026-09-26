@@ -1,3 +1,9 @@
+"""Move one queued photo through AI inference and persist only safe outputs.
+
+The worker is the bridge between the platform stores (PostgreSQL, MinIO,
+Redis) and the in-process FFHQ-Wrinkle pipeline in backend.wrinkle.service.
+"""
+
 import asyncio
 import logging
 import os
@@ -20,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 async def startup(ctx: dict) -> None:
+    """Create one service per worker process so its model can stay in memory."""
     from backend.wrinkle.service import WrinkleAnalysisService
 
     ctx["wrinkle_service"] = WrinkleAnalysisService(
@@ -32,6 +39,12 @@ async def shutdown(_: dict) -> None:
 
 
 async def run_inference(ctx: dict, analysis_id: str) -> None:
+    """Turn a queued Analysis into a terminal result.
+
+    The queue carries only the analysis ID. The image bytes come from MinIO,
+    the AI response is stored as JSON in PostgreSQL, and only the two display
+    PNGs are copied back to MinIO. Source bytes are removed in ``finally``.
+    """
     async with SessionLocal() as session:
         analysis = await session.get(Analysis, UUID(analysis_id))
         if analysis is None or analysis.status != AnalysisStatus.queued:
@@ -49,17 +62,20 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                     "image/webp": ".webp",
                 }.get(analysis.content_type, ".jpg")
                 artifacts: dict[str, bytes] = {}
+                # The sink receives PNG bytes while the service's temp files still exist.
                 response = await asyncio.to_thread(
                     ctx["wrinkle_service"].analyze_bytes,
                     payload,
                     suffix,
                     artifact_sink=artifacts.update,
                 )
+                # Raw model arrays stay temporary; only these two PNGs are retained.
                 for kind in ("overlay", "mask"):
                     key = analysis_artifact_key(analysis.user_id, analysis.id, kind)
                     await asyncio.to_thread(put_bytes, key, artifacts[kind], "image/png")
                     uploaded.append(key)
                 expires_at = datetime.now(UTC) + timedelta(hours=24)
+                # The API also checks this timestamp, even if the delete job runs late.
                 job = await ctx["redis"].enqueue_job(
                     "expire_analysis_artifacts",
                     str(analysis.user_id),
@@ -93,6 +109,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                     analysis.error_category = "inference_failed"
                     analysis.result = {"message": "Wrinkle inference failed."}
             else:
+                # A confidence abstention is still a successful inference run.
                 analysis.status = AnalysisStatus.completed
                 analysis.error_category = None
                 analysis.result = response.model_dump(mode="json")
@@ -109,6 +126,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
 
 
 async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> None:
+    """Delete the two derived PNGs after their 24-hour viewing window."""
     keys = [
         analysis_artifact_key(UUID(user_id), UUID(analysis_id), kind)
         for kind in ("overlay", "mask")

@@ -1,4 +1,8 @@
-"""Research-faithful FFHQ-Wrinkle texture-map generation."""
+"""Create the fourth Stage-2 input channel from facial image texture.
+
+The production path calls ``generate_texture_map`` with the aligned RGB face
+and its skin/nose mask. The file-based helper exists for research/CLI runs.
+"""
 
 from __future__ import annotations
 
@@ -117,12 +121,17 @@ def texture_response(
     blurred: np.ndarray,
     config: TextureMapConfig,
 ) -> np.ndarray:
-    """Apply the paper equation and quantize the continuous response to uint8."""
+    """Compare intensity with its Gaussian blur and quantize to uint8.
+
+The default dark-only mode highlights locally darker detail, then clips the
+response to the image range before it becomes the model's fourth channel.
+    """
 
     if intensity.shape != blurred.shape:
         raise ValueError("intensity and blurred images must have identical shapes")
     formula_intensity = intensity.astype(np.float32)
     if config.response_mode == "dark_only_floor":
+        # Suppress positive differences so only pixels darker than their blur respond.
         formula_intensity = np.minimum(formula_intensity, blurred.astype(np.float32))
     response = (
         1.0
@@ -156,7 +165,11 @@ def generate_texture_map(
     face_mask: np.ndarray | None = None,
     config: TextureMapConfig = TextureMapConfig(),
 ) -> np.ndarray:
-    """Generate a continuous grayscale texture map and optionally mask non-face pixels."""
+    """Return grayscale uint8 ``[H, W]`` texture for the aligned face.
+
+Intensity and blur stay in memory; only face pixels survive the final mask.
+``preprocess_image`` saves the returned array as ``texture_map.png``.
+    """
 
     intensity = rgb_to_intensity(image, config.intensity_method)
     blurred = gaussian_intensity(intensity, config)

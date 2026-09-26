@@ -1,4 +1,8 @@
-"""Quality gates for one-image FFHQ-Wrinkle preprocessing."""
+"""Reject source photos that cannot produce a trustworthy model input.
+
+The first gate inspects the original photo and YuNet detection. A second gate
+checks how much of the aligned image BiSeNet marked as skin/nose.
+"""
 
 from __future__ import annotations
 
@@ -55,6 +59,7 @@ def _face_crop(image: np.ndarray, detection: FaceDetection) -> np.ndarray:
 
 
 def pose_metrics(detection: FaceDetection) -> dict[str, float]:
+    """Estimate roll, yaw, and pitch from five landmarks, not a 3-D pose model."""
     points = detection.landmarks
     eyes = points[:2][np.argsort(points[:2, 0])]
     mouths = points[3:5][np.argsort(points[3:5, 0])]
@@ -77,7 +82,11 @@ def assess_source_quality(
     detection: FaceDetection,
     config: QualityConfig = QualityConfig(),
 ) -> QualityAssessment:
-    """Evaluate resolution, face size, exposure, sharpness, confidence, and pose."""
+    """Return issue flags and metrics measured on the original photo.
+
+    ``preprocess_image`` rejects on any issue before alignment or tensor
+    creation. Exposure and blur are measured inside the detected face crop.
+    """
 
     height, width = image.shape[:2]
     _, _, face_width, face_height = detection.bbox
@@ -141,6 +150,7 @@ def assess_face_mask(
     face_mask: np.ndarray,
     config: QualityConfig = QualityConfig(),
 ) -> QualityAssessment:
+    """Reject implausibly small or large parsed face areas after alignment."""
     ratio = float(np.mean(face_mask.astype(bool)))
     issues: list[str] = []
     if ratio < config.minimum_face_mask_ratio:

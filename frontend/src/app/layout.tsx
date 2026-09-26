@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import "./prototype.css";
 import "./analysis.css";
+import "./design-system.css";
 
 export const metadata: Metadata = {
   title: "Aphrodize",
