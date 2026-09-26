@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { predictTestInput } from "./actions";
 import type { PredictionActionState, PredictionResponse } from "./types";
+import DailyHealthDashboard from "../daily-health-dashboard";
 
 const outdoorOptions = [
   { value: "1", label: "น้อยกว่า 1 ชั่วโมง", range: "0 ถึงน้อยกว่า 60 นาที" },
@@ -22,28 +23,34 @@ function ScoreCard({ label, value, suffix, description }: { label: string; value
 }
 
 function Results({ result }: { result: PredictionResponse }) {
+  const scoreDescription = result.prediction_status === "experimental_out_of_domain"
+    ? "ค่าทดลองนอกช่วงฝึก · ไม่ใช่ผลใช้งานจริง"
+    : "ค่าประมาณจากโมเดลในช่วงฝึก";
+
   return (
     <>
       <div className="test-score-grid">
-        <ScoreCard label="THIRST SCORE" value={result.predictions.thirst_score_0_10.value} suffix="/ 10" description="ค่าประมาณจากโมเดล" />
-        <ScoreCard label="DRYNESS SCORE" value={result.predictions.skin_dryness_score_0_10.value} suffix="/ 10" description="ค่าประมาณจากโมเดล" />
+        <ScoreCard label="THIRST SCORE" value={result.predictions.thirst_score_0_10.value} suffix="/ 10" description={scoreDescription} />
+        <ScoreCard label="DRYNESS SCORE" value={result.predictions.skin_dryness_score_0_10.value} suffix="/ 10" description={scoreDescription} />
       </div>
       <p className="test-model-id">โมเดล: <strong>{result.model?.model_id ?? "ไม่ระบุ"}</strong></p>
-      {result.predictions.thirst_score_0_10.value === null || result.predictions.skin_dryness_score_0_10.value === null ? (
-        <p className="test-out-of-range">ข้อมูลอยู่นอกช่วงฝึกอย่างน้อยหนึ่งค่า จึงไม่มีคะแนน thirst/dryness สำหรับรอบนี้</p>
+      {result.input_domain_status === "out_of_training_domain" ? (
+        <p className="test-out-of-range">
+          {result.prediction_status === "experimental_out_of_domain"
+            ? "ผล thirst/dryness ด้านบนเป็นเพียงผลทดลองนอกช่วงฝึก; ไม่มีการแปลผลหรือคำแนะนำจากคะแนนนี้ และห้ามใช้แทนผลใช้งานจริง ยังไม่คำนวณ accuracy เพราะต้องมีผลที่ผู้ใช้สังเกตจริงมาเทียบ"
+            : "ข้อมูลอยู่นอกช่วงฝึกอย่างน้อยหนึ่งค่า ระบบจึงงดทำนายในรอบนี้"}
+        </p>
       ) : null}
-      {result.guidance.length > 0 && (
-        <section className="test-guidance" aria-labelledby="test-guidance-title">
-          <h3 id="test-guidance-title">คำแนะนำจากผลรอบนี้</h3>
-          <ul>{result.guidance.map((item) => <li key={item}>{item}</li>)}</ul>
-        </section>
-      )}
+      <DailyHealthDashboard prediction={result} />
       <details className="test-json-details">
         <summary>ดูข้อมูลตอบกลับจาก API (JSON)</summary>
         <pre>{JSON.stringify({
           local_date: result.local_date,
           model_status: result.model_status,
+          input_domain_status: result.input_domain_status,
           predictions: result.predictions,
+          interpretation: result.interpretation,
+          next_day_predictions: result.interpretation.next_day_predictions,
           model: result.model,
           guidance: result.guidance,
           warnings: result.warnings,
@@ -68,7 +75,7 @@ export default function PredictionTestForm({ initialDate }: { initialDate: strin
         <div className="prediction-test-heading">
           <p className="eyebrow">TEST INPUT</p>
           <h2 id="prediction-test-form-title">ข้อมูลสำหรับทดสอบ</h2>
-          <p>ลองปรับค่าแล้วส่งให้โมเดลประเมิน โดยหน้านี้ไม่บันทึกข้อมูลลงฐานข้อมูล</p>
+          <p>ลองปรับค่าแล้วส่งให้โมเดลประเมิน โดยหน้านี้ไม่บันทึกข้อมูลลงฐานข้อมูล; accuracy จะคำนวณได้เมื่อมีผลจริงแยกจากค่าทำนายเพื่อใช้เทียบ</p>
         </div>
 
         <form className="prediction-test-form" action={formAction}>
@@ -83,13 +90,13 @@ export default function PredictionTestForm({ initialDate }: { initialDate: strin
               <label htmlFor="test-sleep-hours"><span>ชั่วโมง</span><input id="test-sleep-hours" name="sleepHours" type="number" min="0" max="9" step="1" inputMode="numeric" defaultValue={state.values.sleepHours} required /></label>
               <label htmlFor="test-sleep-minutes"><span>นาที</span><input id="test-sleep-minutes" name="sleepMinutes" type="number" min="0" max="59" step="1" inputMode="numeric" defaultValue={state.values.sleepMinutes} required /></label>
             </div>
-            <small>ระบบรวมชั่วโมงและนาทีเป็นค่านาทีเดียวกัน · สูงสุด 540 นาที</small>
+            <small>ระบบรวมเป็นนาที · ฝึกในช่วง 180–540 นาที; หน้าทดสอบจะแสดงผลทดลองนอกช่วงพร้อมเตือน ส่วนหน้าใช้งานจริงจะงดทำนาย</small>
           </fieldset>
 
           <label className="test-field" htmlFor="test-water-intake">
             <span>ปริมาณน้ำดื่มทั้งวัน (มล.)</span>
             <input id="test-water-intake" name="waterIntakeMl" type="number" min="0" max="20000" step="1" inputMode="numeric" placeholder="เช่น 1500" defaultValue={state.values.waterIntakeMl} required />
-            <small>ป้อนค่านอกช่วง 900–1,800 มล. เพื่อทดสอบการงดทำนายได้</small>
+            <small>ป้อนค่านอกช่วง 900–1,800 มล. เพื่อดูผลทดลอง out-of-domain; ผลนี้ไม่ผ่านการรับรองและไม่ใช้ในหน้าใช้งานจริง</small>
           </label>
 
           <fieldset className="test-field">

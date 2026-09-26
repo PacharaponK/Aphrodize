@@ -8,6 +8,9 @@ function isPredictionResponse(value: unknown): value is PredictionResponse {
   const response = value as Partial<PredictionResponse>;
   return (
     typeof response.model_status === "string" &&
+    (response.input_domain_status === "in_domain"
+      || response.input_domain_status === "out_of_training_domain") &&
+    typeof response.interpretation?.daily_health_summary?.status === "string" &&
     typeof response.predictions?.thirst_score_0_10?.status === "string" &&
     typeof response.predictions?.skin_dryness_score_0_10?.status === "string" &&
     Array.isArray(response.guidance) &&
@@ -68,7 +71,7 @@ export async function predictTestInput(
       sleep_minutes: sleepMinutes,
       water_intake_ml: waterIntakeMl,
       outdoor_exposure_choice: outdoorChoice,
-    }));
+    }), { testOnly: true });
 
     if (upstream.status < 200 || upstream.status >= 300) {
       const detail = (upstream.payload as { detail?: unknown } | null)?.detail;

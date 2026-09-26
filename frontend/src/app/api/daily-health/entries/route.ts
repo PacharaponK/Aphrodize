@@ -21,6 +21,11 @@ type DailyHealthRequest = {
     prediction_status: "predicted" | "not_available" | "prediction_failed";
     model_id: string | null;
   } | null;
+  personalization_consent?: boolean;
+  age_guidance_consent?: boolean;
+  age_band?: "13_17" | "18_60" | "61_64" | "65_plus" | null;
+  smoking_status?: "current" | "former" | "never" | "prefer_not_to_say" | null;
+  currently_menstruating?: boolean | null;
 };
 
 function failed(status: number, detail: string): NextResponse {
@@ -48,6 +53,20 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (!Number.isInteger(value.water_intake_ml) || Number(value.water_intake_ml) < 0 || Number(value.water_intake_ml) > 20_000) return false;
   if (!Number.isInteger(value.outdoor_exposure_choice) || Number(value.outdoor_exposure_choice) < 1 || Number(value.outdoor_exposure_choice) > 4) return false;
   if (value.timezone !== undefined && (typeof value.timezone !== "string" || value.timezone.length > 64)) return false;
+  if (value.personalization_consent !== undefined && typeof value.personalization_consent !== "boolean") return false;
+  if (value.age_guidance_consent !== undefined && typeof value.age_guidance_consent !== "boolean") return false;
+  if (value.age_band !== undefined
+    && value.age_band !== null
+    && !["13_17", "18_60", "61_64", "65_plus"].includes(String(value.age_band))) return false;
+  if (value.smoking_status !== undefined
+    && value.smoking_status !== null
+    && !["current", "former", "never", "prefer_not_to_say"].includes(String(value.smoking_status))) return false;
+  if (value.currently_menstruating !== undefined
+    && value.currently_menstruating !== null
+    && typeof value.currently_menstruating !== "boolean") return false;
+  if (value.personalization_consent !== true
+    && (value.smoking_status != null || value.currently_menstruating != null)) return false;
+  if (value.age_guidance_consent !== true && value.age_band != null) return false;
   if (value.prediction === null) return true;
   if (!isRecord(value.prediction)) return false;
   const status = value.prediction.prediction_status;
@@ -156,6 +175,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         water_intake_ml: body.water_intake_ml,
         outdoor_exposure_choice: body.outdoor_exposure_choice,
         prediction: body.prediction,
+        personalization_consent: body.personalization_consent === true,
+        age_guidance_consent: body.age_guidance_consent === true,
+        age_band: body.age_guidance_consent === true ? body.age_band ?? null : null,
+        smoking_status: body.personalization_consent === true ? body.smoking_status ?? null : null,
+        currently_menstruating: body.personalization_consent === true
+          ? body.currently_menstruating ?? null
+          : null,
       }),
       cache: "no-store",
     });

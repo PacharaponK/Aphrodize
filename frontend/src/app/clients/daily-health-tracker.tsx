@@ -1,21 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import DailyHealthDashboard from "./daily-health-dashboard";
+import DailyHealthOutcomeForm from "./daily-health-outcome-form";
+import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
 
 type OutdoorChoice = "under_1_hour" | "1_to_under_3_hours" | "3_to_under_4_hours" | "4_hours_or_more";
 
-type ScorePrediction = { value: number | null; status: "predicted" | "not_available" };
-type PredictionResponse = {
-  model_status: string;
-  model?: { model_id?: string };
-  predictions: {
-    thirst_score_0_10: ScorePrediction;
-    skin_dryness_score_0_10: ScorePrediction;
-  };
-  guidance: string[];
-  warnings: string[];
-};
+type MenstruationChoice = "yes" | "no" | "";
 
 type DailyEntry = {
   date: string;
@@ -24,6 +17,11 @@ type DailyEntry = {
   sleepDurationMinutes: number;
   waterIntakeMl: number;
   outdoorChoice: OutdoorChoice;
+  personalizationConsent: boolean;
+  ageGuidanceConsent: boolean;
+  ageBand: AgeBand | null;
+  smokingStatus: SmokingStatus | null;
+  currentlyMenstruating: boolean | null;
 };
 
 type FormValues = {
@@ -33,6 +31,11 @@ type FormValues = {
   waterIntakeMl: string;
   outdoorChoice: OutdoorChoice | "";
   consentToStore: boolean;
+  personalizationConsent: boolean;
+  ageGuidanceConsent: boolean;
+  ageBand: AgeBand | "";
+  smokingStatus: SmokingStatus | "";
+  menstruationChoice: MenstruationChoice;
 };
 
 type StorageStatus = "idle" | "saving" | "saved" | "failed";
@@ -51,6 +54,11 @@ const emptyForm: FormValues = {
   waterIntakeMl: "",
   outdoorChoice: "",
   consentToStore: false,
+  personalizationConsent: false,
+  ageGuidanceConsent: false,
+  ageBand: "",
+  smokingStatus: "",
+  menstruationChoice: "",
 };
 
 function localDateValue(): string {
@@ -95,18 +103,49 @@ function ScoreMethodDetails() {
   );
 }
 
-export default function DailyHealthTracker() {
+export default function DailyHealthTracker({ initialDate }: { initialDate: string }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [today, setToday] = useState("");
+  const [today, setToday] = useState(initialDate);
   const [form, setForm] = useState<FormValues>(emptyForm);
   const [entry, setEntry] = useState<DailyEntry | null>(null);
   const [formError, setFormError] = useState("");
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
+  const [personalProfile, setPersonalProfile] = useState<DailyHealthProfile>({
+    has_session: false,
+    consent_active: false,
+    age_guidance_consent_active: false,
+    can_report_outcomes: false,
+    age_band: null,
+    smoking_status: null,
+  });
   const [predictionError, setPredictionError] = useState("");
   const [isPredicting, setIsPredicting] = useState(false);
   const [storageStatus, setStorageStatus] = useState<StorageStatus>("idle");
   const [storageMessage, setStorageMessage] = useState("");
   const predictionRequestId = useRef(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/daily-health/profile", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load personal health settings");
+        return (await response.json()) as DailyHealthProfile;
+      })
+      .then((profile) => {
+        setPersonalProfile(profile);
+        if (profile.consent_active || profile.age_guidance_consent_active) {
+          setForm((current) => ({
+            ...current,
+            personalizationConsent: profile.consent_active || current.personalizationConsent,
+            ageGuidanceConsent: profile.age_guidance_consent_active || current.ageGuidanceConsent,
+            ageBand: profile.age_guidance_consent_active ? profile.age_band ?? "" : current.ageBand,
+            smokingStatus: profile.consent_active ? profile.smoking_status ?? "" : current.smokingStatus,
+          }));
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   function openDialog() {
     const currentDate = localDateValue();
@@ -122,6 +161,38 @@ export default function DailyHealthTracker() {
 
   function updateForm<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function deletePersonalProfile() {
+    if (!window.confirm("ลบข้อมูลช่วงวัย สถานะการสูบบุหรี่ และเช็กอินประจำเดือนที่บันทึกไว้หรือไม่?")) return;
+    try {
+      const response = await fetch("/api/daily-health/profile", {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง");
+      setPersonalProfile({
+        has_session: true,
+        consent_active: false,
+        age_guidance_consent_active: false,
+        can_report_outcomes: true,
+        age_band: null,
+        smoking_status: null,
+      });
+      setForm((current) => ({
+        ...current,
+        personalizationConsent: false,
+        ageGuidanceConsent: false,
+        ageBand: "",
+        smokingStatus: "",
+        menstruationChoice: "",
+      }));
+      setStorageStatus("saved");
+      setStorageMessage("ลบข้อมูลส่วนบุคคลและถอน consent แล้ว");
+    } catch (error) {
+      setStorageStatus("failed");
+      setStorageMessage(error instanceof Error ? error.message : "ลบข้อมูลไม่สำเร็จ");
+    }
   }
 
   async function saveEntry(dailyEntry: DailyEntry, predictionResult: PredictionResponse | null) {
@@ -150,6 +221,13 @@ export default function DailyHealthTracker() {
                 model_id: predictionResult.model?.model_id ?? null,
               }
             : null,
+          personalization_consent: dailyEntry.personalizationConsent,
+          age_guidance_consent: dailyEntry.ageGuidanceConsent,
+          age_band: dailyEntry.ageGuidanceConsent ? dailyEntry.ageBand : null,
+          smoking_status: dailyEntry.personalizationConsent ? dailyEntry.smokingStatus : null,
+          currently_menstruating: dailyEntry.personalizationConsent
+            ? dailyEntry.currentlyMenstruating
+            : null,
         }),
       });
       const result = await response.json().catch(() => null);
@@ -158,6 +236,14 @@ export default function DailyHealthTracker() {
       }
       setStorageStatus("saved");
       setStorageMessage("บันทึกข้อมูลรายวันนี้ลงฐานข้อมูลแล้ว · คะแนนจากโมเดลยังไม่ถือเป็นป้ายกำกับจริงสำหรับ train");
+      try {
+        const profileResponse = await fetch("/api/daily-health/profile", { cache: "no-store" });
+        if (profileResponse.ok) {
+          setPersonalProfile((await profileResponse.json()) as DailyHealthProfile);
+        }
+      } catch {
+        // The daily entry is already saved; profile refresh is best-effort.
+      }
     } catch (error) {
       setStorageStatus("failed");
       setStorageMessage(error instanceof Error ? error.message : "บันทึกข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง");
@@ -198,6 +284,13 @@ export default function DailyHealthTracker() {
       sleepDurationMinutes: hours * 60 + minutes,
       waterIntakeMl: water,
       outdoorChoice: form.outdoorChoice,
+      personalizationConsent: form.personalizationConsent,
+      ageGuidanceConsent: form.ageGuidanceConsent,
+      ageBand: form.ageGuidanceConsent && form.ageBand ? form.ageBand : null,
+      smokingStatus: form.personalizationConsent && form.smokingStatus ? form.smokingStatus : null,
+      currentlyMenstruating: form.personalizationConsent && form.menstruationChoice
+        ? form.menstruationChoice === "yes"
+        : null,
     } satisfies DailyEntry;
     const selectedChoice = outdoorOptions.find((option) => option.value === form.outdoorChoice);
     const requestId = ++predictionRequestId.current;
@@ -207,7 +300,7 @@ export default function DailyHealthTracker() {
     setIsPredicting(true);
     setStorageStatus("saving");
     setStorageMessage("กำลังบันทึกข้อมูลรายวันลงฐานข้อมูล");
-    setForm((current) => ({ ...current, consentToStore: false }));
+    setForm((current) => ({ ...current, consentToStore: false, menstruationChoice: "" }));
     setFormError("");
     closeDialog();
 
@@ -223,6 +316,17 @@ export default function DailyHealthTracker() {
           sleep_minutes: dailyEntry.sleepMinutes,
           water_intake_ml: dailyEntry.waterIntakeMl,
           outdoor_exposure_choice: selectedChoice?.apiChoice,
+          personal_context: dailyEntry.personalizationConsent || dailyEntry.ageGuidanceConsent
+            ? {
+                consent_given: dailyEntry.personalizationConsent,
+                age_guidance_consent_given: dailyEntry.ageGuidanceConsent,
+                age_band: dailyEntry.ageGuidanceConsent ? dailyEntry.ageBand : null,
+                smoking_status: dailyEntry.personalizationConsent ? dailyEntry.smokingStatus : null,
+                currently_menstruating: dailyEntry.personalizationConsent
+                  ? dailyEntry.currentlyMenstruating
+                  : null,
+              }
+            : null,
         }),
       });
       const result = await response.json();
@@ -304,6 +408,103 @@ export default function DailyHealthTracker() {
             <small className="range-note">กำหนดเส้นแบ่งให้ไม่ซ้อนกัน: ตัวเลือก 2 ครอบคลุม 1 ถึงน้อยกว่า 3 ชั่วโมง และตัวเลือก 4 เริ่มตั้งแต่ 4 ชั่วโมง</small>
           </fieldset>
 
+          <fieldset className="personal-context-fieldset">
+            <legend>ข้อมูลส่วนบุคคลเพื่อปรับคำแนะนำ (ไม่บังคับ)</legend>
+            <label className="personalization-consent">
+              <input
+                type="checkbox"
+                checked={form.personalizationConsent}
+                onChange={(event) => updateForm("personalizationConsent", event.target.checked)}
+              />
+              <span>ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค</span>
+            </label>
+            {form.personalizationConsent && (
+              <div className="personal-context-fields">
+                <label className="tracker-field" htmlFor="smoking-status">
+                  <span>สถานะการสูบบุหรี่</span>
+                  <select
+                    id="smoking-status"
+                    value={form.smokingStatus}
+                    onChange={(event) => updateForm("smokingStatus", event.target.value as SmokingStatus | "")}
+                  >
+                    <option value="">
+                      {personalProfile.smoking_status ? "ใช้สถานะเดิมที่บันทึกไว้" : "ยังไม่ระบุ"}
+                    </option>
+                    <option value="current">ปัจจุบันสูบบุหรี่</option>
+                    <option value="former">เคยสูบ แต่เลิกแล้ว</option>
+                    <option value="never">ไม่เคยสูบ</option>
+                    <option value="prefer_not_to_say">ไม่ต้องการระบุ</option>
+                  </select>
+                </label>
+                <fieldset className="tracker-field">
+                  <legend>กำลังมีประจำเดือนวันนี้หรือไม่ (ไม่บังคับ)</legend>
+                  <div className="period-checkin-options">
+                    <label>
+                      <input
+                        type="radio"
+                        name="period-checkin"
+                        checked={form.menstruationChoice === ""}
+                        onChange={() => updateForm("menstruationChoice", "")}
+                      />
+                      <span>ไม่แชร์วันนี้</span>
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="period-checkin"
+                        checked={form.menstruationChoice === "yes"}
+                        onChange={() => updateForm("menstruationChoice", "yes")}
+                      />
+                      <span>ใช่</span>
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="period-checkin"
+                        checked={form.menstruationChoice === "no"}
+                        onChange={() => updateForm("menstruationChoice", "no")}
+                      />
+                      <span>ไม่ใช่</span>
+                    </label>
+                  </div>
+                </fieldset>
+              </div>
+            )}
+            <label className="personalization-consent">
+              <input
+                type="checkbox"
+                checked={form.ageGuidanceConsent}
+                onChange={(event) => updateForm("ageGuidanceConsent", event.target.checked)}
+              />
+              <span>ยินยอมแยกต่างหากให้บันทึกช่วงวัยเพื่อแสดงแนวทางเวลานอนทั่วไปตามวัย (ไม่เก็บวันเกิด)</span>
+            </label>
+            {form.ageGuidanceConsent && (
+              <label className="tracker-field" htmlFor="age-band">
+                <span>ช่วงวัยสำหรับคำแนะนำการนอน</span>
+                <select
+                  id="age-band"
+                  value={form.ageBand}
+                  onChange={(event) => updateForm("ageBand", event.target.value as AgeBand | "")}
+                >
+                  <option value="">{personalProfile.age_band ? "ใช้ช่วงวัยเดิมที่บันทึกไว้" : "เลือกช่วงวัย"}</option>
+                  <option value="13_17">13–17 ปี</option>
+                  <option value="18_60">18–60 ปี</option>
+                  <option value="61_64">61–64 ปี</option>
+                  <option value="65_plus">65 ปีขึ้นไป</option>
+                </select>
+                <small>เก็บเฉพาะช่วงอายุ ไม่เก็บวันเกิด; หากไม่เลือกจะใช้คำแนะนำทั่วไป</small>
+              </label>
+            )}
+            <small>
+              ข้อมูลที่เคยบันทึกจะคงอยู่จนกดถอน consent และลบข้อมูลด้านล่าง; เช็กอินประจำเดือนเลือกแชร์แยกในแต่ละวัน
+            </small>
+            {(personalProfile.consent_active || personalProfile.age_guidance_consent_active) && (
+              <button className="profile-delete-button" type="button" onClick={() => void deletePersonalProfile()}>
+                ถอน consent และลบข้อมูลส่วนบุคคลที่บันทึกไว้
+              </button>
+            )}
+          </fieldset>
+
           <label className="daily-data-consent">
             <input type="checkbox" required checked={form.consentToStore} onChange={(event) => updateForm("consentToStore", event.target.checked)} />
             <span>ยินยอมให้บันทึกข้อมูลสุขภาพรายวันนี้ในฐานข้อมูลเพื่อใช้กับประวัติและพัฒนาระบบต่อ โดยเข้าใจว่าคะแนนจากโมเดลเป็นเพียงค่าคาดการณ์ ไม่ใช่คะแนนจริงสำหรับใช้ train</span>
@@ -370,15 +571,13 @@ export default function DailyHealthTracker() {
         )}
 
         {predictionError && <p className="prediction-error" role="alert">{predictionError}</p>}
-        {prediction?.guidance.length ? (
-          <section className="prediction-guidance" aria-labelledby="prediction-guidance-title" aria-live="polite">
-            <h3 id="prediction-guidance-title">ข้อแนะนำที่เกี่ยวข้อง</h3>
-            <ul>{prediction.guidance.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>
-        ) : null}
+        {prediction && <DailyHealthDashboard prediction={prediction} />}
         <ScoreMethodDetails />
       </section>
 
+      {personalProfile.can_report_outcomes && (
+        <DailyHealthOutcomeForm initialDate={initialDate} />
+      )}
     </div>
   );
 }

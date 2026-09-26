@@ -149,6 +149,82 @@ class DailyHealthEntry(Base):
         )
 
 
+class DailyHealthProfile(Base):
+    """Consent-gated, user-reported context for personalizing wellness guidance."""
+
+    __tablename__ = "daily_health_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id"), primary_key=True
+    )
+    smoking_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthAgeBand(Base):
+    """Optional, consent-gated age band for age-aware sleep guidance; no birth date stored."""
+
+    __tablename__ = "daily_health_age_bands"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id"), primary_key=True
+    )
+    age_band: Mapped[str] = mapped_column(String(16))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthMenstrualCheckIn(Base):
+    """Optional, user-reported menstruation status for a single local date."""
+
+    __tablename__ = "daily_health_menstrual_checkins"
+    __table_args__ = (
+        UniqueConstraint("user_id", "local_date", name="uq_menstrual_checkin_user_date"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    local_date: Mapped[date] = mapped_column(Date)
+    currently_menstruating: Mapped[bool] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class DailyHealthOutcome(Base):
+    """User-reported next-day outcomes kept separate from model predictions."""
+
+    __tablename__ = "daily_health_outcomes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_date", name="uq_daily_health_outcome_user_date"),
+        CheckConstraint(
+            "reported_energy_level_0_10 IS NULL OR "
+            "(reported_energy_level_0_10 >= 0 AND reported_energy_level_0_10 <= 10)",
+            name="ck_daily_health_reported_energy",
+        ),
+        CheckConstraint(
+            "reported_thirst_level_0_10 IS NULL OR "
+            "(reported_thirst_level_0_10 >= 0 AND reported_thirst_level_0_10 <= 10)",
+            name="ck_daily_health_reported_thirst_level",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    target_date: Mapped[date] = mapped_column(Date)
+    reported_energy_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reported_thirst_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Analysis(Base):
     __tablename__ = "analyses"
     id: Mapped[uuid.UUID] = uuid_pk()
