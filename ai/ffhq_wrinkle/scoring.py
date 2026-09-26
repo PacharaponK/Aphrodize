@@ -1,4 +1,8 @@
-"""Versioned, non-clinical scores derived from wrinkle segmentation masks."""
+"""Measure segmented wrinkle area, not clinical wrinkle severity.
+
+The face mask defines the denominator. Eight fixed regions in aligned image
+coordinates provide comparable per-region measurements across photos.
+"""
 
 from __future__ import annotations
 
@@ -90,6 +94,7 @@ def _severity_label(score: float, config: ScoreConfig) -> str:
 
 
 def _score(mask: np.ndarray, evaluation_mask: np.ndarray, config: ScoreConfig) -> dict[str, object]:
+    """Turn wrinkle pixels / evaluated face pixels into a capped 0-100 score."""
     evaluated_pixels = int(np.count_nonzero(evaluation_mask))
     wrinkle_pixels = int(np.count_nonzero(mask & evaluation_mask))
     ratio = wrinkle_pixels / evaluated_pixels if evaluated_pixels else 0.0
@@ -113,7 +118,12 @@ def derive_scores(
     allow_experimental: bool = False,
     config: ScoreConfig = ScoreConfig(),
 ) -> dict[str, object]:
-    """Derive versioned scores after confidence, or explicitly as unvalidated research output."""
+    """Return overall and eight region scores from the final binary mask.
+
+    The service stores this result as ``derived_score`` after a passed gate.
+    It may explicitly allow the same arithmetic as ``experimental_score``
+    when calibration fails; that path withholds recommendations.
+    """
 
     config.validate()
     if not gate_passed and not allow_experimental:

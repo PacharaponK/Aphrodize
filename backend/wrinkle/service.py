@@ -1,4 +1,9 @@
-"""Application service connecting segmentation, confidence, scoring, and gating."""
+"""Turn one image into a public AI response without retaining raw arrays.
+
+``analyze_bytes`` owns the temporary source/prediction files, while
+``predict_image`` performs preprocessing and segmentation. ``build_response``
+then applies the confidence policy before exposing scores or recommendations.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +36,7 @@ LIMITATIONS = [
 
 
 class WrinkleAnalysisService:
-    """Run one-image analysis while keeping raw artifacts in temporary storage only."""
+    """Orchestrate one-image inference and keep the Stage-2 model cached."""
 
     def __init__(
         self,
@@ -63,6 +68,7 @@ class WrinkleAnalysisService:
         self._model_lock = Lock()
 
     def _bundle(self) -> ModelBundle:
+        """Load the verified checkpoint once, even with concurrent requests."""
         if self._model_bundle is None:
             with self._model_lock:
                 if self._model_bundle is None:
@@ -78,12 +84,17 @@ class WrinkleAnalysisService:
         *,
         artifact_sink: Callable[[dict[str, bytes]], None] | None = None,
     ) -> AnalysisResponse:
-        """Analyze bytes; temporary source and raw model artifacts are deleted on return."""
+        """Analyze image bytes and delete local artifacts on return or error.
+
+        ``artifact_sink`` can copy the overlay and wrinkle-mask PNG bytes to
+        the caller before cleanup. It never receives logits or probabilities.
+        """
 
         with tempfile.TemporaryDirectory(prefix="aphrodize-wrinkle-") as directory:
             work = Path(directory)
             source = work / f"upload{suffix}"
             source.write_bytes(image_bytes)
+            # Resolve the verified model before prediction; later requests reuse the cached bundle.
             result = self.predictor(
                 source,
                 work / "prediction",
@@ -91,9 +102,11 @@ class WrinkleAnalysisService:
                 requested_device=self.requested_device,
                 model_bundle=self._bundle(),
             )
+            # Scoring needs the same skin/nose area that preprocessing used.
             with Image.open(work / "prediction" / "face_mask.png") as opened:
                 face_mask = np.asarray(opened.convert("L")) > 0
             if artifact_sink is not None:
+                # Copy only display images before the temporary directory is removed.
                 artifact_sink({
                     "overlay": (work / "prediction" / "overlay.png").read_bytes(),
                     "mask": (work / "prediction" / "wrinkle_mask.png").read_bytes(),
@@ -101,12 +114,17 @@ class WrinkleAnalysisService:
             return self.build_response(result, face_mask)
 
     def build_response(self, result: PredictionResult, face_mask: np.ndarray) -> AnalysisResponse:
-        """Build and validate the public response without artifact paths or URLs."""
+        """Convert raw arrays into a policy-gated, path-free public response.
+
+        A failed confidence gate still produces an explicitly experimental
+        score, but withholds the derived score and recommendations.
+        """
 
         metadata = result.metadata
         model = metadata["model"]
         threshold = metadata["threshold"]
         confidence = evaluate_confidence(result.probability, face_mask, self.confidence_policy)
+        # A calibrated policy is valid only for the exact model and pipeline versions.
         compatibility_reasons = self.confidence_policy.compatibility_reasons(metadata)
         if compatibility_reasons:
             confidence["passed"] = False

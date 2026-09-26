@@ -1,4 +1,8 @@
-"""Face-region masking compatible with the FFHQ-Wrinkle preprocessing scripts."""
+"""Turn the aligned face into the skin-and-nose mask used by the model.
+
+BiSeNet predicts 19 semantic classes at 512 x 512. Only skin and nose labels
+are enlarged to the aligned image size; all other pixels are masked out.
+"""
 
 from __future__ import annotations
 
@@ -54,7 +58,11 @@ def face_mask_from_labels(
     output_size: tuple[int, int] | None = None,
     keep_labels: Iterable[int] = DEFAULT_FACE_LABELS,
 ) -> np.ndarray:
-    """Return the boolean skin-and-nose mask used by FFHQ-Wrinkle."""
+    """Return a boolean face mask, optionally resized to the aligned image.
+
+    Nearest-neighbor resizing preserves integer class IDs before selecting
+    labels 1 (skin) and 10 (nose).
+    """
 
     if output_size is not None:
         labels = resize_label_map(labels, output_size)
@@ -65,7 +73,10 @@ def face_mask_from_labels(
 
 
 def mask_rgb_image(image: np.ndarray, face_mask: np.ndarray) -> np.ndarray:
-    """Set non-face RGB pixels to zero without changing image dtype."""
+    """Zero RGB pixels outside the parsed face without changing image dtype.
+
+    This becomes the first three channels of the Stage-2 model input.
+    """
 
     if image.ndim != 3 or image.shape[2] != 3:
         raise ValueError(f"expected an HxWx3 RGB image, got shape {image.shape}")
@@ -105,6 +116,8 @@ def parse_face(image: np.ndarray, model, device: str = "cpu") -> np.ndarray:
     The resize and ImageNet normalization reproduce the upstream evaluator.
     Discrete labels should subsequently be enlarged with
     :func:`resize_label_map`, which always uses nearest-neighbor interpolation.
+    The returned labels are an array, not a file; ``preprocess_image`` converts
+    them to a face mask before writing its intermediate PNG artifacts.
     """
 
     import torch
