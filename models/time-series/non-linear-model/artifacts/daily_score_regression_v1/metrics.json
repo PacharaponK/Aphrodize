@@ -1,0 +1,77 @@
+{
+  "model_id": "daily-score-random-forest-synthetic-v1",
+  "model_family": "random_forest_regressor",
+  "targets": [
+    "thirst_score_0_10",
+    "skin_dryness_score_0_10"
+  ],
+  "features": [
+    "sleep_duration_total_minutes",
+    "water_intake_ml",
+    "outdoor_exposure_choice"
+  ],
+  "training_data_file": "lifestyle_sandbox_generated_water900_1800.csv",
+  "training_data_origin": "sandbox_synthetic_rule_based only; real tracker rows excluded",
+  "training_rows": 1083,
+  "training_users": 20,
+  "holdout_method": "25% users held out with GroupShuffleSplit; no user overlap",
+  "holdout": {
+    "metrics": {
+      "thirst_score_0_10": {
+        "mae": 0.061501006853379114,
+        "rmse": 0.08356205237379545,
+        "r2": 0.995598856234641,
+        "mean_baseline_mae": 1.0371956005882725
+      },
+      "skin_dryness_score_0_10": {
+        "mae": 0.842469914999842,
+        "rmse": 1.0219767704215232,
+        "r2": 0.798317854978952,
+        "mean_baseline_mae": 1.960932664459141
+      }
+    },
+    "train_rows": 809,
+    "test_rows": 274,
+    "train_users": [
+      "synthetic_user_01",
+      "synthetic_user_02",
+      "synthetic_user_03",
+      "synthetic_user_04",
+      "synthetic_user_05",
+      "synthetic_user_06",
+      "synthetic_user_08",
+      "synthetic_user_11",
+      "synthetic_user_12",
+      "synthetic_user_13",
+      "synthetic_user_15",
+      "synthetic_user_16",
+      "synthetic_user_18",
+      "synthetic_user_19",
+      "synthetic_user_20"
+    ],
+    "test_users": [
+      "synthetic_user_07",
+      "synthetic_user_09",
+      "synthetic_user_10",
+      "synthetic_user_14",
+      "synthetic_user_17"
+    ]
+  },
+  "training_domain": {
+    "sleep_duration_total_minutes": [
+      180,
+      540
+    ],
+    "water_intake_ml": [
+      900,
+      1800
+    ],
+    "outdoor_exposure_choice": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "warning": "Experimental regression against user-guided synthetic score rules only. Not medically validated and not evaluated on real user score labels."
+}

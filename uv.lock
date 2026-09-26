@@ -56,6 +56,7 @@ dependencies = [
     { name = "arq" },
     { name = "asyncpg" },
     { name = "fastapi" },
+    { name = "joblib" },
     { name = "label-studio-sdk" },
     { name = "minio" },
     { name = "mlflow" },
@@ -64,6 +65,7 @@ dependencies = [
     { name = "pillow" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
+    { name = "scikit-learn" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -81,6 +83,7 @@ requires-dist = [
     { name = "arq", specifier = ">=0.26,<0.27" },
     { name = "asyncpg", specifier = ">=0.30,<0.31" },
     { name = "fastapi", specifier = ">=0.115,<0.116" },
+    { name = "joblib", specifier = "==1.6.0" },
     { name = "label-studio-sdk", specifier = ">=1.0,<2.0" },
     { name = "minio", specifier = ">=7.2,<8.0" },
     { name = "mlflow", specifier = ">=2.20,<3.0" },
@@ -88,6 +91,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=11.1,<12.0" },
     { name = "pydantic-settings", specifier = ">=2.7,<3.0" },
     { name = "python-multipart", specifier = ">=0.0.20,<0.1" },
+    { name = "scikit-learn", specifier = "==1.9.1" },
     { name = "sqlalchemy", specifier = ">=2.0.36,<2.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34,<0.35" },
 ]

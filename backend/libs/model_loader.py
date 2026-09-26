@@ -21,6 +21,8 @@ LIFESTYLE_FORECAST_PATH = (
 LIFESTYLE_FORECAST_MODULE_NAME = (
     "aphrodize_models.time_series.linear.lifestyle_aware_wrinkle_forecast"
 )
+DAILY_SCORE_MODEL_PATH = MODEL_ROOT / "time-series" / "non-linear-model" / "daily_score_model.py"
+DAILY_SCORE_MODEL_MODULE_NAME = "aphrodize_models.time_series.non_linear.daily_score_model"
 
 
 @lru_cache
@@ -31,6 +33,20 @@ def get_lifestyle_forecast_model() -> ModuleType:
     )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not load time-series model from {LIFESTYLE_FORECAST_PATH}.")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+@lru_cache
+def get_daily_score_model() -> ModuleType:
+    """Load the promoted daily-score model implementation exactly once per process."""
+    spec = importlib.util.spec_from_file_location(
+        DAILY_SCORE_MODEL_MODULE_NAME, DAILY_SCORE_MODEL_PATH
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load daily score model from {DAILY_SCORE_MODEL_PATH}.")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
