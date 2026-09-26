@@ -1,4 +1,8 @@
-"""End-to-end preprocessing for one user-provided face image."""
+"""Convert one source photo into the four channels expected by Stage-2.
+
+The path is decode -> detect one face -> quality checks -> align -> face
+parsing -> masked RGB and texture. Rejected images never get a model tensor.
+"""
 
 from __future__ import annotations
 
@@ -43,6 +47,11 @@ MANAGED_ARTIFACTS = (
 
 @dataclass(frozen=True)
 class PreprocessResult:
+    """In-memory model input and aligned-image arrays passed to prediction.
+
+    ``tensor`` is ``[4,H,W]``; RGB arrays are ``[H,W,3]``; ``face_mask`` and
+    ``texture_map`` are ``[H,W]``. Metadata names the saved artifacts.
+    """
     tensor: np.ndarray
     aligned_face: np.ndarray
     face_mask: np.ndarray
@@ -52,7 +61,7 @@ class PreprocessResult:
 
 
 def load_user_image(path: str | Path) -> tuple[np.ndarray, str]:
-    """Load JPEG, PNG, or WebP, applying EXIF orientation and RGB conversion."""
+    """Return RGB uint8 ``[H, W, 3]`` and format after EXIF correction."""
 
     path = Path(path)
     with Image.open(path) as opened:
@@ -67,7 +76,11 @@ def load_user_image(path: str | Path) -> tuple[np.ndarray, str]:
 
 
 def build_four_channel_tensor(masked_face: np.ndarray, texture: np.ndarray) -> np.ndarray:
-    """Return official RGB+texture CHW float32 data normalized to [-1, 1]."""
+    """Stack masked RGB and texture as float32 ``[4, H, W]`` in ``[-1, 1]``.
+
+The first three channels are face-only RGB; the fourth is the texture map.
+``predict_image`` passes this array to PyTorch without rereading the NPY file.
+    """
 
     if masked_face.ndim != 3 or masked_face.shape[2] != 3:
         raise ValueError("masked_face must be HxWx3")
@@ -116,11 +129,19 @@ def preprocess_image(
     parser: Callable[[np.ndarray], np.ndarray] | None = None,
     quality_config: QualityConfig = QualityConfig(),
 ) -> PreprocessResult:
-    """Validate and transform one image; rejected inputs never produce a tensor."""
+    """Prepare one model input and save inspectable intermediate artifacts.
+
+    ``image_path`` is the service's temporary upload or a CLI input. On
+    success, ``output_dir`` gets PNG/NPY files and a ``PreprocessResult`` is
+    returned. On rejection, ``_reject`` writes flags to ``result.json`` and
+    raises ``QualityGateError`` before a model-ready tensor is produced.
+    """
 
     image_path = Path(image_path)
     output_dir = Path(output_dir)
+    # Decode the file into an in-memory RGB array; no new image file is written yet.
     image, image_format = load_user_image(image_path)
+    # Detection runs on the source image so quality checks reflect the upload.
     if detector is None:
         detector = YuNetFaceDetector(
             yunet_checkpoint or MODEL_ROOT / "face_detection_yunet_2023mar.onnx"
@@ -141,6 +162,7 @@ def preprocess_image(
 
     aligned = align_face(image, detection, ALIGNMENT_SIZE)
     try:
+        # Face parsing runs on the aligned face, independently of wrinkle inference.
         if parser is None:
             model = load_bisenet(
                 bisenet_checkpoint or MODEL_ROOT / "79999_iter.pth", device="cpu"
@@ -148,6 +170,7 @@ def preprocess_image(
             labels = parse_face(aligned, model, device="cpu")
         else:
             labels = parser(aligned)
+        # Resize class labels without blending them into invalid intermediate values.
         face_mask = face_mask_from_labels(labels, aligned.shape[:2])
     except Exception as error:
         assessment = QualityAssessment(
@@ -163,9 +186,11 @@ def preprocess_image(
 
     masked_face = mask_rgb_image(aligned, face_mask)
     texture = generate_texture_map(aligned, face_mask)
+    # The Stage-2 model expects masked RGB and texture as one four-channel tensor.
     tensor = build_four_channel_tensor(masked_face, texture)
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    # These files explain the transformation; the next stage uses returned arrays.
     Image.fromarray(aligned, mode="RGB").save(output_dir / "aligned_face.png")
     Image.fromarray(face_mask.astype(np.uint8) * 255, mode="L").save(
         output_dir / "face_mask.png"

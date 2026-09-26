@@ -1,4 +1,8 @@
-"""Fail-closed confidence policy for wrinkle analysis responses."""
+"""Gate public scores using model evidence and calibration provenance.
+
+The decision margin describes certainty of the segmentation output; it is
+not a clinical confidence or a calibrated probability of a diagnosis.
+"""
 
 from __future__ import annotations
 
@@ -52,6 +56,7 @@ class ConfidencePolicy:
                 raise ValueError("calibrated policy requires complete model lineage")
 
     def compatibility_reasons(self, metadata: dict[str, object]) -> list[str]:
+        """Require a calibrated policy to match this exact model and pipeline."""
         if self.status != "calibrated":
             return []
         model = metadata.get("model", {})
@@ -76,7 +81,11 @@ def load_confidence_policy(path: str | Path = DEFAULT_POLICY_PATH) -> Confidence
 
 
 def decision_margin_confidence(probability: np.ndarray, face_mask: np.ndarray) -> float:
-    """Mean binary decision margin; this is evidence, not a calibrated probability."""
+    """Average distance from 0.5 over face pixels, scaled to ``[0, 1]``.
+
+    A map near 0.5 has little binary decision margin. Values near 0 or 1
+    have more margin; neither case measures clinical correctness.
+    """
 
     if probability.shape != face_mask.shape or probability.ndim != 2:
         raise ValueError("probability and face_mask must be matching 2-D arrays")
@@ -91,6 +100,11 @@ def decision_margin_confidence(probability: np.ndarray, face_mask: np.ndarray) -
 def evaluate_confidence(
     probability: np.ndarray, face_mask: np.ndarray, policy: ConfidencePolicy
 ) -> dict[str, object]:
+    """Return gate status and reasons for the public AI response.
+
+    The repository's default policy is ``not_calibrated`` and therefore
+    withholds approved scores even if the segmentation ran successfully.
+    """
     policy.validate()
     value = decision_margin_confidence(probability, face_mask)
     reasons: list[str] = []

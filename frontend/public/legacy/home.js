@@ -16,25 +16,20 @@ const dialogs = document.querySelectorAll("dialog");
 const routes = {
   "#dashboard": "/",
   "#capture": "/capture",
-  "#trend": "/trend",
-  "#profile": "/profile",
-  "#privacy": "/profile#privacy",
 };
 
 const icons = {
   "#dashboard": '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M9 21v-7h6v7"/></svg>',
   "#capture": '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="12" cy="12" r="3"/><path d="M8 5 9.5 3h5L16 5"/></svg>',
-  "#trend": '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V5"/><path d="M3 20h18"/><path d="m6 16 4-5 3 3 5-7"/></svg>',
-  "#profile": '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 21c.8-4 3.1-6 7-6s6.2 2 7 6"/></svg>',
 };
 
 const navigationCopy = {
-  th: { "#dashboard": "ภาพรวม", "#capture": "วิเคราะห์ภาพ", "#trend": "แนวโน้ม", "#profile": "Skin profile" },
-  en: { "#dashboard": "Overview", "#capture": "Analyze image", "#trend": "Trends", "#profile": "Skin profile" },
+  th: { "#dashboard": "ภาพรวม", "#capture": "วิเคราะห์ภาพ" },
+  en: { "#dashboard": "Overview", "#capture": "Analyze image" },
 };
 function renderNavigation(language) {
   Object.entries(navigationCopy[language]).forEach(([hash, label]) => {
-    document.querySelectorAll(`a[href="${hash}"]`).forEach((link) => {
+    document.querySelectorAll(`a.nav-link[href="${hash}"], .mobile-nav a[href="${hash}"]`).forEach((link) => {
       link.innerHTML = link.closest(".mobile-nav") ? `${icons[hash]}<span>${label}</span>` : `${icons[hash]}${label}`;
     });
   });
@@ -73,14 +68,12 @@ const languageCopy = {
   th: {
     date: "ภาพล่าสุด · 20 ก.ย. 2026", greeting: "สวัสดี, Ink", notice: "ผลนี้ใช้สำหรับติดตามลักษณะผิว ไม่ใช่การวินิจฉัยโรคหรือยืนยันสาเหตุ",
     severity: "ปานกลาง", scoreMeta: "confidence 0.86 · Model v0.1", regions: "ดูผลรายบริเวณ →", next: "ติดตามครั้งต่อไป", captureTitle: "พร้อมบันทึกภาพใหม่ไหม?", captureText: "หน้าสด · หน้าตรง · แสงกระจาย เพื่อให้เทียบผลได้ดีขึ้น", captureButton: "ถ่ายภาพใหม่ →",
-    trends: "แนวโน้มของคุณ", all: "ดูทั้งหมด →", trendTitle: "เริ่มติดตามแนวโน้มได้แล้ว", trendText: "มีภาพที่ผ่าน quality gate 1 ครั้ง อีก 1 ครั้งจะแสดงแนวโน้มเปรียบเทียบให้", week1: "สัปดาห์ 1", week12: "สัปดาห์ 12",
-    latest: "สิ่งที่ตรวจพบจากภาพ", detail: "ดูรายละเอียด →", eye: "รอบดวงตา", forehead: "หน้าผาก", mild: "เล็กน้อย", quality: "คุณภาพภาพ", passed: "ผ่าน", usable: "ใช้ในแนวโน้มได้", reported: "คุณรายงาน", dry: "ผิวแห้ง · ระคายง่าย", uv: "UV exposure สูง · ใช้ sunscreen ไม่สม่ำเสมอ", edit: "แก้ไขข้อมูล →", rules: "คำแนะนำจากกฎ", barrier: "ดูแลเกราะป้องกันผิว", rationale: "แสดงจากข้อมูลที่คุณรายงานร่วมกับผลภาพที่ confidence ผ่านเกณฑ์", safety: "ดูเหตุผลและ safety check →", language: "EN",
+    latest: "สิ่งที่ตรวจพบจากภาพ", detail: "ดูรายละเอียด →", eye: "รอบดวงตา", forehead: "หน้าผาก", mild: "เล็กน้อย", quality: "คุณภาพภาพ", passed: "ผ่าน", usable: "ภาพผ่านเกณฑ์", rules: "คำแนะนำจากกฎ", barrier: "ดูแลเกราะป้องกันผิว", rationale: "แสดงจากข้อมูลที่คุณรายงานร่วมกับผลภาพที่ confidence ผ่านเกณฑ์", safety: "ดูเหตุผลและ safety check →", language: "EN",
   },
   en: {
     date: "Latest image · Sep 20, 2026", greeting: "Hello, Ink", notice: "This result supports skin tracking; it is not a diagnosis or confirmation of cause.",
     severity: "Moderate", scoreMeta: "confidence 0.86 · Model v0.1", regions: "View regional results →", next: "NEXT CHECK-IN", captureTitle: "Ready to record a new image?", captureText: "Bare face · forward-facing · diffused light for a more comparable result", captureButton: "Capture new image →",
-    trends: "Your trends", all: "View all →", trendTitle: "Your tracking has started", trendText: "You have 1 image that passed the quality gate. Add one more to compare your trend.", week1: "Week 1", week12: "Week 12",
-    latest: "Detected from image", detail: "View details →", eye: "Periocular area", forehead: "Forehead", mild: "Mild", quality: "Image quality", passed: "Passed", usable: "Eligible for trends", reported: "You reported", dry: "Dry · easily irritated", uv: "High UV exposure · inconsistent sunscreen use", edit: "Edit profile →", rules: "Rule-based guidance", barrier: "Support your skin barrier", rationale: "Uses your reported information together with image signals that passed the confidence threshold.", safety: "View rationale & safety check →", language: "TH",
+    latest: "Detected from image", detail: "View details →", eye: "Periocular area", forehead: "Forehead", mild: "Mild", quality: "Image quality", passed: "Passed", usable: "Quality check passed", rules: "Rule-based guidance", barrier: "Support your skin barrier", rationale: "Uses your reported information together with image signals that passed the confidence threshold.", safety: "View rationale & safety check →", language: "TH",
   },
 };
 function setText(selector, value, index = 0) {
@@ -95,9 +88,8 @@ function applyLanguage(language) {
   setText(".topbar .eyebrow", copy.date); setText(".topbar h1", copy.greeting); setText(".notice p", copy.notice);
   setText(".score-card .status", copy.severity); setText(".score-card .metadata", copy.scoreMeta); setText(".score-card .text-button", copy.regions);
   setText(".capture-card .eyebrow", copy.next); setText(".capture-card h2", copy.captureTitle); setText(".capture-card p:not(.eyebrow)", copy.captureText); setText(".capture-card .primary-button", copy.captureButton);
-  setText(".section-heading h2", copy.trends, 0); setText(".section-heading .text-button", copy.all, 0); setText(".trend-info h3", copy.trendTitle); setText(".trend-info p", copy.trendText); setText(".chart span", copy.week1, 0); setText(".chart span", copy.week12, 1);
-  setText(".section-heading h2", copy.latest, 1); setText(".section-heading .text-button", copy.detail, 1); setText(".result-card .eyebrow", copy.eye, 0); setText(".result-card h3", copy.severity, 0); setText(".result-card .eyebrow", copy.forehead, 1); setText(".result-card h3", copy.mild, 1); setText(".result-card .eyebrow", copy.quality, 2); setText(".result-card h3", copy.passed, 2); setText(".result-card .metadata", copy.usable, 2);
-  setText(".sources-grid article .eyebrow", copy.reported, 0); setText(".sources-grid article h2", copy.dry, 0); setText(".sources-grid article p:not(.eyebrow)", copy.uv, 0); setText(".sources-grid article .text-button", copy.edit, 0); setText(".sources-grid article .eyebrow", copy.rules, 1); setText(".sources-grid article h2", copy.barrier, 1); setText(".sources-grid article p:not(.eyebrow)", copy.rationale, 1); setText(".sources-grid article .text-button", copy.safety, 1);
+  setText(".section-heading h2", copy.latest); setText(".section-heading .text-button", copy.detail); setText(".result-card .eyebrow", copy.eye, 0); setText(".result-card h3", copy.severity, 0); setText(".result-card .eyebrow", copy.forehead, 1); setText(".result-card h3", copy.mild, 1); setText(".result-card .eyebrow", copy.quality, 2); setText(".result-card h3", copy.passed, 2); setText(".result-card .metadata", copy.usable, 2);
+  setText(".sources-grid article .eyebrow", copy.rules); setText(".sources-grid article h2", copy.barrier); setText(".sources-grid article p:not(.eyebrow)", copy.rationale); setText(".sources-grid article .text-button", copy.safety);
   languageToggle.textContent = copy.language;
   languageToggle.setAttribute("aria-label", language === "th" ? "Change language to English" : "เปลี่ยนภาษาเป็นไทย");
 }
@@ -130,6 +122,11 @@ menuButton.addEventListener("click", () => {
   const isOpen = sidebar.classList.toggle("mobile-open");
   menuButton.setAttribute("aria-expanded", String(isOpen));
   menuButton.setAttribute("aria-label", isOpen ? "ปิดเมนู" : "เปิดเมนู");
+});
+sidebar.querySelector(".sidebar-close")?.addEventListener("click", () => {
+  sidebar.classList.remove("mobile-open");
+  menuButton.setAttribute("aria-expanded", "false");
+  menuButton.setAttribute("aria-label", "เปิดเมนู");
 });
 topbar?.prepend(menuButton);
 profileButton.innerHTML = '<img src="/assets/profile-login.svg" alt="" />';
