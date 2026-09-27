@@ -15,10 +15,12 @@ x-api-environment: &api-environment
   MINIO_BUCKET: aphrodize-private
   LABEL_STUDIO_URL: http://label-studio:8080
   LABEL_STUDIO_API_KEY: ${LABEL_STUDIO_API_KEY:-}
+  LABEL_STUDIO_PROJECT_ID: ${LABEL_STUDIO_PROJECT_ID:-0}
   API_USERNAME: ${API_USERNAME:-aphrodize}
   API_PASSWORD: ${API_PASSWORD:?Set API_PASSWORD in .env}
   MLFLOW_TRACKING_URI: http://mlflow:5000
   MODEL_VERSION: ${MODEL_VERSION:-ffhq-wrinkle-stage2-unet}
+  APHRODIZE_WRINKLE_APPROVED_MANIFEST: ${APHRODIZE_WRINKLE_APPROVED_MANIFEST:-}
 
 x-container-logging: &container-logging
   driver: local
@@ -78,6 +80,7 @@ services:
     entrypoint: >-
       /bin/sh -c 'until mc alias set local http://minio:9000 "$${MINIO_ACCESS_KEY}" "$${MINIO_SECRET_KEY}";
       do sleep 1; done; mc mb --ignore-existing local/aphrodize-private;
+      mc mb --ignore-existing local/aphrodize-annotation;
       mc mb --ignore-existing local/mlflow'
     depends_on:
       minio:
@@ -87,13 +90,13 @@ services:
   label-studio:
     image: heartexlabs/label-studio:latest
     environment:
-      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "false"
-      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize}
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
+      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize@example.local}
       LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?Set LABEL_STUDIO_PASSWORD in .env}
     volumes:
       - label_studio_data:/label-studio/data
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8080/user/login/', timeout=3)"]
       interval: 10s
@@ -123,7 +126,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:5000/health', timeout=3)"]
       interval: 10s
@@ -167,6 +170,8 @@ services:
     volumes:
       - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
     depends_on:
+      api:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -183,7 +188,13 @@ services:
       dockerfile: docker/trainer.Dockerfile
     command: arq backend.workers.trainer_worker.WorkerSettings
     restart: unless-stopped
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-aphrodize}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    volumes:
+      - ./storage/data/approved:/app/storage/data/approved:ro
     depends_on:
       redis:
         condition: service_healthy
