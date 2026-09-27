@@ -18,6 +18,12 @@ class FakeSession:
     async def scalar(self, _query: object) -> object | None:
         return "existing" if self.existing_account else None
 
+    def add(self, value: object) -> None:
+        self.added.append(value)
+
+    async def flush(self) -> None:
+        pass
+
     def add_all(self, values: list[object]) -> None:
         self.added.extend(values)
 

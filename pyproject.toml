@@ -22,6 +22,9 @@ dependencies = [
   "uvicorn[standard]>=0.34,<0.35",
 ]
 
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
 [dependency-groups]
 dev = [
   "httpx>=0.28,<0.29",

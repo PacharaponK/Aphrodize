@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Script from "next/script";
 import { AppNavigation } from "@/components/app-navigation";
 

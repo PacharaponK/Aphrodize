@@ -46,12 +46,19 @@ async def signup(
         password_hash=hash_password(payload.password),
     )
     consent = Consent(user_id=user.id, version="signup-v1")
-    session.add_all([user, account, consent])
+    # Flush the parent first so PostgreSQL can satisfy the account/consent foreign keys.
+    session.add(user)
+    await session.flush()
+    session.add_all([account, consent])
     try:
         await session.commit()
-    except IntegrityError:
+    except IntegrityError as error:
         await session.rollback()
-        raise HTTPException(status_code=409, detail="An account already exists for this email") from None
+        if "accounts_email" in str(error.orig):
+            raise HTTPException(
+                status_code=409, detail="An account already exists for this email"
+            ) from None
+        raise HTTPException(status_code=500, detail="Unable to create account") from error
 
     return SignupResponse(
         user_id=user.id,
