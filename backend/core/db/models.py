@@ -38,6 +38,20 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Account(Base):
+    """Credentials and profile data kept separate from clinical/workflow user data."""
+
+    __tablename__ = "accounts"
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id"), unique=True, index=True
+    )
+    display_name: Mapped[str] = mapped_column(String(120))
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(256))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Consent(Base):
     __tablename__ = "consents"
     id: Mapped[uuid.UUID] = uuid_pk()

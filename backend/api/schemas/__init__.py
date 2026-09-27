@@ -1,4 +1,16 @@
 from backend.api.schemas.analysis import AnalysisRead, TrainingRunRead
-from backend.api.schemas.consent import ConsentCreate, ConsentRead, QuestionnaireCreate
+from backend.api.schemas.consent import (
+    ConsentCreate,
+    ConsentRead,
+    InitialWellnessQuestionnaire,
+    QuestionnaireCreate,
+)
 
-__all__ = ["AnalysisRead", "ConsentCreate", "ConsentRead", "QuestionnaireCreate", "TrainingRunRead"]
+__all__ = [
+    "AnalysisRead",
+    "ConsentCreate",
+    "ConsentRead",
+    "InitialWellnessQuestionnaire",
+    "QuestionnaireCreate",
+    "TrainingRunRead",
+]

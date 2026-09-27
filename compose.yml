@@ -17,6 +17,8 @@ x-api-environment: &api-environment
   LABEL_STUDIO_API_KEY: ${LABEL_STUDIO_API_KEY:-}
   API_USERNAME: ${API_USERNAME:-aphrodize}
   API_PASSWORD: ${API_PASSWORD:?Set API_PASSWORD in .env}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-jwt-secret-in-production}
+  JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
   MLFLOW_TRACKING_URI: http://mlflow:5000
   MODEL_VERSION: ${MODEL_VERSION:-ffhq-wrinkle-stage2-unet}
 
@@ -58,7 +60,7 @@ services:
     logging: *container-logging
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aphrodize}
@@ -71,7 +73,7 @@ services:
     logging: *container-logging
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-aphrodize}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
