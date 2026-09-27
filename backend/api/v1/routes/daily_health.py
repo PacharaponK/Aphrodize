@@ -1,8 +1,9 @@
-from datetime import UTC, datetime, timedelta, timezone
+import logging
+from datetime import UTC, date, datetime, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
@@ -10,49 +11,84 @@ from sqlalchemy.sql import func
 from backend.api.schemas.daily_health import (
     DailyHealthEntryRead,
     DailyHealthEntryUpsert,
+    DailyHealthModelPromotionRequest,
+    DailyHealthModelRollbackRequest,
     DailyHealthOutcomeRead,
     DailyHealthOutcomeUpsert,
     DailyHealthPredictionRequest,
 )
+from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION
 from backend.core.db.models import (
     Consent,
     DailyHealthAgeBand,
     DailyHealthEntry,
     DailyHealthMenstrualCheckIn,
+    DailyHealthModelDeployment,
+    DailyHealthModelDeploymentEvent,
+    DailyHealthModelVersion,
     DailyHealthOutcome,
     DailyHealthProfile,
     User,
 )
 from backend.core.db.session import get_session
 from backend.libs.model_loader import get_daily_score_model
+from backend.services.daily_health_model_registry import (
+    DailyHealthCandidateUnavailable,
+    get_serving_daily_health_bundle,
+    load_approved_candidate_bundle,
+    purge_generated_candidate_artifacts,
+)
 
 router = APIRouter()
-SLEEP_SCORE_METHOD = "min(100, sleep_duration_minutes / 420 * 100); duration-only"
+logger = logging.getLogger(__name__)
+SLEEP_SCORE_METHOD = "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
 DAILY_HEALTH_CONSENT_VERSION = "daily-health-v1"
 PERSONALIZATION_CONSENT_VERSION = "daily-health-personalization-v1"
 AGE_GUIDANCE_CONSENT_VERSION = "daily-health-age-guidance-v1"
 
 
 @router.post("/predict")
-def predict_daily_health(payload: DailyHealthPredictionRequest) -> dict:
-    return _run_daily_health_prediction(payload, allow_out_of_domain_test_prediction=False)
+async def predict_daily_health(
+    payload: DailyHealthPredictionRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    return await _run_daily_health_prediction(
+        payload,
+        session=session,
+        allow_out_of_domain_test_prediction=False,
+    )
 
 
 @router.post("/predict/test")
-def predict_daily_health_test(payload: DailyHealthPredictionRequest) -> dict:
+async def predict_daily_health_test(
+    payload: DailyHealthPredictionRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     """Return explicitly experimental scores outside the train domain for test-only evaluation."""
-    return _run_daily_health_prediction(payload, allow_out_of_domain_test_prediction=True)
+    return await _run_daily_health_prediction(
+        payload,
+        session=session,
+        allow_out_of_domain_test_prediction=True,
+    )
 
 
-def _run_daily_health_prediction(
+async def _run_daily_health_prediction(
     payload: DailyHealthPredictionRequest,
     *,
+    session: AsyncSession,
     allow_out_of_domain_test_prediction: bool,
 ) -> dict:
     try:
         model = get_daily_score_model()
     except RuntimeError as error:
         raise HTTPException(status_code=503, detail="Daily score model is unavailable") from error
+
+    try:
+        model_bundle = await get_serving_daily_health_bundle(session)
+    except DailyHealthCandidateUnavailable as error:
+        raise HTTPException(
+            status_code=503, detail="Approved daily score model is unavailable"
+        ) from error
 
     try:
         personal_context = payload.personal_context
@@ -78,6 +114,7 @@ def _run_daily_health_prediction(
                 else None
             ),
             allow_out_of_domain_test_prediction=allow_out_of_domain_test_prediction,
+            model_bundle=model_bundle,
         )
     except model.ScoreModelUnavailable as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
@@ -106,7 +143,7 @@ async def upsert_daily_health_entry(
     if active_consent is None:
         raise HTTPException(status_code=403, detail="Active daily-health consent is required")
 
-    sleep_score = round(min(100.0, payload.sleep_duration_minutes / 420.0 * 100.0), 1)
+    sleep_score = round(min(100.0, payload.sleep_duration_minutes / 540.0 * 100.0), 1)
     prediction = payload.prediction
     values = {
         "user_id": user_id,
@@ -119,6 +156,11 @@ async def upsert_daily_health_entry(
         "sleep_score_method": SLEEP_SCORE_METHOD,
         "predicted_thirst_score_0_10": prediction.thirst_score_0_10 if prediction else None,
         "predicted_dryness_score_0_10": prediction.dryness_score_0_10 if prediction else None,
+        "prediction_target_date": (
+            prediction.target_date if prediction and prediction.target_date else payload.local_date
+        )
+        if prediction
+        else None,
         "prediction_status": prediction.prediction_status if prediction else "not_run",
         "prediction_model_id": prediction.model_id if prediction else None,
         "data_source": "user_reported",
@@ -209,8 +251,173 @@ async def upsert_daily_health_entry(
             )
             await session.execute(checkin_upsert)
 
+    active_training_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if payload.model_training_consent and active_training_consent is None:
+        session.add(Consent(user_id=user_id, version=MODEL_TRAINING_CONSENT_VERSION))
+
     await session.commit()
-    return DailyHealthEntryRead.model_validate(entry)
+    response = DailyHealthEntryRead.model_validate(entry)
+    response.training_eligible = bool(
+        (active_training_consent is not None or payload.model_training_consent)
+        and entry.training_eligible
+    )
+    return response
+
+
+@router.get("/users/{user_id}/entries")
+async def list_daily_health_entries(
+    user_id: UUID,
+    limit: int = Query(default=30, ge=1, le=90),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Return consented daily history with risk interpretation of the saved scores."""
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    active_daily_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == DAILY_HEALTH_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active_daily_consent is None:
+        return {"items": []}
+
+    entries_result = await session.scalars(
+        select(DailyHealthEntry)
+        .where(DailyHealthEntry.user_id == user_id)
+        .order_by(DailyHealthEntry.local_date.desc())
+        .limit(limit)
+    )
+    entries = entries_result.all()
+    if not entries:
+        return {"items": []}
+
+    active_personalization_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == PERSONALIZATION_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    active_age_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == AGE_GUIDANCE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    profile = (
+        await session.get(DailyHealthProfile, user_id)
+        if active_personalization_consent is not None
+        else None
+    )
+    age_record = (
+        await session.get(DailyHealthAgeBand, user_id)
+        if active_age_consent is not None
+        else None
+    )
+    menstrual_by_date: dict[date, bool] = {}
+    if active_personalization_consent is not None:
+        checkins_result = await session.scalars(
+            select(DailyHealthMenstrualCheckIn).where(
+                DailyHealthMenstrualCheckIn.user_id == user_id,
+                DailyHealthMenstrualCheckIn.local_date.in_(
+                    [entry.local_date for entry in entries]
+                ),
+            )
+        )
+        menstrual_by_date = {
+            checkin.local_date: checkin.currently_menstruating
+            for checkin in checkins_result.all()
+        }
+
+    try:
+        model = get_daily_score_model()
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=503, detail="Daily health interpretation is unavailable"
+        ) from error
+
+    items = []
+    for entry in entries:
+        sleep_minutes = entry.sleep_duration_minutes
+        inside_training_domain = (
+            model.SLEEP_RANGE[0] <= sleep_minutes <= model.SLEEP_RANGE[1]
+            and model.WATER_RANGE[0] <= entry.water_intake_ml <= model.WATER_RANGE[1]
+        )
+        input_domain_reasons = []
+        if not model.SLEEP_RANGE[0] <= sleep_minutes <= model.SLEEP_RANGE[1]:
+            input_domain_reasons.append("sleep_duration_outside_training_range")
+        if not model.WATER_RANGE[0] <= entry.water_intake_ml <= model.WATER_RANGE[1]:
+            input_domain_reasons.append("water_intake_outside_training_range")
+        has_saved_prediction = (
+            entry.prediction_status == "predicted"
+            and entry.predicted_thirst_score_0_10 is not None
+            and entry.predicted_dryness_score_0_10 is not None
+        )
+        thirst_score = entry.predicted_thirst_score_0_10 if has_saved_prediction else None
+        dryness_score = entry.predicted_dryness_score_0_10 if has_saved_prediction else None
+        interpretation = model.build_health_interpretation(
+            sleep_minutes=sleep_minutes,
+            thirst_score=thirst_score,
+            dryness_score=dryness_score,
+            outdoor_exposure_choice=entry.outdoor_exposure_choice,
+            input_domain_status="in_domain" if inside_training_domain else "out_of_training_domain",
+            input_domain_reasons=input_domain_reasons,
+            age_band=age_record.age_band if age_record is not None else None,
+            smoking_status=profile.smoking_status if profile is not None else None,
+            currently_menstruating=menstrual_by_date.get(entry.local_date),
+        )
+        items.append(
+            {
+                "local_date": entry.local_date.isoformat(),
+                "prediction_target_date": (
+                    entry.prediction_target_date.isoformat()
+                    if entry.prediction_target_date is not None
+                    else None
+                ),
+                "prediction_status": entry.prediction_status,
+                "prediction_model_id": entry.prediction_model_id,
+                "input_domain_status": (
+                    "in_domain" if inside_training_domain else "out_of_training_domain"
+                ),
+                "input": {
+                    "sleep_duration_total_minutes": sleep_minutes,
+                    "water_intake_ml": entry.water_intake_ml,
+                    "outdoor_exposure_choice": entry.outdoor_exposure_choice,
+                },
+                "calculated": {"sleep_score_0_100": entry.sleep_score_0_100},
+                "predictions": {
+                    "thirst_score_0_10": {
+                        "value": thirst_score,
+                        "status": "predicted" if thirst_score is not None else "not_available",
+                    },
+                    "skin_dryness_score_0_10": {
+                        "value": dryness_score,
+                        "status": "predicted" if dryness_score is not None else "not_available",
+                    },
+                },
+                "interpretation": interpretation,
+            }
+        )
+
+    return {"items": items}
 
 
 @router.get("/users/{user_id}/profile")
@@ -247,15 +454,23 @@ async def read_daily_health_profile(
         )
         .limit(1)
     )
+    active_training_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
     profile = await session.get(DailyHealthProfile, user_id)
     age_band = await session.get(DailyHealthAgeBand, user_id)
     return {
         "consent_active": active_consent is not None,
         "age_guidance_consent_active": active_age_consent is not None,
+        "model_training_consent_active": active_training_consent is not None,
         "can_report_outcomes": active_daily_consent is not None,
-        "age_band": (
-            age_band.age_band if active_age_consent is not None and age_band else None
-        ),
+        "age_band": (age_band.age_band if active_age_consent is not None and age_band else None),
         "smoking_status": (
             profile.smoking_status if active_consent is not None and profile else None
         ),
@@ -269,16 +484,10 @@ async def delete_daily_health_profile(
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
 
+    await session.execute(delete(DailyHealthProfile).where(DailyHealthProfile.user_id == user_id))
+    await session.execute(delete(DailyHealthAgeBand).where(DailyHealthAgeBand.user_id == user_id))
     await session.execute(
-        delete(DailyHealthProfile).where(DailyHealthProfile.user_id == user_id)
-    )
-    await session.execute(
-        delete(DailyHealthAgeBand).where(DailyHealthAgeBand.user_id == user_id)
-    )
-    await session.execute(
-        delete(DailyHealthMenstrualCheckIn).where(
-            DailyHealthMenstrualCheckIn.user_id == user_id
-        )
+        delete(DailyHealthMenstrualCheckIn).where(DailyHealthMenstrualCheckIn.user_id == user_id)
     )
     await session.execute(
         Consent.__table__.update()
@@ -289,6 +498,265 @@ async def delete_daily_health_profile(
         )
         .values(revoked_at=func.now())
     )
+    await session.commit()
+
+
+@router.delete("/users/{user_id}/data", status_code=204)
+async def delete_daily_health_data(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> None:
+    """Erase this account's daily tracker data and invalidate shared user-trained candidates."""
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    versions_result = await session.scalars(select(DailyHealthModelVersion))
+    model_version_ids = [version.version_id for version in versions_result.all()]
+    deployment = await session.get(DailyHealthModelDeployment, "daily_health")
+
+    for record_model in (
+        DailyHealthOutcome,
+        DailyHealthEntry,
+        DailyHealthMenstrualCheckIn,
+        DailyHealthAgeBand,
+        DailyHealthProfile,
+    ):
+        await session.execute(delete(record_model).where(record_model.user_id == user_id))
+
+    await session.execute(
+        update(Consent)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version.in_(
+                [
+                    DAILY_HEALTH_CONSENT_VERSION,
+                    PERSONALIZATION_CONSENT_VERSION,
+                    AGE_GUIDANCE_CONSENT_VERSION,
+                    MODEL_TRAINING_CONSENT_VERSION,
+                ]
+            ),
+            Consent.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
+    if deployment is not None:
+        deployment.active_version_id = None
+        deployment.previous_version_id = None
+        deployment.approval_reason = None
+
+    # Version fingerprints and aggregate metrics are derived from the cohort. Without per-user
+    # lineage, remove the whole user-trained registry and its version-bearing audit entries.
+    await session.execute(delete(DailyHealthModelDeploymentEvent))
+    await session.execute(delete(DailyHealthModelVersion))
+    session.add(
+        DailyHealthModelDeploymentEvent(
+            action="data_erasure",
+            version_id=None,
+            reason="User-requested erasure removed the user-trained model registry",
+        )
+    )
+    await session.commit()
+
+    try:
+        # Model versions do not currently retain per-user cohort membership, so the only safe
+        # erasure is to remove every generated user-candidate artifact and return to the baseline.
+        from backend.services.daily_health_model_registry import VERSION_ID_PATTERN
+
+        purge_generated_candidate_artifacts(
+            [
+                version_id
+                for version_id in model_version_ids
+                if VERSION_ID_PATTERN.fullmatch(version_id)
+            ]
+        )
+    except DailyHealthCandidateUnavailable as error:
+        logger.exception(
+            "Daily-health rows were erased but a generated model artifact needs cleanup"
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="Data was erased; generated model artifacts need operator review",
+        ) from error
+
+
+@router.get("/model-versions")
+async def list_daily_health_model_versions(
+    limit: int = Query(default=20, ge=1, le=100),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    versions_result = await session.scalars(
+        select(DailyHealthModelVersion)
+        .order_by(DailyHealthModelVersion.created_at.desc())
+        .limit(limit)
+    )
+    versions = versions_result.all()
+    return {
+        "items": [
+            {
+                "version_id": item.version_id,
+                "model_family": item.model_family,
+                "status": item.status,
+                "training_records": item.training_records,
+                "participant_count": item.participant_count,
+                "metrics": item.metrics,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
+                "completed_at": item.completed_at.isoformat() if item.completed_at else None,
+            }
+            for item in versions
+        ]
+    }
+
+
+@router.get("/model-deployment")
+async def read_daily_health_model_deployment(
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    deployment = await session.get(DailyHealthModelDeployment, "daily_health")
+    if deployment is None:
+        return {"active_version_id": None, "previous_version_id": None}
+    return {
+        "active_version_id": deployment.active_version_id,
+        "previous_version_id": deployment.previous_version_id,
+        "approval_reason": deployment.approval_reason,
+        "updated_at": deployment.updated_at.isoformat() if deployment.updated_at else None,
+    }
+
+
+@router.get("/model-deployment/events")
+async def list_daily_health_model_deployment_events(
+    limit: int = Query(default=50, ge=1, le=200),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    events_result = await session.scalars(
+        select(DailyHealthModelDeploymentEvent)
+        .order_by(DailyHealthModelDeploymentEvent.created_at.desc())
+        .limit(limit)
+    )
+    return {
+        "items": [
+            {
+                "action": event.action,
+                "version_id": event.version_id,
+                "reason": event.reason,
+                "created_at": event.created_at.isoformat() if event.created_at else None,
+            }
+            for event in events_result.all()
+        ]
+    }
+
+
+@router.put("/model-deployment")
+async def promote_daily_health_model(
+    payload: DailyHealthModelPromotionRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    version = await session.get(DailyHealthModelVersion, payload.version_id)
+    if version is None:
+        raise HTTPException(status_code=404, detail="Candidate model version not found")
+    if version.status != "candidate":
+        raise HTTPException(status_code=409, detail="Only candidate models can be approved")
+    try:
+        load_approved_candidate_bundle(version)
+    except DailyHealthCandidateUnavailable as error:
+        raise HTTPException(
+            status_code=409, detail="Candidate failed artifact or metric checks"
+        ) from error
+
+    deployment = await session.get(DailyHealthModelDeployment, "daily_health")
+    if deployment is not None and deployment.active_version_id == version.version_id:
+        raise HTTPException(status_code=409, detail="Candidate is already active")
+    if deployment is None:
+        deployment = DailyHealthModelDeployment(
+            deployment_key="daily_health",
+            active_version_id=version.version_id,
+            previous_version_id=None,
+            approval_reason=payload.approval_reason.strip(),
+        )
+        session.add(deployment)
+    else:
+        deployment.previous_version_id = deployment.active_version_id
+        deployment.active_version_id = version.version_id
+        deployment.approval_reason = payload.approval_reason.strip()
+    session.add(
+        DailyHealthModelDeploymentEvent(
+            action="promote",
+            version_id=version.version_id,
+            reason=payload.approval_reason.strip(),
+        )
+    )
+    await session.commit()
+    return {
+        "active_version_id": deployment.active_version_id,
+        "previous_version_id": deployment.previous_version_id,
+        "approval_reason": deployment.approval_reason,
+    }
+
+
+@router.post("/model-deployment/rollback")
+async def rollback_daily_health_model(
+    payload: DailyHealthModelRollbackRequest,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    deployment = await session.get(DailyHealthModelDeployment, "daily_health")
+    if deployment is None or deployment.previous_version_id is None:
+        raise HTTPException(
+            status_code=409, detail="There is no previous candidate model to restore"
+        )
+    target = await session.get(DailyHealthModelVersion, deployment.previous_version_id)
+    if target is None or target.status != "candidate":
+        raise HTTPException(
+            status_code=409, detail="The previous candidate is no longer deployable"
+        )
+    try:
+        load_approved_candidate_bundle(target)
+    except DailyHealthCandidateUnavailable as error:
+        raise HTTPException(
+            status_code=409, detail="Previous candidate failed artifact checks"
+        ) from error
+
+    current_version_id = deployment.active_version_id
+    deployment.active_version_id = target.version_id
+    deployment.previous_version_id = current_version_id
+    deployment.approval_reason = payload.reason.strip()
+    session.add(
+        DailyHealthModelDeploymentEvent(
+            action="rollback",
+            version_id=target.version_id,
+            reason=payload.reason.strip(),
+        )
+    )
+    await session.commit()
+    return {
+        "active_version_id": deployment.active_version_id,
+        "previous_version_id": deployment.previous_version_id,
+        "approval_reason": deployment.approval_reason,
+    }
+
+
+@router.delete("/users/{user_id}/training-consent", status_code=204)
+async def revoke_daily_health_model_training_consent(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> None:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await session.execute(
+        update(Consent)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
+    deployment = await session.get(DailyHealthModelDeployment, "daily_health")
+    stale_statement = update(DailyHealthModelVersion).where(
+        DailyHealthModelVersion.status.in_(["training", "candidate"])
+    )
+    if deployment is not None and deployment.active_version_id is not None:
+        stale_statement = stale_statement.where(
+            DailyHealthModelVersion.version_id != deployment.active_version_id
+        )
+    await session.execute(stale_statement.values(status="stale"))
     await session.commit()
 
 
@@ -316,11 +784,22 @@ async def upsert_daily_health_outcome(
     if active_consent is None:
         raise HTTPException(status_code=403, detail="Active daily-health consent is required")
 
+    active_training_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+
     statement = insert(DailyHealthOutcome).values(
         user_id=user_id,
         target_date=payload.target_date,
         reported_energy_level_0_10=payload.reported_energy_level_0_10,
         reported_thirst_level_0_10=payload.reported_thirst_level_0_10,
+        reported_dryness_level_0_10=payload.reported_dryness_level_0_10,
         updated_at=func.now(),
     )
     statement = statement.on_conflict_do_update(
@@ -328,6 +807,7 @@ async def upsert_daily_health_outcome(
         set_={
             "reported_energy_level_0_10": statement.excluded.reported_energy_level_0_10,
             "reported_thirst_level_0_10": statement.excluded.reported_thirst_level_0_10,
+            "reported_dryness_level_0_10": statement.excluded.reported_dryness_level_0_10,
             "updated_at": func.now(),
         },
     ).returning(DailyHealthOutcome)
@@ -335,4 +815,17 @@ async def upsert_daily_health_outcome(
     result = await session.execute(statement)
     outcome = result.scalar_one()
     await session.commit()
+    if (
+        active_training_consent is not None
+        and payload.reported_thirst_level_0_10 is not None
+        and payload.reported_dryness_level_0_10 is not None
+    ):
+        try:
+            from backend.services.daily_health_training import (
+                enqueue_candidate_training_if_ready,
+            )
+
+            await enqueue_candidate_training_if_ready(session)
+        except Exception:
+            logger.exception("Could not enqueue daily-health candidate training")
     return DailyHealthOutcomeRead.model_validate(outcome)

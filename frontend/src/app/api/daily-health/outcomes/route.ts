@@ -12,6 +12,7 @@ type OutcomeInput = {
   target_date: string;
   reported_energy_level_0_10: number | null;
   reported_thirst_level_0_10: number | null;
+  reported_dryness_level_0_10?: number | null;
 };
 
 function failed(status: number, detail: string): NextResponse {
@@ -62,7 +63,10 @@ function isOutcomeInput(value: unknown): value is OutcomeInput {
     && validDate
     && validScore(body.reported_energy_level_0_10)
     && validScore(body.reported_thirst_level_0_10)
-    && (body.reported_energy_level_0_10 !== null || body.reported_thirst_level_0_10 !== null);
+    && validScore(body.reported_dryness_level_0_10 ?? null)
+    && (body.reported_energy_level_0_10 !== null
+      || body.reported_thirst_level_0_10 !== null
+      || body.reported_dryness_level_0_10 !== null);
 }
 
 async function backendFailure(response: Response): Promise<NextResponse> {
@@ -104,6 +108,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         target_date: body.target_date,
         reported_energy_level_0_10: body.reported_energy_level_0_10,
         reported_thirst_level_0_10: body.reported_thirst_level_0_10,
+        reported_dryness_level_0_10: body.reported_dryness_level_0_10 ?? null,
       }),
       cache: "no-store",
     });

@@ -20,9 +20,11 @@ type DailyHealthRequest = {
     dryness_score_0_10: number | null;
     prediction_status: "predicted" | "not_available" | "prediction_failed";
     model_id: string | null;
+    target_date?: string | null;
   } | null;
   personalization_consent?: boolean;
   age_guidance_consent?: boolean;
+  model_training_consent?: boolean;
   age_band?: "13_17" | "18_60" | "61_64" | "65_plus" | null;
   smoking_status?: "current" | "former" | "never" | "prefer_not_to_say" | null;
   currently_menstruating?: boolean | null;
@@ -49,12 +51,13 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   const dateIsValid = parsedDate !== null && !Number.isNaN(parsedDate.valueOf())
     && parsedDate.toISOString().slice(0, 10) === date;
   if (!dateIsValid) return false;
-  if (!Number.isInteger(value.sleep_duration_minutes) || Number(value.sleep_duration_minutes) < 0 || Number(value.sleep_duration_minutes) > 540) return false;
+  if (!Number.isInteger(value.sleep_duration_minutes) || Number(value.sleep_duration_minutes) < 0 || Number(value.sleep_duration_minutes) > 600) return false;
   if (!Number.isInteger(value.water_intake_ml) || Number(value.water_intake_ml) < 0 || Number(value.water_intake_ml) > 20_000) return false;
   if (!Number.isInteger(value.outdoor_exposure_choice) || Number(value.outdoor_exposure_choice) < 1 || Number(value.outdoor_exposure_choice) > 4) return false;
   if (value.timezone !== undefined && (typeof value.timezone !== "string" || value.timezone.length > 64)) return false;
   if (value.personalization_consent !== undefined && typeof value.personalization_consent !== "boolean") return false;
   if (value.age_guidance_consent !== undefined && typeof value.age_guidance_consent !== "boolean") return false;
+  if (value.model_training_consent !== undefined && typeof value.model_training_consent !== "boolean") return false;
   if (value.age_band !== undefined
     && value.age_band !== null
     && !["13_17", "18_60", "61_64", "65_plus"].includes(String(value.age_band))) return false;
@@ -70,6 +73,18 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (value.prediction === null) return true;
   if (!isRecord(value.prediction)) return false;
   const status = value.prediction.prediction_status;
+  const targetDate = value.prediction.target_date;
+  if (targetDate !== undefined && targetDate !== null) {
+    const parsedTarget = typeof targetDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(targetDate)
+      ? new Date(`${targetDate}T00:00:00.000Z`)
+      : null;
+    const targetIsValid = parsedTarget !== null
+      && !Number.isNaN(parsedTarget.valueOf())
+      && parsedTarget.toISOString().slice(0, 10) === targetDate;
+    const nextDate = new Date(`${date}T00:00:00.000Z`);
+    nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+    if (!targetIsValid || (targetDate !== date && targetDate !== nextDate.toISOString().slice(0, 10))) return false;
+  }
   return validScore(value.prediction.thirst_score_0_10)
     && validScore(value.prediction.dryness_score_0_10)
     && (status === "predicted" || status === "not_available" || status === "prediction_failed")
@@ -119,6 +134,31 @@ async function backendFailure(response: Response): Promise<NextResponse> {
   const body = await response.json().catch(() => null);
   const detail = typeof body?.detail === "string" ? body.detail : "Daily health database request failed";
   return failed(response.status, detail);
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const userId = currentUser(request);
+  if (!userId) {
+    return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
+  }
+
+  const requestedLimit = Number(request.nextUrl.searchParams.get("limit") ?? 30);
+  const limit = Number.isInteger(requestedLimit)
+    ? Math.min(90, Math.max(1, requestedLimit))
+    : 30;
+
+  try {
+    const response = await fetch(
+      backendUrl(`/daily-health/users/${userId}/entries?limit=${limit}`),
+      { headers: apiHeaders(), cache: "no-store" },
+    );
+    if (!response.ok) return backendFailure(response);
+    return NextResponse.json(await response.json(), {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch {
+    return failed(503, "Could not load daily health history");
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -177,6 +217,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         prediction: body.prediction,
         personalization_consent: body.personalization_consent === true,
         age_guidance_consent: body.age_guidance_consent === true,
+        model_training_consent: body.model_training_consent === true,
         age_band: body.age_guidance_consent === true ? body.age_band ?? null : null,
         smoking_status: body.personalization_consent === true ? body.smoking_status ?? null : null,
         currently_menstruating: body.personalization_consent === true

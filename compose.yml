@@ -185,6 +185,8 @@ services:
     command: arq backend.workers.trainer_worker.WorkerSettings
     restart: unless-stopped
     environment: *api-environment
+    volumes:
+      - ./models:/app/models
     depends_on:
       redis:
         condition: service_healthy

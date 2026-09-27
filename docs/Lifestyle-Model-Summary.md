@@ -32,11 +32,11 @@ Random Forest รวมผลจาก decision tree หลายต้น โ�
 
 โมเดลทำนาย thirst และ dryness พร้อมกันจากข้อมูลของวันเดียวกัน ไม่ใช่การ forecast คะแนนของวันถัดไป
 
-API จะงดคืนคะแนน thirst/dryness หากเวลานอนอยู่นอก 180–540 นาที หรือน้ำดื่มรวมทั้งวันอยู่นอก 900–1,800 มล.; การอยู่นอกช่วงไม่ได้แปลว่ามีความเสี่ยงต่ำหรือสูง
+ฟอร์มและ API รับเวลานอนได้สูงสุด 600 นาที (10 ชั่วโมง) แต่โมเดล thirst/dryness ยังฝึกในช่วง 180–540 นาทีและน้ำ 900–1,800 มล.; ดังนั้นช่วง 541–600 นาทีบันทึกและคำนวณ sleep score ได้ แต่ production API จะงดคะแนน thirst/dryness จนกว่าจะมีการฝึกและตรวจสอบโมเดลในช่วงนั้น การอยู่นอกช่วงไม่ได้แปลว่ามีความเสี่ยงต่ำหรือสูง
 
-**Sleep score ไม่ได้ทำนายด้วย ML:** API คำนวณแยกด้วยสูตร `min(100, sleep_duration_total_minutes / 420 * 100)` เป็นคะแนนเทียบระยะเวลา 7 ชั่วโมง ไม่ใช่ Zepp sleep-quality score
+**Sleep score ไม่ได้ทำนายด้วย ML:** API คำนวณแยกด้วยสูตรที่เพดาน 9 ชั่วโมง ไม่ใช่ Zepp sleep-quality score และไม่ใช่คะแนนสุขภาพมาตรฐาน; การแนะนำชั่วโมงนอนแยกตามช่วงวัยที่ผู้ใช้ยินยอมให้ใช้
 
-คำแนะนำบนหน้าผลลัพธ์ก็ไม่ได้มาจากโมเดลภาษา แต่เลือกด้วยเงื่อนไขใน API ตาม sleep score, thirst/dryness score และ outdoor choice
+คำแนะนำเลือกด้วยกฎจากเวลานอน, thirst/dryness signals และเวลานอกบ้าน ร่วมกับช่วงวัย/สถานะสูบบุหรี่/เช็กอินประจำเดือนที่ผู้ใช้ยินยอมให้ใช้ หน้า `/clients` แสดงเฉพาะคำแนะนำที่เกี่ยวข้องกับผู้ใช้คนนั้น ไม่แสดงสรุประบบหรือเหตุผลทางเทคนิคของโมเดล
 
 ### สูตรคำนวณคะแนนและที่มาของสูตร
 
@@ -46,10 +46,10 @@ API จะงดคืนคะแนน thirst/dryness หากเวลาน
 
 ```text
 S = sleep_hours × 60 + sleep_minutes
-sleep_score_0_100 = round(min(100, 100 × S / 420), 1)
+sleep_score_0_100 = round(min(100, 100 × S / 540), 1)
 ```
 
-ตัวอย่าง `6 ชั่วโมง 2 นาที` มี `S = 362` จึงได้ `round(100 × 362 / 420, 1) = 86.2/100`; ตั้งแต่ 420 นาทีขึ้นไปจะได้ 100 คะแนน สูตรนี้เป็นการ normalize ของโปรเจกต์โดยใช้ 7 ชั่วโมงเป็น reference ไม่ใช่สูตรวินิจฉัยหรือคะแนนคุณภาพการนอนของ Zepp ส่วน CDC ระบุว่าโดยทั่วไปผู้ใหญ่อายุ 18–60 ปีควรนอนอย่างน้อย 7 ชั่วโมง แต่เกณฑ์แนะนำนี้ไม่ได้กำหนดสูตรคะแนน 0–100 ให้โปรเจกต์ ([CDC: About Sleep](https://www.cdc.gov/sleep/about/))
+ตัวอย่าง `6 ชั่วโมง 2 นาที` มี `S = 362` จึงได้ `round(100 × 362 / 540, 1) = 67.0/100`; ตั้งแต่ 540 นาที (9 ชั่วโมง) ขึ้นไปได้ 100 คะแนน แม้ฟอร์มรับได้ถึง 600 นาที สูตรนี้เป็นสเกลเวลานอนที่โปรเจกต์กำหนดเอง ไม่ใช่สูตรวินิจฉัย คะแนนตามอายุ หรือคะแนนคุณภาพการนอนของ Zepp; แนวทาง CDC แยกตามวัย เช่น 13–17 ปี 8–10 ชั่วโมง, 18–60 ปีอย่างน้อย 7 ชั่วโมง, 61–64 ปี 7–9 ชั่วโมง และ 65 ปีขึ้นไป 7–8 ชั่วโมง ([CDC: About Sleep](https://www.cdc.gov/sleep/about/))
 
 **2. Thirst และ dryness ที่ใช้ฝึก — สร้างจากกฎสังเคราะห์ ไม่ใช่สูตรแพทย์**
 
@@ -98,10 +98,11 @@ predicted_score_j = round(clip(raw_score_j, 0, 10), 1)
 
 | เงื่อนไข | หลักการเลือกข้อความ |
 | --- | --- |
-| `S < 420` นาที | แนะนำโอกาสนอนให้ถึง 7 ชั่วโมงสำหรับผู้ใหญ่อายุ 18–60 ปี |
-| thirst `< 4`, `4–<7`, `≥7` | เลือกคำแนะนำระดับต่ำ, กลาง, สูงตามลำดับ |
-| dryness `< 4`, `4–<7`, `≥7` | เลือกคำแนะนำระดับต่ำ, กลาง, สูงตามลำดับ |
-| `O ≥ 3` | เพิ่มคำแนะนำป้องกันแดดทั่วไป; ตัวเลือกกลางแจ้งไม่ใช่ UV index |
+| `S` ต่ำกว่าค่าขั้นต่ำตามช่วงวัยที่ยินยอมแชร์ | แนะนำเพิ่มเวลานอนตามช่วงวัย; หากไม่มีช่วงวัยใช้ข้อความทั่วไปและไม่อ้างว่าเป็นคำแนะนำเฉพาะอายุ |
+| thirst `≥4` | แนะนำให้สังเกตความกระหายและดื่มตามความต้องการ/กิจกรรม ไม่กำหนดปริมาณตายตัว |
+| dryness `≥4` | แนะนำมอยส์เจอไรเซอร์เมื่อผู้ใช้รู้สึกแห้ง; ค่าคะแนนไม่ใช่การตรวจสภาพผิวจริง |
+| `O ≥ 3` | แนะนำร่ม เสื้อผ้าปกป้อง หรือ broad-spectrum SPF 30+ เมื่ออยู่กลางแจ้งนาน; ตัวเลือกกลางแจ้งไม่ใช่ UV index |
+| สถานะสูบบุหรี่ `current` / เช็กอินประจำเดือน `true` ที่ผู้ใช้ยินยอม | เพิ่มคำแนะนำสนับสนุนเลิกบุหรี่ / ดูแลอาการช่วงมีประจำเดือนทั่วไป ตามข้อมูลที่ผู้ใช้ระบุ |
 
 threshold เหล่านี้เป็นเงื่อนไขแสดงข้อความใน API ไม่ใช่ clinical cutoffs และไม่ได้เปลี่ยนคะแนนให้เป็นการวินิจฉัย
 
@@ -111,6 +112,10 @@ threshold เหล่านี้เป็นเงื่อนไขแสด�
 - [National Academies — Dietary Reference Intakes for Water](https://nap.nationalacademies.org/read/10925/chapter/2): นิยาม total water และข้อจำกัดของการใช้ปริมาณเดียวกับทุกคน
 - [Akdeniz et al. (2018), systematic literature review](https://doi.org/10.1111/srt.12454): หลักฐานการดื่มน้ำกับ skin hydration/dryness และข้อจำกัดของหลักฐาน
 - [scikit-learn — RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html): การเฉลี่ยผลทำนายจาก regression trees
+- [AAD — 11 ways to reduce premature skin aging](https://www.aad.org/public/everyday-care/skin-care-secrets/anti-aging/reduce-premature-aging-skin): การป้องกันแสงแดดและความสัมพันธ์ของการสูบบุหรี่กับผิวแก่ก่อนวัย
+- [AAD — Dermatologists' tips for relieving dry skin](https://www.aad.org/public/everyday-care/skin-care-basics/dry/dermatologists-tips-relieve-dry-skin): การใช้มอยส์เจอไรเซอร์ที่ไม่มีน้ำหอมและการดูแลผิวแห้ง
+- [CDC — Benefits of Quitting Smoking](https://www.cdc.gov/tobacco/about/benefits-of-quitting.html): ประโยชน์ด้านสุขภาพของการเลิกบุหรี่
+- [NHS — Period Pain](https://www.nhs.uk/symptoms/period-pain/): การดูแลตนเองทั่วไปและอาการที่ควรปรึกษาบุคลากรสุขภาพ
 
 ### ฝึกอย่างไร
 
@@ -184,20 +189,19 @@ Feature `thirst_score_0_10` และ `skin_dryness_score_0_10` ในลำด�
 
 ## ข้อมูลจริงและการนำไป train ต่อ
 
-ตาราง `daily_health_entries` เก็บ input รายวัน, sleep score ที่คำนวณ และคะแนนที่โมเดลทำนาย แต่ค่า prediction ถูกเก็บแยกจากช่องคะแนนที่ผู้ใช้รายงานจริง (`reported_thirst_score_0_10`, `reported_dryness_score_0_10`) ซึ่งยังเป็น `NULL` จนกว่าจะมีการยืนยันค่าจริง
+ข้อมูลรายวันใน `daily_health_entries` และผลที่ผู้ใช้รายงานเองใน `daily_health_outcomes` จัดเก็บแยกกัน ชุด snapshot CSV ถูกเก็บไว้ใน `daily_health_dataset_records` พร้อม provenance; ชุดล่าสุดมีข้อมูลจริง 14 แถวและสังเคราะห์ 1,220 แถว แต่ทุกแถวใน snapshot ถูกกันออกจากการ train: แถวสังเคราะห์มี target ที่สร้างจากกฎ และแถวจริงมี dryness เป็นหมวด/ทศนิยมที่ยังจับคู่กับคะแนน 0–10 ไม่ได้
 
-ณ ตอนนี้:
+ผู้ใช้ต้อง opt-in แยกต่างหากด้วย consent `daily-health-model-training-v1` และรายงานคะแนน thirst กับ dryness ที่สังเกตจริงทั้งคู่ ระบบจึงจะจับคู่คะแนนวันที่เป้าหมายกับ input รายวันของวันก่อนหน้าเพื่อสร้างตัวอย่าง forecast ได้ เมื่อมีอย่างน้อย 100 ตัวอย่างจากอย่างน้อย 5 คน และเพิ่มข้อมูลใหม่อย่างน้อย 25 ตัวอย่างจาก candidate ล่าสุด worker จะฝึก Random Forest รุ่นทดลอง แบ่ง train/validation/test ตาม user เพื่อป้องกันข้อมูลคนเดียวกันรั่วข้ามชุด และบันทึก artifact/metrics เป็น version ใน `daily_health_model_versions` กับ `artifacts/user-candidates/` โดยไม่สลับโมเดล `/clients` อัตโนมัติ
 
-1. การบันทึกข้อมูลเข้าฐานข้อมูลยัง **ไม่ retrain โมเดลอัตโนมัติ**
-2. สคริปต์ Random Forest ยังอ่านไฟล์ CSV สังเคราะห์ ไม่ได้อ่าน `daily_health_entries` โดยตรง
-3. ห้ามใช้คะแนนที่โมเดลทำนายเป็น ground truth สำหรับ train ซ้ำ; การทำเช่นนั้นเป็น self-training ด้วย label ที่โมเดลสร้างเอง
-4. การฝึกด้วยข้อมูลผู้ใช้จริงควรทำหลังมี label ที่ผู้ใช้ยืนยัน/ตรวจคุณภาพแล้ว และกำหนด consent, user-level/time-based split, การปกป้อง test holdout และการประเมินแยกจากข้อมูลสังเคราะห์
+คะแนน prediction ไม่ถูกใช้เป็น label; การถอน consent ตัดผู้ใช้ออกจากการฝึกรุ่นถัดไปและทำให้ candidate ที่รอตรวจเป็น stale แต่ไม่ลบประวัติรายวัน การนำเข้า snapshot ใช้สคริปต์ idempotent `backend.scripts.import_daily_health_dataset`; ขั้นตอน consent, import, เงื่อนไขสร้าง candidate และข้อจำกัดมีรายละเอียดที่ [`Daily-Health-Training-Pipeline.md`](Daily-Health-Training-Pipeline.md)
 
 ## ตำแหน่งโค้ดและผลการฝึก
 
 - Random Forest trainer: `sandboxes/model/train_daily_score_regressors.py`
 - Random Forest inference: `models/time-series/non-linear-model/daily_score_model.py`
 - Daily score API route: `backend/api/v1/routes/daily_health.py`
+- Historical dataset importer: `backend/scripts/import_daily_health_dataset.py`
+- Consent-filtered candidate trainer/version registry: `backend/services/daily_health_training.py`, `backend/core/db/models.py`
 - Linear wrinkle forecast: `models/time-series/linear-model/lifestyle_aware_wrinkle_forecast.py`
 - GRU architecture: `sandboxes/model/wellness_torch.py`
 - GRU training/tuning: `sandboxes/model/train_wellness_torch_optuna.py`

@@ -19,10 +19,22 @@ MODEL_ID = "daily-score-random-forest-synthetic-v1"
 MODEL_FAMILY = "random_forest_regressor"
 TARGETS = ["thirst_score_0_10", "skin_dryness_score_0_10"]
 SLEEP_RECOMMENDATIONS = {
-    "13_17": (480, "วัย 13–17 ปีมีแนวทางทั่วไป 8–10 ชั่วโมง; ลองเพิ่มเวลานอนให้เพียงพอและรักษาเวลาให้สม่ำเสมอ"),
-    "18_60": (420, "วัย 18–60 ปีมีแนวทางทั่วไปอย่างน้อย 7 ชั่วโมง; ลองเพิ่มเวลานอนและรักษาเวลาให้สม่ำเสมอ"),
-    "61_64": (420, "วัย 61–64 ปีมีแนวทางทั่วไป 7–9 ชั่วโมง; ลองเพิ่มเวลานอนและรักษาเวลาให้สม่ำเสมอ"),
-    "65_plus": (420, "วัย 65 ปีขึ้นไปมีแนวทางทั่วไป 7–8 ชั่วโมง; ลองเพิ่มเวลานอนและรักษาเวลาให้สม่ำเสมอ"),
+    "13_17": (480, "วัย 13–17 ปีโดยทั่วไปควรนอน 8–10 ชั่วโมง; ลองเพิ่มเวลาให้ถึงช่วงนี้และรักษาเวลานอนให้สม่ำเสมอ"),
+    "18_60": (
+        420,
+        "วัย 18–60 ปีโดยทั่วไปควรนอนอย่างน้อย 7 ชั่วโมง; "
+        "ลองเพิ่มเวลาให้ถึงเกณฑ์และรักษาเวลานอนให้สม่ำเสมอ",
+    ),
+    "61_64": (
+        420,
+        "วัย 61–64 ปีโดยทั่วไปควรนอน 7–9 ชั่วโมง; "
+        "ลองเพิ่มเวลาให้ถึงช่วงนี้และรักษาเวลานอนให้สม่ำเสมอ",
+    ),
+    "65_plus": (
+        420,
+        "วัย 65 ปีขึ้นไปโดยทั่วไปควรนอน 7–8 ชั่วโมง; "
+        "ลองเพิ่มเวลาให้ถึงช่วงนี้และรักษาเวลานอนให้สม่ำเสมอ",
+    ),
 }
 FEATURES = [
     "sleep_duration_total_minutes",
@@ -30,8 +42,9 @@ FEATURES = [
     "outdoor_exposure_choice",
 ]
 SLEEP_RANGE = (180, 540)
+SLEEP_SCORE_CAP_MINUTES = 540
 WATER_RANGE = (900, 1800)
-SLEEP_SCORE_FORMULA = "min(100, sleep_duration_total_minutes / 420 * 100)"
+SLEEP_SCORE_FORMULA = "round(min(100, sleep_duration_total_minutes / 540 * 100), 1)"
 ARTIFACT_PATH = (
     Path(__file__).resolve().parent
     / "artifacts"
@@ -47,7 +60,11 @@ class ScoreModelUnavailable(RuntimeError):
 def sleep_guidance(sleep_minutes: int, age_band: str | None = None) -> str | None:
     target, advice = SLEEP_RECOMMENDATIONS.get(
         age_band,
-        (420, "ความต้องการนอนต่างกันตามวัย; ลองนอนให้เพียงพอตามช่วงวัยและรักษาเวลาให้สม่ำเสมอ"),
+        (
+            420,
+            "ลองเพิ่มเวลานอนและรักษาเวลาให้สม่ำเสมอ; "
+            "จำนวนชั่วโมงที่เหมาะสมแตกต่างกันตามวัย",
+        ),
     )
     return advice if sleep_minutes < target else None
 
@@ -90,22 +107,28 @@ def make_guidance(
     if thirst_score is not None:
         if thirst_score >= 7:
             advice.append(
-                "คะแนน thirst ที่โมเดลประเมินอยู่ระดับสูง; จิบน้ำตามความกระหาย ไม่ต้องฝืนดื่ม"
+                "วันนี้ควรสังเกตความกระหายและจิบน้ำตามต้องการ; ความต้องการน้ำเปลี่ยนตามอากาศและกิจกรรม "
+                "และหากแพทย์จำกัดน้ำให้ทำตามคำแนะนำของแพทย์"
             )
         elif thirst_score >= 4:
-            advice.append("คะแนน thirst อยู่ระดับกลาง; สังเกตความกระหายและดื่มน้ำตามต้องการ")
+            advice.append(
+                "ดื่มตามความกระหายและกิจกรรมของวันนี้; ไม่จำเป็นต้องฝืนดื่มตามตัวเลขตายตัว"
+            )
 
     if dryness_score is not None:
         if dryness_score >= 7:
             advice.append(
-                "คะแนนผิวแห้งที่โมเดลประเมินอยู่ระดับสูง; หากรู้สึกแห้ง ใช้มอยส์เจอไรเซอร์ที่เหมาะกับผิว"
+                "หากผิวรู้สึกแห้ง ให้ทามอยส์เจอไรเซอร์ชนิดครีมหรือขี้ผึ้งที่ไม่มีน้ำหอมหลังอาบน้ำ; "
+                "ถ้าแห้งต่อเนื่องหรือแย่ลง ควรปรึกษาแพทย์ผิวหนัง"
             )
         elif dryness_score >= 4:
-            advice.append("คะแนนผิวแห้งอยู่ระดับกลาง; หากรู้สึกแห้ง ใช้มอยส์เจอไรเซอร์ตามความเหมาะสม")
+            advice.append(
+                "หากผิวรู้สึกแห้ง ลองใช้มอยส์เจอไรเซอร์ที่ไม่มีน้ำหอมหลังอาบน้ำ"
+            )
 
     if outdoor_choice >= 3:
         advice.append(
-            "เลือกเวลาอยู่นอกบ้านตั้งแต่ 3 ชั่วโมงขึ้นไป; ควรป้องกันแดดด้วยร่ม เสื้อผ้า หรือครีมกันแดด"
+            "หากต้องอยู่กลางแจ้งนาน ใช้ร่มหรือเสื้อผ้าปกป้องผิว และทาครีมกันแดด broad-spectrum SPF 30 ขึ้นไป"
         )
     return advice
 
@@ -238,7 +261,8 @@ def build_health_interpretation(
                 "topic": "smoking",
                 "status": "available",
                 "message": (
-                    "หากต้องการเริ่มลดหรือวางแผนเลิกบุหรี่ สามารถขอแรงสนับสนุนจากบุคลากรสุขภาพได้"
+                    "การสูบบุหรี่เร่งสัญญาณผิวแก่ก่อนวัย; หากพร้อมลดหรือเลิก ขอการสนับสนุนจากบุคลากรสุขภาพได้ "
+                    "การเลิกมีประโยชน์ต่อสุขภาพทุกวัย"
                 ),
             }
         )
@@ -303,10 +327,13 @@ def predict_daily_health(
     smoking_status: str | None = None,
     currently_menstruating: bool | None = None,
     allow_out_of_domain_test_prediction: bool = False,
+    model_bundle: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    bundle = load_model_bundle()
+    bundle = model_bundle if model_bundle is not None else load_model_bundle()
+    metadata = bundle["metadata"]
+    prediction_horizon_days = int(metadata.get("prediction_horizon_days", 0))
     sleep_total = sleep_hours * 60 + sleep_minutes
-    sleep_score = round(min(100.0, sleep_total / 420.0 * 100.0), 1)
+    sleep_score = round(min(100.0, sleep_total / SLEEP_SCORE_CAP_MINUTES * 100.0), 1)
     inside_training_domain = (
         SLEEP_RANGE[0] <= sleep_total <= SLEEP_RANGE[1]
         and WATER_RANGE[0] <= water_intake_ml <= WATER_RANGE[1]
@@ -318,10 +345,15 @@ def predict_daily_health(
     if not WATER_RANGE[0] <= water_intake_ml <= WATER_RANGE[1]:
         input_domain_reasons.append("water_intake_outside_training_range")
     warnings = [
-        "คะแนน thirst/dryness เป็นผล regression จากข้อมูลสังเคราะห์ตามกฎตัวอย่าง; "
-        "ไม่ใช่การวัดหรือผลทำนายทางการแพทย์; ควรเก็บคะแนนที่ผู้ใช้รายงานจริงเพื่อประเมินใหม่",
-        "sleep_score เป็นคะแนนความเพียงพอของระยะเวลานอนเท่านั้น โดยสมมติผู้ใหญ่อายุ 18–60 ปี; "
-        "ไม่ใช่ Zepp sleep score หรือคะแนนคุณภาพการนอน",
+        (
+            "คะแนน thirst/dryness มาจากผลที่ผู้ใช้รายงานเองและเป็นการทดลอง; "
+            "ยังไม่ใช่ผลทำนายทางการแพทย์หรือการวินิจฉัย"
+            if metadata.get("data_policy") == "active_opt_in_and_user_reported_numeric_outcomes_only"
+            else "คะแนน thirst/dryness เป็นผล regression จากข้อมูลสังเคราะห์ตามกฎตัวอย่าง; "
+            "ไม่ใช่การวัดหรือผลทำนายทางการแพทย์; ควรเก็บคะแนนที่ผู้ใช้รายงานจริงเพื่อประเมินใหม่"
+        ),
+        "sleep_score เป็นสเกลเวลานอนของแอปที่เต็มเมื่อถึง 9 ชั่วโมง; ไม่ได้ปรับตามวัย "
+        "และไม่ใช่คะแนนคุณภาพการนอนหรือเกณฑ์ทางการแพทย์; คำแนะนำชั่วโมงนอนแยกตามช่วงวัย",
     ]
     thirst_score: float | None = None
     dryness_score: float | None = None
@@ -361,10 +393,39 @@ def predict_daily_health(
         else "not_available"
     )
 
-    metrics = bundle["metadata"].get("holdout", {}).get("metrics", {})
+    metrics = metadata.get("holdout", {}).get("metrics", {})
+    interpretation = build_health_interpretation(
+        sleep_minutes=sleep_total,
+        thirst_score=thirst_score,
+        dryness_score=dryness_score,
+        outdoor_exposure_choice=outdoor_exposure_choice,
+        input_domain_status=input_domain_status,
+        input_domain_reasons=input_domain_reasons,
+        age_band=age_band,
+        smoking_status=smoking_status,
+        currently_menstruating=currently_menstruating,
+    )
+    guidance = make_guidance(
+        sleep_total,
+        thirst_score if inside_training_domain else None,
+        dryness_score if inside_training_domain else None,
+        outdoor_exposure_choice,
+        age_band,
+    )
+    guidance.extend(
+        item["message"]
+        for item in interpretation["profile_guidance"]
+        if item["message"] and item["message"] not in guidance
+    )
+
     return {
         "local_date": local_date.isoformat(),
-        "model_status": "experimental_synthetic",
+        "prediction_target_date": date.fromordinal(local_date.toordinal() + prediction_horizon_days).isoformat(),
+        "model_status": (
+            "experimental_user_reported_candidate"
+            if metadata.get("data_policy") == "active_opt_in_and_user_reported_numeric_outcomes_only"
+            else "experimental_synthetic"
+        ),
         "input": {
             "sleep_hours": sleep_hours,
             "sleep_minutes": sleep_minutes,
@@ -375,7 +436,10 @@ def predict_daily_health(
         "calculated": {
             "sleep_score_0_100": sleep_score,
             "sleep_score_method": SLEEP_SCORE_FORMULA,
-            "sleep_score_scope": "duration-only adult 18–60 reference; not a sleep-quality score",
+            "sleep_score_scope": (
+                "duration-only progress to a 9-hour cap; not age-adjusted, sleep-quality, "
+                "or medical score"
+            ),
         },
         "predictions": {
             "thirst_score_0_10": {
@@ -397,32 +461,13 @@ def predict_daily_health(
             if is_test_only_ood_prediction
             else "abstained"
         ),
-        "interpretation": build_health_interpretation(
-            sleep_minutes=sleep_total,
-            thirst_score=thirst_score,
-            dryness_score=dryness_score,
-            outdoor_exposure_choice=outdoor_exposure_choice,
-            input_domain_status=input_domain_status,
-            input_domain_reasons=input_domain_reasons,
-            age_band=age_band,
-            smoking_status=smoking_status,
-            currently_menstruating=currently_menstruating,
-        ),
+        "interpretation": interpretation,
         "model": {
-            "model_id": bundle["metadata"]["model_id"],
-            "family": bundle["metadata"]["model_family"],
+            "model_id": metadata["model_id"],
+            "family": metadata["model_family"],
+            "prediction_horizon_days": prediction_horizon_days,
             "synthetic_holdout_metrics": metrics,
         },
-        "guidance": (
-            make_guidance(
-                sleep_total,
-                thirst_score,
-                dryness_score,
-                outdoor_exposure_choice,
-                age_band,
-            )
-            if inside_training_domain
-            else []
-        ),
+        "guidance": guidance,
         "warnings": warnings,
     }

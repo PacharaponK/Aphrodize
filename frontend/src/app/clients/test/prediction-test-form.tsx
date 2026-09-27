@@ -30,6 +30,7 @@ function Results({ result }: { result: PredictionResponse }) {
   return (
     <>
       <div className="test-score-grid">
+        <ScoreCard label="SLEEP SCORE" value={result.calculated.sleep_score_0_100} suffix="/ 100" description="คะแนนเต็มเมื่อถึงเพดานสูตร 9 ชั่วโมง" />
         <ScoreCard label="THIRST SCORE" value={result.predictions.thirst_score_0_10.value} suffix="/ 10" description={scoreDescription} />
         <ScoreCard label="DRYNESS SCORE" value={result.predictions.skin_dryness_score_0_10.value} suffix="/ 10" description={scoreDescription} />
       </div>
@@ -49,6 +50,7 @@ function Results({ result }: { result: PredictionResponse }) {
           model_status: result.model_status,
           input_domain_status: result.input_domain_status,
           predictions: result.predictions,
+          calculated: result.calculated,
           interpretation: result.interpretation,
           next_day_predictions: result.interpretation.next_day_predictions,
           model: result.model,
@@ -87,10 +89,10 @@ export default function PredictionTestForm({ initialDate }: { initialDate: strin
           <fieldset className="test-field test-sleep-field">
             <legend>ระยะเวลาการนอน</legend>
             <div className="test-sleep-inputs">
-              <label htmlFor="test-sleep-hours"><span>ชั่วโมง</span><input id="test-sleep-hours" name="sleepHours" type="number" min="0" max="9" step="1" inputMode="numeric" defaultValue={state.values.sleepHours} required /></label>
+              <label htmlFor="test-sleep-hours"><span>ชั่วโมง</span><input id="test-sleep-hours" name="sleepHours" type="number" min="0" max="10" step="1" inputMode="numeric" defaultValue={state.values.sleepHours} required /></label>
               <label htmlFor="test-sleep-minutes"><span>นาที</span><input id="test-sleep-minutes" name="sleepMinutes" type="number" min="0" max="59" step="1" inputMode="numeric" defaultValue={state.values.sleepMinutes} required /></label>
             </div>
-            <small>ระบบรวมเป็นนาที · ฝึกในช่วง 180–540 นาที; หน้าทดสอบจะแสดงผลทดลองนอกช่วงพร้อมเตือน ส่วนหน้าใช้งานจริงจะงดทำนาย</small>
+            <small>รับได้สูงสุด 10 ชั่วโมง; คะแนนเต็มที่เพดานสูตร 9 ชั่วโมง ส่วนโมเดล thirst/dryness ฝึกถึง 9 ชั่วโมง</small>
           </fieldset>
 
           <label className="test-field" htmlFor="test-water-intake">

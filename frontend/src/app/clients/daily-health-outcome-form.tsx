@@ -7,13 +7,14 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
   const [targetDate, setTargetDate] = useState(initialDate);
   const [energy, setEnergy] = useState("");
   const [thirst, setThirst] = useState("");
+  const [dryness, setDryness] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   async function submitOutcome(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!energy && !thirst) {
+    if (!energy && !thirst && !dryness) {
       setError("เลือกอย่างน้อยหนึ่งคะแนนที่คุณสังเกตเอง");
       return;
     }
@@ -30,6 +31,7 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
           target_date: targetDate,
           reported_energy_level_0_10: energy ? Number(energy) : null,
           reported_thirst_level_0_10: thirst ? Number(thirst) : null,
+          reported_dryness_level_0_10: dryness ? Number(dryness) : null,
         }),
       });
       const result = await response.json().catch(() => null);
@@ -51,7 +53,8 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
       <div>
         <p className="eyebrow">OPTIONAL SELF-REPORT</p>
         <h2 id="daily-outcome-title">บันทึกผลที่สังเกตจริง</h2>
-        <p>ใช้เป็น label แยกต่างหากสำหรับประเมินโมเดลในอนาคต ไม่ใช่ค่าที่โมเดลทำนาย</p>
+        <p>ใช้เป็นผลที่คุณสังเกตเอง แยกจาก prediction; ระบบจะฝึกได้เมื่อมีคะแนน thirst และ dryness ที่รายงานจริงครบทั้งคู่ พร้อมข้อมูลไลฟ์สไตล์ของวันก่อนหน้าและ consent ฝึกโมเดล</p>
+        <p className="training-threshold-note">การสร้าง candidate ต้องมีข้อมูลที่จับคู่ครบอย่างน้อย 100 วันจากผู้ใช้ที่ยินยอมอย่างน้อย 5 คน; รุ่นถัดไปจะพิจารณาเมื่อมีข้อมูลใหม่เพิ่มอีกอย่างน้อย 25 วัน การบันทึกข้อมูลรายวันหรือคะแนน prediction เพียงอย่างเดียวไม่ใช่ label และไม่ทำให้เกิดการฝึก</p>
       </div>
       <form className="daily-outcome-form" onSubmit={submitOutcome}>
         <label className="tracker-field" htmlFor="outcome-date">
@@ -82,6 +85,15 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
               <option value="">ยังไม่ระบุ</option>
               {Array.from({ length: 11 }, (_, score) => (
                 <option key={score} value={score}>{score} · {score === 0 ? "ไม่กระหาย" : score === 10 ? "กระหายมาก" : ""}</option>
+              ))}
+            </select>
+          </label>
+          <label className="tracker-field" htmlFor="reported-dryness">
+            <span>ความรู้สึกผิวแห้งที่สังเกต (0–10)</span>
+            <select id="reported-dryness" value={dryness} onChange={(event) => setDryness(event.target.value)}>
+              <option value="">ยังไม่ระบุ</option>
+              {Array.from({ length: 11 }, (_, score) => (
+                <option key={score} value={score}>{score} · {score === 0 ? "ไม่แห้ง" : score === 10 ? "แห้งมาก" : ""}</option>
               ))}
             </select>
           </label>

@@ -7,6 +7,7 @@ from backend.core.config import settings
 from backend.core.db.models import TrainingRun
 from backend.core.db.session import SessionLocal, close_database
 from backend.libs.redis_client import redis_settings
+from backend.services.daily_health_training import train_daily_health_candidate
 
 
 async def shutdown(_: dict) -> None:
@@ -34,8 +35,14 @@ async def run_training(_: dict, training_run_id: str) -> None:
         await session.commit()
 
 
+async def run_daily_health_candidate_training(_: dict) -> None:
+    """Create a review-only version when enough consented self-reports have arrived."""
+    async with SessionLocal() as session:
+        await train_daily_health_candidate(session)
+
+
 class WorkerSettings:
-    functions = [run_training]
+    functions = [run_training, run_daily_health_candidate_training]
     on_shutdown = shutdown
     redis_settings: RedisSettings = redis_settings()
     queue_name = "training"

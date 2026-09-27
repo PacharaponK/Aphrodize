@@ -8,6 +8,7 @@
 - [AI and Data](AI%20and%20Data.md)
 - [System and MLOps](System%20and%20MLOps.md)
 - [Safety and Governance](Safety%20and%20Governance.md)
+- [Daily Health Input Flow](Daily-Health-Input-Flow.md)
 
 ## อะไรควรอยู่ที่นี่
 

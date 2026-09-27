@@ -14,11 +14,21 @@ from backend.api.schemas.daily_health import (
 )
 from backend.api.v1.routes.daily_health import (
     delete_daily_health_profile,
+    list_daily_health_entries,
     read_daily_health_profile,
+    revoke_daily_health_model_training_consent,
     upsert_daily_health_entry,
     upsert_daily_health_outcome,
 )
-from backend.core.db.models import DailyHealthEntry, DailyHealthOutcome, User
+from backend.core.db.models import (
+    Consent,
+    DailyHealthAgeBand,
+    DailyHealthEntry,
+    DailyHealthMenstrualCheckIn,
+    DailyHealthOutcome,
+    DailyHealthProfile,
+    User,
+)
 
 
 def test_daily_health_entry_accepts_tracker_choices_and_optional_prediction() -> None:
@@ -38,7 +48,7 @@ def test_daily_health_entry_accepts_tracker_choices_and_optional_prediction() ->
 @pytest.mark.parametrize(
     "values",
     [
-        {"sleep_duration_minutes": 541},
+        {"sleep_duration_minutes": 601},
         {"water_intake_ml": 20_001},
         {"outdoor_exposure_choice": 5},
     ],
@@ -108,21 +118,70 @@ def test_reported_outcome_requires_at_least_one_real_observed_score() -> None:
     )
     assert outcome.reported_energy_level_0_10 == 6
 
+    dryness_only = DailyHealthOutcomeUpsert(
+        target_date=date(2026, 9, 26),
+        reported_dryness_level_0_10=4.5,
+    )
+    assert dryness_only.reported_dryness_level_0_10 == 4.5
 
-def test_daily_health_prediction_accepts_only_physically_valid_out_of_training_values() -> None:
+
+def test_training_consent_is_separate_and_off_by_default() -> None:
+    entry = DailyHealthEntryUpsert(
+        local_date=date(2026, 9, 26),
+        sleep_duration_minutes=360,
+        water_intake_ml=1400,
+        outdoor_exposure_choice=1,
+    )
+
+    assert entry.model_training_consent is False
+
+
+def test_prediction_target_date_only_allows_same_day_or_next_day() -> None:
+    base = {
+        "local_date": date(2026, 9, 26),
+        "sleep_duration_minutes": 360,
+        "water_intake_ml": 1400,
+        "outdoor_exposure_choice": 1,
+    }
+
+    allowed = DailyHealthEntryUpsert(
+        **base,
+        prediction={
+            "thirst_score_0_10": 4,
+            "dryness_score_0_10": 5,
+            "prediction_status": "predicted",
+            "target_date": date(2026, 9, 27),
+        },
+    )
+    assert allowed.prediction.target_date == date(2026, 9, 27)
+
+    with pytest.raises(ValidationError, match="following day"):
+        DailyHealthEntryUpsert(
+            **base,
+            prediction={
+                "thirst_score_0_10": 4,
+                "dryness_score_0_10": 5,
+                "prediction_status": "predicted",
+                "target_date": date(2026, 9, 28),
+            },
+        )
+
+
+def test_daily_health_prediction_accepts_sleep_through_10_hours_only() -> None:
     payload = DailyHealthPredictionRequest(
         local_date=date(2026, 9, 26),
-        sleep_hours=6,
+        sleep_hours=10,
         sleep_minutes=0,
         water_intake_ml=700,
         outdoor_exposure_choice=1,
     )
 
     assert payload.water_intake_ml == 700
+    assert payload.sleep_hours == 10
     with pytest.raises(ValidationError):
         DailyHealthPredictionRequest(
             local_date=date(2026, 9, 26),
-            sleep_hours=9,
+            sleep_hours=10,
             sleep_minutes=1,
             water_intake_ml=1400,
             outdoor_exposure_choice=1,
@@ -133,6 +192,7 @@ def test_model_predictions_are_not_eligible_training_labels() -> None:
     entry = DailyHealthEntry(
         predicted_thirst_score_0_10=4.2,
         predicted_dryness_score_0_10=3.8,
+        prediction_target_date=date(2026, 9, 27),
         reported_thirst_score_0_10=None,
         reported_dryness_score_0_10=None,
     )
@@ -146,6 +206,7 @@ def test_entry_becomes_training_eligible_only_with_both_reported_scores() -> Non
         predicted_dryness_score_0_10=3.8,
         reported_thirst_score_0_10=5.0,
         reported_dryness_score_0_10=4.0,
+        data_source="user_reported",
     )
 
     assert entry.training_eligible is True
@@ -160,17 +221,27 @@ class FakeResult:
 
 
 class FakeSession:
-    def __init__(self, entry: DailyHealthEntry, has_consent: bool = True) -> None:
+    def __init__(
+        self,
+        entry: DailyHealthEntry,
+        has_consent: bool = True,
+        has_training_consent: bool = False,
+    ) -> None:
         self.entry = entry
         self.has_consent = has_consent
+        self.has_training_consent = has_training_consent
         self.committed = False
         self.statement = None
         self.statements = []
+        self.added = []
 
     async def get(self, model, _user_id):
         return object() if model is User else None
 
-    async def scalar(self, _statement):
+    async def scalar(self, statement):
+        params = statement.compile().params.values()
+        if "daily-health-model-training-v1" in params:
+            return uuid4() if self.has_training_consent else None
         return uuid4() if self.has_consent else None
 
     async def execute(self, statement):
@@ -180,6 +251,9 @@ class FakeSession:
 
     async def commit(self):
         self.committed = True
+
+    def add(self, item):
+        self.added.append(item)
 
 
 @pytest.mark.asyncio
@@ -194,10 +268,13 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
         sleep_duration_minutes=362,
         water_intake_ml=1400,
         outdoor_exposure_choice=1,
-        sleep_score_0_100=86.2,
-        sleep_score_method="min(100, sleep_duration_minutes / 420 * 100); duration-only",
+        sleep_score_0_100=67.0,
+        sleep_score_method=(
+            "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        ),
         predicted_thirst_score_0_10=4.2,
         predicted_dryness_score_0_10=3.8,
+        prediction_target_date=date(2026, 9, 27),
         prediction_status="predicted",
         prediction_model_id="daily-score-random-forest-synthetic-v1",
         data_source="user_reported",
@@ -217,6 +294,7 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
             "dryness_score_0_10": 3.8,
             "prediction_status": "predicted",
             "model_id": "daily-score-random-forest-synthetic-v1",
+            "target_date": date(2026, 9, 27),
         },
     )
 
@@ -225,9 +303,46 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
     compiled = str(session.statement.compile(dialect=postgresql.dialect())).upper()
     assert "ON CONFLICT" in compiled
     assert session.committed is True
-    assert result.sleep_score_0_100 == 86.2
+    assert result.sleep_score_0_100 == 67.0
     assert result.predicted_thirst_score_0_10 == 4.2
+    assert result.prediction_target_date == date(2026, 9, 27)
     assert result.training_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_daily_entry_can_grant_separate_opt_in_for_model_training() -> None:
+    user_id = uuid4()
+    entry = DailyHealthEntry(
+        id=uuid4(),
+        user_id=user_id,
+        local_date=date(2026, 9, 26),
+        timezone="Asia/Bangkok",
+        sleep_duration_minutes=360,
+        water_intake_ml=1400,
+        outdoor_exposure_choice=1,
+        sleep_score_0_100=66.7,
+        sleep_score_method="duration-only",
+        prediction_status="not_run",
+        data_source="user_reported",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    session = FakeSession(entry)
+    payload = DailyHealthEntryUpsert(
+        local_date=date(2026, 9, 26),
+        sleep_duration_minutes=360,
+        water_intake_ml=1400,
+        outdoor_exposure_choice=1,
+        model_training_consent=True,
+    )
+
+    await upsert_daily_health_entry(user_id, payload, session)
+
+    assert any(
+        isinstance(item, Consent) and item.version == "daily-health-model-training-v1"
+        for item in session.added
+    )
+    assert session.committed is True
 
 
 @pytest.mark.asyncio
@@ -280,8 +395,7 @@ async def test_daily_health_route_stores_personal_context_only_with_separate_con
     await upsert_daily_health_entry(entry.user_id, payload, session)
 
     statements = [
-        str(item.compile(dialect=postgresql.dialect())).upper()
-        for item in session.statements
+        str(item.compile(dialect=postgresql.dialect())).upper() for item in session.statements
     ]
     assert any("DAILY_HEALTH_PROFILES" in statement for statement in statements)
     assert any("DAILY_HEALTH_AGE_BANDS" in statement for statement in statements)
@@ -298,6 +412,7 @@ async def test_profile_read_hides_data_when_personalization_consent_is_inactive(
     assert result == {
         "consent_active": False,
         "age_guidance_consent_active": False,
+        "model_training_consent_active": False,
         "can_report_outcomes": False,
         "age_band": None,
         "smoking_status": None,
@@ -311,17 +426,153 @@ async def test_profile_delete_removes_sensitive_context_and_revokes_consent() ->
     await delete_daily_health_profile(uuid4(), session)
 
     statements = [
-        str(item.compile(dialect=postgresql.dialect())).upper()
-        for item in session.statements
+        str(item.compile(dialect=postgresql.dialect())).upper() for item in session.statements
     ]
     assert any("DELETE FROM DAILY_HEALTH_PROFILES" in statement for statement in statements)
     assert any("DELETE FROM DAILY_HEALTH_AGE_BANDS" in statement for statement in statements)
     assert any(
-        "DELETE FROM DAILY_HEALTH_MENSTRUAL_CHECKINS" in statement
-        for statement in statements
+        "DELETE FROM DAILY_HEALTH_MENSTRUAL_CHECKINS" in statement for statement in statements
     )
     assert any("UPDATE CONSENTS" in statement for statement in statements)
     assert session.committed is True
+
+
+@pytest.mark.asyncio
+async def test_training_consent_can_be_revoked_without_deleting_daily_history() -> None:
+    session = FakeSession(DailyHealthEntry())
+
+    await revoke_daily_health_model_training_consent(uuid4(), session)
+
+    statements = [item.compile(dialect=postgresql.dialect()) for item in session.statements]
+    assert any("UPDATE CONSENTS" in str(statement).upper() for statement in statements)
+    assert any(
+        "UPDATE DAILY_HEALTH_MODEL_VERSIONS" in str(statement).upper() for statement in statements
+    )
+    assert any(
+        "DAILY_HEALTH_MODEL_VERSIONS.STATUS IN" in str(statement).upper()
+        for statement in statements
+    )
+    assert any(
+        "daily-health-model-training-v1" in statement.params.values() for statement in statements
+    )
+    assert session.committed is True
+
+
+class FakeScalarList:
+    def __init__(self, values):
+        self.values = values
+
+    def all(self):
+        return self.values
+
+
+class FakeDailyHealthHistorySession:
+    def __init__(
+        self,
+        entries,
+        *,
+        active_consents: set[str] | None = None,
+        profile=None,
+        age_band=None,
+        menstrual_checkins=None,
+    ):
+        self.entries = entries
+        self.active_consents = (
+            active_consents if active_consents is not None else {"daily-health-v1"}
+        )
+        self.profile = profile
+        self.age_band = age_band
+        self.menstrual_checkins = menstrual_checkins or []
+        self.scalars_calls = []
+
+    async def get(self, model, _user_id):
+        if model is User:
+            return object()
+        if model.__name__ == "DailyHealthProfile":
+            return self.profile
+        if model.__name__ == "DailyHealthAgeBand":
+            return self.age_band
+        return None
+
+    async def scalar(self, statement):
+        params = set(statement.compile().params.values())
+        consent_version = next(
+            (version for version in self.active_consents if version in params), None
+        )
+        return object() if consent_version is not None else None
+
+    async def scalars(self, statement):
+        query = str(statement).lower()
+        self.scalars_calls.append(query)
+        if "daily_health_entries" in query:
+            return FakeScalarList(self.entries)
+        if "daily_health_menstrual_checkins" in query:
+            return FakeScalarList(self.menstrual_checkins)
+        return FakeScalarList([])
+
+
+@pytest.mark.asyncio
+async def test_history_read_returns_saved_prediction_risks_with_consented_profile_context() -> None:
+    user_id = uuid4()
+    entry = DailyHealthEntry(
+        id=uuid4(),
+        user_id=user_id,
+        local_date=date(2026, 9, 26),
+        timezone="Asia/Bangkok",
+        sleep_duration_minutes=330,
+        water_intake_ml=1200,
+        outdoor_exposure_choice=2,
+        sleep_score_0_100=61.1,
+        sleep_score_method="duration-only",
+        predicted_thirst_score_0_10=8.0,
+        predicted_dryness_score_0_10=8.0,
+        prediction_target_date=date(2026, 9, 27),
+        prediction_status="predicted",
+        prediction_model_id="daily-score-test-v1",
+        data_source="user_reported",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    session = FakeDailyHealthHistorySession(
+        [entry],
+        active_consents={
+            "daily-health-v1",
+            "daily-health-personalization-v1",
+            "daily-health-age-guidance-v1",
+        },
+        profile=DailyHealthProfile(user_id=user_id, smoking_status="current"),
+        age_band=DailyHealthAgeBand(user_id=user_id, age_band="18_60"),
+        menstrual_checkins=[
+            DailyHealthMenstrualCheckIn(
+                user_id=user_id,
+                local_date=date(2026, 9, 26),
+                currently_menstruating=True,
+            )
+        ],
+    )
+
+    result = await list_daily_health_entries(user_id, limit=7, session=session)
+
+    item = result["items"][0]
+    assert item["local_date"] == "2026-09-26"
+    assert item["prediction_target_date"] == "2026-09-27"
+    assert item["interpretation"]["daily_health_summary"]["level"] == "high"
+    assert item["interpretation"]["skin_care_attention_level"]["level"] == "high"
+    assert {item["topic"] for item in item["interpretation"]["profile_guidance"]} == {
+        "smoking",
+        "menstrual_wellbeing",
+    }
+    assert "user_id" not in item
+
+
+@pytest.mark.asyncio
+async def test_history_read_does_not_return_rows_without_daily_health_consent() -> None:
+    session = FakeDailyHealthHistorySession([DailyHealthEntry()], active_consents=set())
+
+    result = await list_daily_health_entries(uuid4(), limit=7, session=session)
+
+    assert result == {"items": []}
+    assert not session.scalars_calls
 
 
 @pytest.mark.asyncio
@@ -333,6 +584,7 @@ async def test_daily_health_outcome_is_upserted_only_with_active_daily_consent()
         target_date=date.today(),
         reported_energy_level_0_10=6.0,
         reported_thirst_level_0_10=3.0,
+        reported_dryness_level_0_10=4.5,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
@@ -341,14 +593,17 @@ async def test_daily_health_outcome_is_upserted_only_with_active_daily_consent()
         target_date=date.today(),
         reported_energy_level_0_10=6,
         reported_thirst_level_0_10=3,
+        reported_dryness_level_0_10=4.5,
     )
 
     result = await upsert_daily_health_outcome(user_id, payload, session)
 
     compiled = str(session.statement.compile(dialect=postgresql.dialect())).upper()
     assert "ON CONFLICT" in compiled
+    assert "REPORTED_DRYNESS_LEVEL_0_10" in compiled
     assert result.reported_energy_level_0_10 == 6
     assert result.reported_thirst_level_0_10 == 3
+    assert result.reported_dryness_level_0_10 == 4.5
     assert session.committed is True
 
 

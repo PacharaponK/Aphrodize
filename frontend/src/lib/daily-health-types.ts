@@ -21,8 +21,25 @@ export type ProfileGuidance = {
   message: string;
 };
 
+export type DailyHealthInterpretation = {
+  daily_health_summary: HealthSignal;
+  skin_care_attention_level: HealthSignal;
+  acne_flare_signal: HealthSignal;
+  next_day_predictions: {
+    low_energy_signal: HealthSignal;
+    thirst_attention: HealthSignal;
+  };
+  profile_guidance: ProfileGuidance[];
+};
+
+export type DailyHealthScores = {
+  thirst_score_0_10: ScorePrediction;
+  skin_dryness_score_0_10: ScorePrediction;
+};
+
 export type PredictionResponse = {
   local_date: string;
+  prediction_target_date: string;
   model_status: string;
   input_domain_status: "in_domain" | "out_of_training_domain";
   input_domain_reasons: string[];
@@ -33,23 +50,36 @@ export type PredictionResponse = {
     water_intake_ml: number;
     outdoor_exposure_choice: number;
   };
-  predictions: {
-    thirst_score_0_10: ScorePrediction;
-    skin_dryness_score_0_10: ScorePrediction;
+  calculated: {
+    sleep_score_0_100: number;
+    sleep_score_method: string;
+    sleep_score_scope: string;
   };
-  model?: { model_id?: string; family?: string };
-  interpretation: {
-    daily_health_summary: HealthSignal;
-    skin_care_attention_level: HealthSignal;
-    acne_flare_signal: HealthSignal;
-    next_day_predictions: {
-      low_energy_signal: HealthSignal;
-      thirst_attention: HealthSignal;
-    };
-    profile_guidance: ProfileGuidance[];
-  };
+  predictions: DailyHealthScores;
+  model?: { model_id?: string; family?: string; prediction_horizon_days?: number };
+  interpretation: DailyHealthInterpretation;
   guidance: string[];
   warnings: string[];
+};
+
+export type DailyHealthHistoryItem = {
+  local_date: string;
+  prediction_target_date: string | null;
+  prediction_status: string;
+  prediction_model_id: string | null;
+  input_domain_status: "in_domain" | "out_of_training_domain";
+  input: {
+    sleep_duration_total_minutes: number;
+    water_intake_ml: number;
+    outdoor_exposure_choice: number;
+  };
+  calculated: { sleep_score_0_100: number };
+  predictions: DailyHealthScores;
+  interpretation: DailyHealthInterpretation;
+};
+
+export type DailyHealthHistoryResponse = {
+  items: DailyHealthHistoryItem[];
 };
 
 export type SmokingStatus = "current" | "former" | "never" | "prefer_not_to_say";
@@ -59,6 +89,7 @@ export type DailyHealthProfile = {
   has_session: boolean;
   consent_active: boolean;
   age_guidance_consent_active: boolean;
+  model_training_consent_active: boolean;
   can_report_outcomes: boolean;
   age_band: AgeBand | null;
   smoking_status: SmokingStatus | null;

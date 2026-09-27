@@ -59,9 +59,9 @@ export async function predictTestInput(
     }
     if (values.localDate > todayInBangkok()) throw new Error("เลือกวันที่วันนี้หรือวันที่ผ่านมาเท่านั้น");
 
-    const sleepHours = readInteger(formData, "sleepHours", "ชั่วโมงการนอน", 0, 9);
+    const sleepHours = readInteger(formData, "sleepHours", "ชั่วโมงการนอน", 0, 10);
     const sleepMinutes = readInteger(formData, "sleepMinutes", "นาทีการนอน", 0, 59);
-    if (sleepHours * 60 + sleepMinutes > 540) throw new Error("เวลานอนสูงสุดที่ API รับคือ 540 นาที (9 ชั่วโมง)");
+    if (sleepHours * 60 + sleepMinutes > 600) throw new Error("เวลานอนสูงสุดที่รับคือ 600 นาที (10 ชั่วโมง)");
     const waterIntakeMl = readInteger(formData, "waterIntakeMl", "ปริมาณน้ำดื่ม", 0, 20_000);
     const outdoorChoice = readInteger(formData, "outdoorChoice", "ตัวเลือกเวลาอยู่นอกบ้าน", 1, 4);
 

@@ -6,13 +6,24 @@ from fastapi.testclient import TestClient
 from backend.api.v1.router import api_router
 from backend.api.v1.routes.daily_health import router
 from backend.core.config import settings
+from backend.core.db.session import get_session
 from backend.libs.model_loader import get_daily_score_model
 
 
 def client() -> TestClient:
     app = FastAPI()
     app.include_router(router)
+
+    async def empty_session():
+        yield EmptySession()
+
+    app.dependency_overrides[get_session] = empty_session
     return TestClient(app)
+
+
+class EmptySession:
+    async def get(self, *_args):
+        return None
 
 
 def test_guidance_includes_only_relevant_actionable_items() -> None:
@@ -23,9 +34,9 @@ def test_guidance_includes_only_relevant_actionable_items() -> None:
     guidance = model.make_guidance(360, 8.0, 8.0, 3)
     assert len(guidance) == 4
     assert any("เวลานอน 6 ชั่วโมง 0 นาที" in item for item in guidance)
-    assert any("thirst" in item for item in guidance)
-    assert any("ผิวแห้ง" in item for item in guidance)
-    assert any("ป้องกันแดด" in item for item in guidance)
+    assert any("ความกระหาย" in item for item in guidance)
+    assert any("รู้สึกแห้ง" in item for item in guidance)
+    assert any("ครีมกันแดด" in item for item in guidance)
     assert all("คุณภาพ" not in item and "ไม่ได้ยืนยัน" not in item for item in guidance)
 
 
@@ -53,11 +64,40 @@ def test_promoted_daily_score_model_loads_and_returns_expected_contract() -> Non
     )
 
     assert result["model"]["model_id"] == "daily-score-random-forest-synthetic-v1"
-    assert result["calculated"]["sleep_score_0_100"] == 86.2
+    assert result["calculated"]["sleep_score_0_100"] == 67.0
     assert 0 <= result["predictions"]["thirst_score_0_10"]["value"] <= 10
     assert 0 <= result["predictions"]["skin_dryness_score_0_10"]["value"] <= 10
     assert result["guidance"]
     assert result["warnings"]
+    assert result["prediction_target_date"] == "2026-09-26"
+
+
+def test_user_candidate_bundle_forecasts_the_next_day_and_is_identified_as_experimental() -> None:
+    model = get_daily_score_model()
+
+    result = model.predict_daily_health(
+        local_date=date(2026, 9, 26),
+        sleep_hours=7,
+        sleep_minutes=20,
+        water_intake_ml=1400,
+        outdoor_exposure_choice=2,
+        model_bundle={
+            "model": get_daily_score_model().load_model_bundle()["model"],
+            "metadata": {
+                "model_id": "daily-health-next-day-0123456789abcdef",
+                "model_family": "daily_health_next_day_random_forest",
+                "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
+                "prediction_horizon_days": 1,
+                "holdout": {"metrics": {"reported_thirst_level_0_10": {"mae": 1.0}}},
+            },
+        },
+    )
+
+    assert result["prediction_target_date"] == "2026-09-27"
+    assert result["model"]["model_id"] == "daily-health-next-day-0123456789abcdef"
+    assert result["model_status"] == "experimental_user_reported_candidate"
+    assert any("ผลที่ผู้ใช้รายงานเอง" in warning for warning in result["warnings"])
+    assert all("ข้อมูลสังเคราะห์" not in warning for warning in result["warnings"])
 
 
 def test_prediction_api_abstains_outside_model_training_domain() -> None:
@@ -79,7 +119,7 @@ def test_prediction_api_abstains_outside_model_training_domain() -> None:
         "status": "not_available",
     }
     assert result["predictions"]["skin_dryness_score_0_10"]["value"] is None
-    assert result["calculated"]["sleep_score_0_100"] == 86.2
+    assert result["calculated"]["sleep_score_0_100"] == 67.0
     assert result["input_domain_status"] == "out_of_training_domain"
     assert result["input_domain_reasons"] == ["water_intake_outside_training_range"]
     assert result["prediction_status"] == "abstained"
@@ -108,7 +148,8 @@ def test_test_prediction_api_returns_flagged_scores_outside_training_domain() ->
     assert result["predictions"]["thirst_score_0_10"]["value"] is not None
     assert result["predictions"]["skin_dryness_score_0_10"]["value"] is not None
     assert result["interpretation"]["daily_health_summary"]["status"] == "out_of_training_domain"
-    assert result["guidance"] == []
+    assert any("เวลานอน" in item for item in result["guidance"])
+    assert all("กระหาย" not in item and "ผิวรู้สึกแห้ง" not in item for item in result["guidance"])
     assert any("นอกช่วงฝึก" in warning for warning in result["warnings"])
 
 
@@ -161,8 +202,7 @@ def test_sleep_attention_uses_consented_age_band_without_inventing_a_clinical_ri
 
     assert age_specific["daily_health_summary"]["level"] == "moderate"
     assert any(
-        "13–17 ปี" in item
-        for item in age_specific["daily_health_summary"]["recommendations"]
+        "13–17 ปี" in item for item in age_specific["daily_health_summary"]["recommendations"]
     )
     assert age_unspecified["daily_health_summary"]["level"] == "low"
 
@@ -185,8 +225,10 @@ def test_prediction_api_personal_guidance_requires_and_uses_explicit_consent() -
     response = client().post("/predict", json=payload)
 
     assert response.status_code == 200
-    guidance = response.json()["interpretation"]["profile_guidance"]
+    result = response.json()
+    guidance = result["interpretation"]["profile_guidance"]
     assert {item["topic"] for item in guidance} == {"smoking", "menstrual_wellbeing"}
+    assert all(item["message"] in result["guidance"] for item in guidance)
 
     payload["personal_context"]["consent_given"] = False
     rejected = client().post("/predict", json=payload)
@@ -251,19 +293,36 @@ def test_personal_profile_guidance_requires_context_and_does_not_change_risk_lev
     }
 
 
-def test_prediction_api_rejects_sleep_above_supported_input_limit() -> None:
-    response = client().post(
+def test_prediction_api_accepts_10_hours_and_caps_sleep_score_at_9_hours() -> None:
+    test_client = client()
+    response = test_client.post(
         "/predict",
         json={
             "local_date": "2026-09-26",
-            "sleep_hours": 9,
-            "sleep_minutes": 1,
+            "sleep_hours": 10,
+            "sleep_minutes": 0,
             "water_intake_ml": 1400,
             "outdoor_exposure_choice": 2,
         },
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
+    result = response.json()
+    assert result["calculated"]["sleep_score_0_100"] == 100.0
+    assert result["input_domain_status"] == "out_of_training_domain"
+    assert result["predictions"]["thirst_score_0_10"]["value"] is None
+
+    too_long = test_client.post(
+        "/predict",
+        json={
+            "local_date": "2026-09-26",
+            "sleep_hours": 10,
+            "sleep_minutes": 1,
+            "water_intake_ml": 1400,
+            "outdoor_exposure_choice": 2,
+        },
+    )
+    assert too_long.status_code == 422
 
 
 def test_versioned_backend_prediction_route_requires_and_accepts_api_credentials(
@@ -273,6 +332,11 @@ def test_versioned_backend_prediction_route_requires_and_accepts_api_credentials
     monkeypatch.setattr(settings, "api_password", "test-password")
     app = FastAPI()
     app.include_router(api_router, prefix="/api/v1")
+
+    async def empty_session():
+        yield EmptySession()
+
+    app.dependency_overrides[get_session] = empty_session
     test_client = TestClient(app)
     payload = {
         "local_date": "2026-09-26",

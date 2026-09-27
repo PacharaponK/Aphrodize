@@ -27,7 +27,7 @@ Client
 
 ## Model families
 
-`POST /api/v1/training/runs` accepts `time_series`, `tabular`, and `image_segmentation`. Image analyses use the checked FFHQ-Wrinkle model mounted read-only in the inference worker. `POST /api/v1/inference/runs` accepts generic `time_series` and `tabular` model URIs and still fails safe with `model_not_deployed` until an approved MLflow model is available. The trainer records an MLflow run but does not train on user uploads.
+`POST /api/v1/training/runs` accepts `time_series`, `tabular`, and `image_segmentation`. Image analyses use the checked FFHQ-Wrinkle model mounted read-only in the inference worker. `POST /api/v1/inference/runs` accepts generic `time_series` and `tabular` model URIs and still fails safe with `model_not_deployed` until an approved MLflow model is available. Separately, the daily-health worker can create review-only candidate versions from active-consent users' numeric self-reported next-day thirst/dryness outcomes; it excludes synthetic/imported rows and never promotes a candidate automatically. Face-inference uploads remain excluded from training.
 
 The model workspace lives in [`models/`](../models/README.md): `models/time-series/linear-model/` contains linear ordered-observation models, `models/time-series/non-linear-model/` is reserved for non-linear forecasting models, and `models/non-time-series/` contains image-model source and artifacts. Hyphenated taxonomy folders are loaded explicitly by [`backend/libs/model_loader.py`](../backend/libs/model_loader.py).
 
