@@ -200,6 +200,16 @@ a { color: #0075de; }
 .wizard-question > label:first-child { font-size: 18px; }
 .wizard-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .wizard-actions button { margin: 0; }
+.profile-panel { max-width: 760px; }
+.profile-account { margin-bottom: 28px; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: #f6f5f4; }
+.profile-account h2 { margin: 0 0 4px; }
+.profile-account p { margin: 0; color: var(--muted); }
+.profile-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.profile-answers div { padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.profile-answers dt { color: var(--muted); font-size: 12px; }
+.profile-answers dd { margin: 6px 0 0; color: var(--ink); font-weight: 600; text-transform: capitalize; }
+.empty-state { display: grid; gap: 16px; }
+@media (max-width: 600px) { .profile-answers { grid-template-columns: 1fr; } }
 .signup-login-button { display: block; width: min(100%, 520px); margin: 16px auto 0; text-align: center; text-decoration: none; }
 .onboarding-page { min-height: 100vh; padding: clamp(24px, 5vw, 72px); background: #f6f5f4; }
 .onboarding-card { width: min(100%, 760px); margin: auto; padding: clamp(28px, 5vw, 56px); border: 1px solid var(--line); border-radius: 12px; background: #fff; }
@@ -235,6 +245,7 @@ html[data-theme="black"] .secondary-button, html[data-theme="black"] .artifact-t
 html[data-theme="black"] .auth-card input[type="text"], html[data-theme="black"] .auth-card input[type="email"], html[data-theme="black"] .auth-card input[type="password"] { background: #202f50; border-color: #64708a; color: #fff; }
 html[data-theme="black"] .signup-section input, html[data-theme="black"] .signup-section select { background: #202f50; border-color: #64708a; color: #fff; }
 html[data-theme="black"] .wizard-progress > div { background: #34415d; }
+html[data-theme="black"] .profile-account { background: #202f50; border-color: #34415d; }
 html[data-theme="black"] .form-message.success { color: #8fe3ba; }
 html[data-theme="black"] .auth-card label, html[data-theme="black"] .auth-card-heading h2 { color: #fff; }
 html[data-theme="black"] .rule-box { color: #c8cede; }

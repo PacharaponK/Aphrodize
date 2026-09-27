@@ -17,7 +17,7 @@ export default function Page() {
 <a className="nav-link" href="/capture">วิเคราะห์ภาพ</a>
 <a className="nav-link" href="/clients">สุขภาพรายวัน</a>
 <a className="nav-link" href="#trend">แนวโน้ม</a>
-<a className="nav-link" href="#profile">Skin profile</a>
+<a className="nav-link" href="/profile">Skin profile</a>
 </nav>
 <div className="privacy-card"><strong>ข้อมูลของคุณ</strong><span>เก็บตาม consent ที่คุณเลือก</span><a href="#privacy">จัดการข้อมูล</a></div>
 </aside>
