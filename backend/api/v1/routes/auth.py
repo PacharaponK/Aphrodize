@@ -13,7 +13,7 @@ from backend.api.schemas.auth import (
     SignupResponse,
     SkinProfileResponse,
 )
-from backend.core.db.models import Account, Consent, Questionnaire, User
+from backend.core.db.models import Account, AccountRole, Consent, Questionnaire, User
 from backend.core.db.session import get_session
 from backend.services.passwords import hash_password, verify_password
 from backend.services.tokens import create_access_token
@@ -68,16 +68,18 @@ async def signup(
 
     user = User(id=uuid.uuid4())
     account = Account(
+        id=uuid.uuid4(),
         user_id=user.id,
         display_name=payload.display_name.strip(),
         email=payload.email,
         password_hash=hash_password(payload.password),
     )
     consent = Consent(user_id=user.id, version="signup-v1")
+    member_role = AccountRole(account_id=account.id, role="member")
     # Flush the parent first so PostgreSQL can satisfy the account/consent foreign keys.
     session.add(user)
     await session.flush()
-    session.add_all([account, consent])
+    session.add_all([account, member_role, consent])
     try:
         await session.commit()
     except IntegrityError as error:
