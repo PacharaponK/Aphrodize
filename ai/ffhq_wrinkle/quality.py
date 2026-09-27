@@ -47,8 +47,10 @@ class QualityGateError(RuntimeError):
 
 
 def _face_crop(image: np.ndarray, detection: FaceDetection) -> np.ndarray:
+    # YuNet supplies x, y, width, height in original image coordinates.
     x, y, width, height = detection.bbox
     image_height, image_width = image.shape[:2]
+    # Clamp the detected box to actual pixels before measuring exposure/blur.
     x0 = max(0, int(np.floor(x)))
     y0 = max(0, int(np.floor(y)))
     x1 = min(image_width, int(np.ceil(x + width)))
@@ -60,6 +62,7 @@ def _face_crop(image: np.ndarray, detection: FaceDetection) -> np.ndarray:
 
 def pose_metrics(detection: FaceDetection) -> dict[str, float]:
     """Estimate roll, yaw, and pitch from five landmarks, not a 3-D pose model."""
+    # Five 2-D landmarks provide only rough pose proxies.
     points = detection.landmarks
     eyes = points[:2][np.argsort(points[:2, 0])]
     mouths = points[3:5][np.argsort(points[3:5, 0])]
@@ -69,10 +72,13 @@ def pose_metrics(detection: FaceDetection) -> dict[str, float]:
     nose = points[2]
     eye_vector = eye_right - eye_left
     eye_distance = max(float(np.linalg.norm(eye_vector)), 1e-6)
+    # Roll is the eye-line tilt in degrees.
     roll = float(np.degrees(np.arctan2(eye_vector[1], eye_vector[0])))
+    # Yaw proxy measures nose displacement from the eye midpoint.
     yaw = float((nose[0] - eye_average[0]) / eye_distance)
     eye_to_mouth = mouth_average - eye_average
     denominator = max(float(np.dot(eye_to_mouth, eye_to_mouth)), 1e-6)
+    # Pitch proxy locates the nose along the eye-to-mouth direction.
     pitch = float(np.dot(nose - eye_average, eye_to_mouth) / denominator)
     return {"roll_degrees": roll, "yaw_proxy": yaw, "pitch_proxy": pitch}
 
@@ -88,11 +94,13 @@ def assess_source_quality(
     creation. Exposure and blur are measured inside the detected face crop.
     """
 
+    # Checks below use the upload, before its face is cropped/aligned.
     height, width = image.shape[:2]
     _, _, face_width, face_height = detection.bbox
     face_ratio = min(face_width / width, face_height / height)
     crop = _face_crop(image, detection)
     issues: list[str] = []
+    # Gather every failed rule so the caller can explain a rejection.
     if width < config.minimum_width or height < config.minimum_height:
         issues.append("resolution_too_low")
     if min(face_width, face_height) < config.minimum_face_pixels:
@@ -103,10 +111,12 @@ def assess_source_quality(
         issues.append("landmark_confidence_too_low")
 
     if crop.size:
+        # Mean brightness and nearly black/white fractions estimate exposure.
         grayscale = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
         mean_luma = float(grayscale.mean())
         dark_ratio = float(np.mean(grayscale <= 10))
         bright_ratio = float(np.mean(grayscale >= 245))
+        # Low Laplacian variance is a simple proxy for an out-of-focus face.
         blur_variance = float(cv2.Laplacian(grayscale, cv2.CV_64F).var())
     else:
         mean_luma = dark_ratio = bright_ratio = blur_variance = 0.0
@@ -122,6 +132,7 @@ def assess_source_quality(
     if blur_variance < config.minimum_laplacian_variance:
         issues.append("image_too_blurry")
 
+    # Reject large estimated turns/tilts that make aligned ROIs unreliable.
     pose = pose_metrics(detection)
     if abs(pose["roll_degrees"]) > config.maximum_roll_degrees:
         issues.append("pose_roll_excessive")
@@ -143,6 +154,7 @@ def assess_source_quality(
         "laplacian_variance": blur_variance,
         **pose,
     }
+    # `not issues` is true only when every gate passed.
     return QualityAssessment(not issues, tuple(issues), metrics)
 
 
@@ -151,6 +163,7 @@ def assess_face_mask(
     config: QualityConfig = QualityConfig(),
 ) -> QualityAssessment:
     """Reject implausibly small or large parsed face areas after alignment."""
+    # Boolean mean is the fraction of aligned pixels classified as skin/nose.
     ratio = float(np.mean(face_mask.astype(bool)))
     issues: list[str] = []
     if ratio < config.minimum_face_mask_ratio:

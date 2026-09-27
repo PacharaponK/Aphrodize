@@ -31,14 +31,17 @@ def serialize(analysis: Analysis) -> AnalysisRead:
     )
 
 
+# A 202 response means the analysis was accepted or rejected by preflight, not that AI finished.
 @router.post("/users/{user_id}", response_model=AnalysisRead, status_code=status.HTTP_202_ACCEPTED)
 async def submit_analysis(
     user_id: UUID,
     image: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
 ) -> AnalysisRead:
+    # Validate the user path parameter before the service reads the image.
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
+    # The service performs consent, image, storage, and queue checks.
     analysis = await create_analysis(session, user_id, image)
     return serialize(analysis)
 
@@ -47,6 +50,7 @@ async def submit_analysis(
 async def get_analysis(
     analysis_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> AnalysisRead:
+    # The result page polls this row while the worker changes its status.
     analysis = await session.get(Analysis, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
@@ -59,18 +63,23 @@ async def get_analysis_artifact(
     kind: Literal["overlay", "mask"],
     session: AsyncSession = Depends(get_session),
 ) -> Response:
+    # Display artifacts are available only when the analysis has a result.
     analysis = await session.get(Analysis, analysis_id)
     if analysis is None or not analysis.result:
         raise HTTPException(status_code=404, detail="Artifact not found")
     expiry_text = analysis.result.get("artifacts_expires_at")
+    # No expiry field means no viewable artifact was published.
     if not isinstance(expiry_text, str):
         raise HTTPException(status_code=404, detail="Artifact not found")
     try:
+        # Parse the timestamp written by the inference worker.
         expires_at = datetime.fromisoformat(expiry_text)
     except ValueError as error:
         raise HTTPException(status_code=410, detail="Artifact expired") from error
     if expires_at.tzinfo is None or datetime.now(UTC) >= expires_at:
+        # Refuse expired images even if the delayed deletion job has not run.
         raise HTTPException(status_code=410, detail="Artifact expired")
+    # Construct the private MinIO key from the stored user and analysis IDs.
     key = analysis_artifact_key(analysis.user_id, analysis.id, kind)
     try:
         content = await run_in_threadpool(get_bytes, key)
@@ -83,6 +92,7 @@ async def get_analysis_artifact(
 async def get_recommendations(
     analysis_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> dict:
+    # Recommendations use the completed analysis and the newest questionnaire.
     analysis = await session.get(Analysis, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")

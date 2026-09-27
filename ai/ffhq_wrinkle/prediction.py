@@ -76,20 +76,29 @@ def infer_logits_and_probability(
     needed because this path only performs inference.
     """
 
+    # One image has four channels (masked R, G, B, texture) before batching.
     if tensor.shape[0] != 4 or tensor.ndim != 3:
         raise ValueError("model input must have shape (4, height, width)")
+    # Add batch dimension: NumPy [4,H,W] -> PyTorch [1,4,H,W] on CPU/GPU.
     inputs = torch.from_numpy(np.ascontiguousarray(tensor)).unsqueeze(0).to(device)
+    # GPU kernels are asynchronous, so synchronize to measure inference time.
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     started = perf_counter()
+    # Inference mode disables gradient tracking because weights are not trained here.
     with torch.inference_mode():
+        # Raw output is two logits per pixel, not probabilities or a final score.
         output = model(inputs)
+        # Expected layout: one image, two classes, height, width.
         if output.ndim != 4 or output.shape[0] != 1 or output.shape[1] != 2:
             raise ValueError(f"model must return [1, 2, H, W] logits, got {tuple(output.shape)}")
+        # Softmax compares both logits at each pixel; keep class 1 = wrinkle.
+        # This number is a model score in [0,1], not a calibrated medical probability.
         probability = torch.softmax(output, dim=1)[0, positive_class]
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     elapsed = perf_counter() - started
+    # Move output to CPU arrays: [2,H,W] logits and [H,W] class-1 probability.
     return (
         output[0].detach().cpu().numpy().astype(np.float32, copy=False),
         probability.detach().cpu().numpy().astype(np.float32, copy=False),
@@ -103,9 +112,13 @@ def threshold_probability(
     config: ThresholdConfig = ThresholdConfig(),
 ) -> np.ndarray:
     """Keep pixels above the probability threshold only inside the face."""
+    # The configured cut-off must be a probability in the inclusive 0..1 range.
     config.validate()
+    # Each probability must refer to the same aligned coordinate as its face mask.
     if probability.shape != face_mask.shape:
         raise ValueError("probability and face mask shapes must match")
+    # A pixel is a wrinkle only if class-1 probability clears the cut-off AND
+    # semantic parsing marked that pixel as part of the evaluated face.
     return (probability >= config.probability) & face_mask.astype(bool)
 
 
@@ -119,10 +132,14 @@ def create_overlay(
         raise ValueError("aligned face and wrinkle mask shapes must match")
     if not 0.0 <= alpha <= 1.0:
         raise ValueError("overlay alpha must be within [0, 1]")
+    # Use floats so alpha blending does not overflow 8-bit RGB arithmetic.
     overlay = aligned_face.astype(np.float32).copy()
+    # Red marks pixels selected by the binary wrinkle mask.
     color = np.array([255.0, 32.0, 32.0], dtype=np.float32)
     selected = wrinkle_mask.astype(bool)
+    # Blend only selected pixels; leave the rest of the aligned face untouched.
     overlay[selected] = overlay[selected] * (1.0 - alpha) + color * alpha
+    # Round and return a standard byte RGB image suitable for PNG.
     return np.rint(np.clip(overlay, 0, 255)).astype(np.uint8)
 
 
@@ -130,6 +147,7 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+# Turn a preprocessed four-channel face into a wrinkle mask and display artifacts.
 def predict_image(
     image_path: str | Path,
     output_dir: str | Path,
@@ -150,9 +168,11 @@ def predict_image(
     The saved NPY/PNG files aid inspection; later steps use returned arrays.
     """
 
+    # Validate postprocessing options before touching the input or output files.
     threshold.validate()
     output = Path(output_dir)
     ensure_output_available(output, overwrite)
+    # Measure the full pipeline and its individual phases for result.json.
     total_started = perf_counter()
     preprocessing_started = perf_counter()
     # image_path is the input photo; output is the directory for intermediate files.
@@ -161,34 +181,47 @@ def predict_image(
         output,
         **(preprocess_kwargs or {}),
     )
+    # `prepared` contains [4,H,W] input, aligned RGB, face mask, and metadata.
     preprocessing_seconds = perf_counter() - preprocessing_started
 
     if model_bundle is None:
         # CLI calls reach this branch; the service supplies its cached bundle.
         bundle = load_wrinkle_model(architecture, checkpoint_path, requested_device)
     else:
+        # Reuse the worker's cached model rather than reloading weights per image.
         bundle = model_bundle
         if bundle.architecture.lower() != architecture.lower():
             raise ValueError(
                 f"provided model bundle is {bundle.architecture}, requested {architecture}"
             )
+    # Run the segmentation model; no wrinkle score exists at this point.
     logits, probability, inference_seconds = infer_logits_and_probability(
         bundle.model, prepared.tensor, bundle.device, threshold.positive_class
     )
     # Both the displayed mask and later scores must stay within parsed face skin.
     postprocess_started = perf_counter()
+    # Turn continuous class-1 probabilities into a Boolean [H,W] wrinkle map.
     mask = threshold_probability(probability, prepared.face_mask, threshold)
+    # Paint the selected pixels on a copy of the aligned face for display.
     overlay = create_overlay(prepared.aligned_face, mask)
     # Persist research artifacts for CLI runs; the service removes its temporary copy.
+    # Raw model output: two unconstrained numbers per pixel.
     np.save(output / "wrinkle_logits.npy", logits, allow_pickle=False)
+    # Softmax output: one class-1 probability between 0 and 1 per pixel.
     np.save(output / "wrinkle_probability.npy", probability, allow_pickle=False)
+    # Scale probabilities to 0..255 solely to make a viewable grayscale PNG.
     probability_png = np.rint(np.clip(probability, 0.0, 1.0) * 255.0).astype(np.uint8)
+    # This PNG is a visualization; NPY above keeps the numeric probabilities.
     Image.fromarray(probability_png, mode="L").save(output / "wrinkle_probability.png")
+    # White means predicted wrinkle after the 0.5 cut-off and face-mask check.
     Image.fromarray(mask.astype(np.uint8) * 255, mode="L").save(output / "wrinkle_mask.png")
+    # Overlay shows the selected pixels in red on the aligned source face.
     Image.fromarray(overlay, mode="RGB").save(output / "overlay.png")
     postprocess_seconds = perf_counter() - postprocess_started
+    # These counts describe coverage; scoring later uses them inside each ROI.
     face_pixels = int(np.count_nonzero(prepared.face_mask))
     wrinkle_pixels = int(np.count_nonzero(mask))
+    # Keep model identity, timing, file names, and simple area ratios together.
     metadata: dict[str, object] = {
         "status": "completed",
         "prediction_version": PREDICTION_VERSION,
@@ -227,5 +260,7 @@ def predict_image(
             "overlay": "overlay.png",
         },
     }
+    # Replace preprocessing's result.json with the complete prediction metadata.
     _write_json(output / "result.json", metadata)
+    # Service consumes these arrays directly before its temporary files disappear.
     return PredictionResult(logits, probability, mask, overlay, metadata)

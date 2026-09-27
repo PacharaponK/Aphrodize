@@ -1,5 +1,44 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function Page() {
-  redirect("/");
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { WorkspaceShell } from "@/components/workspace-shell";
+
+type Profile = { display_name: string; email: string; answers: Record<string, unknown> | null };
+
+const labels: Record<string, string> = {
+  sex: "เพศ", age_group: "ช่วงอายุ", sleep_hours: "เวลานอนเฉลี่ย", sleep_quality: "คุณภาพการนอน",
+  water_liters: "การดื่มน้ำ", outdoor_minutes: "กิจกรรมกลางแจ้ง", sunscreen_frequency: "การทาครีมกันแดด",
+  skin_type: "สภาพผิว", stress_level: "ระดับความเครียด", menstrual_tracking: "การติดตามรอบเดือน",
+  menstrual_status: "สถานะรอบเดือน", wellness_goal: "เป้าหมายการติดตาม",
+};
+
+function displayValue(value: unknown): string {
+  if (value === "not_applicable") return "ไม่เกี่ยวข้อง";
+  if (value === "prefer_not_to_say") return "ไม่สะดวกระบุ";
+  return String(value ?? "-").replaceAll("_", " ");
+}
+
+export default function ProfilePage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [message, setMessage] = useState("กำลังโหลดข้อมูลโปรไฟล์…");
+
+  useEffect(() => {
+    fetch("/api/profile", { cache: "no-store" })
+      .then(async (response) => {
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(body?.detail ?? "ไม่สามารถโหลดข้อมูลโปรไฟล์ได้");
+        setProfile(body);
+        setMessage("");
+      })
+      .catch((error: Error) => setMessage(error.message));
+  }, []);
+
+  return <WorkspaceShell active="profile" eyebrow="SKIN PROFILE" title="โปรไฟล์ผิวของคุณ">
+    <section className="workspace-panel profile-panel">
+      {message && <p className="form-message" role="status">{message}</p>}
+      {profile && <><article className="profile-account"><h2>{profile.display_name}</h2><p>{profile.email}</p></article>
+        {profile.answers ? <><h2>ข้อมูลสุขภาพที่บันทึกไว้</h2><dl className="profile-answers">{Object.entries(profile.answers).filter(([key]) => key !== "guardian_consent").map(([key, value]) => <div key={key}><dt>{labels[key] ?? key}</dt><dd>{displayValue(value)}</dd></div>)}</dl></> : <div className="empty-state"><p>ยังไม่มีข้อมูลสุขภาพเบื้องต้น</p><Link className="primary-button" href="/onboarding/health">เริ่มตอบคำถาม →</Link></div>}</>}
+    </section>
+  </WorkspaceShell>;
 }

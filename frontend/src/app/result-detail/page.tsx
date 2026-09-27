@@ -39,11 +39,13 @@ export default function ResultDetailPage() {
   const [artifact, setArtifact] = useState<"overlay" | "mask">("overlay");
   const [artifactError, setArtifactError] = useState(false);
 
+  // Poll the analysis result; Label Studio task creation runs independently afterward.
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     async function poll() {
       try {
+        // The signed cookie selects the latest analysis without exposing backend auth.
         const response = await fetch("/api/analysis", { cache: "no-store" });
         if (!response.ok) {
           if (response.status === 401) throw new Error("ยังไม่มีผลวิเคราะห์ในเบราว์เซอร์นี้");
@@ -51,8 +53,10 @@ export default function ResultDetailPage() {
           throw new Error(typeof body?.detail === "string" ? body.detail : "โหลดผลไม่สำเร็จ");
         }
         const next = (await response.json()) as Analysis;
+        // Ignore a response arriving after this page has unmounted.
         if (stopped) return;
         setAnalysis(next);
+        // Stop polling once the worker reaches a terminal status.
         if (next.status === "queued" || next.status === "running") {
           timer = setTimeout(poll, 2500);
         }
@@ -65,6 +69,7 @@ export default function ResultDetailPage() {
   }, []);
 
   const score = analysis?.result?.derived_score ?? analysis?.result?.experimental_score;
+  // Result images are fetched separately through the same Next.js proxy.
   const expiresAt = analysis?.result?.artifacts_expires_at;
   const imagesAvailable = Boolean(expiresAt);
 
@@ -74,6 +79,7 @@ export default function ResultDetailPage() {
           <p className="eyebrow">EXPERIMENTAL RESULT</p>
           <h2>รายละเอียดผลวิเคราะห์</h2>
           <p>ดูพื้นที่ที่โมเดลตรวจพบในภาพ และคะแนนทดลองแยกตามบริเวณใบหน้า</p>
+          {/* Render one status-specific message while the analysis is not complete. */}
           {error && <div className="capture-error" role="alert">{error} <Link href="/capture">เริ่มวิเคราะห์ใหม่</Link></div>}
           {!analysis && !error && <p role="status">กำลังโหลดผล…</p>}
           {analysis && (analysis.status === "queued" || analysis.status === "running") && (
@@ -85,6 +91,7 @@ export default function ResultDetailPage() {
           {analysis?.status === "failed" && (
             <div className="result-wait" role="alert"><h2>ประมวลผลไม่สำเร็จ</h2><p>กรุณาลองอีกครั้งด้วยภาพใหม่</p><Link className="primary-button" href="/capture">ลองใหม่ →</Link></div>
           )}
+          {/* A completed inference can still contain an experimental, abstained score. */}
           {analysis?.status === "completed" && (
             <>
               {score ? (
@@ -104,10 +111,12 @@ export default function ResultDetailPage() {
                     <section className="analysis-section" aria-labelledby="analysis-image-heading">
                       <div className="analysis-section-heading"><div><p className="eyebrow">VISUAL RESULT</p><h3 id="analysis-image-heading">ภาพผลวิเคราะห์</h3></div></div>
                       <div className="artifact-tabs" aria-label="เลือกรูปแบบภาพผลวิเคราะห์">
+                        {/* Switch only the displayed artifact; no new inference runs here. */}
                         <button type="button" aria-pressed={artifact === "overlay"} className={artifact === "overlay" ? "active" : ""} onClick={() => { setArtifact("overlay"); setArtifactError(false); }}>ภาพซ้อนตำแหน่ง</button>
                         <button type="button" aria-pressed={artifact === "mask"} className={artifact === "mask" ? "active" : ""} onClick={() => { setArtifact("mask"); setArtifactError(false); }}>เฉพาะพื้นที่ตรวจพบ</button>
                       </div>
                       <div className="overlay-card result-artifact">
+                        {/* The proxy fetches a private image while its expiry is still valid. */}
                         {imagesAvailable && !artifactError ? (
                           <Image key={artifact} unoptimized width={512} height={512} src={`/api/analysis?artifact=${artifact}`} alt={artifact === "overlay" ? "ภาพใบหน้าที่ซ้อนตำแหน่งพื้นที่ริ้วรอยที่ตรวจพบ" : "ภาพแสดงเฉพาะพื้นที่ริ้วรอยที่ตรวจพบ"} onError={() => setArtifactError(true)} />
                         ) : <p>ภาพผลหมดอายุหรือไม่พร้อมใช้งาน กรุณาวิเคราะห์ภาพใหม่</p>}
@@ -118,6 +127,7 @@ export default function ResultDetailPage() {
                       <div className="analysis-section-heading"><div><p className="eyebrow">BY REGION</p><h3 id="analysis-regions-heading">คะแนนรายบริเวณ</h3></div><span>{Object.keys(score.regions).length} บริเวณ</span></div>
                       <p className="analysis-section-intro">คะแนน 0–100 เป็นค่าที่ขยายจากสัดส่วนพื้นที่ตรวจพบ ดูเปอร์เซ็นต์จริงของแต่ละบริเวณประกอบ</p>
                       <div className="analysis-regions">
+                        {/* Render the same score structure once for each named face region. */}
                         {Object.entries(score.regions).map(([name, value]) => (
                           <div className="analysis-region" key={name}>
                             <div className="analysis-region-top"><strong>{REGIONS[name] ?? name}</strong><span><b>{value.score.toFixed(1)}</b> / 100</span></div>

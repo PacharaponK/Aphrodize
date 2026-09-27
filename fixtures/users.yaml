@@ -1,0 +1,19 @@
+users:
+  - display_name: Demo User
+    email: demo@example.local
+    password: demo-password-123
+    consent_accepted: true
+    questionnaire:
+      sex: female
+      age_group: "25_34"
+      guardian_consent: false
+      sleep_hours: 7.5
+      sleep_quality: good
+      water_liters: 2
+      outdoor_minutes: 45
+      sunscreen_frequency: every_day
+      skin_type: combination
+      stress_level: 2
+      menstrual_tracking: "yes"
+      menstrual_status: not_on_period
+      wellness_goal: skin_tracking
