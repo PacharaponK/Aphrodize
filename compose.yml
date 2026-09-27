@@ -215,13 +215,9 @@ services:
       dockerfile: docker/trainer.Dockerfile
     command: arq backend.workers.trainer_worker.WorkerSettings
     restart: unless-stopped
-    environment:
-      <<: *api-environment
-      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-aphrodize}
-      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    environment: *api-environment
     volumes:
-      - ./storage/data/approved:/app/storage/data/approved:ro
+      - ./models:/app/models
     depends_on:
       redis:
         condition: service_healthy

@@ -205,7 +205,7 @@ class DailyHealthEntry(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "local_date", name="uq_daily_health_user_date"),
         CheckConstraint(
-            "sleep_duration_minutes >= 0 AND sleep_duration_minutes <= 540",
+            "sleep_duration_minutes >= 0 AND sleep_duration_minutes <= 600",
             name="ck_daily_health_sleep_duration",
         ),
         CheckConstraint(
@@ -253,6 +253,7 @@ class DailyHealthEntry(Base):
     sleep_score_method: Mapped[str] = mapped_column(String(128))
     predicted_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     predicted_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    prediction_target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     prediction_status: Mapped[str] = mapped_column(String(32), default="not_run")
     prediction_model_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     data_source: Mapped[str] = mapped_column(String(32), default="user_reported")
@@ -270,6 +271,162 @@ class DailyHealthEntry(Base):
             self.reported_thirst_score_0_10 is not None
             and self.reported_dryness_score_0_10 is not None
         )
+
+
+class DailyHealthDatasetRecord(Base):
+    """Imported historical dataset row, retained with provenance and excluded by default."""
+
+    __tablename__ = "daily_health_dataset_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "dataset_fingerprint",
+            "source_row_number",
+            name="uq_daily_health_dataset_fingerprint_row",
+        ),
+        CheckConstraint(
+            "data_source IN ('observed', 'synthetic', 'unknown')",
+            name="ck_daily_health_dataset_data_source",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    dataset_fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    source_dataset_name: Mapped[str] = mapped_column(String(255))
+    source_row_number: Mapped[int] = mapped_column(Integer)
+    participant_key: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    local_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_source: Mapped[str] = mapped_column(String(16))
+    generation_rule_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    training_eligible: Mapped[bool] = mapped_column(default=False)
+    training_exclusion_reason: Mapped[str] = mapped_column(String(128))
+    record_payload: Mapped[dict] = mapped_column(JSON)
+    imported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class DailyHealthProfile(Base):
+    """Consent-gated, user-reported context for personalizing wellness guidance."""
+
+    __tablename__ = "daily_health_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    smoking_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthAgeBand(Base):
+    """Optional, consent-gated age band for age-aware sleep guidance; no birth date stored."""
+
+    __tablename__ = "daily_health_age_bands"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    age_band: Mapped[str] = mapped_column(String(16))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthMenstrualCheckIn(Base):
+    """Optional, user-reported menstruation status for a single local date."""
+
+    __tablename__ = "daily_health_menstrual_checkins"
+    __table_args__ = (
+        UniqueConstraint("user_id", "local_date", name="uq_menstrual_checkin_user_date"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    local_date: Mapped[date] = mapped_column(Date)
+    currently_menstruating: Mapped[bool] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyHealthOutcome(Base):
+    """User-reported next-day outcomes kept separate from model predictions."""
+
+    __tablename__ = "daily_health_outcomes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_date", name="uq_daily_health_outcome_user_date"),
+        CheckConstraint(
+            "reported_energy_level_0_10 IS NULL OR "
+            "(reported_energy_level_0_10 >= 0 AND reported_energy_level_0_10 <= 10)",
+            name="ck_daily_health_reported_energy",
+        ),
+        CheckConstraint(
+            "reported_thirst_level_0_10 IS NULL OR "
+            "(reported_thirst_level_0_10 >= 0 AND reported_thirst_level_0_10 <= 10)",
+            name="ck_daily_health_reported_thirst_level",
+        ),
+        CheckConstraint(
+            "reported_dryness_level_0_10 IS NULL OR "
+            "(reported_dryness_level_0_10 >= 0 AND reported_dryness_level_0_10 <= 10)",
+            name="ck_daily_health_reported_dryness_level",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    target_date: Mapped[date] = mapped_column(Date)
+    reported_energy_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reported_thirst_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reported_dryness_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthModelVersion(Base):
+    """Immutable candidate registry for consented, user-reported daily-health models."""
+
+    __tablename__ = "daily_health_model_versions"
+    __table_args__ = (
+        UniqueConstraint("dataset_fingerprint", name="uq_daily_health_model_dataset"),
+    )
+
+    version_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    model_family: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(24), default="training")
+    dataset_fingerprint: Mapped[str] = mapped_column(String(64))
+    training_records: Mapped[int] = mapped_column(Integer)
+    participant_count: Mapped[int] = mapped_column(Integer)
+    artifact_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DailyHealthModelDeployment(Base):
+    """Explicitly approved model currently serving daily-health predictions."""
+
+    __tablename__ = "daily_health_model_deployments"
+
+    deployment_key: Mapped[str] = mapped_column(String(32), primary_key=True)
+    active_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("daily_health_model_versions.version_id"), nullable=True
+    )
+    previous_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("daily_health_model_versions.version_id"), nullable=True
+    )
+    approval_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthModelDeploymentEvent(Base):
+    """Append-only audit record for explicit model promotion and rollback actions."""
+
+    __tablename__ = "daily_health_model_deployment_events"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    action: Mapped[str] = mapped_column(String(24))
+    version_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reason: Mapped[str] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Analysis(Base):

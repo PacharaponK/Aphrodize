@@ -204,7 +204,7 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 ## Safety and scope
 
 - Aphrodize is an orchestration and MLOps foundation, not a medical device or diagnostic system.
-- It does not implement face recognition, age prediction, diagnosis, causal claims, treatment recommendations, or automatic use of user inference data for training.
+- It does not implement face recognition, age prediction, diagnosis, causal claims, or treatment recommendations. Face-inference data is not training data; the daily-health workflow can train review-only candidates only from separately consented, user-reported outcomes.
 - User data and artifacts are intended for private MinIO storage and must not be included in logs or committed to Git.
 - A reviewed, validated model artifact is required before inference can produce a result.
 - The current Compose stack deliberately excludes external observability and monitoring systems.

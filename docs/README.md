@@ -10,6 +10,7 @@
 - [วงจรภาพวิเคราะห์, Label Studio และ MLflow](diagram/ai-review-mlops-flow.md)
 - [ER diagram ของฐานข้อมูลปัจจุบัน](diagram/database-er.md)
 - [Safety and Governance](Safety%20and%20Governance.md)
+- [Daily Health Input Flow](Daily-Health-Input-Flow.md)
 
 ## อะไรควรอยู่ที่นี่
 
