@@ -143,6 +143,20 @@ services:
       retries: 12
     logging: *container-logging
 
+  fixture:
+    profiles: [demo]
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: python -m backend.scripts.load_fixtures /app/fixtures/users.yaml
+    environment: *api-environment
+    volumes:
+      - ./fixtures:/app/fixtures:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *container-logging
+
   # FastAPI validates requests and queues jobs without running the model inline.
   api:
     build:
