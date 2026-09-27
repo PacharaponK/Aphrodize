@@ -89,11 +89,15 @@ def decision_margin_confidence(probability: np.ndarray, face_mask: np.ndarray) -
 
     if probability.shape != face_mask.shape or probability.ndim != 2:
         raise ValueError("probability and face_mask must be matching 2-D arrays")
+    # Ignore background; inspect only class-1 probabilities on parsed face pixels.
     selected = probability[face_mask.astype(bool)]
+    # No eligible pixels means there is no confidence evidence to average.
     if selected.size == 0:
         return 0.0
     if not np.isfinite(selected).all() or np.any((selected < 0) | (selected > 1)):
         raise ValueError("probability values must be finite and within [0, 1]")
+    # 0.5 -> margin 0; 0 or 1 -> margin 1. Average across the face.
+    # This measures decisiveness of pixel predictions, not clinical accuracy.
     return float(np.mean(np.abs(2.0 * selected.astype(np.float64) - 1.0)))
 
 
@@ -105,13 +109,18 @@ def evaluate_confidence(
     The repository's default policy is ``not_calibrated`` and therefore
     withholds approved scores even if the segmentation ran successfully.
     """
+    # A calibrated policy needs a valid threshold and validation provenance.
     policy.validate()
+    # Compute one image-wide summary from the probability map.
     value = decision_margin_confidence(probability, face_mask)
     reasons: list[str] = []
+    # The repository default is uncalibrated, so approved scores are withheld.
     if policy.status != "calibrated":
         reasons.append("confidence_not_calibrated")
+    # A calibrated policy can still reject an indecisive image.
     elif value < float(policy.minimum_confidence):
         reasons.append("low_confidence")
+    # `passed` controls whether service returns derived or experimental scores.
     return {
         "value": value,
         "method": policy.method,

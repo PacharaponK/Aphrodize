@@ -64,11 +64,14 @@ def face_mask_from_labels(
     labels 1 (skin) and 10 (nose).
     """
 
+    # BiSeNet predicts at 512²; expand its labels to the 1024² aligned face.
     if output_size is not None:
         labels = resize_label_map(labels, output_size)
+    # Default accepted classes are skin (1) and nose (10), not hair or eyes.
     keep = tuple(int(label) for label in keep_labels)
     if not keep:
         raise ValueError("keep_labels must contain at least one label")
+    # Produce a Boolean [H,W] mask used by the model, threshold, and scoring.
     return np.isin(labels, keep)
 
 
@@ -84,7 +87,9 @@ def mask_rgb_image(image: np.ndarray, face_mask: np.ndarray) -> np.ndarray:
         raise ValueError(
             f"mask shape {face_mask.shape} does not match image shape {image.shape[:2]}"
         )
+    # Do not alter the aligned original, which is still needed for the overlay.
     result = image.copy()
+    # Outside skin/nose, all three color channels become zero.
     result[~face_mask.astype(bool)] = 0
     return result
 
@@ -94,10 +99,13 @@ def load_bisenet(checkpoint_path: str | Path, device: str = "cpu"):
 
     import torch
 
+    # The face parser has separate weights from the wrinkle segmentation model.
     checkpoint = Path(checkpoint_path)
     if not checkpoint.is_file():
         raise FileNotFoundError(f"BiSeNet checkpoint not found: {checkpoint}")
+    # Each pixel is assigned one of 19 semantic face-part classes.
     model = BiSeNet(n_classes=19)
+    # A state dictionary contains learned parameters, not an input image.
     state = torch.load(checkpoint, map_location=device, weights_only=True)
     if isinstance(state, dict) and "state_dict" in state:
         state = state["state_dict"]
@@ -105,7 +113,9 @@ def load_bisenet(checkpoint_path: str | Path, device: str = "cpu"):
         raise TypeError("BiSeNet checkpoint must contain a state dictionary")
     if state and all(str(key).startswith("module.") for key in state):
         state = {str(key)[7:]: value for key, value in state.items()}
+    # Fail if weights and the 19-class architecture disagree.
     model.load_state_dict(state, strict=True)
+    # eval() disables training behavior for deterministic inference.
     model.to(device).eval()
     return model
 
@@ -128,17 +138,23 @@ def parse_face(image: np.ndarray, model, device: str = "cpu") -> np.ndarray:
     if image.dtype != np.uint8:
         raise TypeError(f"expected uint8 RGB input, got {image.dtype}")
     # Pillow bilinear is intentional: it is what the upstream evaluator uses.
+    # Normalize geometry to the size expected by the face parser.
     resized = np.asarray(
         Image.fromarray(image, mode="RGB").resize(
             PARSING_INPUT_SIZE[::-1], Image.Resampling.BILINEAR
         )
     )
+    # Change RGB bytes [H,W,3] into float channels-first [3,H,W].
     tensor = torch.from_numpy(resized.astype(np.float32) / 255.0).permute(2, 0, 1)
+    # Apply the ImageNet per-channel normalization used by this checkpoint.
     mean = torch.tensor(IMAGENET_MEAN, dtype=tensor.dtype).view(3, 1, 1)
     std = torch.tensor(IMAGENET_STD, dtype=tensor.dtype).view(3, 1, 1)
+    # Add batch dimension so BiSeNet receives [1,3,512,512].
     tensor = ((tensor - mean) / std).unsqueeze(0).to(device)
     with torch.inference_mode():
+        # BiSeNet returns a logit for each of 19 classes at every pixel.
         logits = model(tensor)[0]
+    # Pick the strongest class at each pixel -> integer [512,512] labels.
     return logits.squeeze(0).argmax(0).cpu().numpy().astype(np.uint8)
 
 

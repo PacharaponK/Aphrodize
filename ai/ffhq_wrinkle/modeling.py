@@ -162,11 +162,15 @@ def load_wrinkle_model(
     ``verify_official=False`` is for explicit non-official evaluation runs.
     """
 
+    # Loading can dominate the first request, so record its duration.
     started = perf_counter()
+    # Normalize aliases such as `swin` to a known architecture name.
     architecture = canonical_architecture(architecture)
+    # Default points to the repository's official Stage-2 checkpoint.
     checkpoint = Path(checkpoint_path) if checkpoint_path else default_checkpoint(architecture)
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Stage-2 checkpoint not found: {checkpoint}")
+    # Verify the checkpoint before deserializing its weights.
     actual_size = checkpoint.stat().st_size
     actual_sha256 = sha256_file(checkpoint)
     if verify_official:
@@ -175,10 +179,15 @@ def load_wrinkle_model(
             raise CheckpointArchitectureError(
                 f"checkpoint does not match official Stage-2 {architecture} artifact"
             )
+    # Choose CUDA when available (or CPU) and record any fallback.
     selection = resolve_device(requested_device)
+    # The network receives four input channels and emits two logits per pixel.
     model = create_model(architecture).to(selection.device)
+    # Require every saved parameter to match the selected network exactly.
     load_checkpoint_strict(model, checkpoint, selection.device, architecture)
+    # Inference runs with training-specific behavior disabled.
     model.eval()
+    # The service caches this bundle and passes it into predict_image().
     return ModelBundle(
         model=model,
         architecture=architecture,
