@@ -8,6 +8,7 @@
 - [AI and Data](AI%20and%20Data.md)
 - [System and MLOps](System%20and%20MLOps.md)
 - [วงจรภาพวิเคราะห์, Label Studio และ MLflow](diagram/ai-review-mlops-flow.md)
+- [ER diagram ของฐานข้อมูลปัจจุบัน](diagram/database-er.md)
 - [Safety and Governance](Safety%20and%20Governance.md)
 
 ## อะไรควรอยู่ที่นี่

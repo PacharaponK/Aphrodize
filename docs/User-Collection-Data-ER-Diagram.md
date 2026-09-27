@@ -1,5 +1,7 @@
 # ER Diagram: Facial Analysis แยกจาก Health & Skin-Care Forecast
 
+> เอกสารนี้เป็นแบบร่างเชิงแนวคิด ตารางบางส่วนยังไม่มีในระบบปัจจุบัน ดู [ER diagram ที่ตรงกับ SQLAlchemy models](diagram/database-er.md) สำหรับ schema ที่ใช้งานจริง
+
 ## แนวคิดผลิตภัณฑ์
 
 Aphrodize มี 2 ความสามารถที่แยกกันชัดเจน:
