@@ -22,10 +22,12 @@ def serialize(run: TrainingRun) -> TrainingRunRead:
     )
 
 
+# Training requests enqueue work; the returned run ID is used to poll its outcome.
 @router.post("/runs", response_model=TrainingRunRead, status_code=status.HTTP_202_ACCEPTED)
 async def submit_training(
     payload: TrainingRequest, session: AsyncSession = Depends(get_session)
 ) -> TrainingRunRead:
+    # The service validates the request, stores it, and enqueues the worker job.
     run = await create_training_run(session, payload)
     return serialize(run)
 
@@ -34,6 +36,7 @@ async def submit_training(
 async def get_training_run(
     run_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> TrainingRunRead:
+    # Poll this endpoint for queued, running, failed, or approval-pending status.
     run = await session.get(TrainingRun, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Training run not found")

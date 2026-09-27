@@ -131,6 +131,7 @@ def _reject(
     raise QualityGateError(assessment)
 
 
+# Align one accepted face and build the four-channel tensor used by prediction.
 def preprocess_image(
     image_path: str | Path,
     output_dir: str | Path,
@@ -181,6 +182,7 @@ def preprocess_image(
 
     # Warp/crop the detected face into the model's standard square coordinates.
     aligned = align_face(image, detection, ALIGNMENT_SIZE)
+    # Parsing restricts wrinkle inference to skin/nose pixels on this aligned face.
     try:
         # Face parsing runs on the aligned face, independently of wrinkle inference.
         if parser is None:

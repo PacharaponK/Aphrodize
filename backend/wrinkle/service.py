@@ -84,6 +84,7 @@ class WrinkleAnalysisService:
                 # Recheck after taking the lock in case another caller loaded it.
                 if self._model_bundle is None:
                     if self.approved_model_manifest:
+                        # The manifest gate verifies human approval and checkpoint bytes.
                         checkpoint = approved_checkpoint(self.approved_model_manifest)
                         self._model_bundle = self.model_loader(
                             self.architecture,
@@ -92,6 +93,7 @@ class WrinkleAnalysisService:
                             verify_official=False,
                         )
                     else:
+                        # Without a selected candidate, load the verified default model.
                         self._model_bundle = self.model_loader(
                             self.architecture, requested_device=self.requested_device
                         )
@@ -130,7 +132,7 @@ class WrinkleAnalysisService:
             with Image.open(work / "prediction" / "face_mask.png") as opened:
                 face_mask = np.asarray(opened.convert("L")) > 0
             if artifact_sink is not None:
-                # Copy only display images before the temporary directory is removed.
+                # Copy display PNGs and the aligned review face before scratch cleanup.
                 artifact_sink({
                     "overlay": (work / "prediction" / "overlay.png").read_bytes(),
                     "mask": (work / "prediction" / "wrinkle_mask.png").read_bytes(),
@@ -156,6 +158,7 @@ class WrinkleAnalysisService:
         # A calibrated policy is valid only for the exact model and pipeline versions.
         compatibility_reasons = self.confidence_policy.compatibility_reasons(metadata)
         if compatibility_reasons:
+            # A mismatched model or preprocessing version withholds released scores.
             confidence["passed"] = False
             confidence["reasons"] = [*confidence["reasons"], *compatibility_reasons]
         # Both measured confidence and policy/model compatibility must pass.
@@ -182,6 +185,7 @@ class WrinkleAnalysisService:
             )
         # Expose counts and provenance, but no logits, source path, or raw arrays.
         response = {
+            # The database worker later replaces this temporary ID with its stable ID.
             "analysis_id": str(uuid4()),
             "status": "completed" if gate_passed else "abstained",
             "model_output": {

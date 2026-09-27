@@ -46,6 +46,7 @@ async def startup(ctx: dict) -> None:
 
 
 async def shutdown(_: dict) -> None:
+    # Release database connections when ARQ stops this worker process.
     await close_database()
 
 
@@ -149,8 +150,10 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
 
             # Both successful and failed jobs receive a completion timestamp.
             analysis.completed_at = datetime.now(UTC)
+            # Persist the user-facing result before starting optional review work.
             await session.commit()
             if analysis.status == AnalysisStatus.completed:
+                # Review staging is a second workflow; its failure does not erase the user result.
                 try:
                     await stage_annotation(
                         session, analysis, artifacts.get("aligned_face"), ctx["redis"]
@@ -167,6 +170,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
 
 async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> None:
     """Delete the two derived PNGs after their 24-hour viewing window."""
+    # Reconstruct both private object keys from the IDs in the delayed job.
     keys = [
         analysis_artifact_key(UUID(user_id), UUID(analysis_id), kind)
         for kind in ("overlay", "mask")
@@ -175,6 +179,7 @@ async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> 
 
 
 async def publish_annotation_task(_: dict, task_id: str) -> None:
+    # Resolve the staged row; annotation_service handles consent and remote idempotency.
     async with SessionLocal() as session:
         row = await session.get(AnnotationTask, UUID(task_id))
         if row is not None:
@@ -182,6 +187,7 @@ async def publish_annotation_task(_: dict, task_id: str) -> None:
 
 
 async def expire_annotation_task(_: dict, task_id: str) -> None:
+    # Ignore an early delayed job; delete only after the stored deadline.
     async with SessionLocal() as session:
         row = await session.get(AnnotationTask, UUID(task_id))
         if row is not None and datetime.now(UTC) >= row.expires_at:
@@ -189,6 +195,7 @@ async def expire_annotation_task(_: dict, task_id: str) -> None:
 
 
 async def delete_annotation_task(_: dict, task_id: str) -> None:
+    # A revoke job deletes only rows whose review consent is no longer active.
     async with SessionLocal() as session:
         row = await session.get(AnnotationTask, UUID(task_id))
         if row is not None and not await has_annotation_consent(session, row.user_id):
@@ -196,15 +203,19 @@ async def delete_annotation_task(_: dict, task_id: str) -> None:
 
 
 async def reconcile_annotation_tasks(_: dict) -> None:
+    # Recover unpublished tasks and pending deletions after worker or Label Studio outages.
     async with SessionLocal() as session:
+        # Inspect every staged row because a queue job may have been lost.
         rows = (await session.scalars(select(AnnotationTask))).all()
         for row in rows:
             try:
                 if datetime.now(UTC) >= row.expires_at or not await has_annotation_consent(
                     session, row.user_id
                 ):
+                    # Retention expiry and revocation take precedence over publishing.
                     await delete_annotation(session, row)
                 elif row.label_studio_task_id is None:
+                    # Retry only work without a recorded remote task ID.
                     await publish_annotation(session, row)
             except Exception:
                 logger.exception("Could not reconcile annotation task %s", row.id)
@@ -224,6 +235,7 @@ async def run_model_inference(_: dict, inference_run_id: str) -> None:
 
 
 class WorkerSettings:
+    # ARQ dispatches these names from jobs written to the inference queue.
     functions = [
         run_inference,
         run_model_inference,
@@ -232,6 +244,7 @@ class WorkerSettings:
         expire_annotation_task,
         delete_annotation_task,
     ]
+    # Reconcile once at startup and again at the top of each hour.
     cron_jobs = [cron(reconcile_annotation_tasks, minute=0, run_at_startup=True)]
     on_startup = startup
     on_shutdown = shutdown

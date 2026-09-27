@@ -19,11 +19,15 @@ router = APIRouter()
 async def create_consent(
     payload: ConsentCreate, session: AsyncSession = Depends(get_session)
 ) -> ConsentRead:
+    # Create an anonymous user ID for this upload rather than reusing a browser account.
     user = User(id=uuid.uuid4())
+    # Link the requested analysis consent version to that new user.
     consent = Consent(user_id=user.id, version=payload.version)
+    # Flush the user first so the consent foreign key can refer to it.
     session.add(user)
     await session.flush()
     session.add(consent)
+    # Commit both records together and reload server-generated timestamps.
     await session.commit()
     await session.refresh(consent)
     return ConsentRead(
@@ -34,6 +38,7 @@ async def create_consent(
     )
 
 
+# Review consent is separate from the consent required to run image analysis.
 @router.post(
     "/users/{user_id}/annotations",
     response_model=ConsentRead,
@@ -42,10 +47,13 @@ async def create_consent(
 async def grant_annotation_consent(
     user_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> ConsentRead:
+    # A review consent cannot be attached to an unknown user.
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
+    # Do not accept review consent before a Label Studio token and project are set.
     if not settings.label_studio_api_key or settings.label_studio_project_id < 1:
         raise HTTPException(status_code=503, detail="Annotation review is not configured")
+    # Reuse an active consent so repeated requests do not create duplicates.
     existing = await session.scalar(
         select(Consent).where(
             Consent.user_id == user_id,
@@ -55,6 +63,7 @@ async def grant_annotation_consent(
     )
     consent = existing or Consent(user_id=user_id, version=ANNOTATION_CONSENT_VERSION)
     if existing is None:
+        # Persist only when no active review consent already exists.
         session.add(consent)
         await session.commit()
         await session.refresh(consent)
@@ -72,6 +81,7 @@ async def revoke_annotation_consent(
 ) -> None:
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
+    # Mark every review consent for this user revoked before touching stored images.
     await session.execute(
         Consent.__table__.update()
         .where(Consent.user_id == user_id, Consent.version == ANNOTATION_CONSENT_VERSION)
@@ -79,8 +89,10 @@ async def revoke_annotation_consent(
     )
     await session.commit()
     try:
+        # Remove staged images and corresponding Label Studio tasks.
         await delete_user_annotations(session, user_id)
     except Exception as error:
+        # The worker can retry cleanup when Label Studio becomes available again.
         raise HTTPException(
             status_code=503, detail="Annotation deletion is pending; retry"
         ) from error

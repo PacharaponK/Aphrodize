@@ -12,6 +12,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function apiHeaders(): HeadersInit {
+  // Read service credentials only on the server; never send them to the browser.
   const username = process.env.BACKEND_API_USERNAME;
   const password = process.env.BACKEND_API_PASSWORD;
   if (!username || !password) throw new Error("Backend credentials are not configured");
@@ -19,26 +20,31 @@ function apiHeaders(): HeadersInit {
 }
 
 function backendUrl(path: string): string {
+  // Every proxied endpoint lives under the backend's /api/v1 prefix.
   return `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1${path}`;
 }
 
 function signature(value: string): string {
+  // HMAC prevents clients from changing analysis or review-user IDs in cookies.
   const secret = process.env.ANALYSIS_SESSION_SECRET;
   if (!secret) throw new Error("Analysis session secret is not configured");
   return createHmac("sha256", secret).update(value).digest("hex");
 }
 
 function currentAnalysis(request: NextRequest): string | null {
+  // Read the latest analysis ID, expiry, and HMAC from the browser cookie.
   const parts = request.cookies.get(COOKIE)?.value.split(".");
   if (!parts || parts.length !== 3) return null;
   const [id, expiry, mac] = parts;
   if (!UUID.test(id) || !/^\d{13}$/.test(expiry) || !/^[0-9a-f]{64}$/.test(mac)) return null;
   if (Date.now() >= Number(expiry)) return null;
+  // Compare signatures in constant time before accepting the stored ID.
   const expected = signature(`${id}.${expiry}`);
   return timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex")) ? id : null;
 }
 
 function annotationUsers(request: NextRequest): string[] {
+  // This cookie tracks review consents that the current browser can revoke.
   const parts = request.cookies.get(ANNOTATION_COOKIE)?.value.split(".");
   if (!parts || parts.length !== 3) return [];
   const [encoded, expiry, mac] = parts;
@@ -46,6 +52,7 @@ function annotationUsers(request: NextRequest): string[] {
   const expected = signature(`${encoded}.${expiry}`);
   if (!timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"))) return [];
   const ids = Buffer.from(encoded, "base64url").toString("utf8").split(",");
+  // Bound the list and reject malformed IDs before making backend DELETE calls.
   return ids.length <= 50 && ids.every((id) => UUID.test(id)) ? ids : [];
 }
 
@@ -59,18 +66,22 @@ async function backendError(response: Response): Promise<NextResponse> {
   return failed(response.status, detail);
 }
 
+// Keep backend credentials on the server while creating consents and queuing analysis.
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  // Reject cross-origin form posts before accepting private image bytes.
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (origin && (!host || origin !== `${request.nextUrl.protocol}//${host}`)) {
     return failed(403, "Invalid request origin");
   }
+  // Limit the request envelope and then validate the parsed image itself.
   if (Number(request.headers.get("content-length")) > MAX_BYTES + 100_000) {
     return failed(413, "Image exceeds 10 MiB");
   }
   const form = await request.formData();
   const image = form.get("image");
   const wantsAnnotation = form.get("annotation_consent") === "yes";
+  // The analysis consent is mandatory; review consent is a separate choice.
   if (form.get("consent") !== "yes") return failed(403, "Consent is required");
   if (wantsAnnotation && annotationUsers(request).length >= 50) {
     return failed(409, "Too many active review consents in this browser");
@@ -81,6 +92,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (image.size > MAX_BYTES) return failed(413, "Image exceeds 10 MiB");
 
   try {
+    // Create one backend user and analysis consent for this uploaded image.
     const consent = await fetch(backendUrl("/consents"), {
       method: "POST",
       headers: { ...apiHeaders(), "Content-Type": "application/json" },
@@ -91,6 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { user_id } = await consent.json();
     if (typeof user_id !== "string" || !UUID.test(user_id)) throw new Error("Invalid user id");
     if (wantsAnnotation) {
+      // Grant the separate human-review consent before queuing the image.
       const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
         method: "POST",
         headers: apiHeaders(),
@@ -98,6 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
       if (!reviewConsent.ok) return backendError(reviewConsent);
     }
+    // Forward only the image to the protected analysis endpoint.
     const upload = new FormData();
     upload.set("image", image);
     const analysis = await fetch(backendUrl(`/analyses/users/${user_id}`), {
@@ -109,6 +123,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!analysis.ok) return backendError(analysis);
     const data = await analysis.json();
     if (typeof data.id !== "string" || !UUID.test(data.id)) throw new Error("Invalid analysis id");
+    // Return the queued/rejected row immediately; inference continues in Redis.
     const response = NextResponse.json(data, { status: 202, headers: { "Cache-Control": "no-store" } });
     const expiry = Date.now() + DAY_MS;
     // ponytail: one browser session tracks its latest analysis; account history needs real user auth.
@@ -120,6 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       maxAge: DAY_MS / 1000,
     });
     if (wantsAnnotation) {
+      // Retain user IDs for browser-initiated review revocation during 30 days.
       const users = [...annotationUsers(request), user_id];
       const reviewExpiry = Date.now() + REVIEW_MS;
       const encoded = Buffer.from(users.join(",")).toString("base64url");
@@ -142,12 +158,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  // Apply the same origin check used by POST before revoking consent.
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (origin && (!host || origin !== `${request.nextUrl.protocol}//${host}`)) {
     return failed(403, "Invalid request origin");
   }
   try {
+    // Revoke every review consent represented in the signed browser cookie.
     for (const userId of annotationUsers(request)) {
       const response = await fetch(backendUrl(`/consents/users/${userId}/annotations`), {
         method: "DELETE",
@@ -157,6 +175,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       if (!response.ok) return backendError(response);
     }
     const response = new NextResponse(null, { status: 204 });
+    // Forget those IDs locally only after all backend deletions succeed.
     response.cookies.delete(ANNOTATION_COOKIE);
     return response;
   } catch {
@@ -166,9 +185,11 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    // A valid signed cookie authorizes reading this browser's latest analysis.
     const id = currentAnalysis(request);
     if (!id) return failed(401, "No active analysis in this browser");
     const artifact = request.nextUrl.searchParams.get("artifact");
+    // Only the two display images can be fetched through this proxy.
     if (artifact && artifact !== "mask" && artifact !== "overlay") {
       return failed(400, "Unknown artifact");
     }
@@ -181,6 +202,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
     if (!response.ok) return backendError(response);
     if (artifact) {
+      // Stream image bytes with private, non-cacheable response headers.
       return new NextResponse(await response.arrayBuffer(), {
         headers: { "Content-Type": "image/png", "Cache-Control": "private, no-store" },
       });

@@ -15,13 +15,16 @@ LABEL_CONFIG = """
 
 
 def main() -> None:
+    # Run once to obtain the project ID used when the worker publishes review tasks.
     client = get_label_studio_client()
     if client is None:
         raise SystemExit("Set LABEL_STUDIO_API_KEY first")
     for project in client.projects.list(title=TITLE):
+        # Reuse the existing review project when setup is run again.
         if project.title == TITLE:
             print(f"LABEL_STUDIO_PROJECT_ID={project.id}")
             return
+    # Install the BrushLabels interface used to draw wrinkle pixels.
     project = client.projects.create(title=TITLE, label_config=LABEL_CONFIG)
     print(f"LABEL_STUDIO_PROJECT_ID={project.id}")
 

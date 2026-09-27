@@ -9,10 +9,13 @@ from backend.services.curated_training import PREPROCESSING_VERSION, sha256_file
 
 
 def approved_checkpoint(manifest_path: str | Path) -> Path:
+    # Deployment uses only a manually approved manifest with a matching checkpoint hash.
     manifest = Path(manifest_path).resolve()
+    # A manifest outside the mounted model tree cannot select a checkpoint.
     if not manifest.is_relative_to(MODEL_ROOT.resolve()):
         raise ValueError("approved model manifest must be inside the model directory")
     data = json.loads(manifest.read_text(encoding="utf-8"))
+    # Require approval, matching model architecture/preprocessing, and rights records.
     if (
         not isinstance(data, dict)
         or data.get("status") != "approved"
@@ -24,9 +27,11 @@ def approved_checkpoint(manifest_path: str | Path) -> Path:
     ):
         raise ValueError("model approval, rights, or preprocessing contract is missing")
     name = data.get("checkpoint")
+    # Accept a simple local filename rather than a path into another directory.
     if not isinstance(name, str) or not re.fullmatch(r"[a-zA-Z0-9_-]+\.pth", name):
         raise ValueError("invalid checkpoint filename")
     checkpoint = (manifest.parent / name).resolve()
+    # Detect missing, moved, or modified checkpoint bytes before model loading.
     if (
         not checkpoint.is_relative_to(manifest.parent)
         or not checkpoint.is_file()

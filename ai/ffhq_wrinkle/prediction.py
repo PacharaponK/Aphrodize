@@ -147,6 +147,7 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+# Turn a preprocessed four-channel face into a wrinkle mask and display artifacts.
 def predict_image(
     image_path: str | Path,
     output_dir: str | Path,
@@ -187,6 +188,7 @@ def predict_image(
         # CLI calls reach this branch; the service supplies its cached bundle.
         bundle = load_wrinkle_model(architecture, checkpoint_path, requested_device)
     else:
+        # Reuse the worker's cached model rather than reloading weights per image.
         bundle = model_bundle
         if bundle.architecture.lower() != architecture.lower():
             raise ValueError(

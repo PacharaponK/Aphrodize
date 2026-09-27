@@ -1,5 +1,6 @@
 name: aphrodize
 
+# The API accepts uploads; Redis hands image and training jobs to separate workers.
 x-api-environment: &api-environment
   APP_ENV: development
   POSTGRES_HOST: postgres
@@ -31,6 +32,7 @@ x-container-logging: &container-logging
     max-file: "5"
 
 services:
+  # PostgreSQL stores consent, analysis, annotation, and run metadata.
   postgres:
     image: postgres:16-alpine
     environment:
@@ -47,6 +49,7 @@ services:
       retries: 20
     logging: *container-logging
 
+  # Redis carries IDs for asynchronous inference and training jobs.
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
@@ -61,6 +64,7 @@ services:
       retries: 20
     logging: *container-logging
 
+  # MinIO keeps uploaded and derived image bytes out of PostgreSQL.
   minio:
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
@@ -74,6 +78,7 @@ services:
       - "9001:9001"
     logging: *container-logging
 
+  # Initialize the private, annotation, and MLflow buckets once per stack.
   minio-init:
     image: quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z
     environment:
@@ -89,6 +94,7 @@ services:
         condition: service_started
     logging: *container-logging
 
+  # Human reviewers draw wrinkle masks in a separate Label Studio project.
   label-studio:
     image: heartexlabs/label-studio:latest
     environment:
@@ -106,6 +112,7 @@ services:
       retries: 12
     logging: *container-logging
 
+  # MLflow records experiments in PostgreSQL and checkpoints in MinIO.
   mlflow:
     build:
       context: .
@@ -136,6 +143,7 @@ services:
       retries: 12
     logging: *container-logging
 
+  # FastAPI validates requests and queues jobs without running the model inline.
   api:
     build:
       context: .
@@ -163,6 +171,7 @@ services:
       retries: 12
     logging: *container-logging
 
+  # The inference worker analyzes images and publishes consented review tasks.
   inference-worker:
     build:
       context: .
@@ -185,6 +194,7 @@ services:
         condition: service_completed_successfully
     logging: *container-logging
 
+  # The trainer consumes approved external datasets and logs candidate models.
   trainer-worker:
     build:
       context: .
