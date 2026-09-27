@@ -2,7 +2,17 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, String, func
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.core.db.base import Base
@@ -62,6 +72,18 @@ class Analysis(Base):
     error_category: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AnnotationTask(Base):
+    __tablename__ = "annotation_tasks"
+    __table_args__ = (UniqueConstraint("analysis_id"),)
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    analysis_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    object_key: Mapped[str] = mapped_column(String(512), unique=True)
+    label_studio_task_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class TrainingRun(Base):

@@ -22,8 +22,10 @@ class Settings(BaseSettings):
     minio_secret_key: str = "change-me-in-production"
     minio_secure: bool = False
     minio_bucket: str = "aphrodize-private"
+    annotation_bucket: str = "aphrodize-annotation"
     label_studio_url: str = "http://localhost:8080"
     label_studio_api_key: str = ""
+    label_studio_project_id: int = 0
     api_username: str = "aphrodize"
     api_password: str = ""
     mlflow_tracking_uri: str = "http://localhost:5000"

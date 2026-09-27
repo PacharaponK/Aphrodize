@@ -15,7 +15,7 @@ Aphrodize is a Docker Compose–based modular monolith for managing private data
 | Redis | Internal Compose network | Authenticated ARQ job queues |
 | MinIO API | [http://localhost:9000](http://localhost:9000) | Private application and MLflow object storage |
 | MinIO Console | [http://localhost:9001](http://localhost:9001) | Local object-storage administration |
-| Label Studio | [http://localhost:8080](http://localhost:8080) | Human-operated annotation UI; local registration is enabled |
+| Label Studio | [http://localhost:8080](http://localhost:8080) | Human-operated annotation UI; the local account comes from `.env` |
 | MLflow | [http://localhost:5000](http://localhost:5000) | Training-run and artifact tracking |
 | Inference worker | Internal Compose network | ARQ worker for inference jobs |
 | Trainer worker | Internal Compose network | ARQ worker for model-training jobs |
@@ -81,7 +81,7 @@ Check the startup state:
 docker compose ps
 ```
 
-`minio-init` is expected to finish with exit code `0`; it creates the `aphrodize-private` and `mlflow` buckets. The remaining services should continue running.
+`minio-init` is expected to finish with exit code `0`; it creates the `aphrodize-private`, `aphrodize-annotation`, and `mlflow` buckets. The remaining services should continue running.
 
 ### 3. Verify the stack
 
@@ -101,7 +101,7 @@ It checks all expected containers, FastAPI, Label Studio, MinIO, MLflow, Postgre
 - MinIO Console: [http://localhost:9001](http://localhost:9001)
 - MLflow: [http://localhost:5000](http://localhost:5000)
 
-All FastAPI routes except `/api/v1/health` require HTTP Basic authentication. Use the `API_USERNAME` and `API_PASSWORD` values from `.env`; the **Authorize** button in FastAPI Docs accepts these credentials. Label Studio also permits a local user to register at [http://localhost:8080/user/signup/](http://localhost:8080/user/signup/).
+All FastAPI routes except `/api/v1/health` require HTTP Basic authentication. Use the `API_USERNAME` and `API_PASSWORD` values from `.env`; the **Authorize** button in FastAPI Docs accepts these credentials. Sign in to Label Studio with `LABEL_STUDIO_USERNAME` and `LABEL_STUDIO_PASSWORD` from `.env`.
 
 ## Run the web client
 
@@ -115,7 +115,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The Next.js pages are a UI prototype and do not yet connect to the API. See [frontend/README.md](frontend/README.md) for the available routes and commands.
+Open [http://localhost:3000](http://localhost:3000). The capture and result pages connect to the local API; other pages remain a UI prototype. See [frontend/README.md](frontend/README.md) for the required environment variables and available routes.
 
 ## Typical workflow
 
@@ -124,6 +124,10 @@ Open [http://localhost:3000](http://localhost:3000). The Next.js pages are a UI 
 3. Create generic training jobs at `POST /api/v1/training/runs` or inference jobs at `POST /api/v1/inference/runs`.
 4. Poll the corresponding run endpoint for its state.
 5. Use Label Studio for human-managed annotation. Add `LABEL_STUDIO_API_KEY` to `.env` only when the backend needs SDK access.
+
+To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
+
+For an approved external dataset, use the [controlled wrinkle training workflow](docs/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
 
 The OpenAPI page documents request and response schemas for each API route.
 

@@ -79,7 +79,7 @@ requires-dist = [
     { name = "arq", specifier = ">=0.26,<0.27" },
     { name = "asyncpg", specifier = ">=0.30,<0.31" },
     { name = "fastapi", specifier = ">=0.115,<0.116" },
-    { name = "label-studio-sdk", specifier = ">=1.0,<2.0" },
+    { name = "label-studio-sdk", specifier = ">=1.0.20,<2.0" },
     { name = "minio", specifier = ">=7.2,<8.0" },
     { name = "mlflow", specifier = ">=2.20,<3.0" },
     { name = "pillow", specifier = ">=11.1,<12.0" },

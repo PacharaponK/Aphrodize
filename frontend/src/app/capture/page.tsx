@@ -12,9 +12,11 @@ export default function CapturePage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
+  const [annotationConsent, setAnnotationConsent] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const previewRef = useRef<string | null>(null);
@@ -85,6 +87,7 @@ export default function CapturePage() {
     const form = new FormData();
     form.set("image", file);
     form.set("consent", "yes");
+    if (annotationConsent) form.set("annotation_consent", "yes");
     try {
       const response = await fetch("/api/analysis", { method: "POST", body: form });
       if (!response.ok) {
@@ -94,6 +97,22 @@ export default function CapturePage() {
       router.push("/result-detail");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "ส่งภาพไม่สำเร็จ");
+      setBusy(false);
+    }
+  }
+
+  async function revokeAnnotationConsent() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/analysis", { method: "DELETE" });
+      if (!response.ok) throw new Error("ถอนความยินยอมไม่สำเร็จ กรุณาลองอีกครั้ง");
+      setAnnotationConsent(false);
+      setNotice("ถอนความยินยอมสำหรับภาพที่ส่งจากเบราว์เซอร์นี้แล้ว");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "ถอนความยินยอมไม่สำเร็จ");
+    } finally {
       setBusy(false);
     }
   }
@@ -132,6 +151,11 @@ export default function CapturePage() {
           <label className="capture-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
             <span>ฉันยินยอมให้วิเคราะห์ภาพใบหน้าเพื่อแสดงคะแนนทดลองและภาพ mask โดยภาพผลจะถูกลบภายใน 24 ชั่วโมง ผลนี้ยังไม่ผ่านการตรวจสอบทางคลินิก</span>
           </label>
+          <label className="capture-consent"><input type="checkbox" checked={annotationConsent} onChange={(event) => setAnnotationConsent(event.target.checked)} />
+            <span>ฉันยินยอมเพิ่มเติมให้เก็บภาพใบหน้าที่จัดแนวแล้วเพื่อให้ผู้ตรวจแก้ป้ายกำกับริ้วรอยใน Label Studio โดยกำหนดลบหลัง 30 วัน และไม่นำไปฝึกโมเดลอัตโนมัติ</span>
+          </label>
+          <button type="button" className="secondary-button" disabled={busy} onClick={revokeAnnotationConsent}>ถอนความยินยอมตรวจป้ายกำกับภาพที่ส่งจากเบราว์เซอร์นี้</button>
+          {notice && <p role="status">{notice}</p>}
           {error && <p className="capture-error" role="alert">{error}</p>}
           <div className="page-actions"><button type="button" className="primary-button" disabled={busy || !file || !consent} onClick={submit}>{busy ? "กำลังส่งภาพ…" : "วิเคราะห์ภาพ →"}</button><Link className="secondary-button" href="/">กลับหน้าภาพรวม</Link></div>
         </section>
@@ -143,7 +167,7 @@ export default function CapturePage() {
             <li><strong>02</strong><span>ใช้แสงสม่ำเสมอ ภาพไม่เบลอ</span></li>
             <li><strong>03</strong><span>ไม่ใช้ฟิลเตอร์ และให้ภาพมีขนาดอย่างน้อย 512 × 512 พิกเซล</span></li>
           </ul>
-          <div className="capture-guide-note"><strong>ข้อมูลของคุณ</strong><p>ระบบขอความยินยอมก่อนวิเคราะห์ และลบภาพผลภายใน 24 ชั่วโมง</p></div>
+          <div className="capture-guide-note"><strong>ข้อมูลของคุณ</strong><p>ภาพผลทั่วไปลบภายใน 24 ชั่วโมง หากเลือกให้ตรวจป้ายกำกับ ภาพที่จัดแนวแล้วจะถูกลบหลัง 30 วันหรือเมื่อถอนความยินยอม</p></div>
         </aside>
         </div>
     </WorkspaceShell>

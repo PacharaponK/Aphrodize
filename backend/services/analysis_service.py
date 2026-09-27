@@ -11,6 +11,7 @@ from backend.core.config import settings
 from backend.core.db.models import Analysis, AnalysisStatus, Consent
 from backend.libs.minio_client import put_bytes
 from backend.libs.redis_client import get_arq_pool
+from backend.services.annotation_service import ANNOTATION_CONSENT_VERSION
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
@@ -31,7 +32,11 @@ def image_quality_flags(payload: bytes) -> tuple[float, list[str]]:
 
 async def create_analysis(session: AsyncSession, user_id: UUID, image: UploadFile) -> Analysis:
     active_consent = await session.scalar(
-        select(Consent).where(Consent.user_id == user_id, Consent.revoked_at.is_(None)).limit(1)
+        select(Consent).where(
+            Consent.user_id == user_id,
+            Consent.version != ANNOTATION_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        ).limit(1)
     )
     if active_consent is None:
         raise HTTPException(

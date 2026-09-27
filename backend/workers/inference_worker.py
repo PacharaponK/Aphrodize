@@ -10,9 +10,11 @@ import os
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from arq import cron
 from arq.connections import RedisSettings
+from sqlalchemy import select
 
-from backend.core.db.models import Analysis, AnalysisStatus, InferenceRun
+from backend.core.db.models import Analysis, AnalysisStatus, AnnotationTask, InferenceRun
 from backend.core.db.session import SessionLocal, close_database
 from backend.libs.minio_client import (
     analysis_artifact_key,
@@ -21,16 +23,25 @@ from backend.libs.minio_client import (
     remove_objects,
 )
 from backend.libs.redis_client import redis_settings
+from backend.services.annotation_service import (
+    delete_annotation,
+    has_annotation_consent,
+    publish_annotation,
+    stage_annotation,
+)
 
 logger = logging.getLogger(__name__)
 
 
 async def startup(ctx: dict) -> None:
     """Create one service per worker process so its model can stay in memory."""
+    # Import here so the queue can start without loading AI code before startup.
     from backend.wrinkle.service import WrinkleAnalysisService
 
+    # A process-local service caches its model between analysis jobs.
     ctx["wrinkle_service"] = WrinkleAnalysisService(
-        released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE")
+        released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE"),
+        approved_model_manifest=os.environ.get("APHRODIZE_WRINKLE_APPROVED_MANIFEST"),
     )
 
 
@@ -45,22 +56,29 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
     the AI response is stored as JSON in PostgreSQL, and only the two display
     PNGs are copied back to MinIO. Source bytes are removed in ``finally``.
     """
+    # The Redis job contains only an ID; fetch status and storage key from DB.
     async with SessionLocal() as session:
         analysis = await session.get(Analysis, UUID(analysis_id))
+        # Ignore missing jobs and jobs already handled by another worker.
         if analysis is None or analysis.status != AnalysisStatus.queued:
             return
+        # Persist 'running' so API polling can show that work has started.
         analysis.status = AnalysisStatus.running
         await session.commit()
 
+        # Remember each uploaded artifact so partial uploads can be removed.
         uploaded: list[str] = []
         try:
             try:
+                # MinIO access is synchronous; a thread keeps the event loop free.
                 payload = await asyncio.to_thread(get_bytes, analysis.object_key)
+                # Preserve image encoding in the temporary upload filename.
                 suffix = {
                     "image/jpeg": ".jpg",
                     "image/png": ".png",
                     "image/webp": ".webp",
                 }.get(analysis.content_type, ".jpg")
+                # The service calls artifacts.update with its two display PNGs.
                 artifacts: dict[str, bytes] = {}
                 # The sink receives PNG bytes while the service's temp files still exist.
                 response = await asyncio.to_thread(
@@ -71,9 +89,12 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                 )
                 # Raw model arrays stay temporary; only these two PNGs are retained.
                 for kind in ("overlay", "mask"):
+                    # Derived keys belong to this user and analysis ID.
                     key = analysis_artifact_key(analysis.user_id, analysis.id, kind)
+                    # Save only viewable PNGs, never uploaded photo or model arrays.
                     await asyncio.to_thread(put_bytes, key, artifacts[kind], "image/png")
                     uploaded.append(key)
+                # Both derived images have a 24-hour viewing lifetime.
                 expires_at = datetime.now(UTC) + timedelta(hours=24)
                 # The API also checks this timestamp, even if the delete job runs late.
                 job = await ctx["redis"].enqueue_job(
@@ -83,19 +104,23 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                     _queue_name="inference",
                     _defer_until=expires_at,
                 )
+                # A missing expiry job means we cannot safely retain artifacts.
                 if job is None:
                     raise RuntimeError("artifact expiry job was not queued")
             except Exception as error:
+                # Distinguish expected image rejection from an inference failure.
                 from ai.ffhq_wrinkle.quality import QualityGateError
 
                 if uploaded:
                     try:
+                        # Roll back images already uploaded before the error.
                         await asyncio.to_thread(remove_objects, uploaded)
                     except Exception:
                         logger.exception(
                             "Could not remove incomplete artifacts for %s", analysis.id
                         )
                 if isinstance(error, QualityGateError):
+                    # This includes no/multiple faces and failed quality checks.
                     analysis.status = AnalysisStatus.rejected
                     analysis.error_category = "image_quality"
                     analysis.quality_flags = list(error.assessment.issues)
@@ -104,6 +129,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                         "quality_flags": analysis.quality_flags,
                     }
                 else:
+                    # Keep internal exception details in logs, not public JSON.
                     logger.exception("Wrinkle inference failed for analysis %s", analysis.id)
                     analysis.status = AnalysisStatus.failed
                     analysis.error_category = "inference_failed"
@@ -112,14 +138,28 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                 # A confidence abstention is still a successful inference run.
                 analysis.status = AnalysisStatus.completed
                 analysis.error_category = None
+                # Pydantic response becomes JSON stored on the Analysis row.
                 analysis.result = response.model_dump(mode="json")
+                checkpoint_sha = analysis.result.get("model_output", {}).get("checkpoint_sha256")
+                if checkpoint_sha:
+                    analysis.model_version = checkpoint_sha
+                # Use the database's stable ID instead of the service's new UUID.
                 analysis.result["analysis_id"] = str(analysis.id)
                 analysis.result["artifacts_expires_at"] = expires_at.isoformat()
 
+            # Both successful and failed jobs receive a completion timestamp.
             analysis.completed_at = datetime.now(UTC)
             await session.commit()
+            if analysis.status == AnalysisStatus.completed:
+                try:
+                    await stage_annotation(
+                        session, analysis, artifacts.get("aligned_face"), ctx["redis"]
+                    )
+                except Exception:
+                    logger.exception("Could not queue annotation review for %s", analysis.id)
         finally:
             try:
+                # The original upload is deleted regardless of outcome.
                 await asyncio.to_thread(remove_objects, [analysis.object_key])
             except Exception:
                 logger.exception("Could not remove source image for %s", analysis.id)
@@ -132,6 +172,42 @@ async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> 
         for kind in ("overlay", "mask")
     ]
     await asyncio.to_thread(remove_objects, keys)
+
+
+async def publish_annotation_task(_: dict, task_id: str) -> None:
+    async with SessionLocal() as session:
+        row = await session.get(AnnotationTask, UUID(task_id))
+        if row is not None:
+            await publish_annotation(session, row)
+
+
+async def expire_annotation_task(_: dict, task_id: str) -> None:
+    async with SessionLocal() as session:
+        row = await session.get(AnnotationTask, UUID(task_id))
+        if row is not None and datetime.now(UTC) >= row.expires_at:
+            await delete_annotation(session, row)
+
+
+async def delete_annotation_task(_: dict, task_id: str) -> None:
+    async with SessionLocal() as session:
+        row = await session.get(AnnotationTask, UUID(task_id))
+        if row is not None and not await has_annotation_consent(session, row.user_id):
+            await delete_annotation(session, row)
+
+
+async def reconcile_annotation_tasks(_: dict) -> None:
+    async with SessionLocal() as session:
+        rows = (await session.scalars(select(AnnotationTask))).all()
+        for row in rows:
+            try:
+                if datetime.now(UTC) >= row.expires_at or not await has_annotation_consent(
+                    session, row.user_id
+                ):
+                    await delete_annotation(session, row)
+                elif row.label_studio_task_id is None:
+                    await publish_annotation(session, row)
+            except Exception:
+                logger.exception("Could not reconcile annotation task %s", row.id)
 
 
 async def run_model_inference(_: dict, inference_run_id: str) -> None:
@@ -148,7 +224,15 @@ async def run_model_inference(_: dict, inference_run_id: str) -> None:
 
 
 class WorkerSettings:
-    functions = [run_inference, run_model_inference, expire_analysis_artifacts]
+    functions = [
+        run_inference,
+        run_model_inference,
+        expire_analysis_artifacts,
+        publish_annotation_task,
+        expire_annotation_task,
+        delete_annotation_task,
+    ]
+    cron_jobs = [cron(reconcile_annotation_tasks, minute=0, run_at_startup=True)]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings: RedisSettings = redis_settings()

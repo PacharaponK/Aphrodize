@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const COOKIE = "aphrodize_analysis";
+const ANNOTATION_COOKIE = "aphrodize_annotations";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const REVIEW_MS = 30 * DAY_MS;
 const MAX_BYTES = 10 * 1024 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -36,6 +38,17 @@ function currentAnalysis(request: NextRequest): string | null {
   return timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex")) ? id : null;
 }
 
+function annotationUsers(request: NextRequest): string[] {
+  const parts = request.cookies.get(ANNOTATION_COOKIE)?.value.split(".");
+  if (!parts || parts.length !== 3) return [];
+  const [encoded, expiry, mac] = parts;
+  if (!/^\d{13}$/.test(expiry) || Date.now() >= Number(expiry) || !/^[0-9a-f]{64}$/.test(mac)) return [];
+  const expected = signature(`${encoded}.${expiry}`);
+  if (!timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"))) return [];
+  const ids = Buffer.from(encoded, "base64url").toString("utf8").split(",");
+  return ids.length <= 50 && ids.every((id) => UUID.test(id)) ? ids : [];
+}
+
 function failed(status: number, message: string): NextResponse {
   return NextResponse.json({ detail: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -57,7 +70,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   const form = await request.formData();
   const image = form.get("image");
+  const wantsAnnotation = form.get("annotation_consent") === "yes";
   if (form.get("consent") !== "yes") return failed(403, "Consent is required");
+  if (wantsAnnotation && annotationUsers(request).length >= 50) {
+    return failed(409, "Too many active review consents in this browser");
+  }
   if (!(image instanceof File) || !IMAGE_TYPES.has(image.type) || !image.size) {
     return failed(415, "Choose a JPEG, PNG, or WebP image");
   }
@@ -73,6 +90,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!consent.ok) return backendError(consent);
     const { user_id } = await consent.json();
     if (typeof user_id !== "string" || !UUID.test(user_id)) throw new Error("Invalid user id");
+    if (wantsAnnotation) {
+      const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
+        method: "POST",
+        headers: apiHeaders(),
+        cache: "no-store",
+      });
+      if (!reviewConsent.ok) return backendError(reviewConsent);
+    }
     const upload = new FormData();
     upload.set("image", image);
     const analysis = await fetch(backendUrl(`/analyses/users/${user_id}`), {
@@ -94,9 +119,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: "/api/analysis",
       maxAge: DAY_MS / 1000,
     });
+    if (wantsAnnotation) {
+      const users = [...annotationUsers(request), user_id];
+      const reviewExpiry = Date.now() + REVIEW_MS;
+      const encoded = Buffer.from(users.join(",")).toString("base64url");
+      response.cookies.set(
+        ANNOTATION_COOKIE,
+        `${encoded}.${reviewExpiry}.${signature(`${encoded}.${reviewExpiry}`)}`,
+        {
+          httpOnly: true,
+          sameSite: "strict",
+          secure: process.env.NODE_ENV === "production",
+          path: "/api/analysis",
+          maxAge: REVIEW_MS / 1000,
+        },
+      );
+    }
     return response;
   } catch {
     return failed(502, "Could not reach the analysis service");
+  }
+}
+
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin && (!host || origin !== `${request.nextUrl.protocol}//${host}`)) {
+    return failed(403, "Invalid request origin");
+  }
+  try {
+    for (const userId of annotationUsers(request)) {
+      const response = await fetch(backendUrl(`/consents/users/${userId}/annotations`), {
+        method: "DELETE",
+        headers: apiHeaders(),
+        cache: "no-store",
+      });
+      if (!response.ok) return backendError(response);
+    }
+    const response = new NextResponse(null, { status: 204 });
+    response.cookies.delete(ANNOTATION_COOKIE);
+    return response;
+  } catch {
+    return failed(502, "Could not revoke annotation consent");
   }
 }
 
