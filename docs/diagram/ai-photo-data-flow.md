@@ -160,3 +160,26 @@ flowchart TD
 | Worker หรือ model ล้มเหลว | `failed`, `error_category: inference_failed` |
 
 ผล segmentation และคะแนนพื้นที่เป็นผลทดลอง ไม่ใช่การวินิจฉัยทางการแพทย์ ภาพอัปโหลดของผู้ใช้ไม่ถูกนำไป train อัตโนมัติ
+
+## 5. แหล่งข้อมูลการนอนจาก Zepp OS (ข้อเสนอสำหรับการเชื่อมต่อในอนาคต)
+
+> สถานะ: **ยังไม่ได้ implement ใน repository นี้** ส่วนนี้เป็นแบบออกแบบเพื่อเชื่อมข้อมูลจากอุปกรณ์ Zepp/Amazfit โดยไม่เปลี่ยนเส้นทางวิเคราะห์ภาพในข้อ 1
+
+Zepp OS Device App API มี `Sleep` sensor ตั้งแต่ API level 2.0 และต้องประกาศ permission `data:user.hd.sleep` ในแอปอุปกรณ์ ข้อมูลอ่านได้บน **Zepp Device App** เท่านั้น ดังนั้น backend ของ Aphrodize ไม่ควรเรียก API นี้โดยตรง แต่ให้ Device App ส่งข้อมูลที่ผู้ใช้ยินยอมผ่าน companion/mobile app หรือช่องทาง sync ที่พิสูจน์ตัวตนแล้วเข้าสู่ Platform API
+
+```mermaid
+flowchart LR
+    Z[Zepp / Amazfit device] --> D[Zepp Device App\nSleep sensor]
+    D -->|ข้อมูลที่ผู้ใช้ยินยอม| M[Companion / mobile sync]
+    M -->|HTTPS + user access token| H[Platform API\nSleep import endpoint]
+    H --> C{ตรวจ consent\nและ schema}
+    C -->|ผ่าน| S[(PostgreSQL\nwellness sleep records)]
+    C -->|ไม่ผ่าน| X[HTTP 403 / 422]
+    S --> A[หน้าสรุปสุขภาพ\nและ correlation แบบ informational]
+```
+
+ข้อมูลขั้นต่ำที่ควรนำเข้าเป็นรายคืนคือ `score`, `deepTime`, `totalTime`, `startTime` และ `endTime`; เวลามีหน่วยเป็นนาที และเวลาเริ่ม/สิ้นสุดนับจาก 00:00 ของวัน อาจนำ `getStage()` มาเก็บช่วง Awake / REM / Light / Deep และ API level 3.0 เพิ่มสถานะกำลังหลับกับ nap ได้ ควรเก็บ `device_source`, `api_level`, timezone และเวลาที่ sync เพื่ออธิบายที่มาของข้อมูลและป้องกันการตีความข้ามเขตเวลา
+
+ไม่ควรใช้ sleep score หรือ stage เพื่อวินิจฉัยโรค หรือสรุปเหตุ–ผลกับริ้วรอย/รอบเดือน ให้แสดงเป็นข้อมูลติดตามสุขภาพเท่านั้น ผู้ใช้ควรเลือกยินยอมแยกจาก consent ภาพ, ถอนการเชื่อมต่อได้ และลบข้อมูล sleep ได้โดยไม่กระทบการใช้งานวิเคราะห์ภาพ
+
+อ้างอิง: [Zepp OS Sleep sensor documentation](https://docs.zepp.com/docs/reference/device-app-api/newAPI/sensor/Sleep/)

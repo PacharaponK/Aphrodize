@@ -44,6 +44,7 @@ data/
 storage/artifacts/ffhq_wrinkle_phase*/
 
 # Experiment and runtime outputs
+sandboxes/
 mlruns/
 logs/*.log
 logs/*.jsonl
@@ -56,6 +57,11 @@ models/**/checkpoints/
 *.db
 tmp/
 temp/
+
+# Explicitly promoted daily-health estimator artifact.
+!models/time-series/non-linear-model/artifacts/
+!models/time-series/non-linear-model/artifacts/daily_score_regression_v1/
+!models/time-series/non-linear-model/artifacts/daily_score_regression_v1/score_regressor.joblib
 
 # JavaScript / frontend
 node_modules/

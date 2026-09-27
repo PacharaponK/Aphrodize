@@ -9,4 +9,5 @@ RUN pip install --no-cache-dir torch==2.1.2 --index-url https://download.pytorch
 RUN pip install --no-cache-dir -r ai/requirements-runtime.txt
 RUN pip install --no-cache-dir "numpy==1.26.4" "label-studio-sdk>=1.0.20,<2.0"
 COPY ai ./ai
+COPY models ./models
 CMD ["arq", "backend.workers.inference_worker.WorkerSettings"]

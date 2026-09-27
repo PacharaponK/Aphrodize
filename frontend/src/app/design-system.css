@@ -175,12 +175,47 @@ a { color: #0075de; }
 .intro-copy h1 span { background: none; color: #f5d75e; }
 .intro-copy > p:last-child, .intro-points { color: #dddaf2; }
 .auth-card { background: #fff; }
-.auth-card input[type="email"], .auth-card input[type="password"] { min-height: 44px; border: 1px solid #c8c4be; border-radius: 8px; color: #1a1a1a; }
+.auth-card input[type="text"], .auth-card input[type="email"], .auth-card input[type="password"] { min-height: 44px; border: 1px solid #c8c4be; border-radius: 8px; color: #1a1a1a; }
 .auth-card input:focus { border: 2px solid #5645d4; box-shadow: none; }
 .password-field button { color: #0075de; }
 .auth-card label { color: #37352f; }
 .auth-privacy { color: #5d5b54; }
 .auth-back { display: block; margin-top: 18px; text-align: center; font-size: 13px; text-decoration: none; }
+.signup-consent { align-items: flex-start; margin: 7px 0; font-size: 12px !important; line-height: 1.45; }
+.form-message.success { color: #16724b; }
+.signup-card { padding-bottom: 40px; }
+.signup-section { display: grid; gap: 10px; margin: 0; padding: 20px 0; border: 0; border-top: 1px solid var(--line); }
+.signup-section legend { padding: 0; color: var(--ink); font-size: 16px; font-weight: 700; }
+.signup-section label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+.signup-section input, .signup-section select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #c8c4be; border-radius: 8px; background: #fff; color: #1a1a1a; font: inherit; }
+.signup-section .signup-consent { display: flex; align-items: flex-start; gap: 8px; }
+.signup-section .signup-consent input { width: 18px; min-width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; flex: 0 0 18px; }
+.signup-section input:focus, .signup-section select:focus { outline: none; border: 2px solid #5645d4; }
+.signup-section:disabled { opacity: .7; }
+.signup-wizard { min-height: 280px; }
+.wizard-progress { display: grid; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.wizard-progress > div { height: 6px; overflow: hidden; border-radius: 999px; background: #e4e1dc; }
+.wizard-progress i { display: block; height: 100%; border-radius: inherit; background: #5645d4; transition: width .2s ease; }
+.wizard-question { display: grid; gap: 12px; min-height: 125px; padding-top: 16px; }
+.wizard-question > label:first-child { font-size: 18px; }
+.wizard-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.wizard-actions button { margin: 0; }
+.signup-login-button { display: block; width: min(100%, 520px); margin: 16px auto 0; text-align: center; text-decoration: none; }
+.onboarding-page { min-height: 100vh; padding: clamp(24px, 5vw, 72px); background: #f6f5f4; }
+.onboarding-card { width: min(100%, 760px); margin: auto; padding: clamp(28px, 5vw, 56px); border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.onboarding-card > h1 { margin: 6px 0 10px; font-size: clamp(28px, 4vw, 42px); }
+.onboarding-card > p:not(.eyebrow) { margin: 0 0 32px; color: var(--muted); line-height: 1.65; }
+.onboarding-card form { display: grid; gap: 18px; }
+.onboarding-card form label { display: grid; gap: 8px; color: var(--ink); font-size: 14px; font-weight: 600; }
+.onboarding-card input, .onboarding-card select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #c8c4be; border-radius: 8px; background: #fff; color: #1a1a1a; font: inherit; }
+.onboarding-card input:focus, .onboarding-card select:focus { outline: none; border: 2px solid #5645d4; }
+.onboarding-card .primary-button { width: 100%; margin-top: 8px; }
+.onboarding-guardian { display: flex !important; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid #f1cc75; border-radius: 8px; background: #fff9df; font-size: 13px !important; line-height: 1.5; }
+.onboarding-guardian input { width: auto; min-height: auto; margin-top: 3px; accent-color: #5645d4; }
+html[data-theme="black"] .onboarding-page { background: #0a1530; }
+html[data-theme="black"] .onboarding-card { background: #162342; border-color: #34415d; }
+html[data-theme="black"] .onboarding-card input, html[data-theme="black"] .onboarding-card select { background: #202f50; border-color: #64708a; color: #fff; }
+html[data-theme="black"] .onboarding-guardian { border-color: #796b3f; background: #423b28; }
 
 dialog { background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 16px 48px -8px #0f0f0f29; }
 dialog::backdrop { background: #0a153099; }
@@ -197,7 +232,10 @@ html[data-theme="black"] .page-content > p, html[data-theme="black"] .result-sco
 html[data-theme="black"] .page-nav a, html[data-theme="black"] .nav-link { color: #c8cede; }
 html[data-theme="black"] .page-nav a.active, html[data-theme="black"] .nav-link.active { background: #34415d; color: #fff; }
 html[data-theme="black"] .secondary-button, html[data-theme="black"] .artifact-tabs button, html[data-theme="black"] .theme-toggle, html[data-theme="black"] .language-toggle, html[data-theme="black"] .home-button, html[data-theme="black"] .mobile-menu-button { background: #202f50; border-color: #64708a; color: #fff; }
-html[data-theme="black"] .auth-card input[type="email"], html[data-theme="black"] .auth-card input[type="password"] { background: #202f50; border-color: #64708a; color: #fff; }
+html[data-theme="black"] .auth-card input[type="text"], html[data-theme="black"] .auth-card input[type="email"], html[data-theme="black"] .auth-card input[type="password"] { background: #202f50; border-color: #64708a; color: #fff; }
+html[data-theme="black"] .signup-section input, html[data-theme="black"] .signup-section select { background: #202f50; border-color: #64708a; color: #fff; }
+html[data-theme="black"] .wizard-progress > div { background: #34415d; }
+html[data-theme="black"] .form-message.success { color: #8fe3ba; }
 html[data-theme="black"] .auth-card label, html[data-theme="black"] .auth-card-heading h2 { color: #fff; }
 html[data-theme="black"] .rule-box { color: #c8cede; }
 html[data-theme="black"] .capture-guide { background: #202f50; color: #fff; }

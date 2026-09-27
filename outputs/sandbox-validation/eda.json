@@ -1,0 +1,72 @@
+{
+  "records": 1220,
+  "users": 20,
+  "date_min": "2026-08-01",
+  "date_max": "2026-09-30",
+  "sleep_no_record": 124,
+  "records_per_user": {
+    "synthetic_user_01": 61,
+    "synthetic_user_02": 61,
+    "synthetic_user_03": 61,
+    "synthetic_user_04": 61,
+    "synthetic_user_05": 61,
+    "synthetic_user_06": 61,
+    "synthetic_user_07": 61,
+    "synthetic_user_08": 61,
+    "synthetic_user_09": 61,
+    "synthetic_user_10": 61,
+    "synthetic_user_11": 61,
+    "synthetic_user_12": 61,
+    "synthetic_user_13": 61,
+    "synthetic_user_14": 61,
+    "synthetic_user_15": 61,
+    "synthetic_user_16": 61,
+    "synthetic_user_17": 61,
+    "synthetic_user_18": 61,
+    "synthetic_user_19": 61,
+    "synthetic_user_20": 61
+  },
+  "mean_dryness_by_outdoor_choice": {
+    "1": 3.64,
+    "2": 3.93,
+    "3": 4.17,
+    "4": 4.47
+  },
+  "numeric_correlation": {
+    "sleep_duration_total_minutes": {
+      "sleep_duration_total_minutes": 1.0,
+      "water_intake_ml": 0.27,
+      "thirst_score_0_10": -0.579,
+      "outdoor_exposure_choice": -0.034,
+      "skin_dryness_score_0_10": -0.604
+    },
+    "water_intake_ml": {
+      "sleep_duration_total_minutes": 0.27,
+      "water_intake_ml": 1.0,
+      "thirst_score_0_10": -0.743,
+      "outdoor_exposure_choice": -0.058,
+      "skin_dryness_score_0_10": -0.676
+    },
+    "thirst_score_0_10": {
+      "sleep_duration_total_minutes": -0.579,
+      "water_intake_ml": -0.743,
+      "thirst_score_0_10": 1.0,
+      "outdoor_exposure_choice": 0.323,
+      "skin_dryness_score_0_10": 0.785
+    },
+    "outdoor_exposure_choice": {
+      "sleep_duration_total_minutes": -0.034,
+      "water_intake_ml": -0.058,
+      "thirst_score_0_10": 0.323,
+      "outdoor_exposure_choice": 1.0,
+      "skin_dryness_score_0_10": 0.127
+    },
+    "skin_dryness_score_0_10": {
+      "sleep_duration_total_minutes": -0.604,
+      "water_intake_ml": -0.676,
+      "thirst_score_0_10": 0.785,
+      "outdoor_exposure_choice": 0.127,
+      "skin_dryness_score_0_10": 1.0
+    }
+  }
+}

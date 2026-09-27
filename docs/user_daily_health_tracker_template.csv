@@ -1,0 +1,15 @@
+user_id,local_date,timezone,sleep_duration_hours,sleep_duration_mins,water_intake_ml,outdoor_minutes,skin_dryness_level,skin_feeling_status
+1,12/9/20026,UTC+07:00,3,42,1600,1, 1/5,oil
+1,13/9/20026,UTC+07:00,6,7,1300,1, 2/5,oil
+1,14/9/20026,UTC+07:00,2,3,1500,1, 1/5,oil
+1,15/9/20026,UTC+07:00,no recorded,no recorded,1200,1, 2/7,oil
+1,16/9/20026,UTC+07:00,5,40,1400,1, 1/4,oil
+1,17/9/20026,UTC+07:00,7,48,1300,1, 1/5,normal
+1,18/9/20026,UTC+07:00,5,4,1100,1, 2/5,oil
+1,19/9/20026,UTC+07:00,no recorded,no recorded,1000,1, 2/7,oil
+1,20/9/20026,UTC+07:00,5,16,1800,4, 2/5,normal
+1,21/9/20026,UTC+07:00,7,38,1500,4, 2/7,normal
+1,22/9/20026,UTC+07:00,7,21,1600,4, 1/5,normal
+1,23/9/20026,UTC+07:00,8,47,1200,1, 2/5,oil
+1,24/9/20026,UTC+07:00,7,50,1250,1, 2/7,oil
+1,25/9/20026,UTC+07:00,6,48,1800,1, 2/7,normal

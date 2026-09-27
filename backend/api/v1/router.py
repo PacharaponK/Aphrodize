@@ -3,7 +3,10 @@ from fastapi import APIRouter, Depends
 from backend.api.deps import require_api_credentials
 from backend.api.v1.routes import (
     analyses,
+    auth,
     consents,
+    daily_health,
+    forecasts,
     health,
     inference,
     monitoring,
@@ -14,6 +17,7 @@ from backend.api.v1.routes import (
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 protected = [Depends(require_api_credentials)]
 api_router.include_router(
     consents.router, prefix="/consents", tags=["consents"], dependencies=protected
@@ -22,10 +26,21 @@ api_router.include_router(
     questionnaires.router,
     prefix="/questionnaires",
     tags=["questionnaires"],
-    dependencies=protected,
 )
 api_router.include_router(
     analyses.router, prefix="/analyses", tags=["analyses"], dependencies=protected
+)
+api_router.include_router(
+    forecasts.router,
+    prefix="/lifestyle-forecast",
+    tags=["lifestyle-forecast"],
+    dependencies=protected,
+)
+api_router.include_router(
+    daily_health.router,
+    prefix="/daily-health",
+    tags=["daily-health"],
+    dependencies=protected,
 )
 api_router.include_router(
     training.router, prefix="/training", tags=["training"], dependencies=protected
