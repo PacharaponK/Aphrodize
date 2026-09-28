@@ -509,9 +509,34 @@ async def delete_daily_health_data(
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    versions_result = await session.scalars(select(DailyHealthModelVersion))
-    model_version_ids = [version.version_id for version in versions_result.all()]
-    deployment = await session.get(DailyHealthModelDeployment, "daily_health")
+    had_training_consent = await session.scalar(
+        select(Consent.id).where(
+            Consent.user_id == user_id,
+            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+        ).limit(1)
+    )
+    had_reported_entry = await session.scalar(
+        select(DailyHealthEntry.id).where(
+            DailyHealthEntry.user_id == user_id,
+            DailyHealthEntry.data_source == "user_reported",
+        ).limit(1)
+    )
+    had_reported_outcome = await session.scalar(
+        select(DailyHealthOutcome.id).where(
+            DailyHealthOutcome.user_id == user_id,
+            DailyHealthOutcome.reported_thirst_level_0_10.is_not(None),
+            DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
+        ).limit(1)
+    )
+    may_have_trained_model = bool(
+        had_training_consent and had_reported_entry and had_reported_outcome
+    )
+    model_version_ids = []
+    deployment = None
+    if may_have_trained_model:
+        versions_result = await session.scalars(select(DailyHealthModelVersion))
+        model_version_ids = [version.version_id for version in versions_result.all()]
+        deployment = await session.get(DailyHealthModelDeployment, "daily_health")
 
     for record_model in (
         DailyHealthOutcome,
@@ -538,24 +563,27 @@ async def delete_daily_health_data(
         )
         .values(revoked_at=func.now())
     )
-    if deployment is not None:
-        deployment.active_version_id = None
-        deployment.previous_version_id = None
-        deployment.approval_reason = None
+    if may_have_trained_model:
+        if deployment is not None:
+            deployment.active_version_id = None
+            deployment.previous_version_id = None
+            deployment.approval_reason = None
 
-    # Version fingerprints and aggregate metrics are derived from the cohort. Without per-user
-    # lineage, remove the whole user-trained registry and its version-bearing audit entries.
-    await session.execute(delete(DailyHealthModelDeploymentEvent))
-    await session.execute(delete(DailyHealthModelVersion))
-    session.add(
-        DailyHealthModelDeploymentEvent(
-            action="data_erasure",
-            version_id=None,
-            reason="User-requested erasure removed the user-trained model registry",
+        # Without per-version participant lineage, a possible contributor's erasure must
+        # invalidate the shared user-trained registry; non-contributors cannot reset it.
+        await session.execute(delete(DailyHealthModelDeploymentEvent))
+        await session.execute(delete(DailyHealthModelVersion))
+        session.add(
+            DailyHealthModelDeploymentEvent(
+                action="data_erasure",
+                version_id=None,
+                reason="User-requested erasure removed the user-trained model registry",
+            )
         )
-    )
     await session.commit()
 
+    if not may_have_trained_model:
+        return
     try:
         # Model versions do not currently retain per-user cohort membership, so the only safe
         # erasure is to remove every generated user-candidate artifact and return to the baseline.

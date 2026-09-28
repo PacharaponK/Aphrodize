@@ -28,9 +28,10 @@ class Rows:
 
 
 class FakeSession:
-    def __init__(self, *, versions=None, deployment=None):
+    def __init__(self, *, versions=None, deployment=None, has_training_data=True):
         self.versions = versions or []
         self.deployment = deployment
+        self.has_training_data = has_training_data
         self.statements = []
         self.added = []
         self.committed = False
@@ -46,6 +47,9 @@ class FakeSession:
 
     async def scalars(self, _statement):
         return Rows(self.versions)
+
+    async def scalar(self, _statement):
+        return uuid4() if self.has_training_data else None
 
     async def execute(self, statement):
         self.statements.append(statement)
@@ -243,4 +247,28 @@ async def test_user_data_erasure_removes_history_invalidates_deployment_and_purg
     assert deployment.previous_version_id is None
     assert purged == [version_id]
     assert any(isinstance(item, DailyHealthModelDeploymentEvent) for item in session.added)
+
+
+@pytest.mark.asyncio
+async def test_non_contributor_cannot_reset_shared_candidate_registry(monkeypatch) -> None:
+    version_id = "daily-health-next-day-0123456789abcdef"
+    deployment = DailyHealthModelDeployment(
+        deployment_key="daily_health",
+        active_version_id=version_id,
+    )
+    session = FakeSession(
+        versions=[make_version(version_id)],
+        deployment=deployment,
+        has_training_data=False,
+    )
+    purged = []
+    monkeypatch.setattr(daily_health, "purge_generated_candidate_artifacts", purged.append)
+
+    await daily_health.delete_daily_health_data(uuid4(), session)
+
+    statements = [str(item).upper() for item in session.statements]
+    assert not any("DELETE FROM DAILY_HEALTH_MODEL_VERSIONS" in item for item in statements)
+    assert deployment.active_version_id == version_id
+    assert purged == []
+    assert session.committed is True
     assert session.committed is True
