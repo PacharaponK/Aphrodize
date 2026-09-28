@@ -31,7 +31,7 @@ The self-report form records numeric 0–10 thirst and dryness scores separately
 
 ## Candidate training and versioning
 
-After an opted-in user submits both self-reported scores, the API checks readiness and queues the trainer worker only when there are at least 100 complete next-day examples from at least 5 opted-in participants. A new candidate is considered after at least 25 more examples than the most recent candidate (or if consent withdrawal means a new snapshot has fewer rows). The outcome save still succeeds if Redis is unavailable; a missed trigger can be retried by submitting a later complete self-report.
+The trainer worker checks readiness every Monday at 02:00 UTC (09:00 `Asia/Bangkok`). Saving an outcome only persists the user's report; it does not start training immediately. On the weekly check, the worker queues training only when there are at least 100 complete next-day examples from at least 5 opted-in participants, and at least 25 additional examples since the latest candidate (or when consent withdrawal produces a smaller eligible snapshot). If the checks fail, it waits for the next weekly run; no candidate is created. Redis or database outages may cause that scheduled check to fail and require operator monitoring/retry.
 
 The worker:
 

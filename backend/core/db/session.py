@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator
 
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from backend.core.config import settings
@@ -20,6 +20,17 @@ async def create_database_schema() -> None:
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        if connection.dialect.name == "sqlite":
+            profile_columns = await connection.run_sync(
+                lambda sync_connection: {
+                    column["name"]
+                    for column in inspect(sync_connection).get_columns("daily_health_profiles")
+                }
+            )
+            if "weight_kg" not in profile_columns:
+                await connection.execute(
+                    text("ALTER TABLE daily_health_profiles ADD COLUMN weight_kg FLOAT")
+                )
         if connection.dialect.name == "postgresql":
             # create_all does not add columns to an accounts table created by older builds.
             for column in (
@@ -33,6 +44,64 @@ async def create_database_schema() -> None:
                 await connection.execute(
                     text(f"ALTER TABLE accounts ADD COLUMN IF NOT EXISTS {column}")
                 )
+            await connection.execute(
+                text(
+                    "ALTER TABLE daily_health_profiles "
+                    "ADD COLUMN IF NOT EXISTS skin_type VARCHAR(32)"
+                )
+            )
+            await connection.execute(
+                text(
+                    "ALTER TABLE daily_health_profiles "
+                    "ADD COLUMN IF NOT EXISTS weight_kg FLOAT"
+                )
+            )
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
+                    "WHERE conname = 'ck_daily_health_profile_skin_type' "
+                    "AND conrelid = 'daily_health_profiles'::regclass) THEN "
+                    "ALTER TABLE daily_health_profiles "
+                    "ADD CONSTRAINT ck_daily_health_profile_skin_type CHECK "
+                    "(skin_type IS NULL OR skin_type IN "
+                    "('normal', 'dry', 'oily', 'combination', 'sensitive', 'prefer_not_to_say')); "
+                    "END IF; END $$;"
+                )
+            )
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
+                    "WHERE conname = 'ck_daily_health_profile_weight' "
+                    "AND conrelid = 'daily_health_profiles'::regclass) THEN "
+                    "ALTER TABLE daily_health_profiles "
+                    "ADD CONSTRAINT ck_daily_health_profile_weight CHECK "
+                    "(weight_kg IS NULL OR (weight_kg >= 1 AND weight_kg <= 500)); "
+                    "END IF; END $$;"
+                )
+            )
+            await connection.execute(
+                text(
+                    "ALTER TABLE daily_health_entries ADD COLUMN IF NOT EXISTS weight_kg FLOAT "
+                    "CONSTRAINT ck_daily_health_weight CHECK (weight_kg >= 1 AND weight_kg <= 500)"
+                )
+            )
+            await connection.execute(
+                text(
+                    "ALTER TABLE daily_health_entries "
+                    "ADD COLUMN IF NOT EXISTS calculated_thirst_score_0_10 FLOAT "
+                    "CONSTRAINT ck_daily_health_calculated_thirst "
+                    "CHECK (calculated_thirst_score_0_10 >= 0 "
+                    "AND calculated_thirst_score_0_10 <= 10)"
+                )
+            )
+            await connection.execute(
+                text(
+                    "ALTER TABLE daily_health_entries "
+                    "ADD COLUMN IF NOT EXISTS thirst_score_method VARCHAR(64)"
+                )
+            )
             # Widen the existing check without touching stored daily-health rows.
             constraint_definition = await connection.scalar(
                 text(
