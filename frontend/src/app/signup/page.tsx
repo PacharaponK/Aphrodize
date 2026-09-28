@@ -10,26 +10,20 @@ type AccountDetails = { displayName: string; email: string; password: string };
 type AnswerMap = Record<string, string>;
 
 const questions = [
-  ["sex", "เพศ"], ["age_group", "ช่วงอายุของคุณ"], ["sleep_hours", "โดยเฉลี่ยเมื่อคืนคุณนอนกี่ชั่วโมง?"], ["sleep_quality", "คุณภาพการนอนของคุณเป็นอย่างไร?"], ["water_liters", "เมื่อวานคุณดื่มน้ำเปล่าประมาณกี่ลิตร?"], ["outdoor_minutes", "เมื่อวานคุณทำกิจกรรมกลางแจ้งกี่นาที?"], ["sunscreen_frequency", "คุณทาครีมกันแดดบ่อยแค่ไหน?"], ["skin_type", "คุณคิดว่าผิวหน้าของคุณเป็นประเภทใด?"], ["stress_level", "ระดับความเครียดในช่วงสัปดาห์นี้ (1 ต่ำ – 5 สูง)"], ["menstrual_tracking", "คุณต้องการติดตามข้อมูลรอบเดือนหรือไม่?"], ["menstrual_status", "วันนี้คุณอยู่ระหว่างมีประจำเดือนหรือไม่?"], ["wellness_goal", "เป้าหมายหลักที่อยากติดตามคืออะไร?"],
+  ["sex", "เพศ"], ["age_group", "ช่วงอายุของคุณ"], ["sunscreen_frequency", "คุณทาครีมกันแดดบ่อยแค่ไหน?"], ["skin_type", "คุณคิดว่าผิวหน้าของคุณเป็นประเภทใด?"], ["menstrual_tracking", "คุณต้องการติดตามข้อมูลรอบเดือนหรือไม่?"], ["wellness_goal", "เป้าหมายหลักที่อยากติดตามคืออะไร?"],
 ] as const;
 
 const options: Record<string, readonly [string, string][]> = {
   sex: [["male", "ชาย"], ["female", "หญิง"], ["prefer_not_to_say", "ไม่สะดวกระบุ"]],
   age_group: [["under_13", "ต่ำกว่า 13 ปี"], ["13_17", "13–17 ปี"], ["18_24", "18–24 ปี"], ["25_34", "25–34 ปี"], ["35_44", "35–44 ปี"], ["45_54", "45–54 ปี"], ["55_plus", "55 ปีขึ้นไป"]],
-  sleep_hours: [["4", "น้อยกว่า 5 ชั่วโมง"], ["5.5", "5–6 ชั่วโมง"], ["6.5", "6–7 ชั่วโมง"], ["7.5", "7–8 ชั่วโมง"], ["8.5", "8–9 ชั่วโมง"], ["9.5", "มากกว่า 9 ชั่วโมง"]],
-  sleep_quality: [["poor", "ไม่ดี"], ["fair", "พอใช้"], ["good", "ดี"], ["excellent", "ดีมาก"]],
-  water_liters: [["0.5", "น้อยกว่า 1 ลิตร"], ["1", "ประมาณ 1 ลิตร"], ["1.5", "ประมาณ 1.5 ลิตร"], ["2", "ประมาณ 2 ลิตร"], ["2.5", "ประมาณ 2.5 ลิตร"], ["3", "3 ลิตรขึ้นไป"]],
-  outdoor_minutes: [["0", "ไม่ได้ทำกิจกรรมกลางแจ้ง"], ["15", "1–30 นาที"], ["45", "31–60 นาที"], ["90", "1–2 ชั่วโมง"], ["150", "มากกว่า 2 ชั่วโมง"]],
   sunscreen_frequency: [["never", "ไม่เคย"], ["sometimes", "บางครั้ง"], ["most_days", "เกือบทุกวัน"], ["every_day", "ทุกวัน"]],
   skin_type: [["dry", "แห้ง"], ["normal", "ปกติ"], ["combination", "ผสม"], ["oily", "มัน"], ["unsure", "ไม่แน่ใจ"]],
-  stress_level: [["1", "1 — ต่ำมาก"], ["2", "2"], ["3", "3 — ปานกลาง"], ["4", "4"], ["5", "5 — สูงมาก"]],
   menstrual_tracking: [["yes", "ต้องการ"], ["no", "ไม่ต้องการ"], ["prefer_not_to_say", "ไม่สะดวกตอบ"], ["not_applicable", "ไม่เกี่ยวข้องกับฉัน"]],
-  menstrual_status: [["on_period", "อยู่ระหว่างมีประจำเดือน"], ["not_on_period", "ไม่ได้อยู่ระหว่างมีประจำเดือน"], ["unsure", "ไม่แน่ใจ"], ["prefer_not_to_say", "ไม่สะดวกตอบ"]],
   wellness_goal: [["skin_tracking", "ติดตามผิว"], ["sleep", "การนอน"], ["hydration", "การดื่มน้ำ"], ["outdoor_habits", "กิจกรรมกลางแจ้ง"], ["general_wellness", "สุขภาพโดยรวม"]],
 };
 
 function wellnessPayload(answers: AnswerMap, guardianConsent: boolean) {
-  return { sex: answers.sex, age_group: answers.age_group, guardian_consent: guardianConsent, sleep_hours: Number(answers.sleep_hours), sleep_quality: answers.sleep_quality, water_liters: Number(answers.water_liters), outdoor_minutes: Number(answers.outdoor_minutes), sunscreen_frequency: answers.sunscreen_frequency, skin_type: answers.skin_type, stress_level: Number(answers.stress_level), menstrual_tracking: answers.sex === "male" ? "not_applicable" : answers.menstrual_tracking, menstrual_status: answers.sex === "male" ? "not_applicable" : answers.menstrual_status, wellness_goal: answers.wellness_goal };
+  return { sex: answers.sex, age_group: answers.age_group, guardian_consent: guardianConsent, sunscreen_frequency: answers.sunscreen_frequency, skin_type: answers.skin_type, menstrual_tracking: answers.sex === "male" ? "not_applicable" : answers.menstrual_tracking, wellness_goal: answers.wellness_goal };
 }
 
 export default function SignupPage() {
@@ -43,7 +37,7 @@ export default function SignupPage() {
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [guardianConsent, setGuardianConsent] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const visibleQuestions = useMemo(() => questions.filter(([name]) => answers.sex !== "male" || (name !== "menstrual_tracking" && name !== "menstrual_status")), [answers.sex]);
+  const visibleQuestions = useMemo(() => questions.filter(([name]) => answers.sex !== "male" || name !== "menstrual_tracking"), [answers.sex]);
   const [questionName, questionLabel] = visibleQuestions[questionIndex];
   const isLastQuestion = questionIndex === visibleQuestions.length - 1;
 
@@ -79,9 +73,9 @@ export default function SignupPage() {
         if (!signup.ok) { setMessage(body?.detail ?? "สร้างบัญชีไม่สำเร็จ โปรดลองอีกครั้ง"); setSubmissionState("error"); return; }
         setAccountCreated(true);
       }
-      const questionnaire = await fetch("/api/onboarding/health", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(wellnessPayload(answers, guardianConsent)) });
-      const body = await questionnaire.json().catch(() => null);
-      if (!questionnaire.ok) { setMessage(body?.detail ?? "บัญชีถูกสร้างแล้ว แต่บันทึกข้อมูลสุขภาพไม่สำเร็จ กรุณาลองอีกครั้ง"); setSubmissionState("error"); return; }
+      const profile = await fetch("/api/onboarding/health", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(wellnessPayload(answers, guardianConsent)) });
+      const body = await profile.json().catch(() => null);
+      if (!profile.ok) { setMessage(body?.detail ?? "บัญชีถูกสร้างแล้ว แต่บันทึกโปรไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง"); setSubmissionState("error"); return; }
       router.push("/");
     } catch {
       setMessage(accountCreated ? "บัญชีถูกสร้างแล้ว แต่เชื่อมต่อเพื่อบันทึกข้อมูลสุขภาพไม่ได้ กรุณาลองอีกครั้ง" : "เชื่อมต่อบริการไม่ได้ กรุณาลองใหม่อีกครั้ง"); setSubmissionState("error");

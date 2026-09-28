@@ -5,11 +5,11 @@ export const runtime = "nodejs";
 const SESSION_COOKIE = "aphrodize_session";
 
 function backendUrl(): string {
-  return `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/questionnaires/initial`;
+  return `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/auth/profile`;
 }
 
 function detailMessage(detail: unknown): string {
-  return typeof detail === "string" ? detail : "บันทึกแบบสอบถามไม่สำเร็จ โปรดลองอีกครั้ง";
+  return typeof detail === "string" ? detail : "บันทึกข้อมูลโปรไฟล์ไม่สำเร็จ โปรดลองอีกครั้ง";
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const payload = await request.json();
     const response = await fetch(backendUrl(), {
-      method: "POST",
+      method: "PUT",
       headers: {
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -40,10 +40,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: response.status, headers: { "Cache-Control": "no-store" } },
       );
     }
-    return NextResponse.json(body, { status: 201, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(body, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json(
-      { detail: "ยังเชื่อมต่อบริการแบบสอบถามไม่ได้ กรุณาลองใหม่อีกครั้ง" },
+      { detail: "ยังเชื่อมต่อบริการโปรไฟล์ไม่ได้ กรุณาลองใหม่อีกครั้ง" },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
