@@ -5,8 +5,8 @@
 ```mermaid
 erDiagram
     USERS ||--o| ACCOUNTS : has
+    USERS ||--o| USER_PROFILES : has
     USERS ||--o{ CONSENTS : accepts
-    USERS ||--o{ QUESTIONNAIRES : answers
     USERS ||--o{ DAILY_LIFESTYLE_OBSERVATIONS : records
     USERS ||--o{ DAILY_HEALTH_ENTRIES : records
     USERS ||--o{ ANALYSES : requests
@@ -34,11 +34,15 @@ erDiagram
         datetime revoked_at
     }
 
-    QUESTIONNAIRES {
-        uuid id PK
-        uuid user_id FK
-        json answers
-        datetime created_at
+    USER_PROFILES {
+        uuid user_id PK, FK
+        string sex
+        string age_group
+        string skin_type
+        string wellness_goal
+        string sunscreen_frequency
+        string menstrual_tracking
+        datetime updated_at
     }
 
     DAILY_LIFESTYLE_OBSERVATIONS {
@@ -146,5 +150,5 @@ erDiagram
 - `accounts.user_id` เป็น unique: ผู้ใช้หนึ่งคนมีบัญชีได้ไม่เกินหนึ่งบัญชี และผู้ใช้ที่สร้างแบบไม่สมัครอาจไม่มีบัญชี
 - `daily_lifestyle_observations` บังคับ unique `(user_id, date)`; `daily_health_entries` บังคับ unique `(user_id, local_date)`
 - `annotation_tasks.analysis_id` อ้างถึง `analyses.id` ในโค้ดและเป็น unique แต่ **ไม่ได้ประกาศ foreign key** ในฐานข้อมูล จึงไม่ได้ลากเส้น FK ในภาพ
-- คำตอบตอนสมัคร เช่น `outdoor_minutes` อยู่ใน `questionnaires.answers` (JSON); ข้อมูลรายวันใน `daily_health_entries` ใช้ `outdoor_exposure_choice` (ช่วงเวลา 1–4) แทนจำนวนนาที
+- คำตอบตอนสมัครเก็บใน `user_profiles`; คำถามรายวันที่ไม่มีวันที่กำกับถูกย้ายออกจาก onboarding แล้ว ส่วน `daily_health_entries` ยังใช้ `outdoor_exposure_choice` (ช่วงเวลา 1–4) แทนจำนวนนาที
 - ภาพและ artifacts อยู่ใน MinIO โดยตาราง `analyses` และ `annotation_tasks` เก็บเพียง `object_key`

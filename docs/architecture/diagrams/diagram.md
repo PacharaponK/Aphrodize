@@ -51,7 +51,7 @@ Aphrodize
 ├── PostgreSQL
 │   ├── pseudonymous users
 │   ├── consents
-│   ├── questionnaires
+│   ├── user_profiles
 │   ├── image metadata
 │   ├── analyses and model versions
 │   ├── regional wrinkle results

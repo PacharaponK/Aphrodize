@@ -75,7 +75,7 @@ The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ff
 docker compose up -d --build
 ```
 
-For local demos, run `docker compose run --rm fixture` to load the account and initial health answers in [`fixtures/users.yaml`](fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; a missing questionnaire is added without replacing existing answers.
+For local demos, run `docker compose run --rm fixture` to load the account, profile, daily-health consent, and two dated tracker entries in [`fixtures/users.yaml`](fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; repeated runs do not duplicate the profile or daily entries. Fixture entries use `data_source=fixture` and are excluded from user-model training.
 
 Check the startup state:
 

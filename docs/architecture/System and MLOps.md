@@ -62,7 +62,7 @@ FastAPI
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/consents` | บันทึก consent version |
-| `POST` | `/questionnaires` | บันทึกข้อมูลสุขภาพผิวและพฤติกรรมที่ผู้ใช้รายงาน |
+| `PUT` | `/auth/profile` | บันทึกหรือแก้ไขข้อมูลโปรไฟล์ที่ผู้ใช้รายงาน |
 | `POST` | `/analyses` | รับภาพและสร้างผลวิเคราะห์ |
 | `GET` | `/analyses/{analysis_id}` | อ่าน acne result, wrinkle mask, score, confidence, signal source และ possible factors |
 | `GET` | `/analyses/{analysis_id}/recommendations` | อ่านคำแนะนำที่ผ่าน safety rules |
@@ -82,7 +82,7 @@ FastAPI
 | `analyses` | acne/wrinkle model versions, status และ error category |
 | `acne_results` | location, count, severity และ confidence |
 | `wrinkle_results` | region, score, mask key และ confidence |
-| `questionnaires` | self-reported concerns, skin profile, exposure, routine และ consented procedure history |
+| `user_profiles` | ข้อมูลโปรไฟล์ที่ผู้ใช้รายงานและแก้ไขได้ |
 | `factor_results` | rule ID/version, matched inputs และ explanation |
 | `recommendations` | category/ingredient, rationale, input sources, knowledge source, rule version และ safety status |
 | `observations` | timestamped acne count/severity และ regional wrinkle scores สำหรับ trend |
