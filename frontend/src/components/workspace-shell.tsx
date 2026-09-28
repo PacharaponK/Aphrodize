@@ -4,7 +4,7 @@ import { type ReactNode, useState } from "react";
 import { AppNavigation } from "./app-navigation";
 
 export function WorkspaceShell({ active, eyebrow, title, detail, children }: {
-  active: "dashboard" | "capture" | "none";
+  active: "dashboard" | "capture" | "profile" | "none";
   eyebrow: string;
   title: string;
   detail?: string;

@@ -1,0 +1,118 @@
+import hashlib
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import joblib
+import numpy as np
+import pytest
+from sklearn.ensemble import RandomForestRegressor
+
+from backend.services.daily_health_model_registry import (
+    DailyHealthCandidateUnavailable,
+    load_approved_candidate_bundle,
+    purge_generated_candidate_artifacts,
+)
+from backend.services.daily_health_training import FEATURE_NAMES, MODEL_FAMILY, TARGET_NAMES
+
+
+def make_candidate(tmp_path: Path) -> tuple[SimpleNamespace, Path]:
+    version_id = "daily-health-next-day-0123456789abcdef"
+    fingerprint = "a" * 64
+    version_dir = tmp_path / version_id
+    version_dir.mkdir()
+    model = RandomForestRegressor(n_estimators=2, random_state=1).fit(
+        np.asarray([[360, 1000, 1], [420, 1600, 2], [480, 1300, 3]], dtype=float),
+        np.asarray([[4, 6], [2, 2], [3, 4]], dtype=float),
+    )
+    model_path = version_dir / "model.joblib"
+    joblib.dump(model, model_path)
+    metrics = {
+        "validation": {"thirst": {"mae": 1.0}},
+        "test": {"thirst": {"mae": 1.2}},
+    }
+    manifest = {
+        "version_id": version_id,
+        "model_family": MODEL_FAMILY,
+        "prediction_horizon_days": 1,
+        "features": FEATURE_NAMES,
+        "targets": TARGET_NAMES,
+        "training_records": 120,
+        "participant_count": 6,
+        "dataset_fingerprint": fingerprint,
+        "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
+        "synthetic_data_included": False,
+        "predictions_used_as_labels": False,
+        "artifact_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest(),
+        "metrics": metrics,
+    }
+    (version_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    version = SimpleNamespace(
+        version_id=version_id,
+        status="candidate",
+        dataset_fingerprint=fingerprint,
+        model_family=MODEL_FAMILY,
+        training_records=120,
+        participant_count=6,
+        artifact_uri=(
+            "models/time-series/non-linear-model/artifacts/user-candidates/"
+            f"{version_id}/model.joblib"
+        ),
+        metrics=metrics,
+    )
+    return version, model_path
+
+
+def test_candidate_bundle_is_loaded_only_when_registry_and_manifest_match(tmp_path: Path) -> None:
+    version, _ = make_candidate(tmp_path)
+
+    bundle = load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+    assert bundle["metadata"]["model_id"] == version.version_id
+    assert bundle["metadata"]["prediction_horizon_days"] == 1
+    assert bundle["metadata"]["holdout"]["metrics"] == version.metrics["test"]
+
+
+def test_candidate_bundle_rejects_tampered_artifact_and_unapproved_paths(tmp_path: Path) -> None:
+    version, model_path = make_candidate(tmp_path)
+    model_path.write_bytes(model_path.read_bytes() + b"tampered")
+    with pytest.raises(DailyHealthCandidateUnavailable, match="checksum"):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+    version.artifact_uri = (
+        "models/time-series/non-linear-model/artifacts/user-candidates/../../outside.joblib"
+    )
+    with pytest.raises(DailyHealthCandidateUnavailable, match="path"):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+
+def test_candidate_bundle_refuses_stale_versions(tmp_path: Path) -> None:
+    version, _ = make_candidate(tmp_path)
+    version.status = "stale"
+
+    with pytest.raises(DailyHealthCandidateUnavailable, match="approved candidate"):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+
+def test_candidate_purge_removes_only_manifested_generated_outputs(tmp_path: Path) -> None:
+    version, model_path = make_candidate(tmp_path)
+    manifest_path = model_path.parent / "manifest.json"
+
+    removed = purge_generated_candidate_artifacts([version.version_id], artifact_root=tmp_path)
+
+    assert removed == 2
+    assert not model_path.exists()
+    assert not manifest_path.exists()
+    assert not model_path.parent.exists()
+
+
+def test_candidate_purge_rejects_unknown_files_without_deleting_anything(tmp_path: Path) -> None:
+    version, model_path = make_candidate(tmp_path)
+    private_file = model_path.parent / "do-not-delete.txt"
+    private_file.write_text("unknown content", encoding="utf-8")
+
+    with pytest.raises(DailyHealthCandidateUnavailable, match="unrecognized files"):
+        purge_generated_candidate_artifacts([version.version_id], artifact_root=tmp_path)
+
+    assert model_path.exists()
+    assert private_file.exists()

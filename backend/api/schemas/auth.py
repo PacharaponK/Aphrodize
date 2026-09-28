@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -52,3 +53,9 @@ class LoginResponse(BaseModel):
     display_name: str
     access_token: str
     token_type: str = "bearer"
+
+
+class SkinProfileResponse(BaseModel):
+    display_name: str
+    email: str
+    answers: dict[str, Any] | None = None

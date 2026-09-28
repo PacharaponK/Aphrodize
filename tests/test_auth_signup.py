@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from backend.api.schemas.auth import SignupRequest
 from backend.api.v1.routes.auth import signup
-from backend.core.db.models import Account, Consent, User
+from backend.core.db.models import Account, AccountRole, Consent, User
 
 
 class FakeSession:
@@ -69,12 +69,15 @@ async def test_signup_creates_account_user_and_consent() -> None:
     )
 
     assert session.committed is True
-    assert len(session.added) == 3
-    user, account, consent = session.added
+    assert len(session.added) == 4
+    user, account, member_role, consent = session.added
     assert isinstance(user, User)
     assert isinstance(account, Account)
+    assert isinstance(member_role, AccountRole)
     assert isinstance(consent, Consent)
     assert account.user_id == user.id
+    assert member_role.account_id == account.id
+    assert member_role.role == "member"
     assert consent.user_id == user.id
     assert response.user_id == user.id
     assert UUID(str(response.user_id)) == user.id

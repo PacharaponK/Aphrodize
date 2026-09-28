@@ -9,22 +9,7 @@ from backend.core.config import settings
 from backend.core.db.models import TrainingRun
 from backend.core.db.session import SessionLocal, close_database
 from backend.libs.redis_client import redis_settings
-from backend.services.curated_training import train_candidate
-
-logger = logging.getLogger(__name__)
-
-
-def _train_with_mlflow(run: TrainingRun) -> str:
-    # Log one candidate run; a successful run still requires separate model approval.
-    mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
-    # One MLflow run groups the dataset reference, metrics, and checkpoint.
-    with mlflow.start_run(run_name=f"aphrodize-{run.model_family}") as mlflow_run:
-        mlflow.set_tag("dataset_uri", run.dataset_uri)
-        mlflow.set_tag("training_data_policy", "approved external data only")
-        mlflow.log_param("model_family", run.model_family)
-        # The trainer writes metrics and the candidate artifact into this active run.
-        train_candidate(run.dataset_uri, run.config.get("epochs", 1))
-        return mlflow_run.info.run_id
+from backend.services.daily_health_training import train_daily_health_candidate
 
 
 async def shutdown(_: dict) -> None:
@@ -61,9 +46,14 @@ async def run_training(_: dict, training_run_id: str) -> None:
         await session.commit()
 
 
+async def run_daily_health_candidate_training(_: dict) -> None:
+    """Create a review-only version when enough consented self-reports have arrived."""
+    async with SessionLocal() as session:
+        await train_daily_health_candidate(session)
+
+
 class WorkerSettings:
-    # This worker consumes only the training queue, not image inference jobs.
-    functions = [run_training]
+    functions = [run_training, run_daily_health_candidate_training]
     on_shutdown = shutdown
     redis_settings: RedisSettings = redis_settings()
     queue_name = "training"
