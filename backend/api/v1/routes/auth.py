@@ -34,6 +34,7 @@ async def skin_profile(
         raise HTTPException(status_code=401, detail="Account no longer exists")
     profile = await session.get(UserProfile, user_id)
     return SkinProfileResponse(
+        user_id=user_id,
         display_name=account.display_name,
         email=account.email,
         profile=(
@@ -48,6 +49,26 @@ async def skin_profile(
             if profile else None
         ),
     )
+
+
+@router.put("/daily-health-consent", status_code=status.HTTP_200_OK)
+async def grant_daily_health_consent(
+    user_id: uuid.UUID = Depends(require_user_token),
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, str]:
+    if await session.scalar(select(Account.id).where(Account.user_id == user_id)) is None:
+        raise HTTPException(status_code=401, detail="Account no longer exists")
+    existing = await session.scalar(
+        select(Consent.id).where(
+            Consent.user_id == user_id,
+            Consent.version == "daily-health-v1",
+            Consent.revoked_at.is_(None),
+        ).limit(1)
+    )
+    if existing is None:
+        session.add(Consent(user_id=user_id, version="daily-health-v1"))
+        await session.commit()
+    return {"status": "granted"}
 
 
 @router.put("/profile", status_code=status.HTTP_200_OK)

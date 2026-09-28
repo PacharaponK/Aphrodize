@@ -6,9 +6,13 @@ from pydantic import ValidationError
 
 from backend.api.schemas.consent import WellnessProfileUpsert
 from backend.api.v1.router import api_router
-from backend.api.v1.routes.auth import save_wellness_profile
+from backend.api.v1.routes.auth import (
+    grant_daily_health_consent,
+    save_wellness_profile,
+    skin_profile,
+)
 from backend.core.db.base import Base
-from backend.core.db.models import Consent, User, UserProfile
+from backend.core.db.models import Account, Consent, User, UserProfile
 
 
 def profile_payload(**changes):
@@ -82,3 +86,51 @@ async def test_profile_upsert_requires_consent_and_records_guardian_consent() ->
         for value in session.added
     )
     assert "ON CONFLICT" in str(session.executed)
+
+
+@pytest.mark.asyncio
+async def test_account_profile_exposes_identity_and_daily_consent_is_idempotent() -> None:
+    user_id = uuid4()
+
+    class Session:
+        def __init__(self):
+            self.consent_exists = False
+            self.added = []
+            self.commits = 0
+
+        async def scalar(self, query):
+            if "accounts" in str(query):
+                return Account(display_name="A", email="a@example.com")
+            return uuid4() if self.consent_exists else None
+
+        async def get(self, model, _user_id):
+            return None
+
+        def add(self, value):
+            self.added.append(value)
+            self.consent_exists = True
+
+        async def commit(self):
+            self.commits += 1
+
+    session = Session()
+    profile = await skin_profile(user_id, session)
+    assert profile.user_id == user_id
+    assert (await grant_daily_health_consent(user_id, session))["status"] == "granted"
+    assert (await grant_daily_health_consent(user_id, session))["status"] == "granted"
+    assert session.commits == 1
+    assert len(session.added) == 1
+    assert isinstance(session.added[0], Consent)
+    assert session.added[0].version == "daily-health-v1"
+
+    class MissingAccount(Session):
+        async def scalar(self, query):
+            if "accounts" in str(query):
+                return None
+            return await super().scalar(query)
+
+    missing_account = MissingAccount()
+    with pytest.raises(HTTPException) as error:
+        await grant_daily_health_consent(user_id, missing_account)
+    assert error.value.status_code == 401
+    assert missing_account.added == []

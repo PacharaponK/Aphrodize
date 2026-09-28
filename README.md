@@ -77,6 +77,8 @@ docker compose up -d --build
 
 For local demos, run `docker compose run --rm fixture` to load the account and initial health answers in [`fixtures/users.yaml`](fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; a missing questionnaire is added without replacing existing answers.
 
+Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
+
 Check the startup state:
 
 ```powershell
