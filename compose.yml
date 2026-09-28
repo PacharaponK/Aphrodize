@@ -1,5 +1,6 @@
 name: aphrodize
 
+# The API accepts uploads; Redis hands image and training jobs to separate workers.
 x-api-environment: &api-environment
   APP_ENV: development
   POSTGRES_HOST: postgres
@@ -15,10 +16,14 @@ x-api-environment: &api-environment
   MINIO_BUCKET: aphrodize-private
   LABEL_STUDIO_URL: http://label-studio:8080
   LABEL_STUDIO_API_KEY: ${LABEL_STUDIO_API_KEY:-}
+  LABEL_STUDIO_PROJECT_ID: ${LABEL_STUDIO_PROJECT_ID:-0}
   API_USERNAME: ${API_USERNAME:-aphrodize}
   API_PASSWORD: ${API_PASSWORD:?Set API_PASSWORD in .env}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-jwt-secret-in-production}
+  JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
   MLFLOW_TRACKING_URI: http://mlflow:5000
   MODEL_VERSION: ${MODEL_VERSION:-ffhq-wrinkle-stage2-unet}
+  APHRODIZE_WRINKLE_APPROVED_MANIFEST: ${APHRODIZE_WRINKLE_APPROVED_MANIFEST:-}
 
 x-container-logging: &container-logging
   driver: local
@@ -27,6 +32,7 @@ x-container-logging: &container-logging
     max-file: "5"
 
 services:
+  # PostgreSQL stores consent, analysis, annotation, and run metadata.
   postgres:
     image: postgres:16-alpine
     environment:
@@ -43,6 +49,7 @@ services:
       retries: 20
     logging: *container-logging
 
+  # Redis carries IDs for asynchronous inference and training jobs.
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
@@ -57,8 +64,9 @@ services:
       retries: 20
     logging: *container-logging
 
+  # MinIO keeps uploaded and derived image bytes out of PostgreSQL.
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aphrodize}
@@ -70,30 +78,33 @@ services:
       - "9001:9001"
     logging: *container-logging
 
+  # Initialize the private, annotation, and MLflow buckets once per stack.
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-aphrodize}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
     entrypoint: >-
       /bin/sh -c 'until mc alias set local http://minio:9000 "$${MINIO_ACCESS_KEY}" "$${MINIO_SECRET_KEY}";
       do sleep 1; done; mc mb --ignore-existing local/aphrodize-private;
+      mc mb --ignore-existing local/aphrodize-annotation;
       mc mb --ignore-existing local/mlflow'
     depends_on:
       minio:
         condition: service_started
     logging: *container-logging
 
+  # Human reviewers draw wrinkle masks in a separate Label Studio project.
   label-studio:
     image: heartexlabs/label-studio:latest
     environment:
-      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "false"
-      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize}
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
+      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize@example.local}
       LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?Set LABEL_STUDIO_PASSWORD in .env}
     volumes:
       - label_studio_data:/label-studio/data
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8080/user/login/', timeout=3)"]
       interval: 10s
@@ -101,6 +112,7 @@ services:
       retries: 12
     logging: *container-logging
 
+  # MLflow records experiments in PostgreSQL and checkpoints in MinIO.
   mlflow:
     build:
       context: .
@@ -123,7 +135,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:5000/health', timeout=3)"]
       interval: 10s
@@ -131,6 +143,21 @@ services:
       retries: 12
     logging: *container-logging
 
+  fixture:
+    profiles: [demo]
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: python -m backend.scripts.load_fixtures /app/fixtures/users.yaml
+    environment: *api-environment
+    volumes:
+      - ./fixtures:/app/fixtures:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *container-logging
+
+  # FastAPI validates requests and queues jobs without running the model inline.
   api:
     build:
       context: .
@@ -158,6 +185,7 @@ services:
       retries: 12
     logging: *container-logging
 
+  # The inference worker analyzes images and publishes consented review tasks.
   inference-worker:
     build:
       context: .
@@ -168,6 +196,8 @@ services:
     volumes:
       - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
     depends_on:
+      api:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -178,6 +208,7 @@ services:
         condition: service_completed_successfully
     logging: *container-logging
 
+  # The trainer consumes approved external datasets and logs candidate models.
   trainer-worker:
     build:
       context: .

@@ -44,7 +44,7 @@ Create consent before posting a questionnaire or an image. `POST /api/v1/consent
 
 ## Local credentials
 
-Copy `.env.example` to `.env` and provide the local credentials before starting the stack. `.env` is ignored by Git. All API routes other than `/api/v1/health` require HTTP Basic authentication using `API_USERNAME` and `API_PASSWORD`; FastAPI Docs supports the **Authorize** control. PostgreSQL, Redis, MinIO, and Label Studio read their respective credentials from the same local file. Label Studio permits local user registration at `http://localhost:8080`. MLflow is internal to the Compose network and does not provide built-in user/password authentication in this initial stack.
+Copy `.env.example` to `.env` and provide the local credentials before starting the stack. `.env` is ignored by Git. All API routes other than `/api/v1/health` require HTTP Basic authentication using `API_USERNAME` and `API_PASSWORD`; FastAPI Docs supports the **Authorize** control. PostgreSQL, Redis, MinIO, and Label Studio read their respective credentials from the same local file. Sign in to Label Studio with the account configured in `.env`. MLflow has no built-in authentication in this stack, so its host port is bound to localhost.
 
 The Compose stack uses MinIO's public Quay images. A one-time `minio-init` service waits for MinIO and creates the private application and MLflow artifact buckets with the official MinIO client image.
 

@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Camera, House } from "lucide-react";
+import { Camera, House, UserRound } from "lucide-react";
 
-export function AppNavigation({ active, mobileOpen = false, onClose }: { active: "dashboard" | "capture" | "none"; mobileOpen?: boolean; onClose?: () => void }) {
+export function AppNavigation({ active, mobileOpen = false, onClose }: { active: "dashboard" | "capture" | "profile" | "none"; mobileOpen?: boolean; onClose?: () => void }) {
   const homeHref = active === "dashboard" ? "#dashboard" : "/";
 
   return (
@@ -17,11 +17,13 @@ export function AppNavigation({ active, mobileOpen = false, onClose }: { active:
         <nav>
           <Link className={`nav-link${active === "dashboard" ? " active" : ""}`} href={homeHref} aria-current={active === "dashboard" ? "page" : undefined}><House className="nav-icon" aria-hidden="true" />ภาพรวม</Link>
           <Link className={`nav-link${active === "capture" ? " active" : ""}`} href="/capture" aria-current={active === "capture" ? "page" : undefined}><Camera className="nav-icon" aria-hidden="true" />วิเคราะห์ภาพ</Link>
+          <Link className={`nav-link${active === "profile" ? " active" : ""}`} href="/profile" aria-current={active === "profile" ? "page" : undefined}><UserRound className="nav-icon" aria-hidden="true" />Skin profile</Link>
         </nav>
       </aside>
       <nav className="mobile-nav" aria-label="เมนูมือถือ">
         <Link className={active === "dashboard" ? "active" : ""} href={homeHref} aria-current={active === "dashboard" ? "page" : undefined}><House className="nav-icon" aria-hidden="true" /><span>ภาพรวม</span></Link>
         <Link className={active === "capture" ? "active" : ""} href="/capture" aria-current={active === "capture" ? "page" : undefined}><Camera className="nav-icon" aria-hidden="true" /><span>วิเคราะห์</span></Link>
+        <Link className={active === "profile" ? "active" : ""} href="/profile" aria-current={active === "profile" ? "page" : undefined}><UserRound className="nav-icon" aria-hidden="true" /><span>โปรไฟล์</span></Link>
       </nav>
     </>
   );

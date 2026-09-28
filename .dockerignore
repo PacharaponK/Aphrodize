@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 **/__pycache__
+.pytest_cache
+.ruff_cache
 .venv
 ai/.venv
 node_modules
