@@ -92,11 +92,11 @@ erDiagram
 ## สิ่งที่ต้องแก้จากระบบปัจจุบัน
 
 1. เสร็จแล้ว: [แบบสอบถามตอนสมัคร](../../../frontend/src/app/signup/page.tsx) เก็บเฉพาะโปรไฟล์ใน `user_profiles`; คำถามรายวันที่ไม่มีวันที่กำกับถูกถอดออกจาก onboarding
-2. [daily tracker API ฝั่งเว็บ](../../../frontend/src/app/api/daily-health/entries/route.ts) สร้าง pseudonymous user ใหม่เมื่อยังไม่มี cookie ให้ใช้ `user_id` จาก session ของบัญชีที่ล็อกอินอยู่ เพื่อให้ประวัติรายวันเป็นของบัญชีเดียวกัน
+2. เสร็จแล้ว: [daily tracker API ฝั่งเว็บ](../../../frontend/src/app/api/daily-health/entries/route.ts) ใช้ `user_id` จาก session บัญชีที่ล็อกอิน และให้ backend บันทึก daily-health consent กับบัญชีนั้น; ไม่สร้าง pseudonymous user สำหรับข้อมูลรายวันอีก
 3. [ตารางรายวันปัจจุบัน](../../../backend/core/db/models.py) ยังใช้ `outdoor_exposure_choice` (ช่วง 1–4) ให้เก็บค่านาทีจริงเป็น source of truth และแปลงเป็นช่วงเฉพาะจุดที่โมเดลยังต้องการค่า 1–4
 4. `daily_lifestyle_observations` และ `daily_health_entries` เก็บข้อมูลการนอน น้ำ และ outdoor ที่ทับซ้อนกัน ให้ใช้ `daily_health_entries` เป็นข้อมูลรายวันที่ผู้ใช้กรอก และปรับ forecast ให้อ่านจากตารางนี้ ก่อนพิจารณาย้าย/เลิกใช้ตารางเดิม; `analyses` ยังเก็บผลวิเคราะห์ภาพแยกต่างหาก
 5. หน้าโปรไฟล์อ่านจาก `user_profiles` แล้ว; หน้า recommendation ยังให้คำแนะนำทั่วไปและยังไม่ใช้ข้อมูลโปรไฟล์เฉพาะบุคคล
-6. [fixture](../../../fixtures/users.yaml) มี `profile` และ `daily_entries` สองวันที่ผูกกับ `user_id` เดียวกับบัญชี demo แล้ว; daily tracker ฝั่งเว็บยังต้องปรับให้ใช้บัญชีที่ล็อกอิน
+6. เสร็จแล้ว: [fixture](../../../fixtures/users.yaml) มี `profile` และ `daily_entries` สองวันที่ผูกกับ `user_id` เดียวกับบัญชี demo; เมื่อ login ด้วยบัญชี demo daily tracker จะอ่านประวัติชุดนี้
 
 ## การย้ายข้อมูลและเกณฑ์ตรวจรับ
 

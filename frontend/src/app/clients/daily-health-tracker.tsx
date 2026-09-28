@@ -246,7 +246,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       setPrediction(null);
       setForm({ ...emptyForm, date: localDateValue() });
       setPersonalProfile({
-        has_session: false,
+        has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
         model_training_consent_active: false,
@@ -255,7 +255,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         smoking_status: null,
       });
       setStorageStatus("saved");
-      setStorageMessage("ลบประวัติสุขภาพและผลที่รายงานเองแล้ว; ล้าง candidate model และออกจาก session เรียบร้อย");
+      setStorageMessage("ลบประวัติสุขภาพและผลที่รายงานเองแล้ว; ล้าง candidate model แล้ว บัญชียังคงเข้าสู่ระบบอยู่");
     } catch (error) {
       setStorageStatus("failed");
       setStorageMessage(error instanceof Error ? error.message : "ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง");
@@ -313,9 +313,9 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       } catch {
         // The daily entry is already saved; profile refresh is best-effort.
       }
-    } catch {
+    } catch (error) {
       setStorageStatus("failed");
-      setStorageMessage("บันทึกข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง");
+      setStorageMessage(error instanceof Error ? error.message : "บันทึกข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง");
     }
   }
 

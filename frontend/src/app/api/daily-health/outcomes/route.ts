@@ -1,11 +1,9 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
-const COOKIE = "aphrodize_daily_health";
 const MAX_BODY_BYTES = 16_384;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type OutcomeInput = {
   consent_to_store: true;
@@ -17,31 +15,6 @@ type OutcomeInput = {
 
 function failed(status: number, detail: string): NextResponse {
   return NextResponse.json({ detail }, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-function currentUser(request: NextRequest): string | null {
-  const parts = request.cookies.get(COOKIE)?.value.split(".");
-  if (!parts || parts.length !== 3) return null;
-  const [id, expiry, mac] = parts;
-  if (!UUID.test(id) || !/^\d{13}$/.test(expiry) || !/^[0-9a-f]{64}$/.test(mac)) return null;
-  if (Date.now() >= Number(expiry)) return null;
-  const secret = process.env.ANALYSIS_SESSION_SECRET;
-  if (!secret) return null;
-  const expected = Buffer.from(createHmac("sha256", secret).update(id + "." + expiry).digest("hex"), "hex");
-  const supplied = Buffer.from(mac, "hex");
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected) ? id : null;
-}
-
-function apiHeaders(): HeadersInit {
-  const username = process.env.BACKEND_API_USERNAME;
-  const password = process.env.BACKEND_API_PASSWORD;
-  if (!username || !password) throw new Error("Backend credentials are not configured");
-  return { Authorization: "Basic " + Buffer.from(username + ":" + password).toString("base64") };
-}
-
-function backendUrl(path: string): string {
-  const base = (process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
-  return base + "/api/v1" + path;
 }
 
 function validScore(value: unknown): value is number | null {
@@ -76,9 +49,7 @@ async function backendFailure(response: Response): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && (!host || origin !== request.nextUrl.protocol + "//" + host)) {
+  if (!sameOrigin(request)) {
     return failed(403, "Invalid request origin");
   }
 
@@ -97,11 +68,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   if (!isOutcomeInput(body)) return failed(400, "Valid self-reported outcome and consent are required");
 
-  const userId = currentUser(request);
-  if (!userId) return failed(401, "Save a daily health entry before reporting an outcome");
-
   try {
-    const saved = await fetch(backendUrl("/daily-health/users/" + userId + "/outcomes"), {
+    const account = await accountSession(request);
+    if (!account) return failed(401, "Please sign in before reporting an outcome");
+    const saved = await fetch(backendUrl("/daily-health/users/" + account.userId + "/outcomes"), {
       method: "PUT",
       headers: { ...apiHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({

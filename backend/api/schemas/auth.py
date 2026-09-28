@@ -55,6 +55,7 @@ class LoginResponse(BaseModel):
 
 
 class SkinProfileResponse(BaseModel):
+    user_id: UUID
     display_name: str
     email: str
     profile: dict[str, str] | None = None

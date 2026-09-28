@@ -1,12 +1,9 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
-const COOKIE = "aphrodize_daily_health";
-const YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 16_384;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type DailyHealthRequest = {
   consent_to_store: true;
@@ -92,44 +89,6 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
       || (typeof value.prediction.model_id === "string" && value.prediction.model_id.length <= 128));
 }
 
-function apiHeaders(): HeadersInit {
-  const username = process.env.BACKEND_API_USERNAME;
-  const password = process.env.BACKEND_API_PASSWORD;
-  if (!username || !password) throw new Error("Backend credentials are not configured");
-  return { Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}` };
-}
-
-function backendUrl(path: string): string {
-  return `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1${path}`;
-}
-
-function signature(value: string): string {
-  const secret = process.env.ANALYSIS_SESSION_SECRET;
-  if (!secret) throw new Error("Session signing secret is not configured");
-  return createHmac("sha256", secret).update(value).digest("hex");
-}
-
-function currentUser(request: NextRequest): string | null {
-  const parts = request.cookies.get(COOKIE)?.value.split(".");
-  if (!parts || parts.length !== 3) return null;
-  const [id, expiry, mac] = parts;
-  if (!UUID.test(id) || !/^\d{13}$/.test(expiry) || !/^[0-9a-f]{64}$/.test(mac)) return null;
-  if (Date.now() >= Number(expiry)) return null;
-  const expected = Buffer.from(signature(`${id}.${expiry}`), "hex");
-  const supplied = Buffer.from(mac, "hex");
-  return supplied.length === expected.length && timingSafeEqual(supplied, expected) ? id : null;
-}
-
-function setUserCookie(response: NextResponse, userId: string, expiry: number): void {
-  response.cookies.set(COOKIE, `${userId}.${expiry}.${signature(`${userId}.${expiry}`)}`, {
-    httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
-    path: "/api/daily-health",
-    maxAge: Math.floor((expiry - Date.now()) / 1000),
-  });
-}
-
 async function backendFailure(response: Response): Promise<NextResponse> {
   const body = await response.json().catch(() => null);
   const detail = typeof body?.detail === "string" ? body.detail : "Daily health database request failed";
@@ -137,19 +96,18 @@ async function backendFailure(response: Response): Promise<NextResponse> {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const userId = currentUser(request);
-  if (!userId) {
-    return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
-  }
-
   const requestedLimit = Number(request.nextUrl.searchParams.get("limit") ?? 30);
   const limit = Number.isInteger(requestedLimit)
     ? Math.min(90, Math.max(1, requestedLimit))
     : 30;
 
   try {
+    const account = await accountSession(request);
+    if (!account) {
+      return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
+    }
     const response = await fetch(
-      backendUrl(`/daily-health/users/${userId}/entries?limit=${limit}`),
+      backendUrl(`/daily-health/users/${account.userId}/entries?limit=${limit}`),
       { headers: apiHeaders(), cache: "no-store" },
     );
     if (!response.ok) return backendFailure(response);
@@ -162,9 +120,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && (!host || origin !== `${request.nextUrl.protocol}//${host}`)) {
+  if (!sameOrigin(request)) {
     return failed(403, "Invalid request origin");
   }
   if (Number(request.headers.get("content-length")) > MAX_BODY_BYTES) {
@@ -185,27 +141,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return failed(400, "Valid daily health data and storage consent are required");
   }
 
-  let userId = currentUser(request);
-  let cookieExpiry: number | null = null;
   try {
+    const account = await accountSession(request);
+    if (!account) return failed(401, "กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูลสุขภาพรายวัน");
     const headers = apiHeaders();
-    if (!userId) {
-      const consent = await fetch(backendUrl("/consents"), {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ version: "daily-health-v1" }),
-        cache: "no-store",
-      });
-      if (!consent.ok) return backendFailure(consent);
-      const result: unknown = await consent.json();
-      if (!isRecord(result) || typeof result.user_id !== "string" || !UUID.test(result.user_id)) {
-        throw new Error("Backend returned an invalid user identity");
-      }
-      userId = result.user_id;
-      cookieExpiry = Date.now() + YEAR_MS;
-    }
-
-    const saved = await fetch(backendUrl(`/daily-health/users/${userId}/entries`), {
+    const consent = await fetch(backendUrl("/auth/daily-health-consent"), {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${account.token}` },
+      cache: "no-store",
+    });
+    if (!consent.ok) return backendFailure(consent);
+    const saved = await fetch(backendUrl(`/daily-health/users/${account.userId}/entries`), {
       method: "PUT",
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -226,20 +172,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }),
       cache: "no-store",
     });
-    if (!saved.ok) {
-      const response = await backendFailure(saved);
-      if (cookieExpiry) setUserCookie(response, userId, cookieExpiry);
-      return response;
-    }
-    const response = NextResponse.json(await saved.json(), {
+    if (!saved.ok) return backendFailure(saved);
+    return NextResponse.json(await saved.json(), {
       status: 200,
       headers: { "Cache-Control": "no-store" },
     });
-    if (cookieExpiry) setUserCookie(response, userId, cookieExpiry);
-    return response;
   } catch {
-    const response = failed(502, "Could not save daily health data. Check that the backend and database are running.");
-    if (cookieExpiry && userId) setUserCookie(response, userId, cookieExpiry);
-    return response;
+    return failed(502, "Could not save daily health data. Check that the backend and database are running.");
   }
 }
