@@ -116,8 +116,21 @@ def assess_source_quality(
         mean_luma = float(grayscale.mean())
         dark_ratio = float(np.mean(grayscale <= 10))
         bright_ratio = float(np.mean(grayscale >= 245))
-        # Low Laplacian variance is a simple proxy for an out-of-focus face.
-        blur_variance = float(cv2.Laplacian(grayscale, cv2.CV_64F).var())
+        # Measure at a fixed maximum scale so large sharp photos are not penalized.
+        longest_side = max(grayscale.shape)
+        if longest_side > 256:
+            scale = 256 / longest_side
+            grayscale_for_blur = cv2.resize(
+                grayscale,
+                (
+                    max(1, round(grayscale.shape[1] * scale)),
+                    max(1, round(grayscale.shape[0] * scale)),
+                ),
+                interpolation=cv2.INTER_AREA,
+            )
+        else:
+            grayscale_for_blur = grayscale
+        blur_variance = float(cv2.Laplacian(grayscale_for_blur, cv2.CV_64F).var())
     else:
         mean_luma = dark_ratio = bright_ratio = blur_variance = 0.0
         issues.append("invalid_face_bounds")
