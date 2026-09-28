@@ -2,12 +2,14 @@ from pathlib import Path
 
 import yaml
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.schemas.auth import SignupRequest
-from backend.api.schemas.consent import InitialWellnessQuestionnaire
+from backend.api.schemas.consent import WellnessProfileUpsert
+from backend.api.schemas.daily_health import DailyHealthEntryUpsert
 from backend.api.v1.routes.auth import signup
-from backend.core.db.models import Account, Questionnaire
+from backend.core.db.models import Account, Consent, DailyHealthEntry, UserProfile
 
 
 async def load_users(path: Path, session: AsyncSession) -> None:
@@ -17,18 +19,44 @@ async def load_users(path: Path, session: AsyncSession) -> None:
 
     for row in data["users"]:
         user = SignupRequest.model_validate(row)
-        questionnaire = (
-            InitialWellnessQuestionnaire.model_validate(row["questionnaire"])
-            if "questionnaire" in row else None
+        profile = (
+            WellnessProfileUpsert.model_validate(row["profile"])
+            if "profile" in row else None
         )
         account = await session.scalar(select(Account).where(Account.email == user.email))
         user_id = account.user_id if account else (await signup(user, session)).user_id
-        if questionnaire is not None:
-            existing = await session.scalar(
-                select(Questionnaire).where(Questionnaire.user_id == user_id)
-                .order_by(Questionnaire.created_at.asc()).limit(1)
-            )
+        changed = False
+        if profile is not None:
+            existing = await session.get(UserProfile, user_id)
             if existing is None:
-                answers = questionnaire.answers_for_storage()
-                session.add(Questionnaire(user_id=user_id, answers=answers))
-                await session.commit()
+                session.add(UserProfile(user_id=user_id, **profile.profile_values()))
+                changed = True
+
+        entries = row.get("daily_entries", [])
+        if entries:
+            consent = await session.scalar(
+                select(Consent.id).where(
+                    Consent.user_id == user_id,
+                    Consent.version == "daily-health-v1",
+                    Consent.revoked_at.is_(None),
+                ).limit(1)
+            )
+            if consent is None:
+                session.add(Consent(user_id=user_id, version="daily-health-v1"))
+                changed = True
+            for entry in entries:
+                DailyHealthEntryUpsert.model_validate(entry)
+                if entry["data_source"] != "fixture":
+                    raise ValueError("Fixture daily entries must use data_source=fixture")
+                score = round(min(100.0, entry["sleep_duration_minutes"] / 540 * 100), 1)
+                if entry["sleep_score_0_100"] != score:
+                    raise ValueError("Fixture sleep score does not match its duration")
+                statement = insert(DailyHealthEntry).values(user_id=user_id, **entry)
+                inserted_id = await session.scalar(
+                    statement.on_conflict_do_nothing(
+                        index_elements=[DailyHealthEntry.user_id, DailyHealthEntry.local_date]
+                    ).returning(DailyHealthEntry.id)
+                )
+                changed = changed or inserted_id is not None
+        if changed:
+            await session.commit()

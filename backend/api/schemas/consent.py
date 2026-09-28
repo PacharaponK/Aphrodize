@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
@@ -16,38 +16,25 @@ class ConsentRead(BaseModel):
     accepted_at: datetime
 
 
-class QuestionnaireCreate(BaseModel):
-    answers: dict[str, Any] = Field(
-        description="Only user-reported answers; no inferred health data."
-    )
-
-
-class InitialWellnessQuestionnaire(BaseModel):
+class WellnessProfileUpsert(BaseModel):
     sex: Literal["male", "female", "prefer_not_to_say"]
     age_group: Literal["under_13", "13_17", "18_24", "25_34", "35_44", "45_54", "55_plus"]
     guardian_consent: bool = False
-    sleep_hours: float = Field(ge=0, le=24)
-    sleep_quality: Literal["poor", "fair", "good", "excellent"]
-    water_liters: float = Field(ge=0, le=10)
-    outdoor_minutes: int = Field(ge=0, le=1440)
     sunscreen_frequency: Literal["never", "sometimes", "most_days", "every_day"]
     skin_type: Literal["dry", "normal", "combination", "oily", "unsure"]
-    stress_level: int = Field(ge=1, le=5)
     menstrual_tracking: Literal["yes", "no", "prefer_not_to_say", "not_applicable"]
-    menstrual_status: Literal[
-        "on_period", "not_on_period", "unsure", "prefer_not_to_say", "not_applicable"
+    wellness_goal: Literal[
+        "skin_tracking", "sleep", "hydration", "outdoor_habits", "general_wellness"
     ]
-    wellness_goal: Literal["skin_tracking", "sleep", "hydration", "outdoor_habits", "general_wellness"]
 
     @model_validator(mode="after")
-    def require_guardian_consent_for_children(self) -> "InitialWellnessQuestionnaire":
+    def require_guardian_consent_for_children(self) -> "WellnessProfileUpsert":
         if self.age_group == "under_13" and not self.guardian_consent:
             raise ValueError("Guardian consent is required for users under 13")
         return self
 
-    def answers_for_storage(self) -> dict[str, Any]:
-        answers = self.model_dump()
+    def profile_values(self) -> dict[str, str]:
+        values = self.model_dump(exclude={"guardian_consent"})
         if self.sex == "male":
-            answers["menstrual_tracking"] = "not_applicable"
-            answers["menstrual_status"] = "not_applicable"
-        return answers
+            values["menstrual_tracking"] = "not_applicable"
+        return values

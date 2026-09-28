@@ -5,11 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from minio.error import S3Error
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.schemas.analysis import AnalysisRead
-from backend.core.db.models import Analysis, Questionnaire, User
+from backend.core.db.models import Analysis, User
 from backend.core.db.session import get_session
 from backend.libs.minio_client import analysis_artifact_key, get_bytes
 from backend.services.analysis_service import create_analysis, recommendations_for
@@ -92,14 +91,7 @@ async def get_analysis_artifact(
 async def get_recommendations(
     analysis_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> dict:
-    # Recommendations use the completed analysis and the newest questionnaire.
     analysis = await session.get(Analysis, analysis_id)
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    questionnaire = await session.scalar(
-        select(Questionnaire)
-        .where(Questionnaire.user_id == analysis.user_id)
-        .order_by(Questionnaire.created_at.desc())
-        .limit(1)
-    )
-    return recommendations_for(analysis, questionnaire.answers if questionnaire else {})
+    return recommendations_for(analysis, {})

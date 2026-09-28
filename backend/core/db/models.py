@@ -64,7 +64,9 @@ class Account(Base):
     display_name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(256))
-    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     password_updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -172,12 +174,19 @@ class Consent(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-class Questionnaire(Base):
-    __tablename__ = "questionnaires"
-    id: Mapped[uuid.UUID] = uuid_pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
-    answers: Mapped[dict] = mapped_column(JSON)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    sex: Mapped[str] = mapped_column(String(32))
+    age_group: Mapped[str] = mapped_column(String(32))
+    skin_type: Mapped[str] = mapped_column(String(32))
+    wellness_goal: Mapped[str] = mapped_column(String(32))
+    sunscreen_frequency: Mapped[str] = mapped_column(String(32))
+    menstrual_tracking: Mapped[str] = mapped_column(String(32))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class Product(Base):
@@ -195,7 +204,9 @@ class Product(Base):
     variant: Mapped[str] = mapped_column(String(120), default="")
     category: Mapped[str] = mapped_column(String(64))
     price_satang: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    price_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    price_checked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     ingredients_label: Mapped[str] = mapped_column(Text, default="")
     ingredients_inci: Mapped[list[str]] = mapped_column(JSON, default=list)
     warnings_label: Mapped[str] = mapped_column(Text, default="")
