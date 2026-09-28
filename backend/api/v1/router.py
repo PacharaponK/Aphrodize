@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from backend.api.deps import require_api_credentials
+from backend.api.deps import require_admin_credentials, require_api_credentials
 from backend.api.v1.routes import (
     analyses,
     auth,
@@ -10,6 +10,7 @@ from backend.api.v1.routes import (
     health,
     inference,
     monitoring,
+    products,
     questionnaires,
     training,
     users,
@@ -52,3 +53,9 @@ api_router.include_router(
     monitoring.router, prefix="/monitoring", tags=["monitoring"], dependencies=protected
 )
 api_router.include_router(users.router, prefix="/users", tags=["users"], dependencies=protected)
+api_router.include_router(
+    products.router,
+    prefix="/admin/products",
+    tags=["admin products"],
+    dependencies=[Depends(require_admin_credentials)],
+)

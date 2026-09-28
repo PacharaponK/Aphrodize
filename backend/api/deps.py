@@ -24,6 +24,20 @@ def require_api_credentials(credentials: HTTPBasicCredentials = Depends(security
         )
 
 
+def require_admin_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> None:
+    if not settings.admin_username or len(settings.admin_password) < 8:
+        raise HTTPException(status_code=503, detail="Admin access is not configured")
+    if not (
+        secrets.compare_digest(credentials.username, settings.admin_username)
+        and secrets.compare_digest(credentials.password, settings.admin_password)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid admin credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
 def require_user_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_security),
 ) -> UUID:

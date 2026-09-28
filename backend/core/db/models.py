@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -69,6 +70,36 @@ class Questionnaire(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     answers: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Product(Base):
+    """Admin-reviewed catalog data; intentionally independent of user records."""
+
+    __tablename__ = "products"
+    __table_args__ = (
+        CheckConstraint("price_satang IS NULL OR price_satang >= 0", name="ck_product_price"),
+        CheckConstraint("status IN ('draft', 'published', 'archived')", name="ck_product_status"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    brand: Mapped[str] = mapped_column(String(120))
+    name: Mapped[str] = mapped_column(String(200))
+    variant: Mapped[str] = mapped_column(String(120), default="")
+    category: Mapped[str] = mapped_column(String(64))
+    price_satang: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ingredients_label: Mapped[str] = mapped_column(Text, default="")
+    ingredients_inci: Mapped[list[str]] = mapped_column(JSON, default=list)
+    warnings_label: Mapped[str] = mapped_column(Text, default="")
+    target_skin_types: Mapped[list[str]] = mapped_column(JSON, default=list)
+    concerns: Mapped[list[str]] = mapped_column(JSON, default=list)
+    source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String(16), default="draft")
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class DailyLifestyleObservation(Base):

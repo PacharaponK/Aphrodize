@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     label_studio_project_id: int = 0
     api_username: str = "aphrodize"
     api_password: str = ""
+    admin_username: str = ""
+    admin_password: str = ""
     jwt_secret_key: str = "change-this-jwt-secret-in-production"
     jwt_expire_minutes: int = 10_080
     mlflow_tracking_uri: str = "http://localhost:5000"

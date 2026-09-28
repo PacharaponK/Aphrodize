@@ -119,9 +119,29 @@ erDiagram
         datetime created_at
         datetime completed_at
     }
+
+    PRODUCTS {
+        uuid id PK
+        string brand
+        string name
+        string variant
+        string category
+        int price_satang
+        datetime price_checked_at
+        string ingredients_label
+        json ingredients_inci
+        string warnings_label
+        json target_skin_types
+        json concerns
+        string source_url
+        string status
+        datetime reviewed_at
+        datetime created_at
+        datetime updated_at
+    }
 ```
 
-`PK` คือ primary key, `FK` คือ foreign key, `UK` คือ unique key. ความสัมพันธ์ทั้งหมดที่ลากเส้นอยู่ในแผนภาพมี foreign key ไปยัง `users.id` จริง ส่วน `training_runs` และ `inference_runs` ไม่มี foreign key ไปยังตารางอื่น
+`PK` คือ primary key, `FK` คือ foreign key, `UK` คือ unique key. ความสัมพันธ์ทั้งหมดที่ลากเส้นอยู่ในแผนภาพมี foreign key ไปยัง `users.id` จริง ส่วน `training_runs`, `inference_runs` และ `products` ไม่มี foreign key ไปยังตารางอื่น
 
 - `accounts.user_id` เป็น unique: ผู้ใช้หนึ่งคนมีบัญชีได้ไม่เกินหนึ่งบัญชี และผู้ใช้ที่สร้างแบบไม่สมัครอาจไม่มีบัญชี
 - `daily_lifestyle_observations` บังคับ unique `(user_id, date)`; `daily_health_entries` บังคับ unique `(user_id, local_date)`

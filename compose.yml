@@ -163,7 +163,10 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-    environment: *api-environment
+    environment:
+      <<: *api-environment
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - ./backend:/app/backend
       - ./models:/app/models
