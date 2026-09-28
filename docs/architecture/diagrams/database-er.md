@@ -1,6 +1,6 @@
 # ER Diagram — ฐานข้อมูลปัจจุบัน
 
-อ้างอิง SQLAlchemy models ใน [`backend/core/db/models.py`](../../backend/core/db/models.py) ไม่ใช่ schema ที่เสนอไว้ในเอกสารออกแบบเดิม
+อ้างอิง SQLAlchemy models ใน [`backend/core/db/models.py`](../../../backend/core/db/models.py) ไม่ใช่ schema ที่เสนอไว้ในเอกสารออกแบบเดิม
 
 ```mermaid
 erDiagram

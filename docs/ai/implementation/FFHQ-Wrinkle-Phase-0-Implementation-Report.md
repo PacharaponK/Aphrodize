@@ -1,7 +1,7 @@
 # FFHQ-Wrinkle Phase 0 Implementation Report
 
 วันที่ดำเนินการ: 2026-09-21  
-อ้างอิงแผน: `docs/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md`
+อ้างอิงแผน: `docs/ai/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md`
 
 ## สรุปผล
 

@@ -1,6 +1,6 @@
 # AI and Data
 
-> การออกแบบ AI และข้อมูลของ [Aphrodize](Aphrodize.md) สำหรับตรวจสิวและริ้วรอย ใช้ข้อมูลที่ผู้ใช้รายงานประกอบคำแนะนำ และติดตามผลตามเวลา
+> การออกแบบ AI และข้อมูลของ [Aphrodize](../project/Aphrodize.md) สำหรับตรวจสิวและริ้วรอย ใช้ข้อมูลที่ผู้ใช้รายงานประกอบคำแนะนำ และติดตามผลตามเวลา
 
 ## Pipeline
 
@@ -119,4 +119,4 @@ Recommendation ที่อ้างผลภาพต้องไม่แส�
 | Recommendation rules | safety-rule coverage | contraindication and low-confidence block tests |
 | System | end-to-end success rate | latency และ failure rate |
 
-ต้องรายงานผลแยกตาม subgroup เท่าที่ label อนุญาต และเก็บ model metrics พร้อม configuration ใน MLflow ตาม [System and MLOps](System%20and%20MLOps.md)
+ต้องรายงานผลแยกตาม subgroup เท่าที่ label อนุญาต และเก็บ model metrics พร้อม configuration ใน MLflow ตาม [System and MLOps](../architecture/System%20and%20MLOps.md)

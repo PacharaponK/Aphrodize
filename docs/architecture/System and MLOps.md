@@ -1,6 +1,6 @@
 # System and MLOps
 
-> โครงสร้างระบบขั้นต่ำของ [Aphrodize](Aphrodize.md) ตั้งแต่รับภาพจนถึงแสดงผลและติดตามแนวโน้ม
+> โครงสร้างระบบขั้นต่ำของ [Aphrodize](../project/Aphrodize.md) ตั้งแต่รับภาพจนถึงแสดงผลและติดตามแนวโน้ม
 
 ## Architecture
 
@@ -87,7 +87,7 @@ FastAPI
 | `recommendations` | category/ingredient, rationale, input sources, knowledge source, rule version และ safety status |
 | `observations` | timestamped acne count/severity และ regional wrinkle scores สำหรับ trend |
 
-ไม่เก็บชื่อจริงในตารางวิเคราะห์หากระบบ demo ไม่จำเป็นต้องใช้ รายละเอียด data minimization อยู่ใน [Safety and Governance](Safety%20and%20Governance.md)
+ไม่เก็บชื่อจริงในตารางวิเคราะห์หากระบบ demo ไม่จำเป็นต้องใช้ รายละเอียด data minimization อยู่ใน [Safety and Governance](../project/Safety%20and%20Governance.md)
 
 ## Model lifecycle
 
@@ -112,4 +112,4 @@ Dataset version
 - acne และ wrinkle metrics แยกตาม model version ของแต่ละงาน
 - recommendation safety failures และ low-confidence block rate
 
-Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](Safety%20and%20Governance.md)
+Alert และ rollback threshold ต้องอ้างอิง acceptance criteria ใน [Product and Scope](../project/Product%20and%20Scope.md) และข้อกำหนดด้านข้อมูลใน [Safety and Governance](../project/Safety%20and%20Governance.md)

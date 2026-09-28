@@ -9,10 +9,10 @@
 ## Project documents
 
 - [Product and Scope](Product%20and%20Scope.md) — ปัญหา ผู้ใช้เป้าหมาย ขอบเขต และเกณฑ์ส่งมอบ
-- [AI and Data](AI%20and%20Data.md) — image pipeline, model, dataset และ evaluation
-- [System and MLOps](System%20and%20MLOps.md) — architecture, API, database และ deployment
+- [AI and Data](../ai/AI%20and%20Data.md) — image pipeline, model, dataset และ evaluation
+- [System and MLOps](../architecture/System%20and%20MLOps.md) — architecture, API, database และ deployment
 - [Safety and Governance](Safety%20and%20Governance.md) — consent, privacy, fairness และข้อจำกัดการใช้งาน
-- [FFHQ-Wrinkle EDA](EDA.md) — ตรวจความพร้อมของภาพและ manual wrinkle masks ก่อน train
+- [FFHQ-Wrinkle EDA](../ai/EDA.md) — ตรวจความพร้อมของภาพและ manual wrinkle masks ก่อน train
 
 ## ภาพรวมการทำงาน
 

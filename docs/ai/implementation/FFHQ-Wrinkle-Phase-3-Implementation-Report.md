@@ -1,8 +1,8 @@
 # FFHQ-Wrinkle Phase 3 Implementation Report
 
 วันที่ดำเนินการ: 2026-09-22  
-อ้างอิงแผน: `docs/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md`  
-Phase ก่อนหน้า: `docs/implementation/FFHQ-Wrinkle-Phase-2-Implementation-Report.md`
+อ้างอิงแผน: `docs/ai/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md`<br>
+Phase ก่อนหน้า: `docs/ai/implementation/FFHQ-Wrinkle-Phase-2-Implementation-Report.md`
 
 ## สรุปผล
 
@@ -96,7 +96,7 @@ quality gate ทำงานหลัง face detection และก่อนโ
 4. บันทึก `result.json` ด้วย `status: rejected`, rejection flags และ `model_input_created: false`
 5. คืน CLI exit code `2`
 
-ทดสอบ rejection จริงด้วย `diagram/Arphodize.png` ได้ `no_face_detected`; artifact อยู่ที่:
+ทดสอบ rejection จริงด้วย `docs/architecture/diagrams/Arphodize.png` ได้ `no_face_detected`; artifact อยู่ที่:
 
 ```text
 storage/artifacts/ffhq_wrinkle_phase3/rejected-no-face/result.json

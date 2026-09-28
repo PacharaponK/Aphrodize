@@ -96,4 +96,4 @@ MLflow เก็บ run metadata ในฐาน `mlflow` บน PostgreSQL แ�
 4. ดู `docker compose logs --tail 100 inference-worker`; หากเจอ 401 ให้ตรวจ `LABEL_STUDIO_API_KEY` ของ **Label Studio instance ที่กำลังรันจริง** และ `LABEL_STUDIO_PROJECT_ID` ใน `.env` แล้ว restart `api`/`inference-worker`
 5. เมื่อ connection กลับมา worker เรียก `reconcile_annotation_tasks()` ตอนเริ่มและทุกชั่วโมง โดยค้น task เดิมจาก `analysis_id` เพื่อเลี่ยงสร้างซ้ำ
 
-ค่าบริการและ volumes ดู `compose.yml`; ขั้นเตรียม project ดู [Annotation-Review.md](../Annotation-Review.md); ข้อกำหนด dataset และอนุมัติโมเดลดู [Curated-Training.md](../Curated-Training.md)
+ค่าบริการและ volumes ดู `compose.yml`; ขั้นเตรียม project ดู [Annotation-Review.md](../../ai/Annotation-Review.md); ข้อกำหนด dataset และอนุมัติโมเดลดู [Curated-Training.md](../../ai/Curated-Training.md)

@@ -19,7 +19,7 @@ storage/
 
 Phase artifacts, raw images, masks, model weights, user data and logs are local
 and ignored by Git. Commit human-readable implementation reports under
-`docs/implementation/` instead.
+`docs/ai/implementation/` instead.
 
 The canonical paths used by Python code are defined in
 `ai/ffhq_wrinkle/paths.py`; avoid adding dataset or model paths directly inside

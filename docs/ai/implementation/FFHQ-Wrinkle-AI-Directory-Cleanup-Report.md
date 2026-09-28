@@ -136,8 +136,8 @@ working copy ไม่มี conflict markers แล้ว แต่ผู้ใ
 - `storage/README.md`
 - `ai/ffhq_wrinkle/THIRD_PARTY.md`
 - `ai/ffhq_wrinkle/official/README.md`
-- `docs/AI-Data-Prototype.md`
-- `docs/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md`
+- `docs/ai/AI-Data-Prototype.md`
+- `docs/ai/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md`
 
 Phase implementation reports เดิมยังคง path ในเวลาที่รันแต่ละ Phase ไว้เป็น
 historical record; รายงานนี้เป็น migration record สำหรับตำแหน่งปัจจุบัน

@@ -35,7 +35,7 @@ Client
      -> Label Studio SDK -> Label Studio
 ```
 
-For design decisions and data-flow detail, see [docs/architecture.md](docs/architecture.md).
+For design decisions and data-flow detail, see [docs/architecture/README.md](docs/architecture/README.md).
 
 ## Requirements
 
@@ -127,9 +127,9 @@ Open [http://localhost:3000](http://localhost:3000). The capture and result page
 4. Poll the corresponding run endpoint for its state.
 5. Use Label Studio for human-managed annotation. Add `LABEL_STUDIO_API_KEY` to `.env` only when the backend needs SDK access.
 
-To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
+To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/ai/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
 
-For an approved external dataset, use the [controlled wrinkle training workflow](docs/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
+For an approved external dataset, use the [controlled wrinkle training workflow](docs/ai/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
 
 The OpenAPI page documents request and response schemas for each API route.
 
@@ -154,7 +154,7 @@ The supported platform model families are `time_series`, `tabular`, and `image_s
 
 The API includes a small, explicit proof-of-concept for a single user's daily wrinkle score and self-reported sleep, water intake, and outdoor time. Create one observation per day at `POST /api/v1/lifestyle-forecast/users/{user_id}/observations`, then read the report at `GET /api/v1/lifestyle-forecast/users/{user_id}`. After 30 consecutive daily observations, it evaluates an autoregressive baseline against a leakage-safe lifestyle-aware Ridge model on Days 25–30 and forecasts Days 31–37 using the lower-MAE model.
 
-The result is for short-term prediction only. It is not a diagnosis, a treatment recommendation, or evidence that a lifestyle factor causes a skin change. See [the implementation plan](docs/Lifestyle-Aware-Wrinkle-Forecast.md) for data-collection and interpretation rules.
+The result is for short-term prediction only. It is not a diagnosis, a treatment recommendation, or evidence that a lifestyle factor causes a skin change. See [the implementation plan](docs/lifestyle/Lifestyle-Aware-Wrinkle-Forecast.md) for data-collection and interpretation rules.
 
 ## Logs
 
@@ -211,9 +211,9 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 
 ## Further documentation
 
-- [Implementation architecture](docs/architecture.md)
-- [Project overview](docs/Aphrodize.md)
-- [Product and scope](docs/Product%20and%20Scope.md)
-- [AI and data](docs/AI%20and%20Data.md)
-- [System and MLOps](docs/System%20and%20MLOps.md)
-- [Safety and governance](docs/Safety%20and%20Governance.md)
+- [Implementation architecture](docs/architecture/README.md)
+- [Project overview](docs/project/Aphrodize.md)
+- [Product and scope](docs/project/Product%20and%20Scope.md)
+- [AI and data](docs/ai/AI%20and%20Data.md)
+- [System and MLOps](docs/architecture/System%20and%20MLOps.md)
+- [Safety and governance](docs/project/Safety%20and%20Governance.md)
