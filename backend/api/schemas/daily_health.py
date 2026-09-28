@@ -7,6 +7,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 AgeBand = Literal["13_17", "18_60", "61_64", "65_plus"]
+SkinType = Literal[
+    "normal", "dry", "oily", "combination", "sensitive", "prefer_not_to_say"
+]
 
 
 class DailyHealthPersonalContext(BaseModel):
@@ -17,6 +20,8 @@ class DailyHealthPersonalContext(BaseModel):
     age_band: AgeBand | None = None
     smoking_status: Literal["current", "former", "never", "prefer_not_to_say"] | None = None
     currently_menstruating: bool | None = None
+    skin_type_guidance_consent_given: bool = False
+    skin_type: SkinType | None = None
 
     @model_validator(mode="after")
     def require_consent_for_personal_context(self) -> DailyHealthPersonalContext:
@@ -26,6 +31,8 @@ class DailyHealthPersonalContext(BaseModel):
             raise ValueError("personal context requires explicit consent")
         if not self.age_guidance_consent_given and self.age_band is not None:
             raise ValueError("age band requires separate age-guidance consent")
+        if not self.skin_type_guidance_consent_given and self.skin_type is not None:
+            raise ValueError("skin type requires separate skin-type guidance consent")
         return self
 
 
@@ -36,6 +43,7 @@ class DailyHealthPredictionRequest(BaseModel):
     sleep_hours: int = Field(ge=0, le=10)
     sleep_minutes: int = Field(ge=0, le=59)
     water_intake_ml: int = Field(ge=0, le=20_000)
+    weight_kg: float | None = Field(default=None, ge=1, le=500, allow_inf_nan=False)
     outdoor_exposure_choice: int = Field(ge=1, le=4)
     personal_context: DailyHealthPersonalContext | None = None
 
@@ -43,6 +51,19 @@ class DailyHealthPredictionRequest(BaseModel):
     def validate_sleep_duration(self) -> DailyHealthPredictionRequest:
         if self.sleep_hours * 60 + self.sleep_minutes > 600:
             raise ValueError("sleep duration must not exceed 600 minutes")
+        return self
+
+
+class DailyHealthProfileWeightUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    weight_kg: float = Field(ge=1, le=500, allow_inf_nan=False)
+    consent_given: bool
+
+    @model_validator(mode="after")
+    def require_weight_profile_consent(self) -> DailyHealthProfileWeightUpsert:
+        if not self.consent_given:
+            raise ValueError("weight profile requires explicit consent")
         return self
 
 
@@ -59,6 +80,7 @@ class DailyHealthEntryUpsert(BaseModel):
     timezone: str = Field(default="Asia/Bangkok", min_length=1, max_length=64)
     sleep_duration_minutes: int = Field(ge=0, le=600)
     water_intake_ml: int = Field(ge=0, le=20_000)
+    weight_kg: float | None = Field(default=None, ge=1, le=500, allow_inf_nan=False)
     outdoor_exposure_choice: int = Field(ge=1, le=4)
     prediction: DailyHealthPredictionInput | None = None
     personalization_consent: bool = False
@@ -67,6 +89,8 @@ class DailyHealthEntryUpsert(BaseModel):
     age_band: AgeBand | None = None
     smoking_status: Literal["current", "former", "never", "prefer_not_to_say"] | None = None
     currently_menstruating: bool | None = None
+    skin_type_guidance_consent: bool = False
+    skin_type: SkinType | None = None
 
     @model_validator(mode="after")
     def require_personalization_consent(self) -> DailyHealthEntryUpsert:
@@ -76,6 +100,8 @@ class DailyHealthEntryUpsert(BaseModel):
             raise ValueError("personal context requires separate consent")
         if not self.age_guidance_consent and self.age_band is not None:
             raise ValueError("age band requires separate age-guidance consent")
+        if not self.skin_type_guidance_consent and self.skin_type is not None:
+            raise ValueError("skin type requires separate skin-type guidance consent")
         if self.prediction and self.prediction.target_date is not None:
             if self.prediction.target_date not in (
                 self.local_date,
@@ -96,6 +122,9 @@ class DailyHealthEntryRead(BaseModel):
     timezone: str
     sleep_duration_minutes: int
     water_intake_ml: int
+    weight_kg: float | None = None
+    calculated_thirst_score_0_10: float | None = None
+    thirst_score_method: str | None = None
     outdoor_exposure_choice: int
     sleep_score_0_100: float
     sleep_score_method: str

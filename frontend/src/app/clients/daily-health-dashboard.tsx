@@ -6,7 +6,12 @@ export default function DailyHealthDashboard({
 }: {
   prediction: PredictionResponse;
 }) {
-  const recommendations = [...new Set(prediction.guidance)];
+  const profileMessages = new Set(
+    prediction.interpretation.profile_guidance.map((item) => item.message),
+  );
+  const recommendations = [...new Set(prediction.guidance)].filter(
+    (item) => !profileMessages.has(item),
+  );
 
   return (
     <section className="daily-health-dashboard personalized-guidance" aria-label="ผลความเสี่ยงสุขภาพรายวัน" aria-live="polite">

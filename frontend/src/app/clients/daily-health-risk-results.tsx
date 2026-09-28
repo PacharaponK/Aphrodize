@@ -78,8 +78,13 @@ export default function DailyHealthRiskResults({
         <section className="profile-guidance daily-risk-profile-guidance" aria-label="คำแนะนำตามข้อมูลส่วนตัว">
           <h3>คำแนะนำที่ปรับตามข้อมูลส่วนตัว</h3>
           <ul>
-            {interpretation.profile_guidance.map(({ topic, message }) => (
-              <li key={topic}>{message}</li>
+            {interpretation.profile_guidance.map(({ topic, message, reference_url, reference_label }) => (
+              <li key={topic}>
+                {message}
+                {reference_url ? (
+                  <> <a href={reference_url} target="_blank" rel="noreferrer">{reference_label ?? "แหล่งข้อมูล"}</a></>
+                ) : null}
+              </li>
             ))}
           </ul>
         </section>

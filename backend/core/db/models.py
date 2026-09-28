@@ -94,6 +94,15 @@ class DailyHealthEntry(Base):
             name="ck_daily_health_outdoor_choice",
         ),
         CheckConstraint(
+            "weight_kg IS NULL OR (weight_kg >= 1 AND weight_kg <= 500)",
+            name="ck_daily_health_weight",
+        ),
+        CheckConstraint(
+            "calculated_thirst_score_0_10 IS NULL OR "
+            "(calculated_thirst_score_0_10 >= 0 AND calculated_thirst_score_0_10 <= 10)",
+            name="ck_daily_health_calculated_thirst",
+        ),
+        CheckConstraint(
             "sleep_score_0_100 >= 0 AND sleep_score_0_100 <= 100",
             name="ck_daily_health_sleep_score",
         ),
@@ -125,6 +134,9 @@ class DailyHealthEntry(Base):
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Bangkok")
     sleep_duration_minutes: Mapped[int] = mapped_column(Integer)
     water_intake_ml: Mapped[int] = mapped_column(Integer)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    calculated_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    thirst_score_method: Mapped[str | None] = mapped_column(String(64), nullable=True)
     outdoor_exposure_choice: Mapped[int] = mapped_column(Integer)
     sleep_score_0_100: Mapped[float] = mapped_column(Float)
     sleep_score_method: Mapped[str] = mapped_column(String(128))
@@ -186,9 +198,22 @@ class DailyHealthProfile(Base):
     """Consent-gated, user-reported context for personalizing wellness guidance."""
 
     __tablename__ = "daily_health_profiles"
+    __table_args__ = (
+        CheckConstraint(
+            "skin_type IS NULL OR skin_type IN "
+            "('normal', 'dry', 'oily', 'combination', 'sensitive', 'prefer_not_to_say')",
+            name="ck_daily_health_profile_skin_type",
+        ),
+        CheckConstraint(
+            "weight_kg IS NULL OR (weight_kg >= 1 AND weight_kg <= 500)",
+            name="ck_daily_health_profile_weight",
+        ),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
     smoking_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    skin_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

@@ -16,6 +16,7 @@ from backend.api.schemas.daily_health import (
     DailyHealthOutcomeRead,
     DailyHealthOutcomeUpsert,
     DailyHealthPredictionRequest,
+    DailyHealthProfileWeightUpsert,
 )
 from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION
 from backend.core.db.models import (
@@ -45,6 +46,8 @@ SLEEP_SCORE_METHOD = "round(min(100, sleep_duration_minutes / 540 * 100), 1); du
 DAILY_HEALTH_CONSENT_VERSION = "daily-health-v1"
 PERSONALIZATION_CONSENT_VERSION = "daily-health-personalization-v1"
 AGE_GUIDANCE_CONSENT_VERSION = "daily-health-age-guidance-v1"
+SKIN_TYPE_GUIDANCE_CONSENT_VERSION = "daily-health-skin-type-guidance-v1"
+WEIGHT_PROFILE_CONSENT_VERSION = "daily-health-weight-profile-v1"
 
 
 @router.post("/predict")
@@ -97,6 +100,7 @@ async def _run_daily_health_prediction(
             sleep_hours=payload.sleep_hours,
             sleep_minutes=payload.sleep_minutes,
             water_intake_ml=payload.water_intake_ml,
+            weight_kg=payload.weight_kg,
             outdoor_exposure_choice=payload.outdoor_exposure_choice,
             smoking_status=(
                 personal_context.smoking_status
@@ -111,6 +115,11 @@ async def _run_daily_health_prediction(
             age_band=(
                 personal_context.age_band
                 if personal_context and personal_context.age_guidance_consent_given
+                else None
+            ),
+            skin_type=(
+                personal_context.skin_type
+                if personal_context and personal_context.skin_type_guidance_consent_given
                 else None
             ),
             allow_out_of_domain_test_prediction=allow_out_of_domain_test_prediction,
@@ -145,12 +154,37 @@ async def upsert_daily_health_entry(
 
     sleep_score = round(min(100.0, payload.sleep_duration_minutes / 540.0 * 100.0), 1)
     prediction = payload.prediction
+    score_model = get_daily_score_model()
+    active_weight_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == WEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    profile = await session.get(DailyHealthProfile, user_id)
+    profile_weight_kg = (
+        profile.weight_kg
+        if active_weight_consent is not None and profile is not None
+        else None
+    )
+    hydration = score_model.calculate_hydration(
+        payload.water_intake_ml,
+        profile_weight_kg,
+        payload.age_band if payload.age_guidance_consent else None,
+    )
     values = {
         "user_id": user_id,
         "local_date": payload.local_date,
         "timezone": payload.timezone,
         "sleep_duration_minutes": payload.sleep_duration_minutes,
         "water_intake_ml": payload.water_intake_ml,
+        # Keep the consented profile weight as a dated snapshot; do not trust a daily-form value.
+        "weight_kg": profile_weight_kg,
+        "calculated_thirst_score_0_10": hydration["score_0_10"],
+        "thirst_score_method": score_model.THIRST_SCORE_METHOD,
         "outdoor_exposure_choice": payload.outdoor_exposure_choice,
         "sleep_score_0_100": sleep_score,
         "sleep_score_method": SLEEP_SCORE_METHOD,
@@ -179,7 +213,11 @@ async def upsert_daily_health_entry(
     result = await session.execute(statement)
     entry = result.scalar_one()
 
-    if payload.personalization_consent or payload.age_guidance_consent:
+    if (
+        payload.personalization_consent
+        or payload.age_guidance_consent
+        or payload.skin_type_guidance_consent
+    ):
         if payload.personalization_consent:
             active_profile_consent = await session.scalar(
                 select(Consent.id)
@@ -206,6 +244,19 @@ async def upsert_daily_health_entry(
             if active_age_consent is None:
                 session.add(Consent(user_id=user_id, version=AGE_GUIDANCE_CONSENT_VERSION))
 
+        if payload.skin_type_guidance_consent:
+            active_skin_type_consent = await session.scalar(
+                select(Consent.id)
+                .where(
+                    Consent.user_id == user_id,
+                    Consent.version == SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
+                    Consent.revoked_at.is_(None),
+                )
+                .limit(1)
+            )
+            if active_skin_type_consent is None:
+                session.add(Consent(user_id=user_id, version=SKIN_TYPE_GUIDANCE_CONSENT_VERSION))
+
         if payload.personalization_consent and payload.smoking_status is not None:
             profile_upsert = insert(DailyHealthProfile).values(
                 user_id=user_id,
@@ -220,6 +271,21 @@ async def upsert_daily_health_entry(
                 },
             )
             await session.execute(profile_upsert)
+
+        if payload.skin_type_guidance_consent and payload.skin_type is not None:
+            skin_type_upsert = insert(DailyHealthProfile).values(
+                user_id=user_id,
+                skin_type=payload.skin_type,
+                updated_at=func.now(),
+            )
+            skin_type_upsert = skin_type_upsert.on_conflict_do_update(
+                index_elements=[DailyHealthProfile.user_id],
+                set_={
+                    "skin_type": skin_type_upsert.excluded.skin_type,
+                    "updated_at": func.now(),
+                },
+            )
+            await session.execute(skin_type_upsert)
 
         if payload.age_guidance_consent and payload.age_band is not None:
             age_upsert = insert(DailyHealthAgeBand).values(
@@ -276,9 +342,21 @@ async def upsert_daily_health_entry(
 async def list_daily_health_entries(
     user_id: UUID,
     limit: int = Query(default=30, ge=1, le=90),
+    from_date: date | None = None,
+    to_date: date | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Return consented daily history with risk interpretation of the saved scores."""
+    if (from_date is None) != (to_date is None):
+        raise HTTPException(
+            status_code=422, detail="Both from_date and to_date are required together"
+        )
+    if from_date is not None and to_date is not None:
+        if from_date > to_date:
+            raise HTTPException(status_code=422, detail="from_date must not be after to_date")
+        if (to_date - from_date).days >= 90:
+            raise HTTPException(status_code=422, detail="Date window cannot exceed 90 days")
+
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -294,11 +372,14 @@ async def list_daily_health_entries(
     if active_daily_consent is None:
         return {"items": []}
 
+    entries_query = select(DailyHealthEntry).where(DailyHealthEntry.user_id == user_id)
+    if from_date is not None and to_date is not None:
+        entries_query = entries_query.where(
+            DailyHealthEntry.local_date >= from_date,
+            DailyHealthEntry.local_date <= to_date,
+        )
     entries_result = await session.scalars(
-        select(DailyHealthEntry)
-        .where(DailyHealthEntry.user_id == user_id)
-        .order_by(DailyHealthEntry.local_date.desc())
-        .limit(limit)
+        entries_query.order_by(DailyHealthEntry.local_date.desc()).limit(limit)
     )
     entries = entries_result.all()
     if not entries:
@@ -322,29 +403,33 @@ async def list_daily_health_entries(
         )
         .limit(1)
     )
+    active_skin_type_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
     profile = (
         await session.get(DailyHealthProfile, user_id)
-        if active_personalization_consent is not None
+        if active_personalization_consent is not None or active_skin_type_consent is not None
         else None
     )
     age_record = (
-        await session.get(DailyHealthAgeBand, user_id)
-        if active_age_consent is not None
-        else None
+        await session.get(DailyHealthAgeBand, user_id) if active_age_consent is not None else None
     )
     menstrual_by_date: dict[date, bool] = {}
     if active_personalization_consent is not None:
         checkins_result = await session.scalars(
             select(DailyHealthMenstrualCheckIn).where(
                 DailyHealthMenstrualCheckIn.user_id == user_id,
-                DailyHealthMenstrualCheckIn.local_date.in_(
-                    [entry.local_date for entry in entries]
-                ),
+                DailyHealthMenstrualCheckIn.local_date.in_([entry.local_date for entry in entries]),
             )
         )
         menstrual_by_date = {
-            checkin.local_date: checkin.currently_menstruating
-            for checkin in checkins_result.all()
+            checkin.local_date: checkin.currently_menstruating for checkin in checkins_result.all()
         }
 
     try:
@@ -371,8 +456,17 @@ async def list_daily_health_entries(
             and entry.predicted_thirst_score_0_10 is not None
             and entry.predicted_dryness_score_0_10 is not None
         )
-        thirst_score = entry.predicted_thirst_score_0_10 if has_saved_prediction else None
-        dryness_score = entry.predicted_dryness_score_0_10 if has_saved_prediction else None
+        thirst_is_calculated = entry.thirst_score_method == model.THIRST_SCORE_METHOD
+        thirst_score = (
+            entry.calculated_thirst_score_0_10
+            if thirst_is_calculated
+            else entry.predicted_thirst_score_0_10
+            if has_saved_prediction
+            else None
+        )
+        dryness_score = (
+            entry.predicted_dryness_score_0_10 if entry.prediction_status == "predicted" else None
+        )
         interpretation = model.build_health_interpretation(
             sleep_minutes=sleep_minutes,
             thirst_score=thirst_score,
@@ -381,8 +475,18 @@ async def list_daily_health_entries(
             input_domain_status="in_domain" if inside_training_domain else "out_of_training_domain",
             input_domain_reasons=input_domain_reasons,
             age_band=age_record.age_band if age_record is not None else None,
-            smoking_status=profile.smoking_status if profile is not None else None,
+            smoking_status=(
+                profile.smoking_status
+                if active_personalization_consent is not None and profile is not None
+                else None
+            ),
             currently_menstruating=menstrual_by_date.get(entry.local_date),
+            skin_type=(
+                profile.skin_type
+                if active_skin_type_consent is not None and profile is not None
+                else None
+            ),
+            thirst_is_calculated=thirst_is_calculated,
         )
         items.append(
             {
@@ -400,13 +504,32 @@ async def list_daily_health_entries(
                 "input": {
                     "sleep_duration_total_minutes": sleep_minutes,
                     "water_intake_ml": entry.water_intake_ml,
+                    "weight_kg": entry.weight_kg,
                     "outdoor_exposure_choice": entry.outdoor_exposure_choice,
                 },
-                "calculated": {"sleep_score_0_100": entry.sleep_score_0_100},
+                "calculated": {
+                    "sleep_score_0_100": entry.sleep_score_0_100,
+                    "thirst_score_0_10": entry.calculated_thirst_score_0_10,
+                    "thirst_score_method": entry.thirst_score_method,
+                },
                 "predictions": {
                     "thirst_score_0_10": {
                         "value": thirst_score,
-                        "status": "predicted" if thirst_score is not None else "not_available",
+                        "status": (
+                            "calculated"
+                            if thirst_is_calculated and thirst_score is not None
+                            else "predicted"
+                            if thirst_score is not None
+                            else "not_available"
+                        ),
+                        "method": entry.thirst_score_method,
+                        "target_date": entry.local_date.isoformat()
+                        if thirst_is_calculated
+                        else (
+                            entry.prediction_target_date.isoformat()
+                            if entry.prediction_target_date
+                            else None
+                        ),
                     },
                     "skin_dryness_score_0_10": {
                         "value": dryness_score,
@@ -454,6 +577,24 @@ async def read_daily_health_profile(
         )
         .limit(1)
     )
+    active_skin_type_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    active_weight_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == WEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
     active_training_consent = await session.scalar(
         select(Consent.id)
         .where(
@@ -465,9 +606,15 @@ async def read_daily_health_profile(
     )
     profile = await session.get(DailyHealthProfile, user_id)
     age_band = await session.get(DailyHealthAgeBand, user_id)
-    return {
+    response = {
         "consent_active": active_consent is not None,
         "age_guidance_consent_active": active_age_consent is not None,
+        "weight_profile_consent_active": active_weight_consent is not None,
+        "weight_kg": (
+            profile.weight_kg
+            if active_weight_consent is not None and profile is not None
+            else None
+        ),
         "model_training_consent_active": active_training_consent is not None,
         "can_report_outcomes": active_daily_consent is not None,
         "age_band": (age_band.age_band if active_age_consent is not None and age_band else None),
@@ -475,6 +622,85 @@ async def read_daily_health_profile(
             profile.smoking_status if active_consent is not None and profile else None
         ),
     }
+    if active_skin_type_consent is not None:
+        response["skin_type_guidance_consent_active"] = True
+        response["skin_type"] = profile.skin_type if profile is not None else None
+    return response
+
+
+@router.put("/users/{user_id}/profile/weight")
+async def upsert_daily_health_profile_weight(
+    user_id: UUID,
+    payload: DailyHealthProfileWeightUpsert,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not payload.consent_given:
+        raise HTTPException(status_code=403, detail="Weight profile consent is required")
+
+    active_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == WEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active_consent is None:
+        session.add(Consent(user_id=user_id, version=WEIGHT_PROFILE_CONSENT_VERSION))
+
+    profile_upsert = insert(DailyHealthProfile).values(
+        user_id=user_id,
+        weight_kg=payload.weight_kg,
+        updated_at=func.now(),
+    )
+    profile_upsert = profile_upsert.on_conflict_do_update(
+        index_elements=[DailyHealthProfile.user_id],
+        set_={
+            "weight_kg": profile_upsert.excluded.weight_kg,
+            "updated_at": func.now(),
+        },
+    )
+    await session.execute(profile_upsert)
+    await session.commit()
+    return {
+        "weight_profile_consent_active": True,
+        "weight_kg": payload.weight_kg,
+    }
+
+
+@router.delete("/users/{user_id}/profile/weight", status_code=204)
+async def delete_daily_health_profile_weight(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> None:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    profile = await session.get(DailyHealthProfile, user_id)
+    if profile is not None:
+        profile.weight_kg = None
+    await session.execute(
+        update(Consent)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == WEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
+    await session.execute(
+        update(DailyHealthEntry)
+        .where(DailyHealthEntry.user_id == user_id)
+        .values(
+            weight_kg=None,
+            calculated_thirst_score_0_10=None,
+            thirst_score_method=None,
+            updated_at=func.now(),
+        )
+    )
+    await session.commit()
 
 
 @router.delete("/users/{user_id}/profile", status_code=204)
@@ -485,6 +711,16 @@ async def delete_daily_health_profile(
         raise HTTPException(status_code=404, detail="User not found")
 
     await session.execute(delete(DailyHealthProfile).where(DailyHealthProfile.user_id == user_id))
+    await session.execute(
+        update(DailyHealthEntry)
+        .where(DailyHealthEntry.user_id == user_id)
+        .values(
+            weight_kg=None,
+            calculated_thirst_score_0_10=None,
+            thirst_score_method=None,
+            updated_at=func.now(),
+        )
+    )
     await session.execute(delete(DailyHealthAgeBand).where(DailyHealthAgeBand.user_id == user_id))
     await session.execute(
         delete(DailyHealthMenstrualCheckIn).where(DailyHealthMenstrualCheckIn.user_id == user_id)
@@ -493,7 +729,14 @@ async def delete_daily_health_profile(
         Consent.__table__.update()
         .where(
             Consent.user_id == user_id,
-            Consent.version.in_([PERSONALIZATION_CONSENT_VERSION, AGE_GUIDANCE_CONSENT_VERSION]),
+            Consent.version.in_(
+                [
+                    PERSONALIZATION_CONSENT_VERSION,
+                    AGE_GUIDANCE_CONSENT_VERSION,
+                    SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
+                    WEIGHT_PROFILE_CONSENT_VERSION,
+                ]
+            ),
             Consent.revoked_at.is_(None),
         )
         .values(revoked_at=func.now())
@@ -531,6 +774,8 @@ async def delete_daily_health_data(
                     DAILY_HEALTH_CONSENT_VERSION,
                     PERSONALIZATION_CONSENT_VERSION,
                     AGE_GUIDANCE_CONSENT_VERSION,
+                    SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
+                    WEIGHT_PROFILE_CONSENT_VERSION,
                     MODEL_TRAINING_CONSENT_VERSION,
                 ]
             ),
@@ -784,16 +1029,6 @@ async def upsert_daily_health_outcome(
     if active_consent is None:
         raise HTTPException(status_code=403, detail="Active daily-health consent is required")
 
-    active_training_consent = await session.scalar(
-        select(Consent.id)
-        .where(
-            Consent.user_id == user_id,
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
-            Consent.revoked_at.is_(None),
-        )
-        .limit(1)
-    )
-
     statement = insert(DailyHealthOutcome).values(
         user_id=user_id,
         target_date=payload.target_date,
@@ -815,17 +1050,4 @@ async def upsert_daily_health_outcome(
     result = await session.execute(statement)
     outcome = result.scalar_one()
     await session.commit()
-    if (
-        active_training_consent is not None
-        and payload.reported_thirst_level_0_10 is not None
-        and payload.reported_dryness_level_0_10 is not None
-    ):
-        try:
-            from backend.services.daily_health_training import (
-                enqueue_candidate_training_if_ready,
-            )
-
-            await enqueue_candidate_training_if_ready(session)
-        except Exception:
-            logger.exception("Could not enqueue daily-health candidate training")
     return DailyHealthOutcomeRead.model_validate(outcome)

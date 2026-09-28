@@ -1,5 +1,6 @@
 from datetime import date
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -60,12 +61,15 @@ def test_promoted_daily_score_model_loads_and_returns_expected_contract() -> Non
         sleep_hours=6,
         sleep_minutes=2,
         water_intake_ml=1400,
+        weight_kg=60,
         outdoor_exposure_choice=2,
     )
 
     assert result["model"]["model_id"] == "daily-score-random-forest-synthetic-v1"
     assert result["calculated"]["sleep_score_0_100"] == 67.0
     assert 0 <= result["predictions"]["thirst_score_0_10"]["value"] <= 10
+    assert result["predictions"]["thirst_score_0_10"]["value"] == 2.2
+    assert result["predictions"]["thirst_score_0_10"]["status"] == "calculated"
     assert 0 <= result["predictions"]["skin_dryness_score_0_10"]["value"] <= 10
     assert result["guidance"]
     assert result["warnings"]
@@ -80,6 +84,7 @@ def test_user_candidate_bundle_forecasts_the_next_day_and_is_identified_as_exper
         sleep_hours=7,
         sleep_minutes=20,
         water_intake_ml=1400,
+        weight_kg=60,
         outdoor_exposure_choice=2,
         model_bundle={
             "model": get_daily_score_model().load_model_bundle()["model"],
@@ -94,6 +99,8 @@ def test_user_candidate_bundle_forecasts_the_next_day_and_is_identified_as_exper
     )
 
     assert result["prediction_target_date"] == "2026-09-27"
+    assert result["predictions"]["thirst_score_0_10"]["target_date"] == "2026-09-26"
+    assert result["predictions"]["thirst_score_0_10"]["value"] == 2.2
     assert result["model"]["model_id"] == "daily-health-next-day-0123456789abcdef"
     assert result["model_status"] == "experimental_user_reported_candidate"
     assert any("ผลที่ผู้ใช้รายงานเอง" in warning for warning in result["warnings"])
@@ -114,10 +121,8 @@ def test_prediction_api_abstains_outside_model_training_domain() -> None:
 
     assert response.status_code == 200
     result = response.json()
-    assert result["predictions"]["thirst_score_0_10"] == {
-        "value": None,
-        "status": "not_available",
-    }
+    assert result["predictions"]["thirst_score_0_10"]["value"] is None
+    assert result["predictions"]["thirst_score_0_10"]["status"] == "not_available"
     assert result["predictions"]["skin_dryness_score_0_10"]["value"] is None
     assert result["calculated"]["sleep_score_0_100"] == 67.0
     assert result["input_domain_status"] == "out_of_training_domain"
@@ -135,6 +140,7 @@ def test_test_prediction_api_returns_flagged_scores_outside_training_domain() ->
             "sleep_hours": 6,
             "sleep_minutes": 2,
             "water_intake_ml": 400,
+            "weight_kg": 60,
             "outdoor_exposure_choice": 1,
         },
     )
@@ -144,7 +150,8 @@ def test_test_prediction_api_returns_flagged_scores_outside_training_domain() ->
     assert result["input_domain_status"] == "out_of_training_domain"
     assert result["prediction_mode"] == "test_only"
     assert result["prediction_status"] == "experimental_out_of_domain"
-    assert result["predictions"]["thirst_score_0_10"]["status"] == "experimental_out_of_domain"
+    assert result["predictions"]["thirst_score_0_10"]["status"] == "calculated"
+    assert result["predictions"]["thirst_score_0_10"]["value"] == 7.8
     assert result["predictions"]["thirst_score_0_10"]["value"] is not None
     assert result["predictions"]["skin_dryness_score_0_10"]["value"] is not None
     assert result["interpretation"]["daily_health_summary"]["status"] == "out_of_training_domain"
@@ -161,13 +168,14 @@ def test_prediction_api_returns_two_scores_for_in_domain_input() -> None:
             "sleep_hours": 7,
             "sleep_minutes": 20,
             "water_intake_ml": 1400,
+            "weight_kg": 60,
             "outdoor_exposure_choice": 2,
         },
     )
 
     assert response.status_code == 200
     result = response.json()
-    assert result["predictions"]["thirst_score_0_10"]["status"] == "predicted"
+    assert result["predictions"]["thirst_score_0_10"]["status"] == "calculated"
     assert result["predictions"]["skin_dryness_score_0_10"]["status"] == "predicted"
     assert result["input_domain_status"] == "in_domain"
     assert result["prediction_status"] == "predicted"
@@ -353,3 +361,87 @@ def test_versioned_backend_prediction_route_requires_and_accepts_api_credentials
 
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("water", "score", "range_status"),
+    [
+        (0, 10.0, "below_reference"),
+        (900, 5.0, "below_reference"),
+        (1800, 0.0, "within_reference"),
+        (2100, 0.0, "within_reference"),
+        (2500, 0.0, "above_reference"),
+    ],
+)
+def test_weight_based_thirst_formula_boundaries(water, score, range_status) -> None:
+    hydration = get_daily_score_model().calculate_hydration(water, 60)
+    assert hydration["score_0_10"] == score
+    assert hydration["reference_lower_ml"] == 1800
+    assert hydration["reference_upper_ml"] == 2100
+    assert hydration["range_status"] == range_status
+    assert hydration["recorded_shortfall_ml"] == max(0, 1800 - water)
+
+
+def test_thirst_uses_fractional_weight_and_does_not_invent_missing_weight() -> None:
+    model = get_daily_score_model()
+    assert model.calculate_hydration(900, 60.5)["reference_lower_ml"] == 1815
+    missing = model.calculate_hydration(900, None)
+    assert missing["score_0_10"] is None
+    assert missing["range_status"] == "missing_weight"
+    teen = model.calculate_hydration(900, 60, "13_17")
+    assert teen["score_0_10"] is None
+    assert teen["range_status"] == "unsupported_age"
+
+
+@pytest.mark.parametrize("weight", [0, -60, 501, float("nan"), float("inf")])
+def test_api_rejects_invalid_weight(weight) -> None:
+    from pydantic import ValidationError
+
+    from backend.api.schemas.daily_health import DailyHealthPredictionRequest
+
+    with pytest.raises(ValidationError):
+        DailyHealthPredictionRequest(
+            local_date=date(2026, 9, 26),
+            sleep_hours=7,
+            sleep_minutes=0,
+            water_intake_ml=1400,
+            outdoor_exposure_choice=1,
+            weight_kg=weight,
+        )
+
+
+def test_formula_thirst_remains_available_outside_dryness_training_domain() -> None:
+    result = (
+        client()
+        .post(
+            "/predict",
+            json={
+                "local_date": "2026-09-26",
+                "sleep_hours": 10,
+                "sleep_minutes": 0,
+                "water_intake_ml": 2500,
+                "outdoor_exposure_choice": 4,
+                "weight_kg": 70,
+            },
+        )
+        .json()
+    )
+    assert result["predictions"]["thirst_score_0_10"]["status"] == "calculated"
+    assert result["predictions"]["thirst_score_0_10"]["value"] == 0
+    assert result["predictions"]["skin_dryness_score_0_10"]["value"] is None
+    assert result["calculated"]["hydration"]["reference_lower_ml"] == 2100
+    assert result["calculated"]["hydration"]["reference_upper_ml"] == 2450
+
+
+def test_intake_gap_does_not_infer_skin_dryness_or_subjective_thirst() -> None:
+    result = get_daily_score_model().build_health_interpretation(
+        sleep_minutes=480,
+        thirst_score=8,
+        dryness_score=2,
+        outdoor_exposure_choice=1,
+        input_domain_status="in_domain",
+        thirst_is_calculated=True,
+    )
+    assert result["skin_care_attention_level"]["level"] == "low"
+    assert result["daily_health_summary"]["level"] == "high"
+    assert result["daily_health_summary"]["possible_signals"] == ["น้ำที่บันทึกยังต่ำกว่าช่วงอ้างอิงตามน้ำหนัก"]

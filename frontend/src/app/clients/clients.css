@@ -45,6 +45,8 @@ html[data-theme="black"] .clients-page .model-status{background:#3b2f18;color:#f
 .profile-guidance,.next-day-statuses{padding:14px;border-radius:12px;background:#fff}
 .profile-guidance{border-left:3px solid var(--purple)}
 .profile-guidance p,.next-day-statuses p{margin:7px 0 0;color:#536078;font-size:13px;line-height:1.6}
+.profile-guidance a{color:#5c47b8;text-underline-offset:3px}
+.profile-guidance a:focus-visible{outline:3px solid #7059cf55;outline-offset:3px}
 .next-day-statuses{display:grid;gap:2px;border:1px solid #e0e5ef}
 .daily-outcome-card{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr);gap:20px;padding:20px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.78)}
 .daily-outcome-card h2{margin:0 0 7px;font-size:19px}
@@ -62,6 +64,7 @@ html[data-theme="black"] .clients-page .personal-context-fieldset>legend,html[da
 html[data-theme="black"] .clients-page .period-checkin-options label,html[data-theme="black"] .clients-page .health-signal-card,html[data-theme="black"] .clients-page .profile-guidance,html[data-theme="black"] .clients-page .next-day-statuses{background:#202a3a;border-color:#39465b;color:#f3f5fb}
 html[data-theme="black"] .clients-page .health-signal-headline,html[data-theme="black"] .clients-page .health-signal-recommendations{color:#e7ebf3}
 html[data-theme="black"] .clients-page .profile-delete-button{color:#ffaaa0}
+html[data-theme="black"] .clients-page .profile-guidance a{color:#c6baff}
 @media(max-width:760px){.daily-health-dashboard-heading{flex-direction:column;gap:5px}}
 .clients-page .tracker-field select{width:100%;min-height:46px;border:1px solid #cfd7e4;border-radius:10px;background:#fff;padding:10px 12px;color:var(--ink);font:inherit}
 .clients-page .tracker-field select:focus-visible{outline:3px solid #7059cf45;outline-offset:2px;border-color:var(--purple)}
@@ -75,3 +78,14 @@ html[data-theme="black"] .clients-page .sleep-score-metric>strong{color:#c7baff}
 /* Candidate training and user-controlled retention states. */
 .training-threshold-note{margin:0;padding:10px 12px;border-left:3px solid #8068d9;border-radius:8px;background:#f6f3ff;color:#4f4770;font-size:12px;line-height:1.65}.daily-data-delete-panel{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 22px;border:1px solid #ead0cc;border-radius:15px;background:#fff9f8}.daily-data-delete-panel h2{margin:0 0 5px;font-size:16px}.daily-data-delete-panel p{max-width:760px;margin:0;color:#665451;font-size:12px;line-height:1.65}.daily-data-delete-panel button{flex:none;border:1px solid #c66c60;border-radius:9px;background:#fff;color:#883b32;padding:9px 12px;font:700 12px var(--font-ui);cursor:pointer}.daily-data-delete-panel button:hover{background:#fff0ed}.daily-data-delete-panel button:focus-visible{outline:3px solid #bd625855;outline-offset:2px}@media(max-width:600px){.daily-data-delete-panel{align-items:stretch;flex-direction:column}.daily-data-delete-panel button{width:100%}}
 .daily-risk-results{display:grid;gap:11px}.daily-risk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.daily-risk-grid>.health-signal-card:first-child{grid-column:1/-1}.daily-risk-grid .health-signal-card h3{margin:0;font-size:13px;line-height:1.45}.daily-risk-grid .health-signal-level{white-space:nowrap}.health-signal-unrated .health-signal-level{background:#f0f2f6;border-color:#d8deea;color:#566176}.daily-risk-disclaimer{margin:0;color:var(--muted);font-size:11px;line-height:1.55}.daily-risk-profile-guidance h3{margin:0 0 7px;font-size:13px}.daily-risk-profile-guidance ul{display:grid;gap:6px;margin:0;padding-left:18px;color:#536078;font-size:12px;line-height:1.6}.personalized-guidance h3{margin:0 0 8px;font-size:15px}html[data-theme="black"] .daily-risk-grid .health-signal-card{background:#202a3a;border-color:#39465b;color:#f3f5fb}html[data-theme="black"] .daily-risk-profile-guidance ul{color:#bdc7d8}html[data-theme="black"] .health-signal-unrated .health-signal-level{background:#202a3a;border-color:#39465b;color:#bdc7d8}@media(max-width:600px){.daily-risk-grid{grid-template-columns:1fr}.daily-risk-grid>.health-signal-card:first-child{grid-column:auto}}
+
+.profile-weight-card{display:grid;gap:14px;padding:22px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.78)}
+.profile-weight-form{display:grid;grid-template-columns:minmax(160px,260px) minmax(0,1fr);align-items:end;gap:12px}
+.profile-weight-consent{grid-column:1/-1}
+.profile-weight-actions{display:flex;align-items:center;gap:14px;grid-column:1/-1}
+.profile-weight-actions .primary-button{min-height:42px;cursor:pointer}
+.profile-weight-actions .primary-button:disabled{cursor:wait;opacity:.72}
+.profile-weight-form>.storage-status{grid-column:1/-1}
+html[data-theme="black"] .clients-page .profile-weight-card{background:#171f2e;border-color:#2c394e;color:#f3f5fb}
+html[data-theme="black"] .clients-page .profile-weight-form input{background:#111927;border-color:#39465b;color:#f3f5fb}
+@media(max-width:620px){.profile-weight-form{grid-template-columns:1fr}.profile-weight-consent,.profile-weight-actions,.profile-weight-form>.storage-status{grid-column:auto}.profile-weight-actions{align-items:flex-start;flex-direction:column}.profile-weight-actions .primary-button{width:100%}}

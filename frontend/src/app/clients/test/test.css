@@ -41,6 +41,10 @@
 .clients-test-page .test-model-id{margin:13px 0;color:var(--muted);font-size:11px;line-height:1.5;overflow-wrap:anywhere}
 .clients-test-page .test-out-of-range{margin:12px 0;padding:12px 14px;border:1px solid #eadfbe;border-radius:10px;background:#fffaf0;color:#6b5727;font-size:12px;line-height:1.65}
 .clients-test-page .test-form-error{margin:0;padding:11px 12px;border:1px solid #ffc9bf;border-radius:10px;background:#fff0ed;color:#85342c;font-size:12px;line-height:1.55}
+.clients-test-page .test-profile-weight{padding:12px;border:1px solid #dcd6f2;border-radius:11px;background:#f8f6ff;color:#46536a;font-size:12px;line-height:1.55}
+.clients-test-page .test-profile-weight>span{font-weight:750}
+.clients-test-page .test-profile-weight p{margin:5px 0 0}
+.clients-test-page .test-profile-weight a{color:#5c47b8;text-underline-offset:3px}
 .clients-test-page .test-output-empty{display:grid;justify-items:center;padding:35px 18px;border:1px dashed #c9c0e9;border-radius:14px;background:#faf9ff;text-align:center}
 .clients-test-page .test-output-empty>span{display:grid;place-items:center;width:38px;height:38px;margin-bottom:10px;border-radius:12px;background:#efebff;color:#5e48bd;font-size:20px;font-weight:800}
 .clients-test-page .test-output-empty h3{margin:0 0 5px;font-size:15px}
@@ -54,6 +58,8 @@ html[data-theme="black"] .clients-test-page .test-field input:not([type=radio]){
 html[data-theme="black"] .clients-test-page .test-outdoor-choice{background:#171f2e;border-color:#39465b;color:#f3f5fb}
 html[data-theme="black"] .clients-test-page .test-outdoor-choice.selected,html[data-theme="black"] .clients-test-page .test-outdoor-choice:has(input:checked){background:#252038;border-color:#8068d9}
 html[data-theme="black"] .clients-test-page .test-request-status,html[data-theme="black"] .clients-test-page .test-output-empty,html[data-theme="black"] .clients-test-page .test-json-details{background:#202a3a;border-color:#39465b;color:#d3d9e5}
+html[data-theme="black"] .clients-test-page .test-profile-weight{background:#252038;border-color:#493d72;color:#d3d9e5}
+html[data-theme="black"] .clients-test-page .test-profile-weight a{color:#c6baff}
 html[data-theme="black"] .clients-test-page .test-out-of-range{background:#332a19;border-color:#705c31;color:#f6e5bd}
 html[data-theme="black"] .clients-test-page .test-json-details summary{color:#c7baff}
 html[data-theme="black"] .clients-test-page .test-json-details pre{color:#bdc7d8}

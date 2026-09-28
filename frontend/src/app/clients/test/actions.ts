@@ -38,6 +38,7 @@ function readFormValues(formData: FormData): PredictionTestValues {
     sleepHours: readValue(formData, "sleepHours"),
     sleepMinutes: readValue(formData, "sleepMinutes"),
     waterIntakeMl: readValue(formData, "waterIntakeMl"),
+    weightKg: readValue(formData, "weightKg"),
     outdoorChoice: readValue(formData, "outdoorChoice"),
   };
 }
@@ -63,6 +64,10 @@ export async function predictTestInput(
     const sleepMinutes = readInteger(formData, "sleepMinutes", "นาทีการนอน", 0, 59);
     if (sleepHours * 60 + sleepMinutes > 600) throw new Error("เวลานอนสูงสุดที่รับคือ 600 นาที (10 ชั่วโมง)");
     const waterIntakeMl = readInteger(formData, "waterIntakeMl", "ปริมาณน้ำดื่ม", 0, 20_000);
+    const weightKg = Number(values.weightKg);
+    if (!values.weightKg || !Number.isFinite(weightKg) || weightKg < 1 || weightKg > 500) {
+      throw new Error("น้ำหนักต้องอยู่ระหว่าง 1–500 กิโลกรัม");
+    }
     const outdoorChoice = readInteger(formData, "outdoorChoice", "ตัวเลือกเวลาอยู่นอกบ้าน", 1, 4);
 
     const upstream = await forwardDailyHealthPrediction(JSON.stringify({
@@ -70,6 +75,7 @@ export async function predictTestInput(
       sleep_hours: sleepHours,
       sleep_minutes: sleepMinutes,
       water_intake_ml: waterIntakeMl,
+      weight_kg: weightKg,
       outdoor_exposure_choice: outdoorChoice,
     }), { testOnly: true });
 
