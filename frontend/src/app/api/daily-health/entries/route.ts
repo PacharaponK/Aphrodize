@@ -4,6 +4,7 @@ import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-sessi
 export const runtime = "nodejs";
 
 const MAX_BODY_BYTES = 16_384;
+type SkinType = "normal" | "dry" | "oily" | "combination" | "sensitive" | "prefer_not_to_say";
 
 type DailyHealthRequest = {
   consent_to_store: true;
@@ -11,6 +12,7 @@ type DailyHealthRequest = {
   timezone?: string;
   sleep_duration_minutes: number;
   water_intake_ml: number;
+  weight_kg?: number | null;
   outdoor_exposure_choice: number;
   prediction: {
     thirst_score_0_10: number | null;
@@ -21,10 +23,12 @@ type DailyHealthRequest = {
   } | null;
   personalization_consent?: boolean;
   age_guidance_consent?: boolean;
+  skin_type_guidance_consent?: boolean;
   model_training_consent?: boolean;
   age_band?: "13_17" | "18_60" | "61_64" | "65_plus" | null;
   smoking_status?: "current" | "former" | "never" | "prefer_not_to_say" | null;
   currently_menstruating?: boolean | null;
+  skin_type?: SkinType | null;
 };
 
 function failed(status: number, detail: string): NextResponse {
@@ -50,10 +54,13 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (!dateIsValid) return false;
   if (!Number.isInteger(value.sleep_duration_minutes) || Number(value.sleep_duration_minutes) < 0 || Number(value.sleep_duration_minutes) > 600) return false;
   if (!Number.isInteger(value.water_intake_ml) || Number(value.water_intake_ml) < 0 || Number(value.water_intake_ml) > 20_000) return false;
+  if (value.weight_kg != null && (typeof value.weight_kg !== "number"
+    || !Number.isFinite(value.weight_kg) || value.weight_kg < 1 || value.weight_kg > 500)) return false;
   if (!Number.isInteger(value.outdoor_exposure_choice) || Number(value.outdoor_exposure_choice) < 1 || Number(value.outdoor_exposure_choice) > 4) return false;
   if (value.timezone !== undefined && (typeof value.timezone !== "string" || value.timezone.length > 64)) return false;
   if (value.personalization_consent !== undefined && typeof value.personalization_consent !== "boolean") return false;
   if (value.age_guidance_consent !== undefined && typeof value.age_guidance_consent !== "boolean") return false;
+  if (value.skin_type_guidance_consent !== undefined && typeof value.skin_type_guidance_consent !== "boolean") return false;
   if (value.model_training_consent !== undefined && typeof value.model_training_consent !== "boolean") return false;
   if (value.age_band !== undefined
     && value.age_band !== null
@@ -64,9 +71,12 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (value.currently_menstruating !== undefined
     && value.currently_menstruating !== null
     && typeof value.currently_menstruating !== "boolean") return false;
+  if (value.skin_type !== undefined && value.skin_type !== null
+    && !["normal", "dry", "oily", "combination", "sensitive", "prefer_not_to_say"].includes(String(value.skin_type))) return false;
   if (value.personalization_consent !== true
     && (value.smoking_status != null || value.currently_menstruating != null)) return false;
   if (value.age_guidance_consent !== true && value.age_band != null) return false;
+  if (value.skin_type_guidance_consent !== true && value.skin_type != null) return false;
   if (value.prediction === null) return true;
   if (!isRecord(value.prediction)) return false;
   const status = value.prediction.prediction_status;
@@ -100,14 +110,31 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const limit = Number.isInteger(requestedLimit)
     ? Math.min(90, Math.max(1, requestedLimit))
     : 30;
+  const fromDate = request.nextUrl.searchParams.get("from_date");
+  const toDate = request.nextUrl.searchParams.get("to_date");
+  const validDate = (value: string | null): value is string => {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+  };
+  if ((fromDate === null) !== (toDate === null)) {
+    return failed(400, "Both from_date and to_date are required together");
+  }
+  if (fromDate !== null && toDate !== null
+    && (!validDate(fromDate) || !validDate(toDate) || fromDate > toDate)) {
+    return failed(400, "A valid daily health date range is required");
+  }
 
   try {
     const account = await accountSession(request);
     if (!account) {
       return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
     }
+    const dateRange = fromDate && toDate
+      ? `&from_date=${fromDate}&to_date=${toDate}`
+      : "";
     const response = await fetch(
-      backendUrl(`/daily-health/users/${account.userId}/entries?limit=${limit}`),
+      backendUrl(`/daily-health/users/${account.userId}/entries?limit=${limit}${dateRange}`),
       { headers: { Authorization: `Bearer ${account.token}` }, cache: "no-store" },
     );
     if (!response.ok) return backendFailure(response);
@@ -158,16 +185,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         timezone: body.timezone ?? "Asia/Bangkok",
         sleep_duration_minutes: body.sleep_duration_minutes,
         water_intake_ml: body.water_intake_ml,
+        weight_kg: body.weight_kg ?? null,
         outdoor_exposure_choice: body.outdoor_exposure_choice,
         prediction: body.prediction,
         personalization_consent: body.personalization_consent === true,
         age_guidance_consent: body.age_guidance_consent === true,
+        skin_type_guidance_consent: body.skin_type_guidance_consent === true,
         model_training_consent: body.model_training_consent === true,
         age_band: body.age_guidance_consent === true ? body.age_band ?? null : null,
         smoking_status: body.personalization_consent === true ? body.smoking_status ?? null : null,
         currently_menstruating: body.personalization_consent === true
           ? body.currently_menstruating ?? null
           : null,
+        skin_type: body.skin_type_guidance_consent === true ? body.skin_type ?? null : null,
       }),
       cache: "no-store",
     });

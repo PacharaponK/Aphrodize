@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import DailyHealthDashboard from "./daily-health-dashboard";
 import DailyHealthOutcomeForm from "./daily-health-outcome-form";
-import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
+import HydrationReference from "./hydration-reference";
+import type {
+  AgeBand,
+  DailyHealthProfile,
+  PredictionResponse,
+  SkinType,
+  SmokingStatus,
+} from "@/lib/daily-health-types";
 
 type OutdoorChoice = "under_1_hour" | "1_to_under_3_hours" | "3_to_under_4_hours" | "4_hours_or_more";
 
@@ -16,6 +23,7 @@ type DailyEntry = {
   sleepMinutes: number;
   sleepDurationMinutes: number;
   waterIntakeMl: number;
+  weightKg: number | null;
   outdoorChoice: OutdoorChoice;
   modelTrainingConsent: boolean;
   personalizationConsent: boolean;
@@ -23,6 +31,8 @@ type DailyEntry = {
   ageBand: AgeBand | null;
   smokingStatus: SmokingStatus | null;
   currentlyMenstruating: boolean | null;
+  skinTypeGuidanceConsent: boolean;
+  skinType: SkinType | null;
 };
 
 type FormValues = {
@@ -35,12 +45,15 @@ type FormValues = {
   modelTrainingConsent: boolean;
   personalizationConsent: boolean;
   ageGuidanceConsent: boolean;
+  skinTypeGuidanceConsent: boolean;
   ageBand: AgeBand | "";
   smokingStatus: SmokingStatus | "";
+  skinType: SkinType | "";
   menstruationChoice: MenstruationChoice;
 };
 
 type StorageStatus = "idle" | "saving" | "saved" | "failed";
+type ProfileStorageStatus = "idle" | "saving" | "saved" | "failed";
 
 const outdoorOptions: { value: OutdoorChoice; apiChoice: number; label: string; range: string }[] = [
   { value: "under_1_hour", apiChoice: 1, label: "น้อยกว่า 1 ชั่วโมง", range: "0 ถึงน้อยกว่า 60 นาที" },
@@ -48,6 +61,7 @@ const outdoorOptions: { value: OutdoorChoice; apiChoice: number; label: string; 
   { value: "3_to_under_4_hours", apiChoice: 3, label: "3–น้อยกว่า 4 ชั่วโมง", range: "180 ถึงน้อยกว่า 240 นาที" },
   { value: "4_hours_or_more", apiChoice: 4, label: "4 ชั่วโมงขึ้นไป", range: "ตั้งแต่ 240 นาที" },
 ];
+const DAILY_HEALTH_DATA_UPDATED_EVENT = "daily-health-data-updated";
 
 const emptyForm: FormValues = {
   date: "",
@@ -59,8 +73,10 @@ const emptyForm: FormValues = {
   modelTrainingConsent: false,
   personalizationConsent: false,
   ageGuidanceConsent: false,
+  skinTypeGuidanceConsent: false,
   ageBand: "",
   smokingStatus: "",
+  skinType: "",
   menstruationChoice: "",
 };
 
@@ -83,10 +99,10 @@ function ScoreMethodDetails() {
       <summary>ดูวิธีคำนวณคะแนนและแหล่งอ้างอิง</summary>
       <div className="score-method-content">
         <section aria-labelledby="predicted-score-method-title">
-          <h3 id="predicted-score-method-title">Thirst และ dryness · ผลจากโมเดล</h3>
-          <p>API ส่งเวลานอนรวม (S), น้ำดื่ม (W) และตัวเลือกเวลาอยู่นอกบ้านเข้า RandomForestRegressor แบบหลายผลลัพธ์ โมเดลเฉลี่ยค่าจากต้นไม้ 300 ต้น แล้วจำกัดคะแนนไว้ 0–10 และปัดทศนิยม 1 ตำแหน่ง</p>
-          <p>โมเดลพื้นฐานใช้ป้ายคะแนนสังเคราะห์จากกฎตัวอย่างเหล่านี้ ไม่ใช่สูตรแพทย์; หากมี candidate ที่ฝึกจากคะแนนที่ผู้ใช้รายงานจริงและได้รับอนุมัติ ระบบจะใช้ candidate นั้นทำนายวันถัดไป พร้อมแสดงวันที่เป้าหมายในผลคะแนน:</p>
-          <code>thirst = clip(round(1.5 + max(0, (420 − S) ÷ 80) + max(0, (1500 − W) ÷ 200), 1), 0, 10)</code>
+          <h3 id="predicted-score-method-title">Dryness · ผลจากโมเดล</h3>
+          <p>API ส่งเวลานอนรวม (S), น้ำดื่ม (W) และตัวเลือกเวลาอยู่นอกบ้านเข้า RandomForestRegressor แล้วใช้ผล dryness โดยจำกัดคะแนนไว้ 0–10 และปัดทศนิยม 1 ตำแหน่ง ส่วน Thirst score ใช้สูตรน้ำตามน้ำหนักแยกต่างหาก</p>
+          <p>Thirst คำนวณจากยอดน้ำเทียบกับน้ำหนักปัจจุบันที่ยินยอมบันทึกไว้ในโปรไฟล์ พร้อมเก็บค่าน้ำหนักที่ใช้เป็น snapshot ของวันนั้น ส่วนโมเดลพื้นฐาน dryness ใช้ป้ายคะแนนสังเคราะห์; หากมี candidate ที่ได้รับอนุมัติ ระบบจะใช้ผล dryness ของ candidate ทำนายวันถัดไป พร้อมแสดงวันที่เป้าหมาย:</p>
+          <code>thirst = round(10 × max(0, 1 − W ÷ (weight_kg × 30)), 1); ช่วงน้ำอ้างอิง = weight_kg × 30–35</code>
           <code className="dryness-formula">{`skin_dryness_score_0_10 = round(U(min, max), 1)
 (min, max) =
   (1, 3)   if S ≥ 420 and W ≥ 1500
@@ -94,7 +110,7 @@ function ScoreMethodDetails() {
   (7, 10)  if S < 360 and W < 1500
   (2, 7)   otherwise`}</code>
           <p>U(min, max) คือการสุ่มค่าแบบ uniform ในช่วงที่ตรงเงื่อนไข แล้วปัดทศนิยม 1 ตำแหน่ง; สูตรนี้ใช้สร้าง target สำหรับฝึก ส่วนโมเดลจริงเรียนรู้ความสัมพันธ์จาก target เหล่านี้แล้วทำนายคะแนน</p>
-          <p>ค่า 420 นาทีและ 1,500 มล. เป็นจุดอ้างอิงในการจำลองชุดข้อมูล ไม่ใช่เกณฑ์ทางการแพทย์ และข้อมูลน้ำในฟอร์มไม่ใช่ total water จากอาหารและเครื่องดื่มทั้งหมด ตัวเลือกเวลาอยู่นอกบ้านเป็น feature ของโมเดล แต่ไม่ได้อยู่ในกฎสร้างป้าย thirst/dryness จึงใช้สรุปเหตุและผลหรือประเมินรังสี UV ไม่ได้</p>
+          <p>สูตร thirst เปรียบเทียบน้ำที่บันทึกกับช่วงประมาณของเหลวรวมสำหรับผู้ใหญ่ จึงยังไม่รวมอาหารหรือเครื่องดื่มที่ไม่ได้บันทึก ค่า 420 นาทีและ 1,500 มล. ในกฎ dryness เป็นจุดอ้างอิงสังเคราะห์ ไม่ใช่เกณฑ์แพทย์ ตัวเลือกเวลาอยู่นอกบ้านไม่ได้อยู่ในกฎสร้างป้าย dryness จึงใช้สรุปเหตุและผลหรือประเมินรังสี UV ไม่ได้</p>
           <h3>Sleep score · คำนวณจากระยะเวลาเท่านั้น</h3>
           <code>sleep_score_0_100 = round(min(100, sleep_duration_total_minutes ÷ 540 × 100), 1)</code>
           <p>คะแนนเต็มเมื่อถึงเพดานสูตร 9 ชั่วโมง และยังรับเวลานอนได้ถึง 10 ชั่วโมง; เป็นสเกลของแอป ไม่ใช่คะแนนทางการแพทย์หรือคุณภาพการนอน ส่วนเวลานอนที่แนะนำจะแสดงแยกตามช่วงวัยตามแนวทาง CDC</p>
@@ -125,14 +141,22 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     has_session: false,
     consent_active: false,
     age_guidance_consent_active: false,
+    weight_profile_consent_active: false,
+    weight_kg: null,
+    skin_type_guidance_consent_active: false,
     model_training_consent_active: false,
     can_report_outcomes: false,
     age_band: null,
     smoking_status: null,
+    skin_type: null,
   });
   const [isPredicting, setIsPredicting] = useState(false);
   const [storageStatus, setStorageStatus] = useState<StorageStatus>("idle");
   const [storageMessage, setStorageMessage] = useState("");
+  const [profileWeightInput, setProfileWeightInput] = useState("");
+  const [profileWeightConsent, setProfileWeightConsent] = useState(false);
+  const [profileStorageStatus, setProfileStorageStatus] = useState<ProfileStorageStatus>("idle");
+  const [profileStorageMessage, setProfileStorageMessage] = useState("");
   const predictionRequestId = useRef(0);
 
   useEffect(() => {
@@ -144,16 +168,26 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       })
       .then((profile) => {
         setPersonalProfile(profile);
-        if (profile.consent_active || profile.age_guidance_consent_active || profile.model_training_consent_active) {
+        if (
+          profile.consent_active
+          || profile.age_guidance_consent_active
+          || profile.weight_profile_consent_active
+          || profile.skin_type_guidance_consent_active
+          || profile.model_training_consent_active
+        ) {
           setForm((current) => ({
             ...current,
             personalizationConsent: profile.consent_active || current.personalizationConsent,
             ageGuidanceConsent: profile.age_guidance_consent_active || current.ageGuidanceConsent,
+            skinTypeGuidanceConsent: profile.skin_type_guidance_consent_active || current.skinTypeGuidanceConsent,
             modelTrainingConsent: profile.model_training_consent_active,
             ageBand: profile.age_guidance_consent_active ? profile.age_band ?? "" : current.ageBand,
             smokingStatus: profile.consent_active ? profile.smoking_status ?? "" : current.smokingStatus,
+            skinType: profile.skin_type_guidance_consent_active ? profile.skin_type ?? "" : current.skinType,
           }));
         }
+        setProfileWeightInput(profile.weight_kg == null ? "" : String(profile.weight_kg));
+        setProfileWeightConsent(profile.weight_profile_consent_active === true);
       })
       .catch(() => undefined);
     return () => controller.abort();
@@ -175,8 +209,78 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  async function saveProfileWeight(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const weight = Number(profileWeightInput);
+    if (!Number.isFinite(weight) || weight < 1 || weight > 500) {
+      setProfileStorageStatus("failed");
+      setProfileStorageMessage("น้ำหนักในโปรไฟล์ต้องอยู่ระหว่าง 1–500 กิโลกรัม");
+      return;
+    }
+    if (!profileWeightConsent && !personalProfile.weight_profile_consent_active) {
+      setProfileStorageStatus("failed");
+      setProfileStorageMessage("กรุณายินยอมให้บันทึกน้ำหนักในโปรไฟล์ก่อน");
+      return;
+    }
+
+    setProfileStorageStatus("saving");
+    setProfileStorageMessage("");
+    try {
+      const response = await fetch("/api/daily-health/profile/weight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ weight_kg: weight, consent_given: true }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(typeof result?.detail === "string" ? result.detail : "บันทึกน้ำหนักในโปรไฟล์ไม่สำเร็จ");
+      }
+      setPersonalProfile((current) => ({
+        ...current,
+        has_session: true,
+        weight_profile_consent_active: true,
+        weight_kg: weight,
+      }));
+      setProfileWeightConsent(true);
+      setProfileStorageStatus("saved");
+      setProfileStorageMessage("บันทึกน้ำหนักในโปรไฟล์แล้ว; จะใช้ค่านี้กับการคำนวณ Thirst score");
+    } catch (error) {
+      setProfileStorageStatus("failed");
+      setProfileStorageMessage(error instanceof Error ? error.message : "บันทึกน้ำหนักในโปรไฟล์ไม่สำเร็จ");
+    }
+  }
+
+  async function deleteProfileWeight() {
+    if (!window.confirm("ลบน้ำหนักออกจากโปรไฟล์และหยุดใช้ค่านี้คำนวณ Thirst score หรือไม่?")) return;
+    setProfileStorageStatus("saving");
+    setProfileStorageMessage("");
+    try {
+      const response = await fetch("/api/daily-health/profile/weight", {
+        method: "DELETE",
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("ลบน้ำหนักในโปรไฟล์ไม่สำเร็จ");
+      setPersonalProfile((current) => ({
+        ...current,
+        weight_profile_consent_active: false,
+        weight_kg: null,
+      }));
+      setProfileWeightInput("");
+      setProfileWeightConsent(false);
+      setEntry((current) => current ? { ...current, weightKg: null } : current);
+      setPrediction(null);
+      window.dispatchEvent(new Event(DAILY_HEALTH_DATA_UPDATED_EVENT));
+      setProfileStorageStatus("saved");
+      setProfileStorageMessage("ลบน้ำหนักในโปรไฟล์แล้ว");
+    } catch (error) {
+      setProfileStorageStatus("failed");
+      setProfileStorageMessage(error instanceof Error ? error.message : "ลบน้ำหนักในโปรไฟล์ไม่สำเร็จ");
+    }
+  }
+
   async function deletePersonalProfile() {
-    if (!window.confirm("ลบข้อมูลช่วงวัย สถานะการสูบบุหรี่ และเช็กอินประจำเดือนที่บันทึกไว้หรือไม่?")) return;
+    if (!window.confirm("ลบข้อมูลช่วงวัย ชนิดผิว น้ำหนัก สถานะการสูบบุหรี่ และเช็กอินประจำเดือนที่บันทึกไว้หรือไม่?")) return;
     try {
       const response = await fetch("/api/daily-health/profile", {
         method: "DELETE",
@@ -187,21 +291,53 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
+        weight_profile_consent_active: false,
+        weight_kg: null,
+        skin_type_guidance_consent_active: false,
         model_training_consent_active: personalProfile.model_training_consent_active,
         can_report_outcomes: true,
         age_band: null,
         smoking_status: null,
+        skin_type: null,
       });
+      setProfileWeightInput("");
+      setProfileWeightConsent(false);
       setForm((current) => ({
         ...current,
         personalizationConsent: false,
         ageGuidanceConsent: false,
+        skinTypeGuidanceConsent: false,
         ageBand: "",
         smokingStatus: "",
+        skinType: "",
         menstruationChoice: "",
       }));
+      if (personalProfile.weight_profile_consent_active) {
+        setEntry((current) => current ? { ...current, weightKg: null } : current);
+        setPrediction(null);
+      } else {
+        setPrediction((current) => {
+          if (!current) return current;
+          const removedSkinGuidance = new Set(
+            current.interpretation.profile_guidance
+              .filter((item) => item.topic === "skin_type_care")
+              .map((item) => item.message),
+          );
+          return {
+            ...current,
+            guidance: current.guidance.filter((item) => !removedSkinGuidance.has(item)),
+            interpretation: {
+              ...current.interpretation,
+              profile_guidance: current.interpretation.profile_guidance.filter(
+                (item) => item.topic !== "skin_type_care",
+              ),
+            },
+          };
+        });
+      }
+      window.dispatchEvent(new Event(DAILY_HEALTH_DATA_UPDATED_EVENT));
       setStorageStatus("saved");
-      setStorageMessage("ลบข้อมูลส่วนบุคคลและถอน consent แล้ว");
+      setStorageMessage("ลบข้อมูลโปรไฟล์ส่วนบุคคลและถอน consent แล้ว");
     } catch (error) {
       setStorageStatus("failed");
       setStorageMessage(error instanceof Error ? error.message : "ลบข้อมูลไม่สำเร็จ");
@@ -249,11 +385,15 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
+        weight_profile_consent_active: false,
+        weight_kg: null,
         model_training_consent_active: false,
         can_report_outcomes: false,
         age_band: null,
         smoking_status: null,
       });
+      setProfileWeightInput("");
+      setProfileWeightConsent(false);
       setStorageStatus("saved");
       setStorageMessage("ลบประวัติสุขภาพและผลที่รายงานเองแล้ว; ล้าง candidate model แล้ว บัญชียังคงเข้าสู่ระบบอยู่");
     } catch (error) {
@@ -268,7 +408,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     try {
       const thirstScore = predictionResult?.predictions.thirst_score_0_10.value ?? null;
       const drynessScore = predictionResult?.predictions.skin_dryness_score_0_10.value ?? null;
-      const hasScores = thirstScore !== null && drynessScore !== null;
+      const hasScores = drynessScore !== null;
       const response = await fetch("/api/daily-health/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -279,10 +419,11 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           timezone: "Asia/Bangkok",
           sleep_duration_minutes: dailyEntry.sleepDurationMinutes,
           water_intake_ml: dailyEntry.waterIntakeMl,
+          weight_kg: dailyEntry.weightKg,
           outdoor_exposure_choice: outdoorOptions.find((option) => option.value === dailyEntry.outdoorChoice)?.apiChoice,
                 prediction: predictionResult
                   ? {
-                      thirst_score_0_10: thirstScore,
+                      thirst_score_0_10: predictionResult.predictions.thirst_score_0_10.status === "calculated" ? null : thirstScore,
                       dryness_score_0_10: drynessScore,
                       prediction_status: hasScores ? "predicted" : "not_available",
                       model_id: predictionResult.model?.model_id ?? null,
@@ -296,6 +437,8 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           currently_menstruating: dailyEntry.personalizationConsent
             ? dailyEntry.currentlyMenstruating
             : null,
+          skin_type_guidance_consent: dailyEntry.skinTypeGuidanceConsent,
+          skin_type: dailyEntry.skinTypeGuidanceConsent ? dailyEntry.skinType : null,
           model_training_consent: dailyEntry.modelTrainingConsent,
         }),
       });
@@ -313,6 +456,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       } catch {
         // The daily entry is already saved; profile refresh is best-effort.
       }
+      window.dispatchEvent(new Event(DAILY_HEALTH_DATA_UPDATED_EVENT));
     } catch (error) {
       setStorageStatus("failed");
       setStorageMessage(error instanceof Error ? error.message : "บันทึกข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง");
@@ -348,6 +492,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       sleepMinutes: minutes,
       sleepDurationMinutes: hours * 60 + minutes,
       waterIntakeMl: water,
+      weightKg: personalProfile.weight_profile_consent_active ? personalProfile.weight_kg ?? null : null,
       outdoorChoice: form.outdoorChoice,
       modelTrainingConsent: form.modelTrainingConsent,
       personalizationConsent: form.personalizationConsent,
@@ -357,6 +502,8 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       currentlyMenstruating: form.personalizationConsent && form.menstruationChoice
         ? form.menstruationChoice === "yes"
         : null,
+      skinTypeGuidanceConsent: form.skinTypeGuidanceConsent,
+      skinType: form.skinTypeGuidanceConsent && form.skinType ? form.skinType : null,
     } satisfies DailyEntry;
     const selectedChoice = outdoorOptions.find((option) => option.value === form.outdoorChoice);
     const requestId = ++predictionRequestId.current;
@@ -380,8 +527,11 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           sleep_hours: dailyEntry.sleepHours,
           sleep_minutes: dailyEntry.sleepMinutes,
           water_intake_ml: dailyEntry.waterIntakeMl,
+          weight_kg: dailyEntry.weightKg,
           outdoor_exposure_choice: selectedChoice?.apiChoice,
-          personal_context: dailyEntry.personalizationConsent || dailyEntry.ageGuidanceConsent
+          personal_context: dailyEntry.personalizationConsent
+            || dailyEntry.ageGuidanceConsent
+            || dailyEntry.skinTypeGuidanceConsent
             ? {
                 consent_given: dailyEntry.personalizationConsent,
                 age_guidance_consent_given: dailyEntry.ageGuidanceConsent,
@@ -390,6 +540,8 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                 currently_menstruating: dailyEntry.personalizationConsent
                   ? dailyEntry.currentlyMenstruating
                   : null,
+                skin_type_guidance_consent_given: dailyEntry.skinTypeGuidanceConsent,
+                skin_type: dailyEntry.skinTypeGuidanceConsent ? dailyEntry.skinType : null,
               }
             : null,
         }),
@@ -415,6 +567,57 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
 
   return (
     <div className="clients-tracker">
+      <section className="profile-weight-card" aria-labelledby="profile-weight-title">
+        <div className="daily-entry-copy">
+          <p className="eyebrow">ข้อมูลโปรไฟล์</p>
+          <h2 id="profile-weight-title">น้ำหนักสำหรับคำนวณ Thirst score</h2>
+          <p>บันทึกหรือแก้ไขในโปรไฟล์ครั้งเดียว; ระบบจะใช้น้ำหนักนี้กับข้อมูลรายวันและไม่ถามซ้ำในฟอร์มประจำวัน</p>
+        </div>
+        <form className="profile-weight-form" onSubmit={saveProfileWeight}>
+          <label className="tracker-field" htmlFor="profile-weight-kg">
+            <span>น้ำหนักตัว (กิโลกรัม)</span>
+            <input
+              id="profile-weight-kg"
+              type="number"
+              min="1"
+              max="500"
+              step="any"
+              inputMode="decimal"
+              placeholder="เช่น 60"
+              required
+              value={profileWeightInput}
+              onChange={(event) => setProfileWeightInput(event.target.value)}
+            />
+            <small>ใช้คำนวณช่วงอ้างอิงต่อวัน = น้ำหนัก × 30–35 มล.; โปรไฟล์ไม่ใช้ค่านี้ฝึกโมเดล</small>
+          </label>
+          <label className="daily-data-consent profile-weight-consent">
+            <input
+              type="checkbox"
+              checked={personalProfile.weight_profile_consent_active || profileWeightConsent}
+              disabled={personalProfile.weight_profile_consent_active}
+              required={!personalProfile.weight_profile_consent_active}
+              onChange={(event) => setProfileWeightConsent(event.target.checked)}
+            />
+            <span>ยินยอมแยกต่างหากให้บันทึกน้ำหนักไว้ในโปรไฟล์และใช้คำนวณ Thirst score; แก้ไขหรือลบได้ทุกเมื่อ</span>
+          </label>
+          <div className="profile-weight-actions">
+            <button className="primary-button" type="submit" disabled={profileStorageStatus === "saving"}>
+              {profileStorageStatus === "saving" ? "กำลังบันทึก…" : "บันทึกน้ำหนักในโปรไฟล์"}
+            </button>
+            {personalProfile.weight_profile_consent_active && (
+              <button className="profile-delete-button" type="button" onClick={() => void deleteProfileWeight()}>
+                ลบน้ำหนักจากโปรไฟล์
+              </button>
+            )}
+          </div>
+          {profileStorageMessage && (
+            <p className={`storage-status storage-status-${profileStorageStatus}`} role="status" aria-live="polite">
+              {profileStorageMessage}
+            </p>
+          )}
+        </form>
+      </section>
+
       <section className="daily-entry-card" aria-labelledby="daily-entry-title">
         <div className="daily-entry-copy">
           <p className="eyebrow">บันทึกประจำวัน</p>
@@ -458,7 +661,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           <label className="tracker-field" htmlFor="water-intake">
             <span>ปริมาณน้ำดื่ม (มล.)</span>
             <input id="water-intake" type="number" min="0" max="20000" step="1" inputMode="numeric" placeholder="เช่น 1500" required value={form.waterIntakeMl} onChange={(event) => updateForm("waterIntakeMl", event.target.value)} />
-            <small>กรอกยอดสะสมทั้งวัน; โมเดลฝึกด้วยช่วง 900–1,800 มล. ถ้ากรอกยอดระหว่างวันอาจอยู่นอกช่วงฝึก</small>
+            <small>กรอกยอดสะสมทั้งวัน; Thirst score ใช้น้ำหนักที่บันทึกไว้ในโปรไฟล์ ส่วนโมเดล dryness ฝึกด้วยช่วง 900–1,800 มล.</small>
           </label>
 
           <fieldset className="tracker-field outdoor-field">
@@ -540,6 +743,34 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             <label className="personalization-consent">
               <input
                 type="checkbox"
+                checked={form.skinTypeGuidanceConsent}
+                disabled={personalProfile.skin_type_guidance_consent_active}
+                onChange={(event) => updateForm("skinTypeGuidanceConsent", event.target.checked)}
+              />
+              <span>ยินยอมแยกต่างหากให้บันทึกและใช้ประเภทผิวที่ฉันระบุ เพื่อแสดงคำแนะนำการดูแลผิวทั่วไป ไม่ใช้วินิจฉัยโรค; ถอน consent และลบข้อมูลได้ด้วยปุ่มด้านล่าง</span>
+            </label>
+            {form.skinTypeGuidanceConsent && (
+              <label className="tracker-field" htmlFor="skin-type">
+                <span>ประเภทผิวที่คุณระบุ</span>
+                <select
+                  id="skin-type"
+                  value={form.skinType}
+                  onChange={(event) => updateForm("skinType", event.target.value as SkinType | "")}
+                >
+                  <option value="">{personalProfile.skin_type ? "ใช้ประเภทเดิมที่บันทึกไว้" : "เลือกประเภทผิว หรือยังไม่ระบุ"}</option>
+                  <option value="normal">ผิวธรรมดา · สมดุล ไม่ค่อยมีปัญหา</option>
+                  <option value="dry">ผิวแห้ง · ตึงหรือลอกง่าย</option>
+                  <option value="oily">ผิวมัน · มันง่ายระหว่างวัน</option>
+                  <option value="combination">ผิวผสม · ทีโซนมัน แก้มแห้ง</option>
+                  <option value="sensitive">ผิวแพ้ง่าย · ระคายเคืองง่าย</option>
+                  <option value="prefer_not_to_say">ไม่ต้องการระบุ</option>
+                </select>
+                <small>เป็นการเลือกประเภทผิวด้วยตนเอง ไม่ใช่ผลตรวจสภาพผิว; คุณเปลี่ยนหรือไม่ระบุได้</small>
+              </label>
+            )}
+            <label className="personalization-consent">
+              <input
+                type="checkbox"
                 checked={form.ageGuidanceConsent}
                 onChange={(event) => updateForm("ageGuidanceConsent", event.target.checked)}
               />
@@ -563,9 +794,14 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
               </label>
             )}
             <small>
-              ข้อมูลที่เคยบันทึกจะคงอยู่จนกดถอน consent และลบข้อมูลด้านล่าง; เช็กอินประจำเดือนเลือกแชร์แยกในแต่ละวัน
+              ข้อมูลโปรไฟล์ที่ยินยอมจะคงอยู่จนกดถอน consent และลบข้อมูลด้านล่าง; เช็กอินประจำเดือนเลือกแชร์แยกในแต่ละวัน
             </small>
-            {(personalProfile.consent_active || personalProfile.age_guidance_consent_active) && (
+            {(
+              personalProfile.consent_active
+              || personalProfile.age_guidance_consent_active
+              || personalProfile.weight_profile_consent_active
+              || personalProfile.skin_type_guidance_consent_active
+            ) && (
               <button className="profile-delete-button" type="button" onClick={() => void deletePersonalProfile()}>
                 ถอน consent และลบข้อมูลส่วนบุคคลที่บันทึกไว้
               </button>
@@ -631,7 +867,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
               <article className="tracker-metric pending-metric">
                 <p className="eyebrow">THIRST SCORE</p>
                 <strong>{isPredicting ? "…" : prediction?.predictions.thirst_score_0_10.value?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
-                <p>{prediction?.predictions.thirst_score_0_10.value == null ? "ไม่มีคะแนนในรอบนี้" : prediction.model?.prediction_horizon_days ? `คาดการณ์สำหรับ ${displayDate(prediction.prediction_target_date)}` : "ค่าประเมินจากข้อมูลวันนี้"}</p>
+                <p>{prediction?.predictions.thirst_score_0_10.value == null ? "เพิ่มน้ำหนักในโปรไฟล์เพื่อคำนวณ" : "คำนวณจากน้ำวันนี้เทียบกับน้ำหนักในโปรไฟล์ × 30; คะแนนสูง = ยังขาดจากฐานอ้างอิงมาก"}</p>
               </article>
               <article className="tracker-metric pending-metric">
                 <p className="eyebrow">DRYNESS SCORE</p>
@@ -639,7 +875,9 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                 <p>{prediction?.predictions.skin_dryness_score_0_10.value == null ? "ไม่มีคะแนนในรอบนี้" : prediction.model?.prediction_horizon_days ? `คาดการณ์สำหรับ ${displayDate(prediction.prediction_target_date)}` : "ค่าประเมินจากข้อมูลวันนี้"}</p>
               </article>
             </div>
+            <HydrationReference hydration={prediction?.calculated.hydration} />
             <div className="entry-summary" aria-label="ข้อมูลที่กรอก">
+              {entry.weightKg != null && <span>น้ำหนักจากโปรไฟล์ <strong>{entry.weightKg.toLocaleString("th-TH")} กก.</strong></span>}
               <span>น้ำดื่ม <strong>{entry.waterIntakeMl.toLocaleString("th-TH")} มล.</strong></span>
               <span>เวลาอยู่นอกบ้าน <strong>{selectedOutdoor?.label}</strong></span>
             </div>
@@ -674,7 +912,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         <ScoreMethodDetails />
       </section>
 
-      {personalProfile.has_session && (
+      {personalProfile.has_session && personalProfile.can_report_outcomes && (
         <section className="daily-data-delete-panel" aria-labelledby="daily-data-delete-title">
           <div>
             <h2 id="daily-data-delete-title">จัดการข้อมูลสุขภาพ</h2>

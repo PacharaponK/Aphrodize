@@ -44,6 +44,7 @@ data/
 storage/artifacts/ffhq_wrinkle_phase*/
 
 # Experiment and runtime outputs
+.codex/
 sandboxes/
 mlruns/
 logs/*.log

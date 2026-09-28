@@ -203,17 +203,21 @@ class FakeSession:
         has_consent: bool = True,
         has_training_consent: bool = False,
         has_outcome: bool = False,
+        profile_weight_kg: float | None = None,
     ) -> None:
         self.entry = entry
         self.has_consent = has_consent
         self.has_training_consent = has_training_consent
         self.has_outcome = has_outcome
+        self.profile_weight_kg = profile_weight_kg
         self.committed = False
         self.statement = None
         self.statements = []
         self.added = []
 
     async def get(self, model, _user_id):
+        if model is DailyHealthProfile and self.profile_weight_kg is not None:
+            return DailyHealthProfile(user_id=uuid4(), weight_kg=self.profile_weight_kg)
         return object() if model is User else None
 
     async def scalar(self, statement):
@@ -247,6 +251,9 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
         timezone="Asia/Bangkok",
         sleep_duration_minutes=362,
         water_intake_ml=1400,
+        weight_kg=60,
+        calculated_thirst_score_0_10=2.2,
+        thirst_score_method="recorded-fluid-shortfall-weight-v1",
         outdoor_exposure_choice=1,
         sleep_score_0_100=67.0,
         sleep_score_method=(
@@ -261,11 +268,12 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
         created_at=now,
         updated_at=now,
     )
-    session = FakeSession(entry)
+    session = FakeSession(entry, profile_weight_kg=60)
     payload = DailyHealthEntryUpsert(
         local_date=date(2026, 9, 26),
         sleep_duration_minutes=362,
         water_intake_ml=1400,
+        weight_kg=80,
         outdoor_exposure_choice=1,
         prediction={
             "thirst_score_0_10": 4.2,
@@ -285,6 +293,11 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
     assert result.predicted_thirst_score_0_10 == 4.2
     assert result.prediction_target_date == date(2026, 9, 27)
     assert result.training_eligible is False
+    params = session.statement.compile().params
+    assert params["weight_kg"] == 60
+    assert params["calculated_thirst_score_0_10"] == 2.2
+    assert params["thirst_score_method"] == "recorded-fluid-shortfall-weight-v1"
+    assert result.calculated_thirst_score_0_10 == 2.2
 
 
 @pytest.mark.asyncio
@@ -419,6 +432,8 @@ async def test_profile_read_hides_data_when_personalization_consent_is_inactive(
         "can_report_outcomes": False,
         "age_band": None,
         "smoking_status": None,
+        "weight_profile_consent_active": False,
+        "weight_kg": None,
     }
 
 
@@ -487,6 +502,7 @@ class FakeDailyHealthHistorySession:
         self.age_band = age_band
         self.menstrual_checkins = menstrual_checkins or []
         self.scalars_calls = []
+        self.entry_query_params = None
 
     async def get(self, model, _user_id):
         if model is User:
@@ -508,6 +524,7 @@ class FakeDailyHealthHistorySession:
         query = str(statement).lower()
         self.scalars_calls.append(query)
         if "daily_health_entries" in query:
+            self.entry_query_params = statement.compile().params
             return FakeScalarList(self.entries)
         if "daily_health_menstrual_checkins" in query:
             return FakeScalarList(self.menstrual_checkins)
@@ -576,6 +593,78 @@ async def test_history_read_does_not_return_rows_without_daily_health_consent() 
 
     assert result == {"items": []}
     assert not session.scalars_calls
+
+
+@pytest.mark.asyncio
+async def test_history_preserves_formula_snapshot_and_independent_dryness_prediction() -> None:
+    user_id = uuid4()
+    entry = DailyHealthEntry(
+        user_id=user_id,
+        local_date=date(2026, 9, 26),
+        sleep_duration_minutes=480,
+        water_intake_ml=900,
+        weight_kg=60,
+        calculated_thirst_score_0_10=5.0,
+        thirst_score_method="recorded-fluid-shortfall-weight-v1",
+        outdoor_exposure_choice=1,
+        sleep_score_0_100=88.9,
+        prediction_status="predicted",
+        predicted_thirst_score_0_10=None,
+        predicted_dryness_score_0_10=2.0,
+        prediction_target_date=date(2026, 9, 27),
+    )
+    result = await list_daily_health_entries(
+        user_id,
+        limit=7,
+        session=FakeDailyHealthHistorySession([entry]),
+    )
+    item = result["items"][0]
+    assert item["predictions"]["thirst_score_0_10"]["value"] == 5
+    assert item["predictions"]["thirst_score_0_10"]["status"] == "calculated"
+    assert item["predictions"]["thirst_score_0_10"]["target_date"] == "2026-09-26"
+    assert item["predictions"]["skin_dryness_score_0_10"]["value"] == 2
+    assert item["prediction_target_date"] == "2026-09-27"
+    assert item["input"]["weight_kg"] == 60
+    assert item["interpretation"]["skin_care_attention_level"]["level"] == "low"
+
+
+@pytest.mark.asyncio
+async def test_history_read_can_be_scoped_to_a_local_calendar_date_window() -> None:
+    user_id = uuid4()
+    start_date = date(2026, 9, 20)
+    end_date = date(2026, 9, 26)
+    session = FakeDailyHealthHistorySession([])
+
+    result = await list_daily_health_entries(
+        user_id,
+        limit=7,
+        from_date=start_date,
+        to_date=end_date,
+        session=session,
+    )
+
+    assert result == {"items": []}
+    assert start_date in session.entry_query_params.values()
+    assert end_date in session.entry_query_params.values()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("from_date", "to_date", "detail"),
+    [
+        (date(2026, 9, 20), None, "Both from_date and to_date are required together"),
+        (date(2026, 9, 27), date(2026, 9, 20), "from_date must not be after to_date"),
+        (date(2026, 1, 1), date(2026, 4, 1), "Date window cannot exceed 90 days"),
+    ],
+)
+async def test_history_read_rejects_invalid_date_windows(from_date, to_date, detail) -> None:
+    with pytest.raises(HTTPException, match=detail):
+        await list_daily_health_entries(
+            uuid4(),
+            from_date=from_date,
+            to_date=to_date,
+            session=FakeDailyHealthHistorySession([]),
+        )
 
 
 @pytest.mark.asyncio

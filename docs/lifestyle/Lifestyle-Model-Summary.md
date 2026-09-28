@@ -6,10 +6,10 @@
 
 | ใช้ทำอะไร | โมเดล | ประเภท | สถานะ |
 | --- | --- | --- | --- |
-| ทำนายคะแนน thirst และ dryness ในหน้า `/clients` | `RandomForestRegressor` แบบ multi-output | **Non-linear** | Backend API หลักโหลด implementation/artifact จาก `models/time-series/non-linear-model/`; ยังเป็นโมเดลทดลองจากข้อมูลสังเคราะห์ |
+| คำนวณ thirst ตามน้ำหนัก / ทำนาย dryness ในหน้า `/clients` | สูตรน้ำอ้างอิง 30–35 ml/kg / `RandomForestRegressor` | **Rule-based / Non-linear** | Thirst ใช้สูตรแยก; dryness ใช้ artifact จาก `models/time-series/non-linear-model/` |
 | ทดลองทำนายความเสี่ยงวันถัดไปจากประวัติ 7 วัน | PyTorch GRU classifier แยกตาม target | **Non-linear** | การทดลองใน `sandboxes/`; ยังไม่ได้เชื่อมกับหน้า `/clients` |
 
-ดังนั้น ถ้าหมายถึงคะแนนที่หน้า `/clients` แสดง คำตอบคือ **Random Forest ซึ่งเป็นโมเดล non-linear** ไม่ใช่ GRU หรือ ARIMA
+คะแนนที่หน้า `/clients` แสดงใช้ทั้งสูตรคำนวณและ Random Forest: sleep และ thirst คำนวณจาก input ส่วน dryness มาจากโมเดล non-linear; GRU ยังเป็นการทดลองใน sandbox
 
 ## 1. โมเดลคะแนนที่หน้า `/clients` ใช้อยู่
 
@@ -25,17 +25,18 @@ Random Forest รวมผลจาก decision tree หลายต้น โ�
 | --- | --- | --- |
 | Input | `sleep_duration_total_minutes` | เวลานอนรวมของวันนั้น แปลงจากชั่วโมงและนาที |
 | Input | `water_intake_ml` | ปริมาณน้ำดื่มที่กรอกเป็นมิลลิลิตร |
+| Profile input | `weight_kg` | น้ำหนักที่ผู้ใช้บันทึกครั้งเดียวในโปรไฟล์ภายใต้ consent แยก; server เก็บ snapshot ของค่านี้กับรายการรายวันเพื่อคำนวณช่วงน้ำอ้างอิงและ Thirst score |
 | Input | `outdoor_exposure_choice` | ตัวเลือกเวลาอยู่นอกบ้าน 1–4; ใช้เป็นรหัสตัวเลือก ไม่ใช่จำนวน UV |
-| Target | `thirst_score_0_10` | คะแนนกระหายน้ำสังเคราะห์ระดับ 0–10 |
+| Calculated | `thirst_score_0_10` | คะแนนส่วนที่น้ำที่บันทึกยังต่ำกว่าฐาน `weight_kg × 30` ช่วง 0–10 |
 | Target | `skin_dryness_score_0_10` | คะแนนผิวแห้งสังเคราะห์ระดับ 0–10 |
 
-โมเดลทำนาย thirst และ dryness พร้อมกันจากข้อมูลของวันเดียวกัน ไม่ใช่การ forecast คะแนนของวันถัดไป
+artifact เดิมยังมีสอง outputs เพื่อรักษารูปแบบที่โหลดได้ แต่ serving ปัจจุบันใช้เฉพาะ output dryness จาก Random Forest; output thirst ของโมเดลถูกแทนด้วยสูตรน้ำตามน้ำหนักและอ้างอิงวันที่ input เสมอ แม้ dryness จาก candidate จะพยากรณ์วันถัดไป
 
-ฟอร์มและ API รับเวลานอนได้สูงสุด 600 นาที (10 ชั่วโมง) แต่โมเดล thirst/dryness ยังฝึกในช่วง 180–540 นาทีและน้ำ 900–1,800 มล.; ดังนั้นช่วง 541–600 นาทีบันทึกและคำนวณ sleep score ได้ แต่ production API จะงดคะแนน thirst/dryness จนกว่าจะมีการฝึกและตรวจสอบโมเดลในช่วงนั้น การอยู่นอกช่วงไม่ได้แปลว่ามีความเสี่ยงต่ำหรือสูง
+ฟอร์มรายวันและ API รับเวลานอนได้สูงสุด 600 นาที (10 ชั่วโมง) แต่โมเดล dryness ยังฝึกในช่วง 180–540 นาทีและน้ำ 900–1,800 มล.; production API จะงด dryness นอกช่วงนี้ สูตร sleep และ thirst ยังใช้ได้โดยไม่ขึ้นกับช่วงฝึก ผู้ใช้บันทึกน้ำหนักไว้ในส่วนโปรไฟล์ครั้งเดียว ไม่ต้องกรอกในแต่ละวัน; หากไม่มีน้ำหนักโปรไฟล์ที่ consent active ระบบคืน thirst เป็น `null` และไม่เดาน้ำหนักแทนผู้ใช้ สูตรน้ำอ้างอิงผู้ใหญ่จึงไม่ใช้เมื่อระบุช่วงวัย 13–17 ปี
 
 **Sleep score ไม่ได้ทำนายด้วย ML:** API คำนวณแยกด้วยสูตรที่เพดาน 9 ชั่วโมง ไม่ใช่ Zepp sleep-quality score และไม่ใช่คะแนนสุขภาพมาตรฐาน; การแนะนำชั่วโมงนอนแยกตามช่วงวัยที่ผู้ใช้ยินยอมให้ใช้
 
-คำแนะนำเลือกด้วยกฎจากเวลานอน, thirst/dryness signals และเวลานอกบ้าน ร่วมกับช่วงวัย/สถานะสูบบุหรี่/เช็กอินประจำเดือนที่ผู้ใช้ยินยอมให้ใช้ หน้า `/clients` แสดงเฉพาะคำแนะนำที่เกี่ยวข้องกับผู้ใช้คนนั้น ไม่แสดงสรุประบบหรือเหตุผลทางเทคนิคของโมเดล
+คำแนะนำเลือกด้วยกฎจากเวลานอน, thirst/dryness signals และเวลานอกบ้าน ร่วมกับช่วงวัย/สถานะสูบบุหรี่/เช็กอินประจำเดือนที่ผู้ใช้ยินยอมให้ใช้ เพิ่มชนิดผิวที่ผู้ใช้เลือกเองภายใต้ consent แยก เพื่อแสดงแนวทางดูแลผิวทั่วไปพร้อมแหล่งอ้างอิง AAD; ชนิดผิวไม่ใช่ feature หรือ target ของโมเดล และไม่เปลี่ยนคะแนนหรือระดับความเสี่ยง หน้า `/clients` แสดงเฉพาะคำแนะนำที่เกี่ยวข้องกับผู้ใช้คนนั้น ไม่แสดงสรุประบบหรือเหตุผลทางเทคนิคของโมเดล
 
 ### สูตรคำนวณคะแนนและที่มาของสูตร
 
@@ -50,7 +51,24 @@ sleep_score_0_100 = round(min(100, 100 × S / 540), 1)
 
 ตัวอย่าง `6 ชั่วโมง 2 นาที` มี `S = 362` จึงได้ `round(100 × 362 / 540, 1) = 67.0/100`; ตั้งแต่ 540 นาที (9 ชั่วโมง) ขึ้นไปได้ 100 คะแนน แม้ฟอร์มรับได้ถึง 600 นาที สูตรนี้เป็นสเกลเวลานอนที่โปรเจกต์กำหนดเอง ไม่ใช่สูตรวินิจฉัย คะแนนตามอายุ หรือคะแนนคุณภาพการนอนของ Zepp; แนวทาง CDC แยกตามวัย เช่น 13–17 ปี 8–10 ชั่วโมง, 18–60 ปีอย่างน้อย 7 ชั่วโมง, 61–64 ปี 7–9 ชั่วโมง และ 65 ปีขึ้นไป 7–8 ชั่วโมง ([CDC: About Sleep](https://www.cdc.gov/sleep/about/))
 
-**2. Thirst และ dryness ที่ใช้ฝึก — สร้างจากกฎสังเคราะห์ ไม่ใช่สูตรแพทย์**
+**2. Thirst score ปัจจุบัน — คำนวณจากน้ำที่บันทึกเทียบกับน้ำหนัก**
+
+กำหนด `B` = น้ำหนักตัว (kg), `W` = น้ำที่บันทึก (ml):
+
+```text
+reference_lower_ml = B × 30
+reference_upper_ml = B × 35
+recorded_shortfall_ml = max(0, reference_lower_ml − W)
+thirst_score_0_10 = round(10 × max(0, 1 − W / reference_lower_ml), 1)
+```
+
+คะแนน 10 หมายถึงไม่มีน้ำที่บันทึก, 5 หมายถึงบันทึกได้ครึ่งหนึ่งของฐาน ×30 และ 0 หมายถึงบันทึกได้ถึงฐานแล้ว; ดื่มเกินช่วง ×35 ไม่เพิ่มคะแนนหรือสรุปว่าเป็นอันตราย ตัวอย่างน้ำหนัก 60 kg: ช่วงอ้างอิง 1,800–2,100 ml, น้ำ 900 ml ได้ 5.0 และน้ำ 1,800 ml ได้ 0.0
+
+[NICE CG32 ข้อ 1.4.2](https://www.nice.org.uk/guidance/cg32/chapter/Recommendations) ใช้ 30–35 ml/kg เป็นช่วงประมาณ **ของเหลวรวม** ในบริบทโภชนบำบัดผู้ใหญ่ รวม intake จากอาหาร เครื่องดื่ม และแหล่งอื่นตามบริบทการรักษา ค่า ×35 ไม่ใช่เพดานความปลอดภัยสากลหรือสูตรวัดโรคไต/นิ่วโดยตรง; ต้องปรับตามบุคคล การสูญเสียน้ำ และข้อจำกัดน้ำจากแพทย์ การแปลง shortfall เป็นคะแนน 0–10 เป็นกฎของโปรเจกต์ ไม่ใช่คะแนนความกระหาย/ภาวะขาดน้ำที่ผ่านการรับรอง
+
+API คืน `status: calculated`, `method: recorded-fluid-shortfall-weight-v1`, `target_date` ของวัน input และช่วงน้ำใน `calculated.hydration` โดยคงชื่อ field เดิมเพื่อให้ client ใช้งานต่อได้ ฐานข้อมูลเก็บ `weight_kg` ที่อ่านจากโปรไฟล์เป็น snapshot พร้อม `calculated_thirst_score_0_10` และ `thirst_score_method` แยกจาก predicted และ self-report; server คำนวณเองเมื่อบันทึก ไม่เชื่อคะแนนสูตรที่ส่งจาก browser หากถอน consent และลบน้ำหนักจากโปรไฟล์ ระบบลบ snapshot/คะแนน thirst ที่อาศัยน้ำหนักนั้นด้วย คะแนนสูตรไม่ถูกใช้เป็น training label
+
+**ข้อมูล target ของ artifact เดิม — ประวัติการฝึกด้วยกฎสังเคราะห์**
 
 ไฟล์ฝึกที่ artifact นี้อ้างอิงใช้กฎต่อไปนี้สร้าง target ก่อนนำไป train โดย `round(x, 1)` คือปัดเป็นทศนิยม 1 ตำแหน่ง และ `clip(x, 0, 10)` คือจำกัดให้อยู่ระหว่าง 0–10:
 
@@ -84,24 +102,25 @@ Dryness ไม่ได้คำนวณจากสมการต่อเน
 
 **3. ผลคะแนนจาก Random Forest — เฉลี่ยผลของต้นไม้ แล้วจำกัดช่วง**
 
-เมื่อข้อมูลอยู่ในช่วงฝึก API ส่ง `x = [S, W, O]` เข้า model; Random Forest ที่มี 300 ต้นคำนวณแต่ละ target ด้วยค่าเฉลี่ยของคำทำนายจากต้นไม้:
+เมื่อข้อมูลอยู่ในช่วงฝึก API ส่ง `x = [S, W, O]` เข้า model; Random Forest ที่มี 300 ต้นคำนวณแต่ละ target ด้วยค่าเฉลี่ยของคำทำนายจากต้นไม้ แต่ serving ใช้เฉพาะ dryness:
 
 ```text
 raw_score_j = (tree_1_j(x) + tree_2_j(x) + ... + tree_300_j(x)) / 300
 predicted_score_j = round(clip(raw_score_j, 0, 10), 1)
 ```
 
-`j` คือ thirst หรือ dryness; นี่เป็นรูปแบบการ aggregate ของ regression forest ไม่ใช่สมการเชิงเส้นคงที่ ([scikit-learn: RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html)). ถ้า `S` ไม่อยู่ใน 180–540 นาที หรือ `W` ไม่อยู่ใน 900–1,800 มล. API งดคืนสองคะแนนนี้เป็น `null` แทนการคาดเดานอกช่วง แต่ยังคำนวณ sleep score ได้
+`j` ใน artifact เดิมคือ thirst หรือ dryness; thirst output นี้ไม่ถูกใช้ในการตอบ API ปัจจุบัน นี่เป็นรูปแบบการ aggregate ของ regression forest ([scikit-learn: RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html)). ถ้า `S` ไม่อยู่ใน 180–540 นาที หรือ `W` ไม่อยู่ใน 900–1,800 มล. API งด dryness เป็น `null` แต่ยังคำนวณ sleep และสูตร thirst ตามน้ำหนักได้
 
 **4. Guidance — ใช้ threshold rules หลังได้คะแนน**
 
 | เงื่อนไข | หลักการเลือกข้อความ |
 | --- | --- |
 | `S` ต่ำกว่าค่าขั้นต่ำตามช่วงวัยที่ยินยอมแชร์ | แนะนำเพิ่มเวลานอนตามช่วงวัย; หากไม่มีช่วงวัยใช้ข้อความทั่วไปและไม่อ้างว่าเป็นคำแนะนำเฉพาะอายุ |
-| thirst `≥4` | แนะนำให้สังเกตความกระหายและดื่มตามความต้องการ/กิจกรรม ไม่กำหนดปริมาณตายตัว |
+| น้ำที่บันทึกต่ำกว่าฐาน ×30 | แสดงยอดที่บันทึกและช่วงน้ำตามน้ำหนัก พร้อมให้ตรวจยอดรวมเครื่องดื่ม/อาหารและทยอยดื่มตามความต้องการ; หากแพทย์จำกัดน้ำใช้ปริมาณที่กำหนด |
 | dryness `≥4` | แนะนำมอยส์เจอไรเซอร์เมื่อผู้ใช้รู้สึกแห้ง; ค่าคะแนนไม่ใช่การตรวจสภาพผิวจริง |
 | `O ≥ 3` | แนะนำร่ม เสื้อผ้าปกป้อง หรือ broad-spectrum SPF 30+ เมื่ออยู่กลางแจ้งนาน; ตัวเลือกกลางแจ้งไม่ใช่ UV index |
 | สถานะสูบบุหรี่ `current` / เช็กอินประจำเดือน `true` ที่ผู้ใช้ยินยอม | เพิ่มคำแนะนำสนับสนุนเลิกบุหรี่ / ดูแลอาการช่วงมีประจำเดือนทั่วไป ตามข้อมูลที่ผู้ใช้ระบุ |
+| มี skin-type guidance consent และผู้ใช้เลือกระบุประเภทผิว | แสดงคำแนะนำดูแลผิวทั่วไปตามประเภทที่เลือก พร้อมลิงก์แหล่งข้อมูล; ไม่ใช้เป็นคะแนนความเสี่ยง |
 
 threshold เหล่านี้เป็นเงื่อนไขแสดงข้อความใน API ไม่ใช่ clinical cutoffs และไม่ได้เปลี่ยนคะแนนให้เป็นการวินิจฉัย
 
@@ -113,6 +132,9 @@ threshold เหล่านี้เป็นเงื่อนไขแสด�
 - [scikit-learn — RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html): การเฉลี่ยผลทำนายจาก regression trees
 - [AAD — 11 ways to reduce premature skin aging](https://www.aad.org/public/everyday-care/skin-care-secrets/anti-aging/reduce-premature-aging-skin): การป้องกันแสงแดดและความสัมพันธ์ของการสูบบุหรี่กับผิวแก่ก่อนวัย
 - [AAD — Dermatologists' tips for relieving dry skin](https://www.aad.org/public/everyday-care/skin-care-basics/dry/dermatologists-tips-relieve-dry-skin): การใช้มอยส์เจอไรเซอร์ที่ไม่มีน้ำหอมและการดูแลผิวแห้ง
+- [AAD — How to pick the right moisturizer for your skin](https://www.aad.org/public/everyday-care/skin-care-basics/dry/pick-moisturizer): แนวทางเลือกมอยส์เจอไรเซอร์ตามประเภทผิว
+- [AAD — How to control oily skin](https://www.aad.org/public/everyday-care/skin-care-basics/dry/oily-skin): แนวทางดูแลผิวมัน
+- [AAD — How to test skin care products](https://www.aad.org/public/everyday-care/skin-care-secrets/prevent-skin-problems/test-skin-care-products): วิธีทดลองผลิตภัณฑ์ก่อนใช้ โดยเฉพาะผิวแพ้ง่าย
 - [CDC — Benefits of Quitting Smoking](https://www.cdc.gov/tobacco/about/benefits-of-quitting.html): ประโยชน์ด้านสุขภาพของการเลิกบุหรี่
 - [NHS — Period Pain](https://www.nhs.uk/symptoms/period-pain/): การดูแลตนเองทั่วไปและอาการที่ควรปรึกษาบุคลากรสุขภาพ
 

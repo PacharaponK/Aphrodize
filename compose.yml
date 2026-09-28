@@ -221,6 +221,7 @@ services:
     environment: *api-environment
     volumes:
       - ./models:/app/models
+      - ./storage/data/approved:/app/storage/data/approved:ro
     depends_on:
       redis:
         condition: service_healthy

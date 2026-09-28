@@ -7,6 +7,7 @@ export type PredictionTestValues = {
   sleepHours: string;
   sleepMinutes: string;
   waterIntakeMl: string;
+  weightKg: string;
   outdoorChoice: string;
 };
 

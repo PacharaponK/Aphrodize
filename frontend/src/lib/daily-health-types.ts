@@ -2,7 +2,21 @@ export type AttentionLevel = "low" | "moderate" | "high" | null;
 
 export type ScorePrediction = {
   value: number | null;
-  status: "predicted" | "experimental_out_of_domain" | "not_available";
+  status: "predicted" | "calculated" | "experimental_out_of_domain" | "not_available";
+  method?: string | null;
+  target_date?: string | null;
+};
+
+export type HydrationCalculation = {
+  score_0_10: number | null;
+  method: string;
+  formula: string;
+  reference_lower_ml: number | null;
+  reference_upper_ml: number | null;
+  recorded_shortfall_ml: number | null;
+  range_status: "below_reference" | "within_reference" | "above_reference" | "missing_weight" | "unsupported_age";
+  reference_url: string;
+  scope: string;
 };
 
 export type HealthSignal = {
@@ -19,6 +33,8 @@ export type ProfileGuidance = {
   topic: string;
   status: "available";
   message: string;
+  reference_url?: string;
+  reference_label?: string;
 };
 
 export type DailyHealthInterpretation = {
@@ -48,9 +64,12 @@ export type PredictionResponse = {
   input: {
     sleep_duration_total_minutes: number;
     water_intake_ml: number;
+    weight_kg?: number | null;
     outdoor_exposure_choice: number;
   };
   calculated: {
+    thirst_score_0_10?: number | null;
+    hydration?: HydrationCalculation;
     sleep_score_0_100: number;
     sleep_score_method: string;
     sleep_score_scope: string;
@@ -71,6 +90,7 @@ export type DailyHealthHistoryItem = {
   input: {
     sleep_duration_total_minutes: number;
     water_intake_ml: number;
+    weight_kg?: number | null;
     outdoor_exposure_choice: number;
   };
   calculated: { sleep_score_0_100: number };
@@ -84,13 +104,24 @@ export type DailyHealthHistoryResponse = {
 
 export type SmokingStatus = "current" | "former" | "never" | "prefer_not_to_say";
 export type AgeBand = "13_17" | "18_60" | "61_64" | "65_plus";
+export type SkinType =
+  | "normal"
+  | "dry"
+  | "oily"
+  | "combination"
+  | "sensitive"
+  | "prefer_not_to_say";
 
 export type DailyHealthProfile = {
   has_session: boolean;
   consent_active: boolean;
   age_guidance_consent_active: boolean;
+  weight_profile_consent_active?: boolean;
+  weight_kg?: number | null;
+  skin_type_guidance_consent_active?: boolean;
   model_training_consent_active: boolean;
   can_report_outcomes: boolean;
   age_band: AgeBand | null;
   smoking_status: SmokingStatus | null;
+  skin_type?: SkinType | null;
 };
