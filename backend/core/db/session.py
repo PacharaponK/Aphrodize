@@ -21,6 +21,18 @@ async def create_database_schema() -> None:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
         if connection.dialect.name == "postgresql":
+            # create_all does not add columns to an accounts table created by older builds.
+            for column in (
+                "email_verified_at TIMESTAMPTZ",
+                "password_updated_at TIMESTAMPTZ",
+                "last_login_at TIMESTAMPTZ",
+                "failed_login_count INTEGER NOT NULL DEFAULT 0",
+                "locked_until TIMESTAMPTZ",
+                "updated_at TIMESTAMPTZ NOT NULL DEFAULT now()",
+            ):
+                await connection.execute(
+                    text(f"ALTER TABLE accounts ADD COLUMN IF NOT EXISTS {column}")
+                )
             # Widen the existing check without touching stored daily-health rows.
             constraint_definition = await connection.scalar(
                 text(
