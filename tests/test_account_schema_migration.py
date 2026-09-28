@@ -31,6 +31,10 @@ async def test_startup_adds_missing_account_columns_without_dropping_data(monkey
     monkeypatch.setattr(db_session, "engine", SimpleNamespace(begin=Context))
     await db_session.create_database_schema()
 
+    assert any("DROP TABLE daily_lifestyle_observations" in s for s in statements)
+    assert any("ADD COLUMN IF NOT EXISTS status" in s for s in statements)
+    assert any("ADD COLUMN IF NOT EXISTS deleted_at" in s for s in statements)
+    assert any("ADD CONSTRAINT ck_users_status" in s for s in statements)
     account_statements = [s for s in statements if s.startswith("ALTER TABLE accounts")]
     assert len(account_statements) == 6
     assert all("ADD COLUMN IF NOT EXISTS" in s for s in account_statements)

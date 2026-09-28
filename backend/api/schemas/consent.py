@@ -14,6 +14,7 @@ class ConsentRead(BaseModel):
     consent_id: UUID
     version: str
     accepted_at: datetime
+    access_token: str | None = None
 
 
 class WellnessProfileUpsert(BaseModel):

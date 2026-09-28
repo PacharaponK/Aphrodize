@@ -105,7 +105,7 @@ class DailyHealthEntryRead(BaseModel):
     prediction_status: str
     prediction_model_id: str | None
     data_source: str
-    training_eligible: bool
+    training_eligible: bool = False
     created_at: datetime
     updated_at: datetime
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
+import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }, { headers: { "Cache-Control": "no-store" } });
     }
     const response = await fetch(backendUrl("/daily-health/users/" + account.userId + "/profile"), {
-      headers: apiHeaders(),
+      headers: { Authorization: `Bearer ${account.token}` },
       cache: "no-store",
     });
     if (!response.ok) return backendFailure(response);
@@ -51,7 +51,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     if (!account) return failed(401, "Please sign in to delete daily health settings");
     const response = await fetch(backendUrl("/daily-health/users/" + account.userId + "/profile"), {
       method: "DELETE",
-      headers: apiHeaders(),
+      headers: { Authorization: `Bearer ${account.token}` },
       cache: "no-store",
     });
     if (!response.ok) return backendFailure(response);

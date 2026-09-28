@@ -21,6 +21,38 @@ async def create_database_schema() -> None:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
         if connection.dialect.name == "postgresql":
+            # Refuse to discard historical rows from another deployment.
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF to_regclass('public.daily_lifestyle_observations') IS NOT NULL THEN "
+                    "IF EXISTS (SELECT 1 FROM daily_lifestyle_observations) THEN "
+                    "RAISE EXCEPTION 'Legacy lifestyle observations need export before removal'; "
+                    "END IF; "
+                    "DROP TABLE daily_lifestyle_observations; "
+                    "END IF; END $$;"
+                )
+            )
+            # Existing installations predate the account lifecycle fields on users.
+            await connection.execute(
+                text(
+                    "ALTER TABLE users "
+                    "ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT 'active'"
+                )
+            )
+            await connection.execute(
+                text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ")
+            )
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
+                    "WHERE conrelid = 'users'::regclass AND conname = 'ck_users_status') THEN "
+                    "ALTER TABLE users ADD CONSTRAINT ck_users_status "
+                    "CHECK (status IN ('active', 'suspended', 'deleted')); "
+                    "END IF; END $$;"
+                )
+            )
             # create_all does not add columns to an accounts table created by older builds.
             for column in (
                 "email_verified_at TIMESTAMPTZ",
@@ -79,6 +111,48 @@ async def create_database_schema() -> None:
                     "CHECK (reported_dryness_level_0_10 IS NULL OR "
                     "(reported_dryness_level_0_10 >= 0 AND "
                     "reported_dryness_level_0_10 <= 10)); "
+                    "END IF; END $$;"
+                )
+            )
+            # Retired entry labels were never written by the current API. Refuse to
+            # discard values from an older deployment without a deliberate backfill.
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF EXISTS (SELECT 1 FROM information_schema.columns "
+                    "WHERE table_name = 'daily_health_entries' "
+                    "AND column_name = 'reported_thirst_score_0_10') THEN "
+                    "IF EXISTS (SELECT 1 FROM daily_health_entries "
+                    "WHERE reported_thirst_score_0_10 IS NOT NULL "
+                    "OR reported_dryness_score_0_10 IS NOT NULL) THEN "
+                    "RAISE EXCEPTION 'Legacy daily-health labels need manual migration'; "
+                    "END IF; "
+                    "ALTER TABLE daily_health_entries "
+                    "DROP COLUMN reported_thirst_score_0_10, "
+                    "DROP COLUMN reported_dryness_score_0_10; "
+                    "END IF; END $$;"
+                )
+            )
+            await connection.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_consents_active_user_version "
+                    "ON consents (user_id, version) WHERE revoked_at IS NULL"
+                )
+            )
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
+                    "WHERE conrelid = 'analyses'::regclass "
+                    "AND conname = 'uq_analyses_id_user') THEN "
+                    "ALTER TABLE analyses ADD CONSTRAINT uq_analyses_id_user "
+                    "UNIQUE (id, user_id); "
+                    "END IF; "
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
+                    "WHERE conrelid = 'annotation_tasks'::regclass "
+                    "AND conname = 'fk_annotation_analysis_owner') THEN "
+                    "ALTER TABLE annotation_tasks ADD CONSTRAINT fk_annotation_analysis_owner "
+                    "FOREIGN KEY (analysis_id, user_id) REFERENCES analyses (id, user_id); "
                     "END IF; END $$;"
                 )
             )

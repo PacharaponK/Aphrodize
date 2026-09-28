@@ -10,6 +10,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -165,6 +166,16 @@ class LoginAudit(Base):
 
 class Consent(Base):
     __tablename__ = "consents"
+    __table_args__ = (
+        Index(
+            "uq_consents_active_user_version",
+            "user_id",
+            "version",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+            sqlite_where=text("revoked_at IS NULL"),
+        ),
+    )
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     version: Mapped[str] = mapped_column(String(64))
@@ -221,24 +232,6 @@ class Product(Base):
     )
 
 
-class DailyLifestyleObservation(Base):
-    """One day of standardized wrinkle scoring and self-reported lifestyle data."""
-
-    __tablename__ = "daily_lifestyle_observations"
-    __table_args__ = (
-        UniqueConstraint("user_id", "date", name="uq_lifestyle_observation_user_date"),
-    )
-
-    id: Mapped[uuid.UUID] = uuid_pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
-    date: Mapped[date] = mapped_column(Date)
-    wrinkle_score: Mapped[float] = mapped_column(Float)
-    sleep_hours: Mapped[float] = mapped_column(Float)
-    water_intake_ml: Mapped[float] = mapped_column(Float)
-    outdoor_minutes: Mapped[float] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-
-
 class DailyHealthEntry(Base):
     """User-reported daily tracker inputs and separate, non-label model outputs."""
 
@@ -271,16 +264,6 @@ class DailyHealthEntry(Base):
             "(predicted_dryness_score_0_10 >= 0 AND predicted_dryness_score_0_10 <= 10)",
             name="ck_daily_health_predicted_dryness",
         ),
-        CheckConstraint(
-            "reported_thirst_score_0_10 IS NULL OR "
-            "(reported_thirst_score_0_10 >= 0 AND reported_thirst_score_0_10 <= 10)",
-            name="ck_daily_health_reported_thirst",
-        ),
-        CheckConstraint(
-            "reported_dryness_score_0_10 IS NULL OR "
-            "(reported_dryness_score_0_10 >= 0 AND reported_dryness_score_0_10 <= 10)",
-            name="ck_daily_health_reported_dryness",
-        ),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -298,21 +281,10 @@ class DailyHealthEntry(Base):
     prediction_status: Mapped[str] = mapped_column(String(32), default="not_run")
     prediction_model_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     data_source: Mapped[str] = mapped_column(String(32), default="user_reported")
-    # These remain NULL until the user supplies real observed outcomes; predictions are not labels.
-    reported_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
-    reported_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-
-    @property
-    def training_eligible(self) -> bool:
-        return (
-            self.reported_thirst_score_0_10 is not None
-            and self.reported_dryness_score_0_10 is not None
-        )
-
 
 class DailyHealthDatasetRecord(Base):
     """Imported historical dataset row, retained with provenance and excluded by default."""
@@ -472,6 +444,7 @@ class DailyHealthModelDeploymentEvent(Base):
 
 class Analysis(Base):
     __tablename__ = "analyses"
+    __table_args__ = (UniqueConstraint("id", "user_id", name="uq_analyses_id_user"),)
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[AnalysisStatus] = mapped_column(
@@ -491,7 +464,14 @@ class Analysis(Base):
 
 class AnnotationTask(Base):
     __tablename__ = "annotation_tasks"
-    __table_args__ = (UniqueConstraint("analysis_id"),)
+    __table_args__ = (
+        UniqueConstraint("analysis_id"),
+        ForeignKeyConstraint(
+            ["analysis_id", "user_id"],
+            ["analyses.id", "analyses.user_id"],
+            name="fk_annotation_analysis_owner",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     analysis_id: Mapped[uuid.UUID] = mapped_column(index=True)

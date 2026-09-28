@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
+from backend.api.deps import require_matching_user
 from backend.api.schemas.daily_health import (
     DailyHealthEntryRead,
     DailyHealthEntryUpsert,
@@ -40,6 +41,7 @@ from backend.services.daily_health_model_registry import (
 )
 
 router = APIRouter()
+user_router = APIRouter(dependencies=[Depends(require_matching_user)])
 logger = logging.getLogger(__name__)
 SLEEP_SCORE_METHOD = "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
 DAILY_HEALTH_CONSENT_VERSION = "daily-health-v1"
@@ -122,7 +124,7 @@ async def _run_daily_health_prediction(
         raise HTTPException(status_code=500, detail="Daily score model inference failed") from error
 
 
-@router.put("/users/{user_id}/entries", response_model=DailyHealthEntryRead)
+@user_router.put("/users/{user_id}/entries", response_model=DailyHealthEntryRead)
 async def upsert_daily_health_entry(
     user_id: UUID,
     payload: DailyHealthEntryUpsert,
@@ -265,14 +267,24 @@ async def upsert_daily_health_entry(
 
     await session.commit()
     response = DailyHealthEntryRead.model_validate(entry)
-    response.training_eligible = bool(
+    if (
         (active_training_consent is not None or payload.model_training_consent)
-        and entry.training_eligible
-    )
+        and entry.data_source == "user_reported"
+    ):
+        response.training_eligible = await session.scalar(
+            select(DailyHealthOutcome.id)
+            .where(
+                DailyHealthOutcome.user_id == user_id,
+                DailyHealthOutcome.target_date == entry.local_date + timedelta(days=1),
+                DailyHealthOutcome.reported_thirst_level_0_10.is_not(None),
+                DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
+            )
+            .limit(1)
+        ) is not None
     return response
 
 
-@router.get("/users/{user_id}/entries")
+@user_router.get("/users/{user_id}/entries")
 async def list_daily_health_entries(
     user_id: UUID,
     limit: int = Query(default=30, ge=1, le=90),
@@ -420,7 +432,7 @@ async def list_daily_health_entries(
     return {"items": items}
 
 
-@router.get("/users/{user_id}/profile")
+@user_router.get("/users/{user_id}/profile")
 async def read_daily_health_profile(
     user_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> dict:
@@ -477,7 +489,7 @@ async def read_daily_health_profile(
     }
 
 
-@router.delete("/users/{user_id}/profile", status_code=204)
+@user_router.delete("/users/{user_id}/profile", status_code=204)
 async def delete_daily_health_profile(
     user_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> None:
@@ -501,7 +513,7 @@ async def delete_daily_health_profile(
     await session.commit()
 
 
-@router.delete("/users/{user_id}/data", status_code=204)
+@user_router.delete("/users/{user_id}/data", status_code=204)
 async def delete_daily_health_data(
     user_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> None:
@@ -760,7 +772,7 @@ async def rollback_daily_health_model(
     }
 
 
-@router.delete("/users/{user_id}/training-consent", status_code=204)
+@user_router.delete("/users/{user_id}/training-consent", status_code=204)
 async def revoke_daily_health_model_training_consent(
     user_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> None:
@@ -788,7 +800,7 @@ async def revoke_daily_health_model_training_consent(
     await session.commit()
 
 
-@router.put("/users/{user_id}/outcomes", response_model=DailyHealthOutcomeRead)
+@user_router.put("/users/{user_id}/outcomes", response_model=DailyHealthOutcomeRead)
 async def upsert_daily_health_outcome(
     user_id: UUID,
     payload: DailyHealthOutcomeUpsert,

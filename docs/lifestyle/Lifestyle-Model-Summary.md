@@ -7,7 +7,6 @@
 | ใช้ทำอะไร | โมเดล | ประเภท | สถานะ |
 | --- | --- | --- | --- |
 | ทำนายคะแนน thirst และ dryness ในหน้า `/clients` | `RandomForestRegressor` แบบ multi-output | **Non-linear** | Backend API หลักโหลด implementation/artifact จาก `models/time-series/non-linear-model/`; ยังเป็นโมเดลทดลองจากข้อมูลสังเคราะห์ |
-| พยากรณ์ wrinkle score จากประวัติรายวันใน `/api/v1/lifestyle-forecast` | OLS baseline และ Ridge Regression | **Linear** | โมเดล time-series ที่ backend โหลดจาก `models/time-series/linear-model/` |
 | ทดลองทำนายความเสี่ยงวันถัดไปจากประวัติ 7 วัน | PyTorch GRU classifier แยกตาม target | **Non-linear** | การทดลองใน `sandboxes/`; ยังไม่ได้เชื่อมกับหน้า `/clients` |
 
 ดังนั้น ถ้าหมายถึงคะแนนที่หน้า `/clients` แสดง คำตอบคือ **Random Forest ซึ่งเป็นโมเดล non-linear** ไม่ใช่ GRU หรือ ARIMA
@@ -139,9 +138,9 @@ MAE/RMSE ยิ่งต่ำยิ่งดี; R² ยิ่งใกล้ 1
 
 ผล holdout ที่บันทึกใน artifact: thirst MAE ≈ 0.062 และ R² ≈ 0.996; dryness MAE ≈ 0.842 และ R² ≈ 0.798 ตัวเลขนี้บอกว่าโมเดลเลียนแบบ **กฎที่ใช้สร้างข้อมูลสังเคราะห์** ได้แค่ไหน ไม่ใช่ความแม่นยำทางการแพทย์หรือความแม่นยำกับผู้ใช้จริง
 
-## 2. โมเดล time-series แบบ Linear สำหรับ wrinkle score
+## 2. งานทดลองเดิม: โมเดล time-series แบบ Linear สำหรับ wrinkle score
 
-`models/time-series/linear-model/lifestyle_aware_wrinkle_forecast.py` ถูกโหลดโดย `backend/libs/model_loader.py` และเรียกผ่าน route `/api/v1/lifestyle-forecast/users/{user_id}` โมเดลนี้เป็นคนละตัวกับคะแนน thirst/dryness ใน `/clients`
+ส่วนนี้บันทึกแนวคิดการทดลองในอดีต ตัวโมเดล, API และตารางข้อมูลของ lifestyle forecast ถูกถอดออกแล้ว และไม่เกี่ยวกับคะแนน thirst/dryness ใน `/clients`
 
 ### ประเภทและเป้าหมาย
 
@@ -202,7 +201,6 @@ Feature `thirst_score_0_10` และ `skin_dryness_score_0_10` ในลำด�
 - Daily score API route: `backend/api/v1/routes/daily_health.py`
 - Historical dataset importer: `backend/scripts/import_daily_health_dataset.py`
 - Consent-filtered candidate trainer/version registry: `backend/services/daily_health_training.py`, `backend/core/db/models.py`
-- Linear wrinkle forecast: `models/time-series/linear-model/lifestyle_aware_wrinkle_forecast.py`
 - GRU architecture: `sandboxes/model/wellness_torch.py`
 - GRU training/tuning: `sandboxes/model/train_wellness_torch_optuna.py`
 - Random Forest metrics: `models/time-series/non-linear-model/artifacts/daily_score_regression_v1/metrics.json`

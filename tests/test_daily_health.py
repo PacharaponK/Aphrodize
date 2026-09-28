@@ -188,30 +188,6 @@ def test_daily_health_prediction_accepts_sleep_through_10_hours_only() -> None:
         )
 
 
-def test_model_predictions_are_not_eligible_training_labels() -> None:
-    entry = DailyHealthEntry(
-        predicted_thirst_score_0_10=4.2,
-        predicted_dryness_score_0_10=3.8,
-        prediction_target_date=date(2026, 9, 27),
-        reported_thirst_score_0_10=None,
-        reported_dryness_score_0_10=None,
-    )
-
-    assert entry.training_eligible is False
-
-
-def test_entry_becomes_training_eligible_only_with_both_reported_scores() -> None:
-    entry = DailyHealthEntry(
-        predicted_thirst_score_0_10=4.2,
-        predicted_dryness_score_0_10=3.8,
-        reported_thirst_score_0_10=5.0,
-        reported_dryness_score_0_10=4.0,
-        data_source="user_reported",
-    )
-
-    assert entry.training_eligible is True
-
-
 class FakeResult:
     def __init__(self, value):
         self.value = value
@@ -226,10 +202,12 @@ class FakeSession:
         entry: DailyHealthEntry,
         has_consent: bool = True,
         has_training_consent: bool = False,
+        has_outcome: bool = False,
     ) -> None:
         self.entry = entry
         self.has_consent = has_consent
         self.has_training_consent = has_training_consent
+        self.has_outcome = has_outcome
         self.committed = False
         self.statement = None
         self.statements = []
@@ -239,6 +217,8 @@ class FakeSession:
         return object() if model is User else None
 
     async def scalar(self, statement):
+        if "daily_health_outcomes" in str(statement):
+            return uuid4() if self.has_outcome else None
         params = statement.compile().params.values()
         if "daily-health-model-training-v1" in params:
             return uuid4() if self.has_training_consent else None
@@ -278,8 +258,6 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
         prediction_status="predicted",
         prediction_model_id="daily-score-random-forest-synthetic-v1",
         data_source="user_reported",
-        reported_thirst_score_0_10=None,
-        reported_dryness_score_0_10=None,
         created_at=now,
         updated_at=now,
     )
@@ -306,6 +284,31 @@ async def test_daily_health_route_upserts_only_with_consent_and_calculates_sleep
     assert result.sleep_score_0_100 == 67.0
     assert result.predicted_thirst_score_0_10 == 4.2
     assert result.prediction_target_date == date(2026, 9, 27)
+    assert result.training_eligible is False
+
+
+@pytest.mark.asyncio
+async def test_entry_eligibility_uses_next_day_outcome_and_training_consent() -> None:
+    user_id = uuid4()
+    entry = DailyHealthEntry(
+        id=uuid4(), user_id=user_id, local_date=date(2026, 9, 26),
+        timezone="Asia/Bangkok", sleep_duration_minutes=360, water_intake_ml=1400,
+        outdoor_exposure_choice=1, sleep_score_0_100=66.7,
+        sleep_score_method="duration", predicted_thirst_score_0_10=4.2,
+        predicted_dryness_score_0_10=3.8, prediction_target_date=date(2026, 9, 27),
+        prediction_status="predicted", prediction_model_id="test", data_source="user_reported",
+        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+    )
+    payload = DailyHealthEntryUpsert(
+        local_date=entry.local_date, sleep_duration_minutes=360,
+        water_intake_ml=1400, outdoor_exposure_choice=1,
+    )
+    session = FakeSession(entry, has_training_consent=True, has_outcome=True)
+    result = await upsert_daily_health_entry(user_id, payload, session)
+    assert result.training_eligible is True
+
+    session = FakeSession(entry, has_training_consent=True, has_outcome=False)
+    result = await upsert_daily_health_entry(user_id, payload, session)
     assert result.training_eligible is False
 
 

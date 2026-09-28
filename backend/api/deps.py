@@ -2,7 +2,12 @@ import secrets
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBasic,
+    HTTPBasicCredentials,
+    HTTPBearer,
+)
 
 from backend.core.config import settings
 from backend.core.db.session import get_session
@@ -55,3 +60,11 @@ def require_user_token(
             detail=str(error),
             headers={"WWW-Authenticate": "Bearer"},
         ) from error
+
+
+def require_matching_user(
+    user_id: UUID, caller_id: UUID = Depends(require_user_token)
+) -> UUID:
+    if user_id != caller_id:
+        raise HTTPException(status_code=403, detail="User access denied")
+    return caller_id

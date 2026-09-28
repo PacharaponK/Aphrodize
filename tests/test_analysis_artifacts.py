@@ -25,11 +25,13 @@ async def test_artifact_is_private_and_expires(monkeypatch) -> None:
     )
     monkeypatch.setattr(analyses, "get_bytes", lambda _key: b"private-png")
 
-    response = await analyses.get_analysis_artifact(item.id, "mask", FakeSession(item))
+    response = await analyses.get_analysis_artifact(
+        item.id, "mask", item.user_id, FakeSession(item)
+    )
     assert response.body == b"private-png"
     assert response.headers["cache-control"] == "private, no-store"
 
     item.result["artifacts_expires_at"] = (datetime.now(UTC) - timedelta(seconds=1)).isoformat()
     with pytest.raises(HTTPException) as error:
-        await analyses.get_analysis_artifact(item.id, "mask", FakeSession(item))
+        await analyses.get_analysis_artifact(item.id, "mask", item.user_id, FakeSession(item))
     assert error.value.status_code == 410

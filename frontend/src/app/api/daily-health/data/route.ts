@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
+import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
     const response = await fetch(backendUrl(`/daily-health/users/${account.userId}/data`), {
       method: "DELETE",
-      headers: apiHeaders(),
+      headers: { Authorization: `Bearer ${account.token}` },
       cache: "no-store",
     });
     if (!response.ok) {
