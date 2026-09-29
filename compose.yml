@@ -170,6 +170,8 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./models:/app/models
+      - ./scripts:/app/scripts:ro
+      - ./storage/artifacts/uv:/app/storage/artifacts/uv:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,6 +188,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    logging: *container-logging
+
+  # Build two-day UV snapshots from locally trained models and public raw data.
+  uv-refresh:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: ["sh", "-c", "while true; do if python /app/scripts/refresh_uv_forecast.py; then sleep 21600; else sleep 1800; fi; done"]
+    restart: unless-stopped
+    environment: *api-environment
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./storage/data/uv:/app/storage/data/uv
+      - ./storage/models/uv:/app/storage/models/uv
+      - ./storage/artifacts/uv:/app/storage/artifacts/uv
     logging: *container-logging
 
   # The inference worker analyzes images and publishes consented review tasks.
