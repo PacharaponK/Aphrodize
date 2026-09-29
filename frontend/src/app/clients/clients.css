@@ -89,3 +89,48 @@ html[data-theme="black"] .clients-page .sleep-score-metric>strong{color:#c7baff}
 html[data-theme="black"] .clients-page .profile-weight-card{background:#171f2e;border-color:#2c394e;color:#f3f5fb}
 html[data-theme="black"] .clients-page .profile-weight-form input{background:#111927;border-color:#39465b;color:#f3f5fb}
 @media(max-width:620px){.profile-weight-form{grid-template-columns:1fr}.profile-weight-consent,.profile-weight-actions,.profile-weight-form>.storage-status{grid-column:auto}.profile-weight-actions{align-items:flex-start;flex-direction:column}.profile-weight-actions .primary-button{width:100%}}
+
+/* Brand accents use blush and coral; health-status colors remain semantic. */
+.clients-page .daily-entry-card{background:linear-gradient(125deg,var(--surface),var(--primary-soft))}
+.clients-page .tracker-field>span,.clients-page .tracker-field legend,.clients-page .sleep-inputs label>span,.clients-page .personal-context-fieldset>legend{color:var(--ink)}
+.clients-page .tracker-field input:focus-visible,.clients-page .sleep-inputs input:focus-visible,.clients-page .tracker-field select:focus-visible,.clients-page .outdoor-choice:focus-within{outline:3px solid var(--ring);outline-offset:2px;border-color:var(--ring)}
+.clients-page .outdoor-choice.selected{border-color:var(--primary-deep);background:var(--primary-soft);box-shadow:inset 0 0 0 1px var(--primary-deep)}
+.clients-page .outdoor-choice-number,.clients-page .tracker-empty-icon{background:var(--primary-soft);color:var(--primary-deep)}
+.clients-page .range-note,.clients-page .daily-data-consent,.clients-page .model-training-consent-status,.clients-page .test-profile-weight{border-color:var(--line);background:var(--primary-soft);color:var(--ink)}
+.clients-page .tracker-empty-state{border-color:var(--border-strong);background:var(--primary-soft)}
+.clients-page .duration-metric{background:linear-gradient(135deg,var(--primary-soft),var(--surface))}
+.clients-page .age-guidance-card>strong,.clients-page .guidance-sources a,.clients-page .profile-guidance a{color:var(--primary-deep)}
+.clients-page .score-method-details,.clients-page .personal-context-fieldset{background:var(--surface-soft)}
+.clients-page .score-method-details summary,.clients-page .score-method-content a{color:var(--primary-deep)}
+.clients-page .score-method-content code{background:var(--primary-soft);color:var(--ink)}
+.clients-page .training-threshold-note{border-left-color:var(--primary);background:var(--primary-soft);color:var(--primary-deep)}
+.clients-page .sleep-score-metric>strong{color:var(--primary-deep)}
+html[data-theme="black"] .clients-page .daily-entry-card{background:linear-gradient(125deg,var(--surface),var(--primary-soft))}
+html[data-theme="black"] .clients-page .outdoor-choice.selected,html[data-theme="black"] .clients-page .range-note,html[data-theme="black"] .clients-page .tracker-empty-state,html[data-theme="black"] .clients-page .daily-data-consent,html[data-theme="black"] .clients-page .model-training-consent-status,html[data-theme="black"] .clients-page .test-profile-weight{background:var(--primary-soft);border-color:var(--line);color:var(--muted)}
+html[data-theme="black"] .clients-page .score-method-details summary,html[data-theme="black"] .clients-page .score-method-content a,html[data-theme="black"] .clients-page .guidance-sources a,html[data-theme="black"] .clients-page .profile-guidance a,html[data-theme="black"] .clients-page .sleep-score-metric>strong{color:var(--primary-deep)}
+html[data-theme="black"] .clients-page .score-method-content code{background:var(--primary-soft);color:var(--primary-deep)}
+html[data-theme="black"] .clients-page .daily-entry-card{background:linear-gradient(125deg,var(--surface),var(--surface-soft));border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .clients-page .daily-entry-dialog::backdrop{background:rgba(9,7,9,.78)}
+html[data-theme="black"] .clients-page .page-content{background:var(--surface);border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .clients-page .daily-entry-dialog,html[data-theme="black"] .clients-page .tracker-results,html[data-theme="black"] .clients-page .age-guidance,html[data-theme="black"] .clients-page .daily-health-dashboard,html[data-theme="black"] .clients-page .personal-context-fieldset,html[data-theme="black"] .clients-page .daily-outcome-card,html[data-theme="black"] .clients-page .profile-weight-card,html[data-theme="black"] .clients-page .health-signal-card,html[data-theme="black"] .clients-page .personalized-guidance,html[data-theme="black"] .clients-page .profile-guidance,html[data-theme="black"] .clients-page .next-day-statuses,html[data-theme="black"] .clients-page .score-method-details{background:var(--surface);border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .clients-page .tracker-metric,html[data-theme="black"] .clients-page .age-guidance-card,html[data-theme="black"] .clients-page .outdoor-choice,html[data-theme="black"] .clients-page .wellness-advice-grid article,html[data-theme="black"] .clients-page .daily-risk-grid .health-signal-card{background:var(--surface-soft);border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .clients-page .daily-entry-dialog input:not([type=radio]),html[data-theme="black"] .clients-page .daily-entry-dialog select,html[data-theme="black"] .clients-page .sleep-inputs input,html[data-theme="black"] .clients-page .profile-weight-form input{background:var(--surface-soft);border-color:var(--border-strong);color:var(--ink)}
+html[data-theme="black"] .clients-page .tracker-field>span,html[data-theme="black"] .clients-page .tracker-field legend,html[data-theme="black"] .clients-page .sleep-inputs label>span,html[data-theme="black"] .clients-page .personal-context-fieldset>legend,html[data-theme="black"] .clients-page .health-signal-headline,html[data-theme="black"] .clients-page .health-signal-recommendations{color:var(--ink-soft)}
+html[data-theme="black"] .clients-page .daily-entry-copy>p:last-child,html[data-theme="black"] .clients-page .entry-date-line,html[data-theme="black"] .clients-page .guidance-intro,html[data-theme="black"] .clients-page .wellness-advice-grid p,html[data-theme="black"] .clients-page .score-method-content p,html[data-theme="black"] .clients-page .score-method-content ul,html[data-theme="black"] .clients-page .daily-risk-profile-guidance ul{color:var(--muted)}
+html[data-theme="black"] .clients-page .outdoor-choice.selected,html[data-theme="black"] .clients-page .range-note,html[data-theme="black"] .clients-page .tracker-empty-state,html[data-theme="black"] .clients-page .daily-data-consent,html[data-theme="black"] .clients-page .model-training-consent-status,html[data-theme="black"] .clients-page .test-profile-weight{background:var(--primary-soft);border-color:var(--line);color:var(--ink-soft)}
+html[data-theme="black"] .clients-page .daily-data-delete-panel{background:var(--surface);border-color:var(--line)}
+html[data-theme="black"] .clients-page .daily-data-delete-panel p{color:var(--muted)}
+html[data-theme="black"] .clients-page .daily-data-delete-panel button{background:var(--surface-soft);color:#ffc0b8}
+html[data-theme="black"] .clients-page .model-status-ready{background:#183b31;color:#bdebd1}
+html[data-theme="black"] .clients-page .daily-entry-dialog .close-button{background:var(--surface-muted);color:var(--ink)}
+html[data-theme="black"] .clients-page .tracker-form-error,html[data-theme="black"] .clients-page .prediction-error,html[data-theme="black"] .clients-page .storage-status-failed{background:#3b2322;border-color:#754541;color:#ffd5cf}
+html[data-theme="black"] .clients-page .storage-status-saving{background:var(--surface-soft);color:var(--muted)}
+html[data-theme="black"] .clients-page .storage-status-saved{background:#183b31;color:#bdebd1}
+html[data-theme="black"] .clients-page .prediction-guidance{background:#1d382d;border-color:#365843}
+html[data-theme="black"] .clients-page .prediction-guidance ul{color:#d4ebdc}
+html[data-theme="black"] .clients-page .prediction-warnings{background:#3b3020;border-color:#6e5735}
+html[data-theme="black"] .clients-page .prediction-warnings summary{color:#fff0c5}
+html[data-theme="black"] .clients-page .model-limit-note,html[data-theme="black"] .clients-page .training-threshold-note{background:#3b3020;border-color:#6e5735;color:#fff0c5}
+html[data-theme="black"] .clients-page .health-signal-unrated .health-signal-level{background:var(--surface-muted);border-color:var(--border-strong);color:var(--ink-soft)}
+html[data-theme="black"] .clients-page .sleep-score-metric>strong,html[data-theme="black"] .clients-page .age-guidance-card>strong,html[data-theme="black"] .clients-page .guidance-sources a,html[data-theme="black"] .clients-page .profile-guidance a,html[data-theme="black"] .clients-page .score-method-content a{color:var(--primary-deep)}
+html[data-theme="black"] .clients-page .score-method-content code{background:var(--surface-muted);color:var(--primary-deep)}

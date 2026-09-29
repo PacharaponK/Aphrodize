@@ -1,25 +1,26 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import { AppNavigation } from "./app-navigation";
+import { ThemeToggle } from "./theme-toggle";
 
 export function WorkspaceShell({ active, eyebrow, title, detail, children }: {
-  active: "dashboard" | "capture" | "profile" | "none";
+  active: "dashboard" | "capture" | "clients" | "trend" | "profile" | "none";
   eyebrow: string;
   title: string;
   detail?: string;
   children: ReactNode;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
   return (
     <div className="app-shell workspace-shell">
-      <AppNavigation active={active} mobileOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <AppNavigation active={active} />
       <main className="workspace-main">
         <header className="topbar workspace-topbar">
-          <button type="button" className="mobile-menu-button" aria-label={menuOpen ? "ปิดเมนู" : "เปิดเมนู"} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><span /><span /><span /></button>
           <div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1></div>
-          {detail && <span className="workspace-detail">{detail}</span>}
+          <div className="workspace-header-actions">
+            {detail && <span className="workspace-detail">{detail}</span>}
+            <ThemeToggle />
+          </div>
         </header>
         {children}
       </main>

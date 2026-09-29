@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Archive, ArrowLeft, ExternalLink, LockKeyhole, LogOut, Package, Pencil, Plus, Search, Send, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -166,8 +168,8 @@ export default function AdminProductsPage() {
   return <main className="admin-products-page">
     <div className="admin-products-container">
       <header className="admin-products-header">
-        <div className="admin-products-brand"><span className="admin-brand-mark" aria-hidden="true">A</span><span>APHRODIZE <strong>STUDIO</strong></span></div>
-        <div className="admin-header-actions"><Link href="/" className="admin-back-link"><ArrowLeft size={16} /> กลับหน้าแรก</Link>{access === "ready" && <Button type="button" variant="outline" size="lg" onClick={logout}><LogOut /> ออกจากระบบ</Button>}</div>
+        <div className="admin-products-brand"><Image width={34} height={34} className="admin-brand-mark" src="/assets/aphrodize-logo.svg" alt="" unoptimized /><span>APHRODIZE <strong>STUDIO</strong></span></div>
+        <div className="admin-header-actions"><ThemeToggle /><Link href="/" className="admin-back-link"><ArrowLeft size={16} /> กลับหน้าแรก</Link>{access === "ready" && <Button type="button" variant="outline" size="lg" onClick={logout}><LogOut /> ออกจากระบบ</Button>}</div>
       </header>
 
       {access === "ready" ? <div className="admin-page-intro"><div><p className="eyebrow">PRODUCT CATALOG / ADMIN WORKSPACE</p><h1>จัดการผลิตภัณฑ์</h1><p>บันทึกข้อมูลและตรวจทานก่อนเผยแพร่ เพื่อให้ข้อมูลผลิตภัณฑ์มีแหล่งอ้างอิงชัดเจน</p></div><Button type="button" size="lg" onClick={() => { setSelected(null); setFormVersion((value) => value + 1); document.getElementById("product-editor-heading")?.scrollIntoView({ behavior: "smooth" }); }}><Plus /> เพิ่มผลิตภัณฑ์</Button></div> : null}

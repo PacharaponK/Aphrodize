@@ -45,3 +45,16 @@ html[data-theme="black"] .daily-history-entry{background:#111927;border-color:#3
 html[data-theme="black"] .daily-history-input-summary span{border-color:#39465b;color:#bdc7d8}
 html[data-theme="black"] .daily-history-input-summary strong{color:#f3f5fb}
 @media(max-width:600px){.daily-history-panel{padding:16px}.daily-history-entry{padding:13px}.daily-history-entry-heading{align-items:flex-start;flex-direction:column}.daily-weekly-summary{padding:13px}.daily-weekly-summary-heading{align-items:flex-start;flex-direction:column}.daily-weekly-summary-grid{grid-template-columns:1fr 1fr}.daily-history-input-summary{display:grid;grid-template-columns:1fr 1fr}.daily-history-trend .daily-history-entry{padding:14px}}
+
+/* Weekly summaries use brand blush; risk and success badges keep their status colors. */
+.daily-history-loading,.daily-history-empty,.daily-weekly-summary{border-color:var(--line);background:var(--primary-soft)}
+.daily-weekly-summary-heading>span{background:var(--surface);color:var(--primary-deep)}
+html[data-theme="black"] .daily-history-loading,html[data-theme="black"] .daily-history-empty,html[data-theme="black"] .daily-weekly-summary{border-color:var(--line);background:var(--primary-soft)}
+html[data-theme="black"] .daily-weekly-summary-heading>span{background:#171f2e;color:var(--primary-deep)}
+html[data-theme="black"] .daily-history-panel{background:var(--surface);border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .daily-history-empty,html[data-theme="black"] .daily-history-loading,html[data-theme="black"] .daily-weekly-summary{background:var(--surface-soft);border-color:var(--line);color:var(--ink-soft)}
+html[data-theme="black"] .daily-weekly-summary-card,html[data-theme="black"] .daily-history-entry{background:var(--surface);border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .daily-history-input-summary span{border-color:var(--line);color:var(--muted)}
+html[data-theme="black"] .daily-history-input-summary strong{color:var(--ink)}
+html[data-theme="black"] .daily-weekly-summary-card p,html[data-theme="black"] .daily-weekly-summary-card small,html[data-theme="black"] .daily-weekly-summary-card strong span{color:var(--muted)}
+html[data-theme="black"] .daily-weekly-summary-heading>span{background:var(--primary-soft);color:var(--primary-deep)}

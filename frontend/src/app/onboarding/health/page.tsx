@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, Suspense, useEffect, useState } from "react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const questions = [
@@ -154,6 +155,7 @@ function HealthOnboardingForm() {
 
   return (
     <main className="onboarding-page">
+      <ThemeToggle className="onboarding-theme-toggle" />
       <section className="onboarding-card" aria-labelledby="health-title">
         <p className="eyebrow">FIRST-TIME SETUP · PERSONAL WELLNESS</p>
         <h1 id="health-title">{effectiveSafetyOnly ? "อัปเดตข้อมูลความปลอดภัย" : effectiveFullEdit ? "แก้ไขข้อมูลสุขภาพของคุณ" : "เริ่มจากข้อมูลสุขภาพของคุณ"}</h1>
@@ -177,5 +179,5 @@ function HealthOnboardingForm() {
 }
 
 export default function HealthOnboardingPage() {
-  return <Suspense fallback={<main className="onboarding-page"><p role="status">กำลังโหลดแบบสอบถาม…</p></main>}><HealthOnboardingForm /></Suspense>;
+  return <Suspense fallback={<main className="onboarding-page"><ThemeToggle className="onboarding-theme-toggle" /><p role="status">กำลังโหลดแบบสอบถาม…</p></main>}><HealthOnboardingForm /></Suspense>;
 }

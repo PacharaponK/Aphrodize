@@ -65,3 +65,22 @@ html[data-theme="black"] .clients-test-page .test-json-details summary{color:#c7
 html[data-theme="black"] .clients-test-page .test-json-details pre{color:#bdc7d8}
 @media(max-width:900px){.clients-test-page .prediction-test-layout{grid-template-columns:1fr}}
 @media(max-width:480px){.clients-test-page .prediction-test-card{padding:18px}.clients-test-page .test-outdoor-options{grid-template-columns:1fr}.clients-test-page .test-score-grid{grid-template-columns:1fr}.clients-test-page .prediction-test-heading h2{font-size:19px}}
+
+/* Keep the prediction test form aligned with the shared coral palette. */
+.clients-test-page .prediction-test-back-link,.clients-test-page .test-profile-weight a,.clients-test-page .test-json-details summary{color:var(--primary-deep)}
+.clients-test-page .prediction-test-back-link:focus-visible,.clients-test-page .test-field input:focus-visible{outline:3px solid var(--ring);outline-offset:3px}
+.clients-test-page .test-outdoor-choice.selected,.clients-test-page .test-outdoor-choice:has(input:checked){border-color:var(--primary-deep);background:var(--primary-soft);box-shadow:inset 0 0 0 1px var(--primary-deep)}
+.clients-test-page .test-outdoor-number,.clients-test-page .test-output-empty>span{background:var(--primary-soft);color:var(--primary-deep)}
+.clients-test-page .test-request-status,.clients-test-page .test-profile-weight{border-color:var(--line);background:var(--primary-soft);color:var(--ink)}
+.clients-test-page .test-score-card>strong{color:var(--primary-deep)}
+.clients-test-page .test-output-empty,.clients-test-page .test-json-details{border-color:var(--border-strong);background:var(--surface-soft)}
+html[data-theme="black"] .clients-test-page .test-outdoor-choice.selected,html[data-theme="black"] .clients-test-page .test-outdoor-choice:has(input:checked),html[data-theme="black"] .clients-test-page .test-request-status,html[data-theme="black"] .clients-test-page .test-profile-weight{border-color:var(--line);background:var(--primary-soft);color:var(--muted)}
+html[data-theme="black"] .clients-test-page .prediction-test-back-link,html[data-theme="black"] .clients-test-page .test-profile-weight a,html[data-theme="black"] .clients-test-page .test-json-details summary,html[data-theme="black"] .clients-test-page .test-score-card>strong{color:var(--primary-deep)}
+html[data-theme="black"] .clients-test-page .test-outdoor-number,html[data-theme="black"] .clients-test-page .test-output-empty>span{background:var(--primary-soft);color:var(--primary-deep)}
+html[data-theme="black"] .clients-test-page .prediction-test-card,html[data-theme="black"] .clients-test-page .test-score-card{background:var(--surface);border-color:var(--line);color:var(--ink)}
+html[data-theme="black"] .clients-test-page .test-field input:not([type=radio]),html[data-theme="black"] .clients-test-page .test-field select{background:var(--surface-soft);border-color:var(--border-strong);color:var(--ink)}
+html[data-theme="black"] .clients-test-page .test-field>span,html[data-theme="black"] .clients-test-page .test-field legend,html[data-theme="black"] .clients-test-page .test-sleep-inputs label>span{color:var(--ink-soft)}
+html[data-theme="black"] .clients-test-page .test-outdoor-choice,html[data-theme="black"] .clients-test-page .test-request-status,html[data-theme="black"] .clients-test-page .test-output-empty,html[data-theme="black"] .clients-test-page .test-json-details,html[data-theme="black"] .clients-test-page .test-profile-weight{background:var(--surface-soft);border-color:var(--line);color:var(--ink-soft)}
+html[data-theme="black"] .clients-test-page .test-outdoor-choice.selected,html[data-theme="black"] .clients-test-page .test-outdoor-choice:has(input:checked){background:var(--primary-soft);border-color:var(--primary);color:var(--ink)}
+html[data-theme="black"] .clients-test-page .test-profile-weight a,html[data-theme="black"] .clients-test-page .test-json-details summary,html[data-theme="black"] .clients-test-page .test-score-card>strong{color:var(--primary-deep)}
+html[data-theme="black"] .clients-test-page .test-outdoor-number,html[data-theme="black"] .clients-test-page .test-output-empty>span{background:var(--primary-soft);color:var(--primary-deep)}
