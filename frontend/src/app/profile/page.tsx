@@ -4,7 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
-type Profile = { display_name: string; email: string; profile: Record<string, unknown> | null };
+type ProfileValues = {
+  sex: string;
+  age_group: string;
+  skin_type: string;
+  wellness_goal: string;
+  sunscreen_frequency: string;
+  menstrual_tracking: string;
+};
+type Profile = { display_name: string; email: string; profile: ProfileValues | null };
 
 const labels: Record<string, string> = {
   sex: "เพศ", age_group: "ช่วงอายุ", sunscreen_frequency: "การทาครีมกันแดด",
@@ -36,7 +44,7 @@ export default function ProfilePage() {
     <section className="workspace-panel profile-panel">
       {message && <p className="form-message" role="status">{message}</p>}
       {profile && <><article className="profile-account"><h2>{profile.display_name}</h2><p>{profile.email}</p></article>
-        {profile.profile ? <><h2>ข้อมูลโปรไฟล์ที่บันทึกไว้</h2><dl className="profile-answers">{Object.entries(profile.profile).map(([key, value]) => <div key={key}><dt>{labels[key] ?? key}</dt><dd>{displayValue(value)}</dd></div>)}</dl><Link href="/onboarding/health">แก้ไขโปรไฟล์</Link></> : <div className="empty-state"><p>ยังไม่มีข้อมูลโปรไฟล์</p><Link className="primary-button" href="/onboarding/health">เริ่มกรอกข้อมูล →</Link></div>}</>}
+        {profile.profile ? <><h2>ข้อมูลสุขภาพที่บันทึกไว้</h2><dl className="profile-answers">{Object.entries(profile.profile).map(([key, value]) => <div key={key}><dt>{labels[key] ?? key}</dt><dd>{displayValue(value)}</dd></div>)}</dl><Link className="secondary-button" href="/onboarding/health?edit=full">แก้ไขข้อมูลสุขภาพ →</Link></> : <div className="empty-state"><p>ยังไม่มีข้อมูลสุขภาพเบื้องต้น</p><Link className="primary-button" href="/onboarding/health">เริ่มตอบคำถาม →</Link></div>}</>}
     </section>
   </WorkspaceShell>;
 }

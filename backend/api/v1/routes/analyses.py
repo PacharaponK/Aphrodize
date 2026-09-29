@@ -1,17 +1,22 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from minio.error import S3Error
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.schemas.analysis import AnalysisRead
-from backend.core.db.models import Analysis, User
+from backend.api.deps import require_api_credentials, require_user_token
+from backend.core.db.models import Analysis, Consent, DailyHealthEntry, DailyHealthOutcome, Questionnaire, User
 from backend.core.db.session import get_session
 from backend.libs.minio_client import analysis_artifact_key, get_bytes
 from backend.services.analysis_service import create_analysis, recommendations_for
+
+DAILY_HEALTH_CONSENT_VERSION = "daily-health-v1"
+DAILY_CONTEXT_MAX_AGE_DAYS = 30
 
 router = APIRouter()
 
@@ -36,6 +41,7 @@ async def submit_analysis(
     user_id: UUID,
     image: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_api_credentials),
 ) -> AnalysisRead:
     # Validate the user path parameter before the service reads the image.
     if await session.get(User, user_id) is None:
@@ -47,7 +53,9 @@ async def submit_analysis(
 
 @router.get("/{analysis_id}", response_model=AnalysisRead)
 async def get_analysis(
-    analysis_id: UUID, session: AsyncSession = Depends(get_session)
+    analysis_id: UUID,
+    session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_api_credentials),
 ) -> AnalysisRead:
     # The result page polls this row while the worker changes its status.
     analysis = await session.get(Analysis, analysis_id)
@@ -61,6 +69,7 @@ async def get_analysis_artifact(
     analysis_id: UUID,
     kind: Literal["overlay", "mask"],
     session: AsyncSession = Depends(get_session),
+    _: None = Depends(require_api_credentials),
 ) -> Response:
     # Display artifacts are available only when the analysis has a result.
     analysis = await session.get(Analysis, analysis_id)
@@ -89,9 +98,114 @@ async def get_analysis_artifact(
 
 @router.get("/{analysis_id}/recommendations")
 async def get_recommendations(
-    analysis_id: UUID, session: AsyncSession = Depends(get_session)
+    analysis_id: UUID,
+    user_id: UUID = Depends(require_user_token),
+    session: AsyncSession = Depends(get_session),
 ) -> dict:
+    # Keep account data private: the bearer token must own the requested analysis.
     analysis = await session.get(Analysis, analysis_id)
-    if analysis is None:
+    if analysis is None or analysis.user_id != user_id:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    return recommendations_for(analysis, {})
+    questionnaire = await session.scalar(
+        select(Questionnaire)
+        .where(Questionnaire.user_id == analysis.user_id)
+        .order_by(Questionnaire.created_at.desc(), Questionnaire.id.desc())
+        .limit(1)
+    )
+    questionnaire_context = {
+        "status": "available" if questionnaire is not None else "missing",
+        "revision_id": str(questionnaire.id) if questionnaire is not None else None,
+    }
+    daily_context: dict[str, object] = {"status": "not_consented"}
+    daily_consent = await session.scalar(
+        select(Consent)
+        .where(
+            Consent.user_id == analysis.user_id,
+            Consent.version == DAILY_HEALTH_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .order_by(Consent.accepted_at.desc(), Consent.id.desc())
+        .limit(1)
+    )
+    if daily_consent is not None:
+        today = date.today()
+        since = today - timedelta(days=DAILY_CONTEXT_MAX_AGE_DAYS)
+        lifestyle_entry = await session.scalar(
+            select(DailyHealthEntry)
+            .where(
+                DailyHealthEntry.user_id == analysis.user_id,
+                DailyHealthEntry.local_date.between(since, today),
+                DailyHealthEntry.data_source == "user_reported",
+            )
+            .order_by(DailyHealthEntry.local_date.desc(), DailyHealthEntry.id.desc())
+            .limit(1)
+        )
+        entry = await session.scalar(
+            select(DailyHealthEntry)
+            .where(
+                DailyHealthEntry.user_id == analysis.user_id,
+                DailyHealthEntry.local_date.between(since, today),
+                DailyHealthEntry.reported_dryness_score_0_10.is_not(None),
+                DailyHealthEntry.data_source == "user_reported",
+            )
+            .order_by(DailyHealthEntry.local_date.desc(), DailyHealthEntry.id.desc())
+            .limit(1)
+        )
+        outcome = await session.scalar(
+            select(DailyHealthOutcome)
+            .where(
+                DailyHealthOutcome.user_id == analysis.user_id,
+                DailyHealthOutcome.target_date.between(since, today),
+                DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
+            )
+            .order_by(DailyHealthOutcome.target_date.desc(), DailyHealthOutcome.id.desc())
+            .limit(1)
+        )
+        daily_context = {
+            "status": "no_recent_reported_dryness",
+            "consent": {
+                "record_id": str(daily_consent.id),
+                "version": daily_consent.version,
+            },
+        }
+        if lifestyle_entry is not None:
+            daily_context.update({
+                "lifestyle": {
+                    "source_table": "daily_health_entries",
+                    "record_id": str(lifestyle_entry.id),
+                    "observed_date": lifestyle_entry.local_date.isoformat(),
+                    "sleep_duration_minutes": lifestyle_entry.sleep_duration_minutes,
+                    "water_intake_ml": lifestyle_entry.water_intake_ml,
+                    "outdoor_exposure_choice": lifestyle_entry.outdoor_exposure_choice,
+                },
+            })
+        # Tables are each unique per user/date. On a same-date tie, the outcome is
+        # preferred because it is the explicit observed report; then source name and
+        # UUID make the policy deterministic even if those constraints later change.
+        candidates: list[tuple[date, int, str, str, float]] = []
+        if entry is not None and entry.reported_dryness_score_0_10 is not None:
+            candidates.append((
+                entry.local_date, 0, "daily_health_entries", str(entry.id),
+                entry.reported_dryness_score_0_10,
+            ))
+        if outcome is not None and outcome.reported_dryness_level_0_10 is not None:
+            candidates.append((
+                outcome.target_date, 1, "daily_health_outcomes", str(outcome.id),
+                outcome.reported_dryness_level_0_10,
+            ))
+        if candidates:
+            reported_date, _, source_table, record_id, reported_dryness = max(
+                candidates, key=lambda candidate: (candidate[0], candidate[1], candidate[2], candidate[3])
+            )
+            daily_context.update({
+                "status": "available",
+                "reported_dryness": {
+                    "source_table": source_table,
+                    "record_id": record_id,
+                    "observed_date": reported_date.isoformat(),
+                    "value": reported_dryness,
+                },
+            })
+    response = recommendations_for(analysis, questionnaire.answers if questionnaire else {}, daily_context)
+    response["questionnaire_context"] = questionnaire_context
+    return response

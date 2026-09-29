@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { connection } from "next/server";
 import DailyHealthTracker from "./daily-health-tracker";
 import "./clients.css";
+import { todayInBangkok } from "@/lib/daily-health-prediction";
 
 export const metadata: Metadata = {
   title: "บันทึกสุขภาพรายวัน — Aphrodize",
   description: "บันทึกการนอน น้ำดื่ม และเวลาอยู่นอกบ้าน",
 };
 
-export default function ClientsPage() {
+export default async function ClientsPage() {
+  await connection();
+  const initialDate = todayInBangkok();
   return (
     <div className="simple-page clients-page">
       <main className="page-frame">
@@ -36,7 +40,7 @@ export default function ClientsPage() {
           <div className="page-actions clients-test-actions">
             <Link className="secondary-button" href="/clients/test">เปิดหน้าแบบฟอร์มทดสอบโมเดล</Link>
           </div>
-          <DailyHealthTracker />
+          <DailyHealthTracker initialDate={initialDate} />
         </section>
       </main>
     </div>

@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from backend.core.config import settings
@@ -19,6 +20,15 @@ async def create_database_schema() -> None:
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        # create_all creates new tables but never adds fields to an existing local
+        # development database.  This nullable provenance field is safe to add
+        # without inventing a target date for historical predictions.
+        await connection.execute(
+            text(
+                "ALTER TABLE daily_health_entries "
+                "ADD COLUMN IF NOT EXISTS prediction_target_date DATE"
+            )
+        )
 
 
 async def close_database() -> None:

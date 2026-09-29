@@ -1,0 +1,47 @@
+.daily-history-panel{display:grid;gap:17px;margin:24px 0;padding:22px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.82);box-shadow:0 8px 24px #4355790a}
+.daily-history-panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.daily-history-panel-heading .eyebrow{margin:0 0 5px}
+.daily-history-panel-heading h2{margin:0;font-size:21px;line-height:1.35}
+.daily-history-panel-heading>div>p:last-child{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
+.daily-history-loading{margin:0;padding:18px;border-radius:12px;background:#f8f7fc;color:var(--muted);font-size:13px}
+.daily-history-empty{display:grid;justify-items:start;gap:8px;padding:20px;border:1px dashed #c9c0e9;border-radius:13px;background:#faf9ff}
+.daily-history-empty h3,.daily-history-empty p{margin:0}
+.daily-history-empty h3{font-size:15px}
+.daily-history-empty p{color:var(--muted);font-size:13px;line-height:1.6}
+.daily-history-empty .primary-button,.daily-history-empty .secondary-button{margin-top:4px;text-decoration:none;cursor:pointer}
+.daily-history-list{display:grid;gap:16px}
+.daily-weekly-summary{display:grid;gap:13px;padding:17px;border:1px solid #d9d4f2;border-radius:14px;background:#faf9ff}
+.daily-weekly-summary-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.daily-weekly-summary-heading .eyebrow{margin:0 0 4px}
+.daily-weekly-summary-heading h3{margin:0;font-size:16px}
+.daily-weekly-summary-note{margin:6px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.daily-weekly-summary-heading>span{padding:6px 9px;border-radius:999px;background:#eeeafd;color:#554296;font-size:11px;white-space:nowrap}
+.daily-weekly-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}
+.daily-weekly-summary-card{display:grid;gap:5px;min-width:0;padding:12px;border:1px solid #e1e5ef;border-radius:11px;background:#fff}
+.daily-weekly-summary-card p,.daily-weekly-summary-card strong{margin:0}
+.daily-weekly-summary-card p{color:#647087;font-size:11px}
+.daily-weekly-summary-card strong{font-size:17px;line-height:1.4;overflow-wrap:anywhere}
+.daily-weekly-summary-card strong span{color:#6e7788;font-size:10px;font-weight:500}
+.daily-weekly-summary-card small{color:#758096;font-size:10px}
+.daily-history-entry{display:grid;gap:13px;padding:17px;border:1px solid #e0e5ef;border-radius:14px;background:#fff}
+.daily-history-entry-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.daily-history-entry-heading .eyebrow{margin:0 0 4px}
+.daily-history-entry-heading h3{margin:0;font-size:16px}
+.daily-history-entry-heading .health-signal-level{white-space:nowrap}
+.daily-history-target-date{margin:5px 0 0;color:var(--muted);font-size:11px}
+.daily-history-input-summary{display:flex;flex-wrap:wrap;gap:8px}
+.daily-history-input-summary span{padding:7px 10px;border:1px solid #e0e5ef;border-radius:9px;color:#536078;font-size:11px}
+.daily-history-input-summary strong{color:var(--ink)}
+.daily-history-trend .daily-history-entry{padding:19px}
+.trend-page .daily-history-panel{margin-top:10px}
+html[data-theme="black"] .daily-history-panel{background:#171f2e;border-color:#2c394e;color:#f3f5fb}
+html[data-theme="black"] .daily-history-empty,html[data-theme="black"] .daily-history-loading{background:#202a3a;border-color:#39465b;color:#d3d9e5}
+html[data-theme="black"] .daily-weekly-summary{background:#202a3a;border-color:#39465b}
+html[data-theme="black"] .daily-weekly-summary-heading>span{background:#393251;color:#ded5ff}
+html[data-theme="black"] .daily-weekly-summary-card{background:#111927;border-color:#39465b}
+html[data-theme="black"] .daily-weekly-summary-card p,html[data-theme="black"] .daily-weekly-summary-card small{color:#bdc7d8}
+html[data-theme="black"] .daily-weekly-summary-card strong span{color:#aeb9cb}
+html[data-theme="black"] .daily-history-entry{background:#111927;border-color:#39465b;color:#f3f5fb}
+html[data-theme="black"] .daily-history-input-summary span{border-color:#39465b;color:#bdc7d8}
+html[data-theme="black"] .daily-history-input-summary strong{color:#f3f5fb}
+@media(max-width:600px){.daily-history-panel{padding:16px}.daily-history-entry{padding:13px}.daily-history-entry-heading{align-items:flex-start;flex-direction:column}.daily-weekly-summary{padding:13px}.daily-weekly-summary-heading{align-items:flex-start;flex-direction:column}.daily-weekly-summary-grid{grid-template-columns:1fr 1fr}.daily-history-input-summary{display:grid;grid-template-columns:1fr 1fr}.daily-history-trend .daily-history-entry{padding:14px}}

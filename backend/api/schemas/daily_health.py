@@ -39,6 +39,34 @@ class DailyHealthEntryUpsert(BaseModel):
     prediction: DailyHealthPredictionInput | None = None
 
 
+class DailyHealthProfileUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    smoking_status: Literal["never", "former", "current", "prefer_not_to_say"] | None = None
+
+
+class DailyHealthAgeBandUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    age_band: Literal["under_13", "13_17", "18_24", "25_34", "35_44", "45_54", "55_plus"]
+
+
+class DailyHealthMenstrualCheckinUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    local_date: date
+    currently_menstruating: bool
+
+
+class DailyHealthOutcomeUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_date: date
+    reported_energy_level_0_10: float | None = Field(default=None, ge=0, le=10)
+    reported_thirst_level_0_10: float | None = Field(default=None, ge=0, le=10)
+    reported_dryness_level_0_10: float | None = Field(default=None, ge=0, le=10)
+
+
 class DailyHealthEntryRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,9 +81,49 @@ class DailyHealthEntryRead(BaseModel):
     sleep_score_method: str
     predicted_thirst_score_0_10: float | None
     predicted_dryness_score_0_10: float | None
+    prediction_target_date: date | None = None
     prediction_status: str
     prediction_model_id: str | None
     data_source: str
     training_eligible: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class DailyHealthProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    smoking_status: str | None
+    updated_at: datetime
+
+
+class DailyHealthAgeBandRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    age_band: str
+    updated_at: datetime
+
+
+class DailyHealthMenstrualCheckinRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    local_date: date
+    currently_menstruating: bool
+    created_at: datetime
+
+
+class DailyHealthOutcomeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    target_date: date
+    reported_energy_level_0_10: float | None
+    reported_thirst_level_0_10: float | None
+    reported_dryness_level_0_10: float | None
     created_at: datetime
     updated_at: datetime

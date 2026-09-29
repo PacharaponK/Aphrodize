@@ -100,6 +100,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const limit = Number.isInteger(requestedLimit)
     ? Math.min(90, Math.max(1, requestedLimit))
     : 30;
+  const query = new URLSearchParams({ limit: String(limit) });
+  for (const field of ["from_date", "to_date"] as const) {
+    const value = request.nextUrl.searchParams.get(field);
+    if (value !== null) query.set(field, value);
+  }
 
   try {
     const account = await accountSession(request);
@@ -107,7 +112,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
     }
     const response = await fetch(
-      backendUrl(`/daily-health/users/${account.userId}/entries?limit=${limit}`),
+      backendUrl(`/daily-health/users/${account.userId}/entries?${query.toString()}`),
       { headers: apiHeaders(), cache: "no-store" },
     );
     if (!response.ok) return backendFailure(response);

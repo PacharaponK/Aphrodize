@@ -10,7 +10,6 @@ from backend.api.v1.routes import (
     health,
     inference,
     monitoring,
-    products,
     questionnaires,
     training,
     users,
@@ -24,7 +23,12 @@ api_router.include_router(
     consents.router, prefix="/consents", tags=["consents"], dependencies=protected
 )
 api_router.include_router(
-    analyses.router, prefix="/analyses", tags=["analyses"], dependencies=protected
+    questionnaires.router,
+    prefix="/questionnaires",
+    tags=["questionnaires"],
+)
+api_router.include_router(
+    analyses.router, prefix="/analyses", tags=["analyses"]
 )
 api_router.include_router(
     forecasts.router,

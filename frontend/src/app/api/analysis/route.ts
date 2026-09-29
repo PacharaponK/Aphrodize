@@ -92,21 +92,38 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (image.size > MAX_BYTES) return failed(413, "Image exceeds 10 MiB");
 
   try {
-    // Create one backend user and analysis consent for this uploaded image.
-    const consent = await fetch(backendUrl("/consents"), {
-      method: "POST",
-      headers: { ...apiHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ version: "1.0" }),
-      cache: "no-store",
-    });
-    if (!consent.ok) return backendError(consent);
-    const { user_id } = await consent.json();
-    if (typeof user_id !== "string" || !UUID.test(user_id)) throw new Error("Invalid user id");
+    const accountToken = request.cookies.get("aphrodize_session")?.value;
+    let user_id: string;
+    let userHeaders: HeadersInit = apiHeaders();
+    if (accountToken) {
+      // Resolve the account identity from its HttpOnly bearer session.
+      const profile = await fetch(backendUrl("/auth/profile"), {
+        headers: { Authorization: `Bearer ${accountToken}` },
+        cache: "no-store",
+      });
+      if (!profile.ok) return backendError(profile);
+      const account = await profile.json();
+      if (typeof account?.user_id !== "string" || !UUID.test(account.user_id)) throw new Error("Invalid account user id");
+      user_id = account.user_id;
+      userHeaders = apiHeaders();
+    } else {
+      // Preserve the anonymous research capture flow for users without an account.
+      const consent = await fetch(backendUrl("/consents"), {
+        method: "POST",
+        headers: { ...apiHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ version: "1.0" }),
+        cache: "no-store",
+      });
+      if (!consent.ok) return backendError(consent);
+      const result = await consent.json();
+      if (typeof result?.user_id !== "string" || !UUID.test(result.user_id)) throw new Error("Invalid user id");
+      user_id = result.user_id;
+    }
     if (wantsAnnotation) {
       // Grant the separate human-review consent before queuing the image.
       const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
         method: "POST",
-        headers: apiHeaders(),
+        headers: userHeaders,
         cache: "no-store",
       });
       if (!reviewConsent.ok) return backendError(reviewConsent);
@@ -116,7 +133,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     upload.set("image", image);
     const analysis = await fetch(backendUrl(`/analyses/users/${user_id}`), {
       method: "POST",
-      headers: apiHeaders(),
+      headers: userHeaders,
       body: upload,
       cache: "no-store",
     });

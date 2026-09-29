@@ -188,6 +188,18 @@ class UserProfile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+
+class Questionnaire(Base):
+    """Versioned questionnaire answers retained for recommendation compatibility."""
+
+    __tablename__ = "questionnaires"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    answers: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Product(Base):
     """Admin-reviewed catalog data; intentionally independent of user records."""
 
@@ -293,6 +305,9 @@ class DailyHealthEntry(Base):
     sleep_score_method: Mapped[str] = mapped_column(String(128))
     predicted_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     predicted_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Predictions always describe the following local day.  It remains nullable for
+    # historical rows created before prediction provenance was recorded.
+    prediction_target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     prediction_status: Mapped[str] = mapped_column(String(32), default="not_run")
     prediction_model_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     data_source: Mapped[str] = mapped_column(String(32), default="user_reported")
@@ -310,6 +325,169 @@ class DailyHealthEntry(Base):
             self.reported_thirst_score_0_10 is not None
             and self.reported_dryness_score_0_10 is not None
         )
+
+
+class DailyHealthProfile(Base):
+    """Current, optional lifestyle context; this is intentionally not a history table."""
+
+    __tablename__ = "daily_health_profiles"
+    __table_args__ = (
+        CheckConstraint(
+            "smoking_status IS NULL OR smoking_status IN "
+            "('never', 'former', 'current', 'prefer_not_to_say')",
+            name="ck_daily_health_profile_smoking_status",
+        ),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    smoking_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthAgeBand(Base):
+    """Age is retained only as a coarse band when the user opts into age guidance."""
+
+    __tablename__ = "daily_health_age_bands"
+    __table_args__ = (
+        CheckConstraint(
+            "age_band IN ('under_13', '13_17', '18_24', '25_34', '35_44', '45_54', '55_plus')",
+            name="ck_daily_health_age_band",
+        ),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    age_band: Mapped[str] = mapped_column(String(32))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthMenstrualCheckin(Base):
+    __tablename__ = "daily_health_menstrual_checkins"
+    __table_args__ = (
+        UniqueConstraint("user_id", "local_date", name="uq_daily_health_menstrual_user_date"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    local_date: Mapped[date] = mapped_column(Date)
+    currently_menstruating: Mapped[bool] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyHealthOutcome(Base):
+    """Observed next-day self reports, kept separate from model predictions."""
+
+    __tablename__ = "daily_health_outcomes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_date", name="uq_daily_health_outcome_user_date"),
+        CheckConstraint(
+            "reported_energy_level_0_10 IS NULL OR "
+            "(reported_energy_level_0_10 >= 0 AND reported_energy_level_0_10 <= 10)",
+            name="ck_daily_health_outcome_energy",
+        ),
+        CheckConstraint(
+            "reported_thirst_level_0_10 IS NULL OR "
+            "(reported_thirst_level_0_10 >= 0 AND reported_thirst_level_0_10 <= 10)",
+            name="ck_daily_health_outcome_thirst",
+        ),
+        CheckConstraint(
+            "reported_dryness_level_0_10 IS NULL OR "
+            "(reported_dryness_level_0_10 >= 0 AND reported_dryness_level_0_10 <= 10)",
+            name="ck_daily_health_outcome_dryness",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    target_date: Mapped[date] = mapped_column(Date)
+    reported_energy_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reported_thirst_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reported_dryness_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthDatasetRecord(Base):
+    """Dataset-row provenance.  Participant keys never reference product users."""
+
+    __tablename__ = "daily_health_dataset_records"
+    __table_args__ = (
+        UniqueConstraint(
+            "dataset_fingerprint", "source_row_number", name="uq_daily_health_dataset_row"
+        ),
+        CheckConstraint(
+            "data_source IN ('observed', 'synthetic', 'unknown')",
+            name="ck_daily_health_dataset_source",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    dataset_fingerprint: Mapped[str] = mapped_column(String(128), index=True)
+    source_dataset_name: Mapped[str] = mapped_column(String(256))
+    source_row_number: Mapped[int] = mapped_column(Integer)
+    participant_key: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    local_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_source: Mapped[str] = mapped_column(String(32), default="unknown", server_default="unknown")
+    generation_rule_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    training_eligible: Mapped[bool] = mapped_column(default=False, server_default="false")
+    training_exclusion_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    record_payload: Mapped[dict] = mapped_column(JSON)
+    imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyHealthModelVersion(Base):
+    __tablename__ = "daily_health_model_versions"
+
+    version_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    model_family: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(32))
+    dataset_fingerprint: Mapped[str] = mapped_column(String(128), unique=True)
+    training_records: Mapped[int] = mapped_column(Integer)
+    participant_count: Mapped[int] = mapped_column(Integer)
+    artifact_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DailyHealthModelDeployment(Base):
+    __tablename__ = "daily_health_model_deployments"
+
+    deployment_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    active_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("daily_health_model_versions.version_id", ondelete="SET NULL"), nullable=True
+    )
+    previous_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("daily_health_model_versions.version_id", ondelete="SET NULL"), nullable=True
+    )
+    approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class DailyHealthModelDeploymentEvent(Base):
+    __tablename__ = "daily_health_model_deployment_events"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    action: Mapped[str] = mapped_column(String(64))
+    # This deliberately has no FK: it is an immutable audit record after pruning.
+    version_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Analysis(Base):
