@@ -6,7 +6,6 @@ from backend.api.v1.routes import (
     auth,
     consents,
     daily_health,
-    forecasts,
     health,
     inference,
     monitoring,
@@ -29,12 +28,6 @@ api_router.include_router(
 )
 api_router.include_router(
     analyses.router, prefix="/analyses", tags=["analyses"]
-)
-api_router.include_router(
-    forecasts.router,
-    prefix="/lifestyle-forecast",
-    tags=["lifestyle-forecast"],
-    dependencies=protected,
 )
 api_router.include_router(
     daily_health.router,
