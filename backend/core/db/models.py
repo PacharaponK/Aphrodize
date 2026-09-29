@@ -39,9 +39,7 @@ class AnalysisStatus(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint(
-            "status IN ('active', 'suspended', 'deleted')", name="ck_users_status"
-        ),
+        CheckConstraint("status IN ('active', 'suspended', 'deleted')", name="ck_users_status"),
     )
     id: Mapped[uuid.UUID] = uuid_pk()
     status: Mapped[str] = mapped_column(String(32), default="active", server_default="active")
@@ -86,9 +84,7 @@ class AccountRole(Base):
     __tablename__ = "account_roles"
     __table_args__ = (
         UniqueConstraint("account_id", "role", name="uq_account_roles_account_role"),
-        CheckConstraint(
-            "role IN ('member', 'admin', 'support')", name="ck_account_roles_role"
-        ),
+        CheckConstraint("role IN ('member', 'admin', 'support')", name="ck_account_roles_role"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -224,6 +220,9 @@ class Product(Base):
     target_skin_types: Mapped[list[str]] = mapped_column(JSON, default=list)
     concerns: Mapped[list[str]] = mapped_column(JSON, default=list)
     source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    spf: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    broad_spectrum: Mapped[bool] = mapped_column(default=False, server_default="false")
+    water_resistant_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="draft")
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -297,6 +296,7 @@ class DailyHealthEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
 
 class DailyHealthDatasetRecord(Base):
     """Imported historical dataset row, retained with provenance and excluded by default."""

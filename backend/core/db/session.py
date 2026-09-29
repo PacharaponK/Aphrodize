@@ -20,6 +20,57 @@ async def create_database_schema() -> None:
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        product_columns = await connection.run_sync(
+            lambda sync_connection: {
+                column["name"] for column in inspect(sync_connection).get_columns("products")
+            }
+        ) or set()
+        product_additions = {
+            "variant": "VARCHAR(120) NOT NULL DEFAULT ''",
+            "price_satang": "INTEGER",
+            "price_checked_at": "TIMESTAMP WITH TIME ZONE",
+            "ingredients_label": "TEXT NOT NULL DEFAULT ''",
+            "ingredients_inci": "JSON NOT NULL DEFAULT '[]'",
+            "warnings_label": "TEXT NOT NULL DEFAULT ''",
+            "target_skin_types": "JSON NOT NULL DEFAULT '[]'",
+            "concerns": "JSON NOT NULL DEFAULT '[]'",
+            "source_url": "VARCHAR(1000)",
+            "status": "VARCHAR(16) NOT NULL DEFAULT 'draft'",
+            "reviewed_at": "TIMESTAMP WITH TIME ZONE",
+            "updated_at": "TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP",
+            "spf": "INTEGER",
+            "broad_spectrum": "BOOLEAN NOT NULL DEFAULT false",
+            "water_resistant_minutes": "INTEGER",
+        }
+        for name, definition in product_additions.items():
+            if name not in product_columns:
+                await connection.execute(
+                    text(f"ALTER TABLE products ADD COLUMN {name} {definition}")
+                )
+        if connection.dialect.name == "postgresql" and "price_thb" in product_columns:
+            # Preserve legacy catalog values; no product becomes published without review.
+            await connection.execute(
+                text(
+                    "UPDATE products SET price_satang = ROUND(price_thb * 100)::integer "
+                    "WHERE price_satang IS NULL AND price_thb IS NOT NULL"
+                )
+            )
+            await connection.execute(
+                text(
+                    "UPDATE products SET ingredients_label = ingredients_text "
+                    "WHERE ingredients_label = '' AND ingredients_text IS NOT NULL"
+                )
+            )
+            await connection.execute(
+                text(
+                    "UPDATE products SET source_url = product_url "
+                    "WHERE source_url IS NULL AND product_url IS NOT NULL"
+                )
+            )
+            for legacy_column in ("price_thb", "ingredients_text", "is_active"):
+                await connection.execute(
+                    text(f"ALTER TABLE products ALTER COLUMN {legacy_column} DROP NOT NULL")
+                )
         if connection.dialect.name == "sqlite":
             profile_columns = await connection.run_sync(
                 lambda sync_connection: {
@@ -83,10 +134,7 @@ async def create_database_schema() -> None:
                 )
             )
             await connection.execute(
-                text(
-                    "ALTER TABLE daily_health_profiles "
-                    "ADD COLUMN IF NOT EXISTS weight_kg FLOAT"
-                )
+                text("ALTER TABLE daily_health_profiles ADD COLUMN IF NOT EXISTS weight_kg FLOAT")
             )
             await connection.execute(
                 text(

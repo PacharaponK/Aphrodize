@@ -4,7 +4,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-
 SkinType = Literal["dry", "normal", "combination", "oily", "all"]
 ProductStatus = Literal["draft", "published", "archived"]
 
@@ -21,6 +20,9 @@ class ProductInput(BaseModel):
     target_skin_types: list[SkinType] = Field(default_factory=list)
     concerns: list[str] = Field(default_factory=list, max_length=30)
     source_url: str | None = Field(default=None, max_length=1000, pattern=r"^https?://[^\s]+$")
+    spf: int | None = Field(default=None, ge=1, le=100)
+    broad_spectrum: bool = False
+    water_resistant_minutes: int | None = Field(default=None, ge=1, le=120)
 
     @field_validator("brand", "name", "variant", "category", "ingredients_label", "warnings_label")
     @classmethod

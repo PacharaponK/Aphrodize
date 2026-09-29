@@ -12,6 +12,7 @@ from backend.api.v1.routes import (
     products,
     training,
     users,
+    uv,
 )
 
 api_router = APIRouter()
@@ -22,18 +23,14 @@ api_router.include_router(
     consents.router, prefix="/consents", tags=["consents"], dependencies=protected
 )
 api_router.include_router(consents.user_router, prefix="/consents", tags=["consents"])
-api_router.include_router(
-    analyses.router, prefix="/analyses", tags=["analyses"]
-)
+api_router.include_router(analyses.router, prefix="/analyses", tags=["analyses"])
 api_router.include_router(
     daily_health.router,
     prefix="/daily-health",
     tags=["daily-health"],
     dependencies=protected,
 )
-api_router.include_router(
-    daily_health.user_router, prefix="/daily-health", tags=["daily-health"]
-)
+api_router.include_router(daily_health.user_router, prefix="/daily-health", tags=["daily-health"])
 api_router.include_router(
     training.router, prefix="/training", tags=["training"], dependencies=protected
 )
@@ -44,6 +41,7 @@ api_router.include_router(
     monitoring.router, prefix="/monitoring", tags=["monitoring"], dependencies=protected
 )
 api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(uv.router, prefix="/uv", tags=["uv"], dependencies=protected)
 api_router.include_router(
     products.router,
     prefix="/admin/products",
