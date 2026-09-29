@@ -9,7 +9,7 @@ from sqlalchemy.sql.dml import Insert
 from backend.core.db.models import Consent, DailyHealthEntry, UserProfile
 from backend.services import fixture_service
 
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "users.yaml"
+FIXTURE = Path(__file__).resolve().parents[1] / "backend" / "fixtures" / "users.yaml"
 
 
 class FakeSession:

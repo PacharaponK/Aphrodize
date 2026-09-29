@@ -148,10 +148,10 @@ services:
     build:
       context: .
       dockerfile: docker/api.Dockerfile
-    command: python -m backend.scripts.load_fixtures /app/fixtures/users.yaml
+    command: python -m backend.scripts.load_fixtures /app/backend/fixtures/users.yaml
     environment: *api-environment
     volumes:
-      - ./fixtures:/app/fixtures:ro
+      - ./backend/fixtures:/app/backend/fixtures:ro
     depends_on:
       postgres:
         condition: service_healthy
