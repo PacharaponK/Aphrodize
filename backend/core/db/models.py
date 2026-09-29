@@ -10,7 +10,6 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
-    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -162,16 +161,6 @@ class LoginAudit(Base):
 
 class Consent(Base):
     __tablename__ = "consents"
-    __table_args__ = (
-        Index(
-            "uq_consents_active_user_version",
-            "user_id",
-            "version",
-            unique=True,
-            postgresql_where=text("revoked_at IS NULL"),
-            sqlite_where=text("revoked_at IS NULL"),
-        ),
-    )
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     version: Mapped[str] = mapped_column(String(64))
@@ -194,6 +183,17 @@ class UserProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class Questionnaire(Base):
+    """Versioned questionnaire answers retained for recommendation compatibility."""
+
+    __tablename__ = "questionnaires"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    answers: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Product(Base):
@@ -250,15 +250,6 @@ class DailyHealthEntry(Base):
             name="ck_daily_health_outdoor_choice",
         ),
         CheckConstraint(
-            "weight_kg IS NULL OR (weight_kg >= 1 AND weight_kg <= 500)",
-            name="ck_daily_health_weight",
-        ),
-        CheckConstraint(
-            "calculated_thirst_score_0_10 IS NULL OR "
-            "(calculated_thirst_score_0_10 >= 0 AND calculated_thirst_score_0_10 <= 10)",
-            name="ck_daily_health_calculated_thirst",
-        ),
-        CheckConstraint(
             "sleep_score_0_100 >= 0 AND sleep_score_0_100 <= 100",
             name="ck_daily_health_sleep_score",
         ),
@@ -271,6 +262,16 @@ class DailyHealthEntry(Base):
             "predicted_dryness_score_0_10 IS NULL OR "
             "(predicted_dryness_score_0_10 >= 0 AND predicted_dryness_score_0_10 <= 10)",
             name="ck_daily_health_predicted_dryness",
+        ),
+        CheckConstraint(
+            "reported_thirst_score_0_10 IS NULL OR "
+            "(reported_thirst_score_0_10 >= 0 AND reported_thirst_score_0_10 <= 10)",
+            name="ck_daily_health_reported_thirst",
+        ),
+        CheckConstraint(
+            "reported_dryness_score_0_10 IS NULL OR "
+            "(reported_dryness_score_0_10 >= 0 AND reported_dryness_score_0_10 <= 10)",
+            name="ck_daily_health_reported_dryness",
         ),
     )
 
@@ -288,14 +289,26 @@ class DailyHealthEntry(Base):
     sleep_score_method: Mapped[str] = mapped_column(String(128))
     predicted_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     predicted_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Predictions always describe the following local day.  It remains nullable for
+    # historical rows created before prediction provenance was recorded.
     prediction_target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     prediction_status: Mapped[str] = mapped_column(String(32), default="not_run")
     prediction_model_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     data_source: Mapped[str] = mapped_column(String(32), default="user_reported")
+    # These remain NULL until the user supplies real observed outcomes; predictions are not labels.
+    reported_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reported_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    @property
+    def training_eligible(self) -> bool:
+        return (
+            self.reported_thirst_score_0_10 is not None
+            and self.reported_dryness_score_0_10 is not None
+        )
 
 
 class DailyHealthDatasetRecord(Base):
@@ -331,10 +344,15 @@ class DailyHealthDatasetRecord(Base):
 
 
 class DailyHealthProfile(Base):
-    """Consent-gated, user-reported context for personalizing wellness guidance."""
+    """Current, optional lifestyle context; this is intentionally not a history table."""
 
     __tablename__ = "daily_health_profiles"
     __table_args__ = (
+        CheckConstraint(
+            "smoking_status IS NULL OR smoking_status IN "
+            "('never', 'former', 'current', 'prefer_not_to_say')",
+            name="ck_daily_health_profile_smoking_status",
+        ),
         CheckConstraint(
             "skin_type IS NULL OR skin_type IN "
             "('normal', 'dry', 'oily', 'combination', 'sensitive', 'prefer_not_to_say')",
@@ -346,7 +364,9 @@ class DailyHealthProfile(Base):
         ),
     )
 
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     smoking_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     skin_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -356,34 +376,46 @@ class DailyHealthProfile(Base):
 
 
 class DailyHealthAgeBand(Base):
-    """Optional, consent-gated age band for age-aware sleep guidance; no birth date stored."""
+    """Age is retained only as a coarse band when the user opts into age guidance."""
 
     __tablename__ = "daily_health_age_bands"
+    __table_args__ = (
+        CheckConstraint(
+            "age_band IN ('under_13', '13_17', '18_24', '25_34', '35_44', "
+            "'45_54', '55_plus', '18_60', '61_64', '65_plus')",
+            name="ck_daily_health_age_band",
+        ),
+    )
 
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True)
-    age_band: Mapped[str] = mapped_column(String(16))
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    age_band: Mapped[str] = mapped_column(String(32))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 
-class DailyHealthMenstrualCheckIn(Base):
-    """Optional, user-reported menstruation status for a single local date."""
-
+class DailyHealthMenstrualCheckin(Base):
     __tablename__ = "daily_health_menstrual_checkins"
     __table_args__ = (
-        UniqueConstraint("user_id", "local_date", name="uq_menstrual_checkin_user_date"),
+        UniqueConstraint("user_id", "local_date", name="uq_daily_health_menstrual_user_date"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     local_date: Mapped[date] = mapped_column(Date)
     currently_menstruating: Mapped[bool] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+DailyHealthMenstrualCheckIn = DailyHealthMenstrualCheckin
+
+
 class DailyHealthOutcome(Base):
-    """User-reported next-day outcomes kept separate from model predictions."""
+    """Observed next-day self reports, kept separate from model predictions."""
 
     __tablename__ = "daily_health_outcomes"
     __table_args__ = (
@@ -391,22 +423,24 @@ class DailyHealthOutcome(Base):
         CheckConstraint(
             "reported_energy_level_0_10 IS NULL OR "
             "(reported_energy_level_0_10 >= 0 AND reported_energy_level_0_10 <= 10)",
-            name="ck_daily_health_reported_energy",
+            name="ck_daily_health_outcome_energy",
         ),
         CheckConstraint(
             "reported_thirst_level_0_10 IS NULL OR "
             "(reported_thirst_level_0_10 >= 0 AND reported_thirst_level_0_10 <= 10)",
-            name="ck_daily_health_reported_thirst_level",
+            name="ck_daily_health_outcome_thirst",
         ),
         CheckConstraint(
             "reported_dryness_level_0_10 IS NULL OR "
             "(reported_dryness_level_0_10 >= 0 AND reported_dryness_level_0_10 <= 10)",
-            name="ck_daily_health_reported_dryness_level",
+            name="ck_daily_health_outcome_dryness",
         ),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
     target_date: Mapped[date] = mapped_column(Date)
     reported_energy_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     reported_thirst_level_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -418,17 +452,12 @@ class DailyHealthOutcome(Base):
 
 
 class DailyHealthModelVersion(Base):
-    """Immutable candidate registry for consented, user-reported daily-health models."""
-
     __tablename__ = "daily_health_model_versions"
-    __table_args__ = (
-        UniqueConstraint("dataset_fingerprint", name="uq_daily_health_model_dataset"),
-    )
 
     version_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    model_family: Mapped[str] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(String(24), default="training")
-    dataset_fingerprint: Mapped[str] = mapped_column(String(64))
+    model_family: Mapped[str] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(32))
+    dataset_fingerprint: Mapped[str] = mapped_column(String(128), unique=True)
     training_records: Mapped[int] = mapped_column(Integer)
     participant_count: Mapped[int] = mapped_column(Integer)
     artifact_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -438,38 +467,34 @@ class DailyHealthModelVersion(Base):
 
 
 class DailyHealthModelDeployment(Base):
-    """Explicitly approved model currently serving daily-health predictions."""
-
     __tablename__ = "daily_health_model_deployments"
 
-    deployment_key: Mapped[str] = mapped_column(String(32), primary_key=True)
+    deployment_key: Mapped[str] = mapped_column(String(128), primary_key=True)
     active_version_id: Mapped[str | None] = mapped_column(
-        ForeignKey("daily_health_model_versions.version_id"), nullable=True
+        ForeignKey("daily_health_model_versions.version_id", ondelete="SET NULL"), nullable=True
     )
     previous_version_id: Mapped[str | None] = mapped_column(
-        ForeignKey("daily_health_model_versions.version_id"), nullable=True
+        ForeignKey("daily_health_model_versions.version_id", ondelete="SET NULL"), nullable=True
     )
-    approval_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    approval_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 
 class DailyHealthModelDeploymentEvent(Base):
-    """Append-only audit record for explicit model promotion and rollback actions."""
-
     __tablename__ = "daily_health_model_deployment_events"
 
     id: Mapped[uuid.UUID] = uuid_pk()
-    action: Mapped[str] = mapped_column(String(24))
+    action: Mapped[str] = mapped_column(String(64))
+    # This deliberately has no FK: it is an immutable audit record after pruning.
     version_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    reason: Mapped[str] = mapped_column(String(500))
+    reason: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Analysis(Base):
     __tablename__ = "analyses"
-    __table_args__ = (UniqueConstraint("id", "user_id", name="uq_analyses_id_user"),)
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[AnalysisStatus] = mapped_column(
@@ -489,14 +514,7 @@ class Analysis(Base):
 
 class AnnotationTask(Base):
     __tablename__ = "annotation_tasks"
-    __table_args__ = (
-        UniqueConstraint("analysis_id"),
-        ForeignKeyConstraint(
-            ["analysis_id", "user_id"],
-            ["analyses.id", "analyses.user_id"],
-            name="fk_annotation_analysis_owner",
-        ),
-    )
+    __table_args__ = (UniqueConstraint("analysis_id"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     analysis_id: Mapped[uuid.UUID] = mapped_column(index=True)

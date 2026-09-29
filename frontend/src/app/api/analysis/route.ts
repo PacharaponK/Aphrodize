@@ -1,10 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { accountSession } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
 const COOKIE = "aphrodize_analysis";
 const ANONYMOUS_COOKIE = "aphrodize_anonymous";
+const ANNOTATION_COOKIE = "aphrodize_annotations";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REVIEW_MS = 30 * DAY_MS;
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -54,6 +56,19 @@ function anonymousSession(request: NextRequest): { userId: string; token: string
     : null;
 }
 
+function annotationUsers(request: NextRequest): string[] {
+  // This cookie tracks review consents that the current browser can revoke.
+  const parts = request.cookies.get(ANNOTATION_COOKIE)?.value.split(".");
+  if (!parts || parts.length !== 3) return [];
+  const [encoded, expiry, mac] = parts;
+  if (!/^\d{13}$/.test(expiry) || Date.now() >= Number(expiry) || !/^[0-9a-f]{64}$/.test(mac)) return [];
+  const expected = signature(`${encoded}.${expiry}`);
+  if (!timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"))) return [];
+  const ids = Buffer.from(encoded, "base64url").toString("utf8").split(",");
+  // Bound the list and reject malformed IDs before making backend DELETE calls.
+  return ids.length <= 50 && ids.every((id) => UUID.test(id)) ? ids : [];
+}
+
 function failed(status: number, message: string): NextResponse {
   return NextResponse.json({ detail: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -81,14 +96,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const wantsAnnotation = form.get("annotation_consent") === "yes";
   // The analysis consent is mandatory; review consent is a separate choice.
   if (form.get("consent") !== "yes") return failed(403, "Consent is required");
+  if (wantsAnnotation && annotationUsers(request).length >= 50) {
+    return failed(409, "Too many active review consents in this browser");
+  }
   if (!(image instanceof File) || !IMAGE_TYPES.has(image.type) || !image.size) {
     return failed(415, "Choose a JPEG, PNG, or WebP image");
   }
   if (image.size > MAX_BYTES) return failed(413, "Image exceeds 10 MiB");
 
   try {
-    let anonymous = anonymousSession(request);
-    if (!anonymous) {
+    const account = await accountSession(request);
+    let anonymous = account ? null : anonymousSession(request);
+    let user_id: string;
+    let token: string;
+    if (account) {
+      user_id = account.userId;
+      token = account.token;
+    } else if (anonymous) {
+      user_id = anonymous.userId;
+      token = anonymous.token;
+    } else {
+      // Preserve the anonymous research capture flow for users without an account.
       const consent = await fetch(backendUrl("/consents"), {
         method: "POST",
         headers: { ...apiHeaders(), "Content-Type": "application/json" },
@@ -96,18 +124,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         cache: "no-store",
       });
       if (!consent.ok) return backendError(consent);
-      const { user_id, access_token } = await consent.json();
-      if (typeof user_id !== "string" || !UUID.test(user_id) || typeof access_token !== "string") {
-        throw new Error("Invalid anonymous session");
-      }
-      anonymous = { userId: user_id, token: access_token };
+      const result = await consent.json();
+      if (typeof result?.user_id !== "string" || !UUID.test(result.user_id)
+        || typeof result?.access_token !== "string") throw new Error("Invalid anonymous session");
+      user_id = result.user_id;
+      token = result.access_token;
+      anonymous = { userId: user_id, token };
     }
-    const { userId, token } = anonymous;
+    const userHeaders = { Authorization: `Bearer ${token}` };
     if (wantsAnnotation) {
       // Grant the separate human-review consent before queuing the image.
-      const reviewConsent = await fetch(backendUrl(`/consents/users/${userId}/annotations`), {
+      const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: userHeaders,
         cache: "no-store",
       });
       if (!reviewConsent.ok) return backendError(reviewConsent);
@@ -115,9 +144,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Forward only the image to the protected analysis endpoint.
     const upload = new FormData();
     upload.set("image", image);
-    const analysis = await fetch(backendUrl(`/analyses/users/${userId}`), {
+    const analysis = await fetch(backendUrl(`/analyses/users/${user_id}`), {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: userHeaders,
       body: upload,
       cache: "no-store",
     });
@@ -126,13 +155,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (typeof data.id !== "string" || !UUID.test(data.id)) throw new Error("Invalid analysis id");
     // Return the queued/rejected row immediately; inference continues in Redis.
     const response = NextResponse.json(data, { status: 202, headers: { "Cache-Control": "no-store" } });
-    if (!anonymousSession(request)) {
-      response.cookies.set(ANONYMOUS_COOKIE, `${userId}:${token}`, {
-        httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV === "production",
-        path: "/api/analysis",
-        maxAge: REVIEW_MS / 1000,
+    if (anonymous && !anonymousSession(request)) {
+      response.cookies.set(ANONYMOUS_COOKIE, `${anonymous.userId}:${anonymous.token}`, {
+        httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production",
+        path: "/api/analysis", maxAge: REVIEW_MS / 1000,
       });
     }
     const expiry = Date.now() + DAY_MS;
@@ -144,6 +170,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: "/api/analysis",
       maxAge: DAY_MS / 1000,
     });
+    if (wantsAnnotation) {
+      // Retain user IDs for browser-initiated review revocation during 30 days.
+      const users = [...annotationUsers(request), user_id];
+      const reviewExpiry = Date.now() + REVIEW_MS;
+      const encoded = Buffer.from(users.join(",")).toString("base64url");
+      response.cookies.set(
+        ANNOTATION_COOKIE,
+        `${encoded}.${reviewExpiry}.${signature(`${encoded}.${reviewExpiry}`)}`,
+        {
+          httpOnly: true,
+          sameSite: "strict",
+          secure: process.env.NODE_ENV === "production",
+          path: "/api/analysis",
+          maxAge: REVIEW_MS / 1000,
+        },
+      );
+    }
     return response;
   } catch {
     return failed(502, "Could not reach the analysis service");
@@ -158,15 +201,24 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     return failed(403, "Invalid request origin");
   }
   try {
-    const anonymous = anonymousSession(request);
-    if (!anonymous) return failed(401, "No active analysis session in this browser");
-    const response = await fetch(backendUrl(`/consents/users/${anonymous.userId}/annotations`), {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${anonymous.token}` },
-      cache: "no-store",
-    });
-    if (!response.ok) return backendError(response);
-    return new NextResponse(null, { status: 204 });
+    const account = await accountSession(request);
+    const anonymous = account ? null : anonymousSession(request);
+    const owner = account ?? anonymous;
+    if (!owner) return failed(401, "No active analysis session in this browser");
+    // Revoke every review consent represented in the signed browser cookie.
+    for (const userId of annotationUsers(request)) {
+      if (userId !== owner.userId) continue;
+      const response = await fetch(backendUrl(`/consents/users/${userId}/annotations`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${owner.token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) return backendError(response);
+    }
+    const response = new NextResponse(null, { status: 204 });
+    // Forget those IDs locally only after all backend deletions succeed.
+    response.cookies.delete(ANNOTATION_COOKIE);
+    return response;
   } catch {
     return failed(502, "Could not revoke annotation consent");
   }
@@ -177,8 +229,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // A valid signed cookie authorizes reading this browser's latest analysis.
     const id = currentAnalysis(request);
     if (!id) return failed(401, "No active analysis in this browser");
-    const anonymous = anonymousSession(request);
-    if (!anonymous) return failed(401, "No active analysis session in this browser");
+    const account = await accountSession(request);
+    const owner = account ?? anonymousSession(request);
+    if (!owner) return failed(401, "No active analysis session in this browser");
     const artifact = request.nextUrl.searchParams.get("artifact");
     // Only the two display images can be fetched through this proxy.
     if (artifact && artifact !== "mask" && artifact !== "overlay") {
@@ -188,7 +241,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? `/analyses/${id}/artifacts/${artifact}`
       : `/analyses/${id}`;
     const response = await fetch(backendUrl(path), {
-      headers: { Authorization: `Bearer ${anonymous.token}` },
+      headers: { Authorization: `Bearer ${owner.token}` },
       cache: "no-store",
     });
     if (!response.ok) return backendError(response);

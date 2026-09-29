@@ -4,15 +4,16 @@ export const runtime = "nodejs";
 
 const SESSION_COOKIE = "aphrodize_session";
 
-function backendUrl(): string {
-  return `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/auth/profile`;
+function backendUrl(safetyOnly: boolean): string {
+  const suffix = safetyOnly ? "/initial/safety" : "/initial";
+  return `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/questionnaires${suffix}`;
 }
 
 function detailMessage(detail: unknown): string {
-  return typeof detail === "string" ? detail : "บันทึกข้อมูลโปรไฟล์ไม่สำเร็จ โปรดลองอีกครั้ง";
+  return typeof detail === "string" ? detail : "บันทึกแบบสอบถามไม่สำเร็จ โปรดลองอีกครั้ง";
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function forward(request: NextRequest, method: "GET" | "POST" | "PUT"): Promise<NextResponse> {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
   if (origin && (!host || origin !== `${request.nextUrl.protocol}//${host}`)) {
@@ -23,14 +24,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ detail: "กรุณาสมัครสมาชิกหรือเข้าสู่ระบบก่อน" }, { status: 401 });
   }
   try {
-    const payload = await request.json();
-    const response = await fetch(backendUrl(), {
-      method: "PUT",
+    const payload = method === "GET" ? undefined : await request.json();
+    const safetyOnly = request.nextUrl.searchParams.get("safety") === "1";
+    if (safetyOnly && method !== "PUT") return NextResponse.json({ detail: "Safety screening must be updated with PUT" }, { status: 405 });
+    const response = await fetch(backendUrl(safetyOnly), {
+      method,
       headers: {
         "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
+        ...(method === "GET" ? {} : { "Content-Type": "application/json" }),
       },
-      body: JSON.stringify(payload),
+      ...(method === "GET" ? {} : { body: JSON.stringify(payload) }),
       cache: "no-store",
     });
     const body = await response.json().catch(() => null);
@@ -40,11 +43,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: response.status, headers: { "Cache-Control": "no-store" } },
       );
     }
-    return NextResponse.json(body, { status: 200, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(body, { status: method === "POST" ? 201 : 200, headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json(
-      { detail: "ยังเชื่อมต่อบริการโปรไฟล์ไม่ได้ กรุณาลองใหม่อีกครั้ง" },
+      { detail: "ยังเชื่อมต่อบริการแบบสอบถามไม่ได้ กรุณาลองใหม่อีกครั้ง" },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  return forward(request, "POST");
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return forward(request, "GET");
+}
+
+export async function PUT(request: NextRequest): Promise<NextResponse> {
+  return forward(request, "PUT");
 }

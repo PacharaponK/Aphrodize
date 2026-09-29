@@ -151,6 +151,22 @@ a { color: #0075de; }
 .quality-panel > p:not(.eyebrow) { max-width: 640px; margin-inline: auto; }
 .quality-panel .page-actions { justify-content: center; }
 .workspace-panel .recommendation-card { max-width: 960px; }
+.recommendation-blocked h3 { margin: 12px 0 8px; }
+.recommendation-blocked .primary-button { display: inline-flex; margin-top: 16px; }
+.recommendation-blocked .text-button { display: inline-flex; margin: 16px 0 0 16px; }
+.recommendation-context { max-width: 960px; margin-top: 20px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 12px; background: #f6f5f4; }
+.recommendation-context-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.recommendation-context-heading .eyebrow { margin: 0 0 4px; }
+.recommendation-context-heading h3 { margin: 0; font-size: 18px; }
+.recommendation-context-heading > span { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.recommendation-context-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.recommendation-context-grid div { display: grid; gap: 5px; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.recommendation-context-grid span { color: var(--muted); font-size: 12px; }
+.recommendation-context-grid strong { color: var(--ink); font-size: 20px; }
+.recommendation-context-grid small { color: var(--muted); font-size: 12px; font-weight: 600; }
+.recommendation-context > p { margin: 14px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.recommendation-note { max-width: 960px; margin: 16px 0 0; padding: 12px 14px; border-left: 3px solid #b5b0a8; border-radius: 8px; background: #f6f5f4; color: #5d5b54; font-size: 13px; line-height: 1.55; }
+.recommendation-warning { max-width: 960px; margin-top: 16px; padding: 16px 18px; border: 1px solid #f9e79f; border-radius: 12px; background: #fef7d6; color: #523410; font-size: 13px; line-height: 1.6; }
 .capture-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 28%); gap: 24px; align-items: start; }
 .capture-panel { min-width: 0; }
 .capture-panel h2 { margin-bottom: 8px; }
@@ -267,6 +283,11 @@ html[data-theme="black"] .analysis-region-track { background: #34415d; }
 html[data-theme="black"] .analysis-region-track span { background: #9b8cff; }
 html[data-theme="black"] .analysis-disclaimer { background: #423b28; border-color: #796b3f; }
 html[data-theme="black"] .analysis-disclaimer strong, html[data-theme="black"] .analysis-disclaimer p { color: #fff0c2; }
+html[data-theme="black"] .recommendation-context, html[data-theme="black"] .recommendation-note { background: #202f50; border-color: #34415d; color: #c8cede; }
+html[data-theme="black"] .recommendation-context-heading h3, html[data-theme="black"] .recommendation-context-grid strong { color: #fff; }
+html[data-theme="black"] .recommendation-context-grid div { background: #162342; border-color: #34415d; }
+html[data-theme="black"] .recommendation-context-grid span, html[data-theme="black"] .recommendation-context-grid small, html[data-theme="black"] .recommendation-context > p, html[data-theme="black"] .recommendation-context-heading > span { color: #c8cede; }
+html[data-theme="black"] .recommendation-warning { background: #423b28; border-color: #796b3f; color: #fff0c2; }
 html[data-theme="black"] .analysis-summary h3, html[data-theme="black"] .analysis-coverage strong, html[data-theme="black"] .analysis-region-top b, html[data-theme="black"] .analysis-region p strong { color: #fff; }
 html[data-theme="black"] .analysis-method code { color: #fff; }
 html[data-theme="black"] .analysis-section-intro, html[data-theme="black"] .analysis-caption, html[data-theme="black"] .analysis-region-top > span, html[data-theme="black"] .analysis-region p, html[data-theme="black"] .analysis-section-heading > span { color: #c8cede; }
@@ -293,6 +314,9 @@ html[data-theme="black"] .artifact-tabs button.active { background: #9b8cff; bor
   .page-header { margin: 0 -18px 28px; padding: 14px 18px; }
   .page-content { padding: 24px; }
   .capture-card { align-items: flex-start; }
+  .recommendation-context-heading { align-items: flex-start; flex-direction: column; }
+  .recommendation-context-grid { grid-template-columns: 1fr; }
+  .recommendation-blocked .text-button { margin-left: 0; }
 }
 @media (max-width: 600px) {
   .topbar { flex-wrap: wrap; }

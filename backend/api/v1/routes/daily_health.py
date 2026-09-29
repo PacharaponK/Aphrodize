@@ -10,13 +10,19 @@ from sqlalchemy.sql import func
 
 from backend.api.deps import require_matching_user
 from backend.api.schemas.daily_health import (
+    DailyHealthAgeBandRead,
+    DailyHealthAgeBandUpsert,
     DailyHealthEntryRead,
     DailyHealthEntryUpsert,
+    DailyHealthMenstrualCheckinRead,
+    DailyHealthMenstrualCheckinUpsert,
     DailyHealthModelPromotionRequest,
     DailyHealthModelRollbackRequest,
     DailyHealthOutcomeRead,
     DailyHealthOutcomeUpsert,
     DailyHealthPredictionRequest,
+    DailyHealthProfileRead,
+    DailyHealthProfileUpsert,
     DailyHealthProfileWeightUpsert,
 )
 from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION
@@ -1091,3 +1097,75 @@ async def upsert_daily_health_outcome(
     outcome = result.scalar_one()
     await session.commit()
     return DailyHealthOutcomeRead.model_validate(outcome)
+
+
+async def require_active_consent(
+    session: AsyncSession, user_id: UUID, version: str = DAILY_HEALTH_CONSENT_VERSION
+) -> None:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    active = await session.scalar(
+        select(Consent.id).where(
+            Consent.user_id == user_id,
+            Consent.version == version,
+            Consent.revoked_at.is_(None),
+        ).limit(1)
+    )
+    if active is None:
+        raise HTTPException(status_code=403, detail=f"Active {version} consent is required")
+
+
+@user_router.put("/users/{user_id}/profile", response_model=DailyHealthProfileRead)
+async def upsert_daily_health_profile(
+    user_id: UUID,
+    payload: DailyHealthProfileUpsert,
+    session: AsyncSession = Depends(get_session),
+) -> DailyHealthProfileRead:
+    await require_active_consent(session, user_id)
+    statement = insert(DailyHealthProfile).values(user_id=user_id, **payload.model_dump())
+    statement = statement.on_conflict_do_update(
+        index_elements=[DailyHealthProfile.user_id],
+        set_={"smoking_status": statement.excluded.smoking_status, "updated_at": func.now()},
+    ).returning(DailyHealthProfile)
+    profile = (await session.execute(statement)).scalar_one()
+    await session.commit()
+    return DailyHealthProfileRead.model_validate(profile)
+
+
+@user_router.put("/users/{user_id}/age-band", response_model=DailyHealthAgeBandRead)
+async def upsert_daily_health_age_band(
+    user_id: UUID,
+    payload: DailyHealthAgeBandUpsert,
+    session: AsyncSession = Depends(get_session),
+) -> DailyHealthAgeBandRead:
+    await require_active_consent(session, user_id, AGE_GUIDANCE_CONSENT_VERSION)
+    statement = insert(DailyHealthAgeBand).values(user_id=user_id, **payload.model_dump())
+    statement = statement.on_conflict_do_update(
+        index_elements=[DailyHealthAgeBand.user_id],
+        set_={"age_band": statement.excluded.age_band, "updated_at": func.now()},
+    ).returning(DailyHealthAgeBand)
+    age_band = (await session.execute(statement)).scalar_one()
+    await session.commit()
+    return DailyHealthAgeBandRead.model_validate(age_band)
+
+
+@user_router.put(
+    "/users/{user_id}/menstrual-checkins", response_model=DailyHealthMenstrualCheckinRead
+)
+async def upsert_menstrual_checkin(
+    user_id: UUID,
+    payload: DailyHealthMenstrualCheckinUpsert,
+    session: AsyncSession = Depends(get_session),
+) -> DailyHealthMenstrualCheckinRead:
+    await require_active_consent(session, user_id, PERSONALIZATION_CONSENT_VERSION)
+    statement = insert(DailyHealthMenstrualCheckIn).values(user_id=user_id, **payload.model_dump())
+    statement = statement.on_conflict_do_update(
+        index_elements=[
+            DailyHealthMenstrualCheckIn.user_id,
+            DailyHealthMenstrualCheckIn.local_date,
+        ],
+        set_={"currently_menstruating": statement.excluded.currently_menstruating},
+    ).returning(DailyHealthMenstrualCheckIn)
+    checkin = (await session.execute(statement)).scalar_one()
+    await session.commit()
+    return DailyHealthMenstrualCheckinRead.model_validate(checkin)

@@ -5,14 +5,15 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from backend.api.schemas.consent import WellnessProfileUpsert
-from backend.api.v1.router import api_router
 from backend.api.v1.routes.auth import (
     grant_daily_health_consent,
     save_wellness_profile,
     skin_profile,
+    router as auth_router,
 )
+from backend.api.v1.routes.questionnaires import router as questionnaire_router
 from backend.core.db.base import Base
-from backend.core.db.models import Account, Consent, User, UserProfile
+from backend.core.db.models import Account, Consent, Questionnaire, User, UserProfile
 
 
 def profile_payload(**changes):
@@ -27,13 +28,11 @@ def profile_payload(**changes):
     })
 
 
-def test_profile_schema_replaces_questionnaire_and_validates_guardian() -> None:
-    assert "questionnaires" not in Base.metadata.tables
-    assert any(
-        route.path == "/auth/profile" and "PUT" in route.methods
-        for route in api_router.routes
-    )
-    assert not any(route.path.startswith("/questionnaires") for route in api_router.routes)
+def test_profile_schema_coexists_with_questionnaire_compatibility_and_validates_guardian() -> None:
+    assert "questionnaires" in Base.metadata.tables
+    assert any(route.path == "/profile" and "PUT" in route.methods for route in auth_router.routes)
+    assert any(route.path == "/initial" and "POST" in route.methods for route in questionnaire_router.routes)
+    assert Questionnaire.__table__.columns["user_id"].index is True
     assert UserProfile.__table__.primary_key.columns.keys() == ["user_id"]
     assert profile_payload().profile_values()["skin_type"] == "combination"
     assert profile_payload(sex="male").profile_values()["menstrual_tracking"] == "not_applicable"

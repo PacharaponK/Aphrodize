@@ -79,6 +79,8 @@ For local demos, run `docker compose run --rm fixture` to load the account, prof
 
 Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
 
+Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
+
 Check the startup state:
 
 ```powershell

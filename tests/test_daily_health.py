@@ -378,6 +378,24 @@ async def test_daily_health_route_requires_active_consent() -> None:
     assert session.committed is False
 
 
+def test_predictions_are_not_training_labels() -> None:
+    entry = DailyHealthEntry(
+        predicted_thirst_score_0_10=4.2,
+        predicted_dryness_score_0_10=3.8,
+        reported_thirst_score_0_10=None,
+        reported_dryness_score_0_10=None,
+    )
+    assert entry.training_eligible is False
+
+
+def test_both_reported_scores_enable_training() -> None:
+    entry = DailyHealthEntry(
+        reported_thirst_score_0_10=5.0,
+        reported_dryness_score_0_10=4.0,
+    )
+    assert entry.training_eligible is True
+
+
 @pytest.mark.asyncio
 async def test_daily_health_route_stores_personal_context_only_with_separate_consent() -> None:
     entry = DailyHealthEntry(

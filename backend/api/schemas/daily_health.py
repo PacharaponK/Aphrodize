@@ -198,3 +198,48 @@ class DailyHealthModelRollbackRequest(BaseModel):
         if len(value) < 12:
             raise ValueError("rollback reason must contain at least 12 non-space characters")
         return value
+
+
+class DailyHealthProfileUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    smoking_status: Literal["never", "former", "current", "prefer_not_to_say"] | None = None
+
+
+class DailyHealthAgeBandUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    age_band: Literal["under_13", "13_17", "18_24", "25_34", "35_44", "45_54", "55_plus"]
+
+
+class DailyHealthMenstrualCheckinUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    local_date: date
+    currently_menstruating: bool
+
+
+class DailyHealthProfileRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    smoking_status: str | None
+    updated_at: datetime
+
+
+class DailyHealthAgeBandRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: UUID
+    age_band: str
+    updated_at: datetime
+
+
+class DailyHealthMenstrualCheckinRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    local_date: date
+    currently_menstruating: bool
+    created_at: datetime

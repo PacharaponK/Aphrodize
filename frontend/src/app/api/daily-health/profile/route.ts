@@ -21,14 +21,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         has_session: false,
         consent_active: false,
         age_guidance_consent_active: false,
-        weight_profile_consent_active: false,
-        weight_kg: null,
-        skin_type_guidance_consent_active: false,
         model_training_consent_active: false,
         can_report_outcomes: false,
         age_band: null,
         smoking_status: null,
-        skin_type: null,
       }, { headers: { "Cache-Control": "no-store" } });
     }
     const response = await fetch(backendUrl("/daily-health/users/" + account.userId + "/profile"), {

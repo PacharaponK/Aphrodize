@@ -91,19 +91,23 @@ async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
     assert session.commits == 2
 
 
-def test_recommendations_require_ai_confidence() -> None:
+def test_recommendations_fall_back_to_self_report_when_ai_confidence_is_withheld() -> None:
     analysis = SimpleNamespace(
         status=AnalysisStatus.completed,
         image_quality_score=1.0,
         result={"recommendation_gate": {"eligible": False}},
     )
 
-    result = recommendations_for(analysis, {})
+    result = recommendations_for(analysis, {
+        "skin_type": "dry", "skin_sensitivity": "low",
+        "known_product_allergy": "no", "severe_irritation": "no",
+    })
 
-    assert result == {
-        "recommendations": [],
-        "blocked_reason": "AI confidence gate did not pass.",
+    assert result["image_context"] == {
+        "status": "withheld", "reason": "wrinkle_confidence_not_released",
     }
+    assert result["recommendations"][0]["category"] == "fragrance-free moisturizer"
+    assert result["recommendations"][0]["signal_sources"] == ["self_reported"]
 
 
 @pytest.mark.asyncio
