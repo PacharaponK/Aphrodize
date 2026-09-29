@@ -2,7 +2,12 @@ import secrets
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBasic, HTTPBasicCredentials, HTTPBearer
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBasic,
+    HTTPBasicCredentials,
+    HTTPBearer,
+)
 
 from backend.core.config import settings
 from backend.core.db.session import get_session
@@ -24,6 +29,20 @@ def require_api_credentials(credentials: HTTPBasicCredentials = Depends(security
         )
 
 
+def require_admin_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> None:
+    if not settings.admin_username or len(settings.admin_password) < 8:
+        raise HTTPException(status_code=503, detail="Admin access is not configured")
+    if not (
+        secrets.compare_digest(credentials.username, settings.admin_username)
+        and secrets.compare_digest(credentials.password, settings.admin_password)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid admin credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
 def require_user_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_security),
 ) -> UUID:
@@ -41,3 +60,11 @@ def require_user_token(
             detail=str(error),
             headers={"WWW-Authenticate": "Bearer"},
         ) from error
+
+
+def require_matching_user(
+    user_id: UUID, caller_id: UUID = Depends(require_user_token)
+) -> UUID:
+    if user_id != caller_id:
+        raise HTTPException(status_code=403, detail="User access denied")
+    return caller_id

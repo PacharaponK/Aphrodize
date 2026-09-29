@@ -35,7 +35,7 @@ Client
      -> Label Studio SDK -> Label Studio
 ```
 
-For design decisions and data-flow detail, see [docs/architecture.md](docs/architecture.md).
+For design decisions and data-flow detail, see [docs/architecture/README.md](docs/architecture/README.md).
 
 ## Requirements
 
@@ -75,7 +75,9 @@ The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ff
 docker compose up -d --build
 ```
 
-For local demos, run `docker compose run --rm fixture` to load the account and initial health answers in [`fixtures/users.yaml`](fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; a missing questionnaire is added without replacing existing answers.
+For local demos, run `docker compose run --rm fixture` to load the account, profile, daily-health consent, and two dated tracker entries in [`fixtures/users.yaml`](fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; repeated runs do not duplicate the profile or daily entries. Fixture entries use `data_source=fixture` and are excluded from user-model training.
+
+Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
 
 Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
 
@@ -129,9 +131,9 @@ Open [http://localhost:3000](http://localhost:3000). The capture and result page
 4. Poll the corresponding run endpoint for its state.
 5. Use Label Studio for human-managed annotation. Add `LABEL_STUDIO_API_KEY` to `.env` only when the backend needs SDK access.
 
-To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
+To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/ai/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
 
-For an approved external dataset, use the [controlled wrinkle training workflow](docs/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
+For an approved external dataset, use the [controlled wrinkle training workflow](docs/ai/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
 
 The OpenAPI page documents request and response schemas for each API route.
 
@@ -151,12 +153,6 @@ models/
 Do not commit datasets, checkpoints, weights, generated artifacts, or MLflow outputs. Store operational artifacts in MinIO through MLflow. See [models/README.md](models/README.md) for the policy.
 
 The supported platform model families are `time_series`, `tabular`, and `image_segmentation`. The `models/` paths are reserved workspace locations, not a claim that a deployable model is already present.
-
-## Lifestyle-aware wrinkle forecast
-
-The API includes a small, explicit proof-of-concept for a single user's daily wrinkle score and self-reported sleep, water intake, and outdoor time. Create one observation per day at `POST /api/v1/lifestyle-forecast/users/{user_id}/observations`, then read the report at `GET /api/v1/lifestyle-forecast/users/{user_id}`. After 30 consecutive daily observations, it evaluates an autoregressive baseline against a leakage-safe lifestyle-aware Ridge model on Days 25–30 and forecasts Days 31–37 using the lower-MAE model.
-
-The result is for short-term prediction only. It is not a diagnosis, a treatment recommendation, or evidence that a lifestyle factor causes a skin change. See [the implementation plan](docs/Lifestyle-Aware-Wrinkle-Forecast.md) for data-collection and interpretation rules.
 
 ## Logs
 
@@ -206,16 +202,16 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 ## Safety and scope
 
 - Aphrodize is an orchestration and MLOps foundation, not a medical device or diagnostic system.
-- It does not implement face recognition, age prediction, diagnosis, causal claims, treatment recommendations, or automatic use of user inference data for training.
+- It does not implement face recognition, age prediction, diagnosis, causal claims, or treatment recommendations. Face-inference data is not training data; the daily-health workflow can train review-only candidates only from separately consented, user-reported outcomes.
 - User data and artifacts are intended for private MinIO storage and must not be included in logs or committed to Git.
 - A reviewed, validated model artifact is required before inference can produce a result.
 - The current Compose stack deliberately excludes external observability and monitoring systems.
 
 ## Further documentation
 
-- [Implementation architecture](docs/architecture.md)
-- [Project overview](docs/Aphrodize.md)
-- [Product and scope](docs/Product%20and%20Scope.md)
-- [AI and data](docs/AI%20and%20Data.md)
-- [System and MLOps](docs/System%20and%20MLOps.md)
-- [Safety and governance](docs/Safety%20and%20Governance.md)
+- [Implementation architecture](docs/architecture/README.md)
+- [Project overview](docs/project/Aphrodize.md)
+- [Product and scope](docs/project/Product%20and%20Scope.md)
+- [AI and data](docs/ai/AI%20and%20Data.md)
+- [System and MLOps](docs/architecture/System%20and%20MLOps.md)
+- [Safety and governance](docs/project/Safety%20and%20Governance.md)

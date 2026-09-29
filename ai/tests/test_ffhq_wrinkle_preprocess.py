@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -13,7 +14,7 @@ from ai.ffhq_wrinkle.preprocess import (
     preprocess_image,
 )
 from ai.ffhq_wrinkle.paths import DATA_ROOT, MODEL_ROOT
-from ai.ffhq_wrinkle.quality import QualityGateError
+from ai.ffhq_wrinkle.quality import QualityGateError, assess_source_quality
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -90,6 +91,17 @@ class AlignmentTests(unittest.TestCase):
 
 
 class QualityGateTests(unittest.TestCase):
+    def test_high_resolution_face_is_checked_at_consistent_scale(self):
+        yy, xx = np.indices((320, 320))
+        texture = (((xx // 8 + yy // 8) % 2) * 22 + 117).astype(np.uint8)
+        base = np.stack((texture, np.roll(texture, 3, axis=1), texture), axis=2)
+        image = cv2.resize(base, (1280, 1280), interpolation=cv2.INTER_CUBIC)
+        detection = valid_detection(1280, 1280)
+
+        self.assertTrue(assess_source_quality(image, detection).passed)
+        blurry = cv2.GaussianBlur(image, (0, 0), 8)
+        self.assertIn("image_too_blurry", assess_source_quality(blurry, detection).issues)
+
     def assert_rejected_before_parser(self, detections, expected_issue, image=None):
         calls = []
 

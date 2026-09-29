@@ -13,7 +13,10 @@ export function todayInBangkok(): string {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-export async function forwardDailyHealthPrediction(body: string): Promise<ForwardResult> {
+export async function forwardDailyHealthPrediction(
+  body: string,
+  options: { testOnly?: boolean } = {},
+): Promise<ForwardResult> {
   const apiBase = (process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
   const username = process.env.BACKEND_API_USERNAME;
   const password = process.env.BACKEND_API_PASSWORD;
@@ -23,7 +26,8 @@ export async function forwardDailyHealthPrediction(body: string): Promise<Forwar
   }
 
   try {
-    const upstream = await fetch(`${apiBase}/api/v1/daily-health/predict`, {
+    const endpoint = options.testOnly ? "predict/test" : "predict";
+    const upstream = await fetch(`${apiBase}/api/v1/daily-health/${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

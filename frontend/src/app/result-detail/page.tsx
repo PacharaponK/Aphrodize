@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
-type AreaScore = { score: number; wrinkle_area_ratio: number };
-type Score = { overall: AreaScore; regions: Record<string, AreaScore>; disclaimer: string };
+type AreaScore = { score: number; wrinkle_area_ratio: number; wrinkle_pixels: number; evaluated_pixels: number };
+type Score = { overall: AreaScore; regions: Record<string, AreaScore>; formula: string; disclaimer: string };
 type Result = {
   status: string;
   derived_score?: Score | null;
@@ -104,9 +104,16 @@ export default function ResultDetailPage() {
                     </div>
                     <div className="analysis-summary-values">
                       <div className="analysis-total"><strong>{score.overall.score.toFixed(1)}</strong><span>/ 100</span></div>
-                      <div className="analysis-coverage"><span>พื้นที่ตรวจพบจริง</span><strong>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</strong></div>
+                      <div className="analysis-coverage"><span>พื้นที่ที่โมเดลตรวจพบ</span><strong>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</strong></div>
                     </div>
                   </div>
+                  <section className="analysis-method" aria-labelledby="analysis-method-heading">
+                    <h3 id="analysis-method-heading">วิธีคิดคะแนน</h3>
+                    <p>สัดส่วนพื้นที่ตรวจพบ = พิกเซลที่โมเดลทำเครื่องหมาย ÷ พิกเซลผิวที่ประเมินได้</p>
+                    <p>คะแนน 0–100 = <code>{score.formula}</code> โดยใช้สัดส่วนแบบทศนิยม (1% = 0.01)</p>
+                    <p>ภาพนี้: {score.overall.wrinkle_pixels.toLocaleString()} ÷ {score.overall.evaluated_pixels.toLocaleString()} พิกเซล = {(score.overall.wrinkle_area_ratio * 100).toFixed(2)}% จึงได้ {score.overall.score.toFixed(1)} / 100</p>
+                    <p>คะแนนรายบริเวณใช้สูตรเดียวกัน โดยนับเฉพาะพิกเซลในบริเวณนั้น</p>
+                  </section>
                   <div className="analysis-detail-grid">
                     <section className="analysis-section" aria-labelledby="analysis-image-heading">
                       <div className="analysis-section-heading"><div><p className="eyebrow">VISUAL RESULT</p><h3 id="analysis-image-heading">ภาพผลวิเคราะห์</h3></div></div>
@@ -130,9 +137,14 @@ export default function ResultDetailPage() {
                         {/* Render the same score structure once for each named face region. */}
                         {Object.entries(score.regions).map(([name, value]) => (
                           <div className="analysis-region" key={name}>
-                            <div className="analysis-region-top"><strong>{REGIONS[name] ?? name}</strong><span><b>{value.score.toFixed(1)}</b> / 100</span></div>
-                            <div className="analysis-region-track" aria-hidden="true"><span style={{ width: `${value.score}%` }} /></div>
-                            <p>พื้นที่ตรวจพบจริง <strong>{(value.wrinkle_area_ratio * 100).toFixed(2)}%</strong></p>
+                            <div className="analysis-region-top"><strong>{REGIONS[name] ?? name}</strong><span>{value.evaluated_pixels ? <><b>{value.score.toFixed(1)}</b> / 100</> : "ประเมินไม่ได้"}</span></div>
+                            <div className="analysis-region-track" aria-hidden="true"><span style={{ width: `${value.evaluated_pixels ? value.score : 0}%` }} /></div>
+                            {value.evaluated_pixels ? (
+                              <>
+                                <p>พื้นที่ที่โมเดลตรวจพบ <strong>{(value.wrinkle_area_ratio * 100).toFixed(2)}%</strong></p>
+                                <p>จำนวนพิกเซล <strong>{value.wrinkle_pixels.toLocaleString()} / {value.evaluated_pixels.toLocaleString()}</strong></p>
+                              </>
+                            ) : <p>ไม่มีพื้นที่ผิวให้ประเมิน</p>}
                           </div>
                         ))}
                       </div>

@@ -11,7 +11,8 @@ from backend.core.config import settings
 from backend.core.db.models import Analysis, AnalysisStatus, Consent
 from backend.libs.minio_client import put_bytes
 from backend.libs.redis_client import get_arq_pool
-from backend.services.annotation_service import ANNOTATION_CONSENT_VERSION
+
+ANALYSIS_CONSENT_VERSION = "1.0"
 
 RECOMMENDATION_RULE_VERSION = "2026-09-28.1"
 RECOMMENDATION_KNOWLEDGE_ID = "aphrodize-category-baseline"
@@ -228,11 +229,11 @@ def image_quality_flags(payload: bytes) -> tuple[float, list[str]]:
 
 
 async def create_analysis(session: AsyncSession, user_id: UUID, image: UploadFile) -> Analysis:
-    # Review-only consent does not authorize the original image analysis.
+    # Only the image-analysis consent authorizes an original image upload.
     active_consent = await session.scalar(
         select(Consent).where(
             Consent.user_id == user_id,
-            Consent.version != ANNOTATION_CONSENT_VERSION,
+            Consent.version == ANALYSIS_CONSENT_VERSION,
             Consent.revoked_at.is_(None),
         ).limit(1)
     )

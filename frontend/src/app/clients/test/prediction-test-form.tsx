@@ -1,8 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import Link from "next/link";
 import { predictTestInput } from "./actions";
 import type { PredictionActionState, PredictionResponse } from "./types";
+import DailyHealthDashboard from "../daily-health-dashboard";
+import HydrationReference from "../hydration-reference";
+import type { DailyHealthProfile } from "@/lib/daily-health-types";
 
 const outdoorOptions = [
   { value: "1", label: "น้อยกว่า 1 ชั่วโมง", range: "0 ถึงน้อยกว่า 60 นาที" },
@@ -22,28 +26,37 @@ function ScoreCard({ label, value, suffix, description }: { label: string; value
 }
 
 function Results({ result }: { result: PredictionResponse }) {
+  const scoreDescription = result.prediction_status === "experimental_out_of_domain"
+    ? "ค่าทดลองนอกช่วงฝึก · ไม่ใช่ผลใช้งานจริง"
+    : "ค่าประมาณจากโมเดลในช่วงฝึก";
+
   return (
     <>
       <div className="test-score-grid">
-        <ScoreCard label="THIRST SCORE" value={result.predictions.thirst_score_0_10.value} suffix="/ 10" description="ค่าประมาณจากโมเดล" />
-        <ScoreCard label="DRYNESS SCORE" value={result.predictions.skin_dryness_score_0_10.value} suffix="/ 10" description="ค่าประมาณจากโมเดล" />
+        <ScoreCard label="SLEEP SCORE" value={result.calculated.sleep_score_0_100} suffix="/ 100" description="คะแนนเต็มเมื่อถึงเพดานสูตร 9 ชั่วโมง" />
+        <ScoreCard label="THIRST SCORE" value={result.predictions.thirst_score_0_10.value} suffix="/ 10" description="คำนวณจากน้ำที่บันทึกเทียบกับน้ำหนัก × 30; คะแนนสูง = ยังขาดจากฐานอ้างอิงมาก" />
+        <ScoreCard label="DRYNESS SCORE" value={result.predictions.skin_dryness_score_0_10.value} suffix="/ 10" description={scoreDescription} />
       </div>
+      <HydrationReference hydration={result.calculated.hydration} />
       <p className="test-model-id">โมเดล: <strong>{result.model?.model_id ?? "ไม่ระบุ"}</strong></p>
-      {result.predictions.thirst_score_0_10.value === null || result.predictions.skin_dryness_score_0_10.value === null ? (
-        <p className="test-out-of-range">ข้อมูลอยู่นอกช่วงฝึกอย่างน้อยหนึ่งค่า จึงไม่มีคะแนน thirst/dryness สำหรับรอบนี้</p>
+      {result.input_domain_status === "out_of_training_domain" ? (
+        <p className="test-out-of-range">
+          {result.prediction_status === "experimental_out_of_domain"
+            ? "Dryness ด้านบนเป็นผลทดลองนอกช่วงฝึก; ยังไม่แปลผลความเสี่ยงจากโมเดล ส่วน Thirst score คำนวณตามสูตรน้ำหนักแยกต่างหาก"
+            : "ข้อมูลอยู่นอกช่วงฝึก ระบบงดทำนาย dryness ส่วน Thirst score ยังใช้สูตรน้ำหนักได้"}
+        </p>
       ) : null}
-      {result.guidance.length > 0 && (
-        <section className="test-guidance" aria-labelledby="test-guidance-title">
-          <h3 id="test-guidance-title">คำแนะนำจากผลรอบนี้</h3>
-          <ul>{result.guidance.map((item) => <li key={item}>{item}</li>)}</ul>
-        </section>
-      )}
+      <DailyHealthDashboard prediction={result} />
       <details className="test-json-details">
         <summary>ดูข้อมูลตอบกลับจาก API (JSON)</summary>
         <pre>{JSON.stringify({
           local_date: result.local_date,
           model_status: result.model_status,
+          input_domain_status: result.input_domain_status,
           predictions: result.predictions,
+          calculated: result.calculated,
+          interpretation: result.interpretation,
+          next_day_predictions: result.interpretation.next_day_predictions,
           model: result.model,
           guidance: result.guidance,
           warnings: result.warnings,
@@ -54,13 +67,39 @@ function Results({ result }: { result: PredictionResponse }) {
 }
 
 export default function PredictionTestForm({ initialDate }: { initialDate: string }) {
+  const [profile, setProfile] = useState<DailyHealthProfile | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const initialState: PredictionActionState = {
     result: null,
     error: "",
-    values: { localDate: initialDate, sleepHours: "", sleepMinutes: "", waterIntakeMl: "", outdoorChoice: "" },
+    values: { localDate: initialDate, sleepHours: "", sleepMinutes: "", waterIntakeMl: "", weightKg: "", outdoorChoice: "" },
   };
   const [state, formAction, isPending] = useActionState(predictTestInput, initialState);
   const result = state.result;
+  const profileWeightKg = profile?.weight_profile_consent_active ? profile.weight_kg ?? null : null;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    void fetch("/api/daily-health/profile", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load profile weight");
+        return (await response.json()) as DailyHealthProfile;
+      })
+      .then((loadedProfile) => {
+        if (active) setProfile(loadedProfile);
+      })
+      .catch(() => {
+        if (active) setProfile(null);
+      })
+      .finally(() => {
+        if (active) setProfileLoaded(true);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, []);
 
   return (
     <div className="prediction-test-layout">
@@ -68,7 +107,7 @@ export default function PredictionTestForm({ initialDate }: { initialDate: strin
         <div className="prediction-test-heading">
           <p className="eyebrow">TEST INPUT</p>
           <h2 id="prediction-test-form-title">ข้อมูลสำหรับทดสอบ</h2>
-          <p>ลองปรับค่าแล้วส่งให้โมเดลประเมิน โดยหน้านี้ไม่บันทึกข้อมูลลงฐานข้อมูล</p>
+          <p>ลองปรับค่าแล้วส่งให้โมเดลประเมิน โดยหน้านี้ไม่บันทึกข้อมูลลงฐานข้อมูล; accuracy จะคำนวณได้เมื่อมีผลจริงแยกจากค่าทำนายเพื่อใช้เทียบ</p>
         </div>
 
         <form className="prediction-test-form" action={formAction}>
@@ -80,17 +119,30 @@ export default function PredictionTestForm({ initialDate }: { initialDate: strin
           <fieldset className="test-field test-sleep-field">
             <legend>ระยะเวลาการนอน</legend>
             <div className="test-sleep-inputs">
-              <label htmlFor="test-sleep-hours"><span>ชั่วโมง</span><input id="test-sleep-hours" name="sleepHours" type="number" min="0" max="9" step="1" inputMode="numeric" defaultValue={state.values.sleepHours} required /></label>
+              <label htmlFor="test-sleep-hours"><span>ชั่วโมง</span><input id="test-sleep-hours" name="sleepHours" type="number" min="0" max="10" step="1" inputMode="numeric" defaultValue={state.values.sleepHours} required /></label>
               <label htmlFor="test-sleep-minutes"><span>นาที</span><input id="test-sleep-minutes" name="sleepMinutes" type="number" min="0" max="59" step="1" inputMode="numeric" defaultValue={state.values.sleepMinutes} required /></label>
             </div>
-            <small>ระบบรวมชั่วโมงและนาทีเป็นค่านาทีเดียวกัน · สูงสุด 540 นาที</small>
+            <small>รับได้สูงสุด 10 ชั่วโมง; คะแนนเต็มที่เพดานสูตร 9 ชั่วโมง ส่วนโมเดล dryness ฝึกถึง 9 ชั่วโมง</small>
           </fieldset>
 
           <label className="test-field" htmlFor="test-water-intake">
             <span>ปริมาณน้ำดื่มทั้งวัน (มล.)</span>
             <input id="test-water-intake" name="waterIntakeMl" type="number" min="0" max="20000" step="1" inputMode="numeric" placeholder="เช่น 1500" defaultValue={state.values.waterIntakeMl} required />
-            <small>ป้อนค่านอกช่วง 900–1,800 มล. เพื่อทดสอบการงดทำนายได้</small>
+            <small>ป้อนค่านอกช่วง 900–1,800 มล. เพื่อดูผลทดลอง out-of-domain; ผลนี้ไม่ผ่านการรับรองและไม่ใช้ในหน้าใช้งานจริง</small>
           </label>
+
+          <input type="hidden" name="weightKg" value={profileWeightKg == null ? "" : String(profileWeightKg)} />
+          <div className="test-profile-weight" role="status" aria-live="polite">
+            <span>น้ำหนักที่ใช้จากโปรไฟล์</span>
+            {profileWeightKg == null ? (
+              <p>
+                {profileLoaded ? "ยังไม่มีน้ำหนักในโปรไฟล์ จึงคำนวณ Thirst score ไม่ได้" : "กำลังโหลดน้ำหนักจากโปรไฟล์…"}
+                {profileLoaded && <> <Link href="/clients">ไปบันทึกน้ำหนักในโปรไฟล์</Link></>}
+              </p>
+            ) : (
+              <p><strong>{profileWeightKg.toLocaleString("th-TH")} กก.</strong> · ใช้คำนวณ Thirst score โดยไม่ต้องกรอกซ้ำ</p>
+            )}
+          </div>
 
           <fieldset className="test-field">
             <legend>เวลาอยู่นอกบ้าน</legend>
@@ -106,7 +158,7 @@ export default function PredictionTestForm({ initialDate }: { initialDate: strin
           </fieldset>
 
           {state.error && <p className="test-form-error" role="alert">{state.error}</p>}
-          <button className="primary-button prediction-test-submit" type="submit" disabled={isPending}>
+          <button className="primary-button prediction-test-submit" type="submit" disabled={isPending || !profileLoaded || profileWeightKg == null}>
             {isPending ? "กำลังทำนาย…" : "ทำนายข้อมูลนี้"}
           </button>
         </form>

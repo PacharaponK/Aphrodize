@@ -6,13 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api.deps import require_matching_user
 from backend.api.schemas import ConsentCreate, ConsentRead
 from backend.core.config import settings
 from backend.core.db.models import Consent, User
 from backend.core.db.session import get_session
 from backend.services.annotation_service import ANNOTATION_CONSENT_VERSION, delete_user_annotations
+from backend.services.tokens import create_access_token
 
 router = APIRouter()
+user_router = APIRouter(dependencies=[Depends(require_matching_user)])
 
 
 @router.post("", response_model=ConsentRead, status_code=status.HTTP_201_CREATED)
@@ -35,11 +38,12 @@ async def create_consent(
         consent_id=consent.id,
         version=consent.version,
         accepted_at=consent.accepted_at,
+        access_token=create_access_token(user.id, expires_minutes=30 * 24 * 60),
     )
 
 
 # Review consent is separate from the consent required to run image analysis.
-@router.post(
+@user_router.post(
     "/users/{user_id}/annotations",
     response_model=ConsentRead,
     status_code=status.HTTP_201_CREATED,
@@ -75,7 +79,7 @@ async def grant_annotation_consent(
     )
 
 
-@router.delete("/users/{user_id}/annotations", status_code=status.HTTP_204_NO_CONTENT)
+@user_router.delete("/users/{user_id}/annotations", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_annotation_consent(
     user_id: UUID, session: AsyncSession = Depends(get_session)
 ) -> None:

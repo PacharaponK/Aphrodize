@@ -8,6 +8,9 @@ function isPredictionResponse(value: unknown): value is PredictionResponse {
   const response = value as Partial<PredictionResponse>;
   return (
     typeof response.model_status === "string" &&
+    (response.input_domain_status === "in_domain"
+      || response.input_domain_status === "out_of_training_domain") &&
+    typeof response.interpretation?.daily_health_summary?.status === "string" &&
     typeof response.predictions?.thirst_score_0_10?.status === "string" &&
     typeof response.predictions?.skin_dryness_score_0_10?.status === "string" &&
     Array.isArray(response.guidance) &&
@@ -35,6 +38,7 @@ function readFormValues(formData: FormData): PredictionTestValues {
     sleepHours: readValue(formData, "sleepHours"),
     sleepMinutes: readValue(formData, "sleepMinutes"),
     waterIntakeMl: readValue(formData, "waterIntakeMl"),
+    weightKg: readValue(formData, "weightKg"),
     outdoorChoice: readValue(formData, "outdoorChoice"),
   };
 }
@@ -56,10 +60,14 @@ export async function predictTestInput(
     }
     if (values.localDate > todayInBangkok()) throw new Error("เลือกวันที่วันนี้หรือวันที่ผ่านมาเท่านั้น");
 
-    const sleepHours = readInteger(formData, "sleepHours", "ชั่วโมงการนอน", 0, 9);
+    const sleepHours = readInteger(formData, "sleepHours", "ชั่วโมงการนอน", 0, 10);
     const sleepMinutes = readInteger(formData, "sleepMinutes", "นาทีการนอน", 0, 59);
-    if (sleepHours * 60 + sleepMinutes > 540) throw new Error("เวลานอนสูงสุดที่ API รับคือ 540 นาที (9 ชั่วโมง)");
+    if (sleepHours * 60 + sleepMinutes > 600) throw new Error("เวลานอนสูงสุดที่รับคือ 600 นาที (10 ชั่วโมง)");
     const waterIntakeMl = readInteger(formData, "waterIntakeMl", "ปริมาณน้ำดื่ม", 0, 20_000);
+    const weightKg = Number(values.weightKg);
+    if (!values.weightKg || !Number.isFinite(weightKg) || weightKg < 1 || weightKg > 500) {
+      throw new Error("น้ำหนักต้องอยู่ระหว่าง 1–500 กิโลกรัม");
+    }
     const outdoorChoice = readInteger(formData, "outdoorChoice", "ตัวเลือกเวลาอยู่นอกบ้าน", 1, 4);
 
     const upstream = await forwardDailyHealthPrediction(JSON.stringify({
@@ -67,8 +75,9 @@ export async function predictTestInput(
       sleep_hours: sleepHours,
       sleep_minutes: sleepMinutes,
       water_intake_ml: waterIntakeMl,
+      weight_kg: weightKg,
       outdoor_exposure_choice: outdoorChoice,
-    }));
+    }), { testOnly: true });
 
     if (upstream.status < 200 || upstream.status >= 300) {
       const detail = (upstream.payload as { detail?: unknown } | null)?.detail;
