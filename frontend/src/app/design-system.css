@@ -511,7 +511,7 @@ html[data-theme="black"] .onboarding-guardian { background: #3b3020; border-colo
 .workspace-shell > .workspace-main { width: 100%; min-width: 0; }
 .mobile-nav { display: none !important; }
 
-html[data-theme="black"] .app-navigation { background: var(--surface); border-color: var(--line); }
+html[data-theme="black"] .app-navigation { background: color-mix(in srgb, var(--surface) 88%, transparent); border-color: var(--line); }
 html[data-theme="black"] .app-navigation .brand,
 html[data-theme="black"] .app-navigation .nav-link { color: var(--ink); }
 html[data-theme="black"] .app-navigation .nav-link.active { background: var(--primary-soft); color: var(--ink); }
