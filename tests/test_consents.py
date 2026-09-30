@@ -5,7 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.schemas.consent import ConsentCreate
-from backend.api.v1.routes.consents import create_consent
+from backend.api.v1.routes.consents import create_consent, grant_analysis_consent
 from backend.core.db.models import Consent, User
 from backend.services.analysis_service import create_analysis
 from backend.services.tokens import read_access_token
@@ -52,3 +52,50 @@ async def test_image_upload_requires_image_analysis_consent() -> None:
     with pytest.raises(HTTPException) as error:
         await create_analysis(Session(), uuid4(), None)
     assert error.value.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("active", [False, True])
+async def test_grant_analysis_consent_for_existing_user(active: bool) -> None:
+    owner = uuid4()
+
+    class Session:
+        def __init__(self):
+            self.added = []
+            self.committed = False
+
+        async def get(self, model, user_id):
+            assert model is User and user_id == owner
+            return User(id=owner)
+
+        async def scalar(self, statement):
+            query = statement.compile()
+            assert owner in query.params.values()
+            assert "1.0" in query.params.values()
+            assert "revoked_at IS NULL" in str(query)
+            return uuid4() if active else None
+
+        def add(self, consent):
+            self.added.append(consent)
+
+        async def commit(self):
+            self.committed = True
+
+    session = Session()
+    assert await grant_analysis_consent(owner, session) == {"status": "granted"}
+    assert session.committed is (not active)
+    assert len(session.added) == (0 if active else 1)
+    if not active:
+        assert session.added[0].user_id == owner
+        assert session.added[0].version == "1.0"
+
+
+@pytest.mark.asyncio
+async def test_grant_analysis_consent_rejects_unknown_user() -> None:
+    class Session:
+        async def get(self, _model, _id):
+            return None
+
+    with pytest.raises(HTTPException) as error:
+        await grant_analysis_consent(uuid4(), Session())
+    assert error.value.status_code == 404

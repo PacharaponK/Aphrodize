@@ -1,7 +1,7 @@
 users:
-  - display_name: Demo User
-    email: demo@example.local
-    password: demo-password-123
+  - display_name: PacharaponK
+    email: ball@gmail.com
+    password: 123456789
     consent_accepted: true
     profile:
       sex: female

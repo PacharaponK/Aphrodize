@@ -11,6 +11,7 @@ from backend.api.schemas import ConsentCreate, ConsentRead
 from backend.core.config import settings
 from backend.core.db.models import Consent, User
 from backend.core.db.session import get_session
+from backend.services.analysis_service import ANALYSIS_CONSENT_VERSION
 from backend.services.annotation_service import ANNOTATION_CONSENT_VERSION, delete_user_annotations
 from backend.services.tokens import create_access_token
 
@@ -40,6 +41,25 @@ async def create_consent(
         accepted_at=consent.accepted_at,
         access_token=create_access_token(user.id, expires_minutes=30 * 24 * 60),
     )
+
+
+@user_router.put("/users/{user_id}/analysis")
+async def grant_analysis_consent(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> dict[str, str]:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing = await session.scalar(
+        select(Consent.id).where(
+            Consent.user_id == user_id,
+            Consent.version == ANALYSIS_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        ).limit(1)
+    )
+    if existing is None:
+        session.add(Consent(user_id=user_id, version=ANALYSIS_CONSENT_VERSION))
+        await session.commit()
+    return {"status": "granted"}
 
 
 # Review consent is separate from the consent required to run image analysis.

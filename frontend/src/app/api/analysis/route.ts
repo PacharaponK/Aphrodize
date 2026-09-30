@@ -132,6 +132,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       anonymous = { userId: user_id, token };
     }
     const userHeaders = { Authorization: `Bearer ${token}` };
+    // The checked analysis consent applies to the authenticated upload owner.
+    const analysisConsent = await fetch(backendUrl(`/consents/users/${user_id}/analysis`), {
+      method: "PUT",
+      headers: userHeaders,
+      cache: "no-store",
+    });
+    if (!analysisConsent.ok) return backendError(analysisConsent);
     if (wantsAnnotation) {
       // Grant the separate human-review consent before queuing the image.
       const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
