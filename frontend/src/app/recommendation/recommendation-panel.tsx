@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight, LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLanguage, type Language } from "@/components/language-provider";
 
@@ -58,6 +59,8 @@ const COPY = {
     loading: "กำลังโหลดคำแนะนำ…",
     errorFallback: "โหลดคำแนะนำไม่สำเร็จ",
     signIn: "เข้าสู่ระบบ",
+    signInRequired: "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล",
+    signInHint: "เข้าสู่ระบบเพื่อดูคำแนะนำที่อ้างอิงจากข้อมูลผิวของคุณ",
     noData: "ยังไม่มีข้อมูลคำแนะนำ",
     safetyBlocked: "หยุดคำแนะนำเพื่อความปลอดภัย",
     updateFirst: "ต้องอัปเดตข้อมูลก่อน",
@@ -95,6 +98,8 @@ const COPY = {
     loading: "Loading guidance…",
     errorFallback: "Could not load guidance",
     signIn: "Sign in",
+    signInRequired: "Sign in to view your personalized guidance.",
+    signInHint: "Sign in to see guidance based on your skin profile.",
     noData: "No guidance data is available yet.",
     safetyBlocked: "Guidance paused for safety",
     updateFirst: "Update your information first",
@@ -195,6 +200,14 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
 
   if (loading) return <p role="status">{copy.loading}</p>;
   if (error) {
+    if (compact) {
+      const loginRequired = error.includes("เข้าสู่ระบบ") || error.toLowerCase().includes("sign in");
+      return <div className={`recommendation-inline-state${loginRequired ? " is-auth-required" : ""}`} role="status">
+        {loginRequired && <span className="recommendation-inline-icon" aria-hidden="true"><LockKeyhole size={19} /></span>}
+        <div className="recommendation-inline-copy"><p>{loginRequired ? copy.signInRequired : error || copy.errorFallback}</p>{loginRequired && <small>{copy.signInHint}</small>}</div>
+        {loginRequired && <Link className="primary-button" href="/login">{copy.signIn}<ArrowRight size={16} aria-hidden="true" /></Link>}
+      </div>;
+    }
     return <div className="recommendation-card" role="status"><p>{error || copy.errorFallback}</p>{error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">{copy.signIn} →</Link>}</div>;
   }
   if (!data) return <p role="status">{copy.noData}</p>;

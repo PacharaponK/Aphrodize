@@ -4,13 +4,14 @@
 .home-dashboard-shell .home-overview-score h2,
 .home-dashboard-shell .home-card-heading h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: -.025em; }
 .home-dashboard-shell { --dashboard-glass-surface: color-mix(in srgb, var(--surface) 86%, transparent); }
+.home-dashboard-shell, .home-dashboard-shell *, .home-dashboard-shell *::before, .home-dashboard-shell *::after { box-sizing: border-box; }
 .home-dashboard-shell .home-action-card h2,
 .home-dashboard-shell .home-metric-card h3,
 .home-dashboard-shell .home-metric-value,
 .home-dashboard-shell .home-week-status,
 .home-dashboard-shell .home-history-details summary { font-family: var(--font-ui); }
 .home-dashboard-shell .home-action-card h2 { font-weight: 700; letter-spacing: normal; }
-.home-dashboard-shell #dashboard { position: relative; isolation: isolate; width: 100%; max-width: 1920px; margin-inline: auto; padding: 28px clamp(18px, 3vw, 56px) 48px; }
+.home-dashboard-shell #dashboard { position: relative; isolation: isolate; width: 100%; min-width: 0; max-width: 1920px; margin-inline: auto; padding: 28px clamp(18px, 3vw, 56px) 48px; }
 .home-topbar { gap: 20px; padding: 20px 24px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
 .home-topbar h1 { font-size: clamp(26px, 2.6vw, 40px); }
 .home-intro { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
@@ -76,6 +77,22 @@ html[data-theme="black"] .home-topbar .home-button img { filter: invert(1); }
 .home-chart-data ul { list-style: none; margin: 4px 0 0; padding: 0; }
 .home-chart-data li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .home-insights-card { padding: 24px; }
+.home-product-recommendations { scroll-margin-top: 96px; }
+.home-product-recommendations > div[aria-live="polite"] { min-width: 0; }
+.home-product-recommendations .recommendation-list { display: grid; gap: 10px; margin-top: 14px; }
+.home-product-recommendations .recommendation-card { width: 100%; max-width: none; margin: 0; padding: 18px; border-radius: 12px; }
+.home-product-recommendations .recommendation-card .status { margin-bottom: 8px; }
+.home-product-recommendations .recommendation-card h3 { margin: 0 0 6px; font-size: 16px; }
+.home-product-recommendations .recommendation-card p { margin: 0; font-size: 14px; }
+.recommendation-inline-state { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin-top: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.recommendation-inline-state.is-auth-required { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 12px; padding: 18px; background: linear-gradient(110deg, var(--surface-soft), color-mix(in srgb, var(--primary-soft) 45%, var(--surface))); }
+.recommendation-inline-icon { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--line)); border-radius: 50%; background: var(--surface); color: var(--primary-deep); }
+.recommendation-inline-copy { min-width: 0; }
+.recommendation-inline-state p { margin: 0; color: var(--ink); font-size: 14px; font-weight: 600; }
+.recommendation-inline-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.recommendation-inline-state .primary-button { flex: 0 0 auto; gap: 8px; min-width: 132px; }
+.home-product-recommendations > .text-button { display: inline-flex; margin-top: 14px; font-size: 13px; }
+@media (max-width: 560px) { .recommendation-inline-state.is-auth-required { grid-template-columns: 36px minmax(0, 1fr); padding: 14px; } .recommendation-inline-icon { width: 36px; height: 36px; } .recommendation-inline-state .primary-button { grid-column: 1 / -1; width: 100%; } }
 .home-insights-card .daily-risk-results { margin-top: 18px; }
 .home-history-details { padding: 20px 24px; }
 .home-history-details summary { min-height: 44px; cursor: pointer; font-weight: 700; }

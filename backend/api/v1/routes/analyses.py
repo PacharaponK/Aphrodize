@@ -64,17 +64,6 @@ async def recommendation_context(
         .order_by(DailyHealthEntry.local_date.desc(), DailyHealthEntry.id.desc())
         .limit(1)
     )
-    entry = await session.scalar(
-        select(DailyHealthEntry)
-        .where(
-            DailyHealthEntry.user_id == user_id,
-            DailyHealthEntry.local_date.between(since, today),
-            DailyHealthEntry.reported_dryness_score_0_10.is_not(None),
-            DailyHealthEntry.data_source == "user_reported",
-        )
-        .order_by(DailyHealthEntry.local_date.desc(), DailyHealthEntry.id.desc())
-        .limit(1)
-    )
     outcome = await session.scalar(
         select(DailyHealthOutcome)
         .where(
@@ -98,22 +87,14 @@ async def recommendation_context(
             "water_intake_ml": lifestyle_entry.water_intake_ml,
             "outdoor_exposure_choice": lifestyle_entry.outdoor_exposure_choice,
         }
-    candidates: list[tuple[date, int, str, str, float]] = []
-    if entry is not None and entry.reported_dryness_score_0_10 is not None:
-        candidates.append((entry.local_date, 0, "daily_health_entries", str(entry.id), entry.reported_dryness_score_0_10))
     if outcome is not None and outcome.reported_dryness_level_0_10 is not None:
-        candidates.append((outcome.target_date, 1, "daily_health_outcomes", str(outcome.id), outcome.reported_dryness_level_0_10))
-    if candidates:
-        reported_date, _, source_table, record_id, reported_dryness = max(
-            candidates, key=lambda candidate: (candidate[0], candidate[1], candidate[2], candidate[3])
-        )
         daily_context.update({
             "status": "available",
             "reported_dryness": {
-                "source_table": source_table,
-                "record_id": record_id,
-                "observed_date": reported_date.isoformat(),
-                "value": reported_dryness,
+                "source_table": "daily_health_outcomes",
+                "record_id": str(outcome.id),
+                "observed_date": outcome.target_date.isoformat(),
+                "value": outcome.reported_dryness_level_0_10,
             },
         })
     return questionnaire, daily_context
