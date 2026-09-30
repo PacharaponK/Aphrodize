@@ -22,6 +22,7 @@ def test_private_user_routes_reject_basic_and_other_users() -> None:
         ("DELETE", f"/api/v1/daily-health/users/{owner}/data"),
         ("DELETE", f"/api/v1/daily-health/users/{owner}/training-consent"),
         ("DELETE", f"/api/v1/consents/users/{owner}/annotations"),
+        ("PUT", f"/api/v1/consents/users/{owner}/analysis"),
         ("DELETE", f"/api/v1/users/{owner}/images"),
     ]
     for method, path in paths:
