@@ -16,7 +16,7 @@ from backend.api.schemas.auth import (
     SkinProfileResponse,
 )
 from backend.api.schemas.consent import WellnessProfileUpsert
-from backend.core.db.models import Account, AccountRole, Consent, User, UserProfile
+from backend.core.db.models import Account, AccountRole, Consent, Questionnaire, User, UserProfile
 from backend.core.db.session import get_session
 from backend.services.passwords import hash_password, verify_password
 from backend.services.tokens import create_access_token
@@ -33,6 +33,13 @@ async def skin_profile(
     if account is None:
         raise HTTPException(status_code=401, detail="Account no longer exists")
     profile = await session.get(UserProfile, user_id)
+    questionnaire = await session.scalar(
+        select(Questionnaire)
+        .where(Questionnaire.user_id == user_id)
+        .order_by(Questionnaire.created_at.desc(), Questionnaire.id.desc())
+        .limit(1)
+    )
+    age_years = questionnaire.answers.get("age_years") if isinstance(questionnaire, Questionnaire) else None
     return SkinProfileResponse(
         user_id=user_id,
         display_name=account.display_name,
@@ -45,9 +52,11 @@ async def skin_profile(
                 "wellness_goal": profile.wellness_goal,
                 "sunscreen_frequency": profile.sunscreen_frequency,
                 "menstrual_tracking": profile.menstrual_tracking,
+                **({"age_years": age_years} if isinstance(age_years, (int, float)) else {}),
             }
             if profile else None
         ),
+        answers=questionnaire.answers if isinstance(questionnaire, Questionnaire) else None,
     )
 
 

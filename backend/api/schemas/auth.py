@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -58,4 +59,5 @@ class SkinProfileResponse(BaseModel):
     user_id: UUID
     display_name: str
     email: str
-    profile: dict[str, str] | None = None
+    profile: dict[str, str | int | float] | None = None
+    answers: dict[str, Any] | None = None

@@ -1250,3 +1250,48 @@ async def upsert_menstrual_checkin(
     checkin = (await session.execute(statement)).scalar_one()
     await session.commit()
     return DailyHealthMenstrualCheckinRead.model_validate(checkin)
+
+
+@user_router.put("/users/{user_id}/menstrual-checkins/consent")
+async def grant_menstrual_checkin_consent(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, str]:
+    """Record explicit consent before storing cycle-calendar check-ins."""
+    active = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == PERSONALIZATION_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active is None:
+        session.add(Consent(user_id=user_id, version=PERSONALIZATION_CONSENT_VERSION))
+        await session.commit()
+    return {"status": "granted"}
+
+
+@user_router.get(
+    "/users/{user_id}/menstrual-checkins", response_model=list[DailyHealthMenstrualCheckinRead]
+)
+async def list_menstrual_checkins(
+    user_id: UUID,
+    limit: int = Query(default=28, ge=1, le=90),
+    session: AsyncSession = Depends(get_session),
+) -> list[DailyHealthMenstrualCheckinRead]:
+    """Return only the caller's consented menstrual check-ins, newest first."""
+    await require_active_consent(session, user_id, PERSONALIZATION_CONSENT_VERSION)
+    records = (
+        await session.scalars(
+            select(DailyHealthMenstrualCheckIn)
+            .where(DailyHealthMenstrualCheckIn.user_id == user_id)
+            .order_by(
+                DailyHealthMenstrualCheckIn.local_date.desc(),
+                DailyHealthMenstrualCheckIn.id.desc(),
+            )
+            .limit(limit)
+        )
+    ).all()
+    return [DailyHealthMenstrualCheckinRead.model_validate(record) for record in records]
