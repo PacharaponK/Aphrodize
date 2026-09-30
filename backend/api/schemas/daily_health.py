@@ -67,6 +67,19 @@ class DailyHealthProfileWeightUpsert(BaseModel):
         return self
 
 
+class DailyHealthProfileHeightUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    height_cm: float = Field(ge=30, le=300, allow_inf_nan=False)
+    consent_given: bool
+
+    @model_validator(mode="after")
+    def require_height_profile_consent(self) -> DailyHealthProfileHeightUpsert:
+        if not self.consent_given:
+            raise ValueError("height profile requires explicit consent")
+        return self
+
+
 class DailyHealthPredictionInput(BaseModel):
     thirst_score_0_10: float | None = Field(default=None, ge=0, le=10)
     dryness_score_0_10: float | None = Field(default=None, ge=0, le=10)

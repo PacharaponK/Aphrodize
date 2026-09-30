@@ -15,7 +15,6 @@ export function todayInBangkok(): string {
 
 export async function forwardDailyHealthPrediction(
   body: string,
-  options: { testOnly?: boolean } = {},
 ): Promise<ForwardResult> {
   const apiBase = (process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
   const username = process.env.BACKEND_API_USERNAME;
@@ -26,8 +25,7 @@ export async function forwardDailyHealthPrediction(
   }
 
   try {
-    const endpoint = options.testOnly ? "predict/test" : "predict";
-    const upstream = await fetch(`${apiBase}/api/v1/daily-health/${endpoint}`, {
+    const upstream = await fetch(`${apiBase}/api/v1/daily-health/predict`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

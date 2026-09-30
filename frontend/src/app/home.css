@@ -15,6 +15,9 @@
 .home-topbar h1 { font-size: clamp(24px, 2.6vw, 34px); }
 .home-intro { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
 .home-log-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-left: auto; text-decoration: none; }
+.home-dashboard-shell .app-navigation-sign-in { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--primary-deep); font: 600 13px/1.2 var(--font-ui); text-decoration: none; white-space: nowrap; }
+.home-dashboard-shell .app-navigation-sign-in:hover { background: var(--primary-soft); color: var(--ink); }
+.home-dashboard-shell .app-navigation-sign-in:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
 .home-topbar .topbar-controls > button { min-width: 44px; min-height: 44px; }
 .home-topbar .topbar-controls .avatar { width: 44px; height: 44px; }
 html[data-theme="black"] .home-topbar .home-button img { filter: invert(1); }
@@ -102,6 +105,10 @@ html[data-theme="black"] .home-motion-frame::after { background: color-mix(in sr
   .home-dashboard-shell .home-action-card:hover {
     background: color-mix(in srgb, var(--primary-soft) 82%, transparent);
   }
+}
+@media (max-width: 900px) {
+  .home-dashboard-shell .app-navigation-sign-in { width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; }
+  .home-dashboard-shell .app-navigation-sign-in span { display: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .app-navigation,

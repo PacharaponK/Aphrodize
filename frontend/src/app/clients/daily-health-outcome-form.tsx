@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useLanguage } from "@/components/language-provider";
 
 export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: string }) {
+  const { language } = useLanguage();
+  const t = (th: string, en: string) => language === "en" ? en : th;
   const [targetDate, setTargetDate] = useState(initialDate);
   const [energy, setEnergy] = useState("");
   const [thirst, setThirst] = useState("");
@@ -15,7 +18,7 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
   async function submitOutcome(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!energy && !thirst && !dryness) {
-      setError("เลือกอย่างน้อยหนึ่งคะแนนที่คุณสังเกตเอง");
+      setError(t("เลือกอย่างน้อยหนึ่งคะแนนที่คุณสังเกตเอง", "Enter at least one score you observed."));
       return;
     }
     setError("");
@@ -37,12 +40,12 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
       const result = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
-          typeof result?.detail === "string" ? result.detail : "บันทึกผลที่รายงานเองไม่สำเร็จ",
+          typeof result?.detail === "string" ? result.detail : t("บันทึกผลที่รายงานเองไม่สำเร็จ", "Could not save the self-reported outcome."),
         );
       }
-      setStatus("บันทึกผลที่คุณรายงานเองแล้ว · แยกจากผล prediction และยังไม่ใช้เป็นคำวินิจฉัย");
+      setStatus(t("บันทึกผลที่คุณรายงานเองแล้ว · แยกจากผล prediction และยังไม่ใช้เป็นคำวินิจฉัย", "Your self-reported outcome was saved separately from predictions and is not a diagnosis."));
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "บันทึกข้อมูลไม่สำเร็จ");
+      setError(saveError instanceof Error ? saveError.message : t("บันทึกข้อมูลไม่สำเร็จ", "Could not save the data."));
     } finally {
       setIsSaving(false);
     }
@@ -52,13 +55,13 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
     <section className="daily-outcome-card" aria-labelledby="daily-outcome-title">
       <div>
         <p className="eyebrow">OPTIONAL SELF-REPORT</p>
-        <h2 id="daily-outcome-title">บันทึกผลที่สังเกตจริง</h2>
-        <p>ใช้เป็นผลที่คุณสังเกตเอง แยกจาก prediction; ระบบจะฝึกได้เมื่อมีคะแนน thirst และ dryness ที่รายงานจริงครบทั้งคู่ พร้อมข้อมูลไลฟ์สไตล์ของวันก่อนหน้าและ consent ฝึกโมเดล</p>
-        <p className="training-threshold-note">การสร้าง candidate ต้องมีข้อมูลที่จับคู่ครบอย่างน้อย 100 วันจากผู้ใช้ที่ยินยอมอย่างน้อย 5 คน; รุ่นถัดไปจะพิจารณาเมื่อมีข้อมูลใหม่เพิ่มอีกอย่างน้อย 25 วัน การบันทึกข้อมูลรายวันหรือคะแนน prediction เพียงอย่างเดียวไม่ใช่ label และไม่ทำให้เกิดการฝึก</p>
+        <h2 id="daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</h2>
+        <p>{t("ใช้เป็นผลที่คุณสังเกตเอง แยกจาก prediction; ระบบจะฝึกได้เมื่อมีคะแนน thirst และ dryness ที่รายงานจริงครบทั้งคู่ พร้อมข้อมูลไลฟ์สไตล์ของวันก่อนหน้าและ consent ฝึกโมเดล", "These are your observations, separate from predictions. Model training requires both self-reported thirst and dryness scores, the previous day's lifestyle data, and training consent.")}</p>
+        <p className="training-threshold-note">{t("การสร้าง candidate ต้องมีข้อมูลที่จับคู่ครบอย่างน้อย 100 วันจากผู้ใช้ที่ยินยอมอย่างน้อย 5 คน; รุ่นถัดไปจะพิจารณาเมื่อมีข้อมูลใหม่เพิ่มอีกอย่างน้อย 25 วัน การบันทึกข้อมูลรายวันหรือคะแนน prediction เพียงอย่างเดียวไม่ใช่ label และไม่ทำให้เกิดการฝึก", "A candidate requires at least 100 complete paired days from 5 consenting users. A new version is considered after at least 25 additional days. Daily entries or predicted scores alone are not labels and do not trigger training.")}</p>
       </div>
       <form className="daily-outcome-form" onSubmit={submitOutcome}>
         <label className="tracker-field" htmlFor="outcome-date">
-          <span>วันที่สังเกตผล</span>
+          <span>{t("วันที่สังเกตผล", "Date observed")}</span>
           <input
             id="outcome-date"
             type="date"
@@ -67,33 +70,33 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
             required
             onChange={(event) => setTargetDate(event.target.value)}
           />
-          <small>หากเป็นผลเช้าวันนี้ ระบบจะนำไปจับคู่กับข้อมูลไลฟ์สไตล์ของวันก่อนหน้าเมื่อมี</small>
+          <small>{t("หากเป็นผลเช้าวันนี้ ระบบจะนำไปจับคู่กับข้อมูลไลฟ์สไตล์ของวันก่อนหน้าเมื่อมี", "If this is a morning observation, it will be paired with the previous day's lifestyle data when available.")}</small>
         </label>
         <div className="outcome-score-fields">
           <label className="tracker-field" htmlFor="reported-energy">
-            <span>พลังงานที่รู้สึก (0–10)</span>
+            <span>{t("พลังงานที่รู้สึก (0–10)", "Perceived energy (0–10)")}</span>
             <select id="reported-energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
-              <option value="">ยังไม่ระบุ</option>
+              <option value="">{t("ยังไม่ระบุ", "Not specified")}</option>
               {Array.from({ length: 11 }, (_, score) => (
-                <option key={score} value={score}>{score} · {score === 0 ? "ต่ำมาก" : score === 10 ? "สูงมาก" : ""}</option>
+                <option key={score} value={score}>{score} · {score === 0 ? t("ต่ำมาก", "Very low") : score === 10 ? t("สูงมาก", "Very high") : ""}</option>
               ))}
             </select>
           </label>
           <label className="tracker-field" htmlFor="reported-thirst">
-            <span>ความกระหายที่รู้สึก (0–10)</span>
+            <span>{t("ความกระหายที่รู้สึก (0–10)", "Perceived thirst (0–10)")}</span>
             <select id="reported-thirst" value={thirst} onChange={(event) => setThirst(event.target.value)}>
-              <option value="">ยังไม่ระบุ</option>
+              <option value="">{t("ยังไม่ระบุ", "Not specified")}</option>
               {Array.from({ length: 11 }, (_, score) => (
-                <option key={score} value={score}>{score} · {score === 0 ? "ไม่กระหาย" : score === 10 ? "กระหายมาก" : ""}</option>
+                <option key={score} value={score}>{score} · {score === 0 ? t("ไม่กระหาย", "Not thirsty") : score === 10 ? t("กระหายมาก", "Very thirsty") : ""}</option>
               ))}
             </select>
           </label>
           <label className="tracker-field" htmlFor="reported-dryness">
-            <span>ความรู้สึกผิวแห้งที่สังเกต (0–10)</span>
+            <span>{t("ความรู้สึกผิวแห้งที่สังเกต (0–10)", "Observed skin dryness (0–10)")}</span>
             <select id="reported-dryness" value={dryness} onChange={(event) => setDryness(event.target.value)}>
-              <option value="">ยังไม่ระบุ</option>
+              <option value="">{t("ยังไม่ระบุ", "Not specified")}</option>
               {Array.from({ length: 11 }, (_, score) => (
-                <option key={score} value={score}>{score} · {score === 0 ? "ไม่แห้ง" : score === 10 ? "แห้งมาก" : ""}</option>
+                <option key={score} value={score}>{score} · {score === 0 ? t("ไม่แห้ง", "Not dry") : score === 10 ? t("แห้งมาก", "Very dry") : ""}</option>
               ))}
             </select>
           </label>
@@ -101,7 +104,7 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
         {error && <p className="tracker-form-error" role="alert">{error}</p>}
         {status && <p className="outcome-saved" role="status" aria-live="polite">{status}</p>}
         <button className="secondary-button" type="submit" disabled={isSaving}>
-          {isSaving ? "กำลังบันทึก…" : "บันทึกผลที่รายงานเอง"}
+          {isSaving ? t("กำลังบันทึก…", "Saving…") : t("บันทึกผลที่รายงานเอง", "Save self-reported outcome")}
         </button>
       </form>
     </section>

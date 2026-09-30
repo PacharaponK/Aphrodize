@@ -1,8 +1,11 @@
 "use client";
 
+"use client";
+
 import Link from "next/link";
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageToggle, useLanguage } from "@/components/language-provider";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const questions = [
@@ -41,6 +44,34 @@ const options: Record<string, readonly [string, string][]> = {
   wellness_goal: [["skin_tracking", "ติดตามผิว"], ["sleep", "การนอน"], ["hydration", "การดื่มน้ำ"], ["outdoor_habits", "กิจกรรมกลางแจ้ง"], ["general_wellness", "สุขภาพโดยรวม"]],
 };
 
+const englishQuestionLabels: Record<string, string> = {
+  sex: "1. Gender", age_group: "2. Your age group", sleep_hours: "3. About how many hours did you sleep last night?",
+  sleep_quality: "4. How would you describe your sleep quality?", water_liters: "5. About how much plain water did you drink yesterday?",
+  outdoor_minutes: "6. How many minutes did you spend outdoors yesterday?", sunscreen_frequency: "7. How often do you use sunscreen?",
+  skin_type: "8. How would you describe your skin type?", skin_sensitivity: "9. How sensitive is your skin to irritation?",
+  known_product_allergy: "10. Do you have any known skincare product allergies?", severe_irritation: "11. Are you experiencing severe skin irritation now?",
+  stress_level: "12. Your stress level this week (1 low – 5 high)", menstrual_tracking: "13. Would you like to track menstrual information?",
+  menstrual_status: "14. Are you currently menstruating?", wellness_goal: "15. What would you most like to track?",
+};
+
+const englishOptions: Record<string, Record<string, string>> = {
+  sex: { male: "Man", female: "Woman", prefer_not_to_say: "Prefer not to say" },
+  age_group: { under_13: "Under 13", "13_17": "13–17", "18_24": "18–24", "25_34": "25–34", "35_44": "35–44", "45_54": "45–54", "55_plus": "55+" },
+  sleep_hours: { "4": "Less than 5 hours", "5.5": "5–6 hours", "6.5": "6–7 hours", "7.5": "7–8 hours", "8.5": "8–9 hours", "9.5": "More than 9 hours" },
+  sleep_quality: { poor: "Poor", fair: "Fair", good: "Good", excellent: "Very good" },
+  water_liters: { "0.5": "Less than 1 litre", "1": "About 1 litre", "1.5": "About 1.5 litres", "2": "About 2 litres", "2.5": "About 2.5 litres", "3": "3 litres or more" },
+  outdoor_minutes: { "0": "No outdoor activity", "15": "1–30 minutes", "45": "31–60 minutes", "90": "1–2 hours", "150": "More than 2 hours" },
+  sunscreen_frequency: { never: "Never", sometimes: "Sometimes", most_days: "Most days", every_day: "Every day" },
+  skin_type: { dry: "Dry", normal: "Normal", combination: "Combination", oily: "Oily", unsure: "Not sure" },
+  skin_sensitivity: { low: "Low", medium: "Moderate", high: "High", unsure: "Not sure" },
+  known_product_allergy: { no: "None known", yes: "Yes", unsure: "Not sure" },
+  severe_irritation: { no: "No", yes: "Yes", unsure: "Not sure" },
+  stress_level: { "1": "1 — Very low", "2": "2", "3": "3 — Moderate", "4": "4", "5": "5 — Very high" },
+  menstrual_tracking: { yes: "Yes, track it", no: "No", prefer_not_to_say: "Prefer not to say", not_applicable: "Not applicable to me" },
+  menstrual_status: { on_period: "I am currently menstruating", not_on_period: "I am not currently menstruating", unsure: "Not sure", prefer_not_to_say: "Prefer not to say" },
+  wellness_goal: { skin_tracking: "Skin tracking", sleep: "Sleep", hydration: "Hydration", outdoor_habits: "Outdoor activity", general_wellness: "General wellness" },
+};
+
 type QuestionnaireResponse = { id: string; answers: Record<string, unknown> };
 
 function stringAnswer(answers: Record<string, unknown>, key: string): string {
@@ -49,6 +80,8 @@ function stringAnswer(answers: Record<string, unknown>, key: string): string {
 }
 
 function HealthOnboardingForm() {
+  const { language } = useLanguage();
+  const t = (th: string, en: string) => language === "en" ? en : th;
   const router = useRouter();
   const searchParams = useSearchParams();
   const safetyOnly = searchParams.get("edit") === "1";
@@ -100,7 +133,7 @@ function HealthOnboardingForm() {
     event.preventDefault();
     const form = event.currentTarget;
     if (!form.checkValidity()) {
-      setMessage("กรุณาตอบคำถามและยืนยันความยินยอมให้ครบทุกข้อที่แสดง");
+      setMessage(t("กรุณาตอบคำถามและยืนยันความยินยอมให้ครบทุกข้อที่แสดง", "Please answer each required question and confirm consent."));
       form.reportValidity();
       return;
     }
@@ -109,7 +142,7 @@ function HealthOnboardingForm() {
     setMessage("");
     try {
       if (editing && !revisionId) {
-        setMessage("กำลังโหลดข้อมูลล่าสุด กรุณารอสักครู่");
+        setMessage(t("กำลังโหลดข้อมูลล่าสุด กรุณารอสักครู่", "Loading your latest information. Please wait."));
         return;
       }
       const response = await fetch(effectiveSafetyOnly ? "/api/onboarding/health?safety=1" : "/api/onboarding/health", {
@@ -157,27 +190,28 @@ function HealthOnboardingForm() {
     <main className="onboarding-page">
       <ThemeToggle className="onboarding-theme-toggle" />
       <section className="onboarding-card" aria-labelledby="health-title">
-        <p className="eyebrow">FIRST-TIME SETUP · PERSONAL WELLNESS</p>
-        <h1 id="health-title">{effectiveSafetyOnly ? "อัปเดตข้อมูลความปลอดภัย" : effectiveFullEdit ? "แก้ไขข้อมูลสุขภาพของคุณ" : "เริ่มจากข้อมูลสุขภาพของคุณ"}</h1>
-        <p>ข้อมูลนี้เป็นสิ่งที่คุณรายงานเอง ใช้เพื่อแสดงการติดตามส่วนบุคคล ไม่ใช่การวินิจฉัยทางการแพทย์</p>
-        {profileMissing && <p className="form-message" role="status">ยังไม่มีแบบสอบถามเดิม จึงเปิดแบบสอบถามฉบับเต็มให้กรอกก่อน</p>}
+        <div className="onboarding-controls"><LanguageToggle /><ThemeToggle className="onboarding-theme-toggle" /></div>
+        <p className="eyebrow">{t("เริ่มต้นใช้งาน · ดูแลสุขภาพส่วนบุคคล", "FIRST-TIME SETUP · PERSONAL WELLNESS")}</p>
+        <h1 id="health-title">{effectiveSafetyOnly ? t("อัปเดตข้อมูลความปลอดภัย", "Update safety information") : effectiveFullEdit ? t("แก้ไขข้อมูลสุขภาพของคุณ", "Edit your wellness information") : t("เริ่มจากข้อมูลสุขภาพของคุณ", "Start with your wellness information")}</h1>
+        <p>{t("ข้อมูลนี้เป็นสิ่งที่คุณรายงานเอง ใช้เพื่อแสดงการติดตามส่วนบุคคล ไม่ใช่การวินิจฉัยทางการแพทย์", "This self-reported information supports personal tracking; it is not a medical diagnosis.")}</p>
+        {profileMissing && <p className="form-message" role="status">{t("ยังไม่มีแบบสอบถามเดิม จึงเปิดแบบสอบถามฉบับเต็มให้กรอกก่อน", "No saved questionnaire was found, so the full questionnaire is shown.")}</p>}
         <form key={revisionId || "new"} onSubmit={submit} noValidate>
           {questions.filter(([name]) => effectiveSafetyOnly ? ["skin_sensitivity", "known_product_allergy", "severe_irritation"].includes(name) : sex !== "male" || (name !== "menstrual_tracking" && name !== "menstrual_status")).map(([name, label, type]) => (
             <label key={name} htmlFor={name}>
-              <span>{label}</span>
-              {type === "select" && <select id={name} name={name} required disabled={submitting || loadingQuestionnaire} defaultValue={stringAnswer(answers, name)} onChange={name === "sex" ? (event) => setSex(event.target.value) : name === "age_group" ? (event) => setAgeGroup(event.target.value) : undefined}><option value="" disabled>เลือกคำตอบ</option>{options[name].map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select>}
+              <span>{language === "en" ? englishQuestionLabels[name] ?? label : label}</span>
+              {type === "select" && <select id={name} name={name} required disabled={submitting || loadingQuestionnaire} defaultValue={stringAnswer(answers, name)} onChange={name === "sex" ? (event) => setSex(event.target.value) : name === "age_group" ? (event) => setAgeGroup(event.target.value) : undefined}><option value="" disabled>{t("เลือกคำตอบ", "Choose an answer")}</option>{options[name].map(([value, text]) => <option key={value} value={value}>{language === "en" ? englishOptions[name]?.[value] ?? text : text}</option>)}</select>}
             </label>
           ))}
-          {ageGroup === "under_13" && <label className="onboarding-guardian"><input type="checkbox" name="guardian_consent" value="yes" required disabled={submitting || loadingQuestionnaire} defaultChecked={answers.guardian_consent === true} /> <span>ฉันเป็นผู้ปกครองตามกฎหมายและยินยอมให้เก็บข้อมูลที่ตอบในแบบสอบถามนี้เพื่อการติดตามสุขภาพ</span></label>}
+          {ageGroup === "under_13" && <label className="onboarding-guardian"><input type="checkbox" name="guardian_consent" value="yes" required disabled={submitting || loadingQuestionnaire} defaultChecked={answers.guardian_consent === true} /> <span>{t("ฉันเป็นผู้ปกครองตามกฎหมายและยินยอมให้เก็บข้อมูลที่ตอบในแบบสอบถามนี้เพื่อการติดตามสุขภาพ", "I am the legal guardian and consent to collecting these questionnaire responses for wellness tracking.")}</span></label>}
           <p className="form-message" role="status" aria-live="polite">{message}</p>
-          <button className="primary-button" type="submit" disabled={submitting || loadingQuestionnaire}>{submitting ? "กำลังบันทึก…" : editing ? "บันทึกการอัปเดต →" : "บันทึกและเริ่มใช้งาน →"}</button>
+          <button className="primary-button" type="submit" disabled={submitting || loadingQuestionnaire}>{submitting ? t("กำลังบันทึก…", "Saving…") : editing ? t("บันทึกการอัปเดต →", "Save updates →") : t("บันทึกและเริ่มใช้งาน →", "Save and continue →")}</button>
         </form>
-        <Link href="/" className="auth-back">ข้ามไปก่อน</Link>
+        <Link href="/" className="auth-back">{t("ข้ามไปก่อน", "Skip for now")}</Link>
       </section>
     </main>
   );
 }
 
 export default function HealthOnboardingPage() {
-  return <Suspense fallback={<main className="onboarding-page"><ThemeToggle className="onboarding-theme-toggle" /><p role="status">กำลังโหลดแบบสอบถาม…</p></main>}><HealthOnboardingForm /></Suspense>;
+  return <Suspense fallback={<main className="onboarding-page"><p role="status">Loading questionnaire…</p></main>}><HealthOnboardingForm /></Suspense>;
 }

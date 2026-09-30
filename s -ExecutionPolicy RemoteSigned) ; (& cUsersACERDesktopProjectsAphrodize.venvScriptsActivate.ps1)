@@ -1,0 +1,26 @@
+[1mdiff --git a/docs/lifestyle/User-Collection-Data-ER-Diagram.md b/docs/lifestyle/User-Collection-Data-ER-Diagram.md[m
+[1mindex 518c4c6..249ee9b 100644[m
+[1m--- a/docs/lifestyle/User-Collection-Data-ER-Diagram.md[m
+[1m+++ b/docs/lifestyle/User-Collection-Data-ER-Diagram.md[m
+[36m@@ -43,6 +43,7 @@[m [merDiagram[m
+         string smoking_status "nullable"[m
+         string skin_type "nullable; separately consented self-report"[m
+         float weight_kg "nullable; separately consented profile value"[m
+[32m+[m[32m        float height_cm "nullable; separately consented profile value"[m
+         datetime updated_at[m
+     }[m
+     DAILY_HEALTH_AGE_BANDS {[m
+[36m@@ -172,11 +173,11 @@[m [merDiagram[m
+ |---|---|---|[m
+ | `users` | UUID และเวลาสร้างบัญชี | เป็นเจ้าของข้อมูลรายผู้ใช้; ตารางนี้ไม่มี email หรือวันเกิดใน schema ปัจจุบัน |[m
+ | `consents` | consent version, เวลายอมรับและเวลาถอน | หนึ่ง user มีหลาย consent; active consent ถูกตรวจโดย application ตาม `version` และ `revoked_at` |[m
+[31m-| `daily_health_profiles` | `smoking_status`, `skin_type`, `weight_kg` ปัจจุบัน | หนึ่งแถวต่อ user; เป็นค่าปัจจุบัน ไม่ใช่ประวัติเปลี่ยนแปลงแบบ append-only; skin type และน้ำหนักมี consent แยกและจะถูกใช้เฉพาะเมื่อ consent ที่ตรงกันยัง active; น้ำหนักใช้คำนวณ thirst เท่านั้น |[m
+[32m+[m[32m| `daily_health_profiles` | `smoking_status`, `skin_type`, `weight_kg`, `height_cm` ปัจจุบัน | หนึ่งแถวต่อ user; เป็นค่าปัจจุบัน ไม่ใช่ประวัติเปลี่ยนแปลงแบบ append-only; skin type, น้ำหนัก และส่วนสูงมี consent แยกและจะแสดงเฉพาะเมื่อ consent ที่ตรงกันยัง active; น้ำหนักใช้คำนวณ thirst ส่วนสูงเก็บเพื่อแสดงในโปรไฟล์เท่านั้น |[m
+ | `daily_health_age_bands` | `age_band` | หนึ่งแถวต่อ user; เก็บเป็นช่วงวัย ไม่เก็บวันเกิด และใช้ได้เมื่อ age-guidance consent active |[m
+ | `daily_health_menstrual_checkins` | การยืนยันว่ากำลังมีประจำเดือนใน `local_date` | เก็บแยกตามวันและเป็น optional; ใช้ได้เมื่อ personalization consent active |[m
+ [m
+[31m-ส่วนสูงยังไม่มี field/table สำหรับเก็บใน schema ปัจจุบัน; น้ำหนักเก็บเป็นค่าปัจจุบันใน `daily_health_profiles` และบันทึกเป็น snapshot เฉพาะวันที่ consent ยัง active เพื่อให้คำนวณ thirst ย้อนหลังได้ น้ำหนักใน snapshot ไม่ใช่การกรอกข้อมูลรายวัน[m
+[32m+[m[32mส่วนสูงและน้ำหนักเก็บเป็นค่าปัจจุบันใน `daily_health_profiles` ภายใต้ consent แยกกัน; น้ำหนักจะถูกบันทึกเป็น snapshot ในรายการรายวันเฉพาะวันที่ consent ยัง active เพื่อคำนวณ thirst ย้อนหลังได้ ส่วนสูงไม่ถูกใช้คำนวณคะแนนและไม่ถูก snapshot รายวัน[m
+ [m
+ ### 2. Daily inputs, predictions และผลจริง[m
+ [m

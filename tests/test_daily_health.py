@@ -11,14 +11,17 @@ from backend.api.schemas.daily_health import (
     DailyHealthOutcomeUpsert,
     DailyHealthPersonalContext,
     DailyHealthPredictionRequest,
+    DailyHealthProfileHeightUpsert,
 )
 from backend.api.v1.routes.daily_health import (
     delete_daily_health_profile,
+    delete_daily_health_profile_height,
     list_daily_health_entries,
     read_daily_health_profile,
     revoke_daily_health_model_training_consent,
     upsert_daily_health_entry,
     upsert_daily_health_outcome,
+    upsert_daily_health_profile_height,
 )
 from backend.core.db.models import (
     Consent,
@@ -91,7 +94,6 @@ def test_personal_context_requires_explicit_consent() -> None:
         age_band="65_plus",
     )
     assert age_context.age_band == "65_plus"
-
     with pytest.raises(ValidationError):
         DailyHealthEntryUpsert(
             local_date=date(2026, 9, 26),
@@ -101,6 +103,17 @@ def test_personal_context_requires_explicit_consent() -> None:
             age_guidance_consent=False,
             age_band="18_60",
         )
+
+
+@pytest.mark.parametrize("height_cm", [29.9, 300.1, float("inf")])
+def test_height_profile_rejects_invalid_measurements(height_cm: float) -> None:
+    with pytest.raises(ValidationError):
+        DailyHealthProfileHeightUpsert(height_cm=height_cm, consent_given=True)
+
+
+def test_height_profile_requires_explicit_consent() -> None:
+    with pytest.raises(ValidationError):
+        DailyHealthProfileHeightUpsert(height_cm=168, consent_given=False)
 
 
 def test_reported_outcome_requires_at_least_one_real_observed_score() -> None:
@@ -204,20 +217,28 @@ class FakeSession:
         has_training_consent: bool = False,
         has_outcome: bool = False,
         profile_weight_kg: float | None = None,
+        profile_height_cm: float | None = None,
     ) -> None:
         self.entry = entry
         self.has_consent = has_consent
         self.has_training_consent = has_training_consent
         self.has_outcome = has_outcome
         self.profile_weight_kg = profile_weight_kg
+        self.profile_height_cm = profile_height_cm
         self.committed = False
         self.statement = None
         self.statements = []
         self.added = []
 
     async def get(self, model, _user_id):
-        if model is DailyHealthProfile and self.profile_weight_kg is not None:
-            return DailyHealthProfile(user_id=uuid4(), weight_kg=self.profile_weight_kg)
+        if model is DailyHealthProfile and (
+            self.profile_weight_kg is not None or self.profile_height_cm is not None
+        ):
+            return DailyHealthProfile(
+                user_id=uuid4(),
+                weight_kg=self.profile_weight_kg,
+                height_cm=self.profile_height_cm,
+            )
         return object() if model is User else None
 
     async def scalar(self, statement):
@@ -452,7 +473,47 @@ async def test_profile_read_hides_data_when_personalization_consent_is_inactive(
         "smoking_status": None,
         "weight_profile_consent_active": False,
         "weight_kg": None,
+        "height_profile_consent_active": False,
+        "height_cm": None,
     }
+
+
+@pytest.mark.asyncio
+async def test_profile_read_returns_height_when_height_consent_is_active() -> None:
+    session = FakeSession(DailyHealthEntry(), profile_height_cm=168)
+
+    result = await read_daily_health_profile(uuid4(), session)
+
+    assert result["height_profile_consent_active"] is True
+    assert result["height_cm"] == 168
+
+
+@pytest.mark.asyncio
+async def test_height_profile_upsert_requires_and_records_consent() -> None:
+    session = FakeSession(DailyHealthEntry(), has_consent=False)
+    payload = DailyHealthProfileHeightUpsert(height_cm=168, consent_given=True)
+
+    result = await upsert_daily_health_profile_height(uuid4(), payload, session)
+
+    statement = str(session.statement.compile(dialect=postgresql.dialect())).upper()
+    assert "ON CONFLICT" in statement
+    assert "HEIGHT_CM" in statement
+    assert result == {"height_profile_consent_active": True, "height_cm": 168}
+    assert session.added[0].version == "daily-health-height-profile-v1"
+    assert session.committed is True
+
+
+@pytest.mark.asyncio
+async def test_height_profile_delete_revokes_consent() -> None:
+    session = FakeSession(DailyHealthEntry(), profile_height_cm=168)
+
+    await delete_daily_health_profile_height(uuid4(), session)
+
+    statement = str(session.statement.compile(dialect=postgresql.dialect())).upper()
+    params = session.statement.compile().params.values()
+    assert "UPDATE CONSENTS" in statement
+    assert "daily-health-height-profile-v1" in params
+    assert session.committed is True
 
 
 @pytest.mark.asyncio

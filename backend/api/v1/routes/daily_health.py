@@ -21,6 +21,7 @@ from backend.api.schemas.daily_health import (
     DailyHealthOutcomeRead,
     DailyHealthOutcomeUpsert,
     DailyHealthPredictionRequest,
+    DailyHealthProfileHeightUpsert,
     DailyHealthProfileRead,
     DailyHealthProfileUpsert,
     DailyHealthProfileWeightUpsert,
@@ -56,6 +57,7 @@ PERSONALIZATION_CONSENT_VERSION = "daily-health-personalization-v1"
 AGE_GUIDANCE_CONSENT_VERSION = "daily-health-age-guidance-v1"
 SKIN_TYPE_GUIDANCE_CONSENT_VERSION = "daily-health-skin-type-guidance-v1"
 WEIGHT_PROFILE_CONSENT_VERSION = "daily-health-weight-profile-v1"
+HEIGHT_PROFILE_CONSENT_VERSION = "daily-health-height-profile-v1"
 
 
 @router.post("/predict")
@@ -613,6 +615,15 @@ async def read_daily_health_profile(
         )
         .limit(1)
     )
+    active_height_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == HEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
     active_training_consent = await session.scalar(
         select(Consent.id)
         .where(
@@ -631,6 +642,12 @@ async def read_daily_health_profile(
         "weight_kg": (
             profile.weight_kg
             if active_weight_consent is not None and profile is not None
+            else None
+        ),
+        "height_profile_consent_active": active_height_consent is not None,
+        "height_cm": (
+            profile.height_cm
+            if active_height_consent is not None and profile is not None
             else None
         ),
         "model_training_consent_active": active_training_consent is not None,
@@ -687,6 +704,68 @@ async def upsert_daily_health_profile_weight(
         "weight_profile_consent_active": True,
         "weight_kg": payload.weight_kg,
     }
+
+
+@router.put("/users/{user_id}/profile/height")
+async def upsert_daily_health_profile_height(
+    user_id: UUID,
+    payload: DailyHealthProfileHeightUpsert,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not payload.consent_given:
+        raise HTTPException(status_code=403, detail="Height profile consent is required")
+
+    active_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == HEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active_consent is None:
+        session.add(Consent(user_id=user_id, version=HEIGHT_PROFILE_CONSENT_VERSION))
+
+    profile_upsert = insert(DailyHealthProfile).values(
+        user_id=user_id,
+        height_cm=payload.height_cm,
+        updated_at=func.now(),
+    )
+    profile_upsert = profile_upsert.on_conflict_do_update(
+        index_elements=[DailyHealthProfile.user_id],
+        set_={
+            "height_cm": profile_upsert.excluded.height_cm,
+            "updated_at": func.now(),
+        },
+    )
+    await session.execute(profile_upsert)
+    await session.commit()
+    return {"height_profile_consent_active": True, "height_cm": payload.height_cm}
+
+
+@router.delete("/users/{user_id}/profile/height", status_code=204)
+async def delete_daily_health_profile_height(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> None:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    profile = await session.get(DailyHealthProfile, user_id)
+    if profile is not None:
+        profile.height_cm = None
+    await session.execute(
+        update(Consent)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == HEIGHT_PROFILE_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
+    await session.commit()
 
 
 @router.delete("/users/{user_id}/profile/weight", status_code=204)
@@ -753,6 +832,7 @@ async def delete_daily_health_profile(
                     AGE_GUIDANCE_CONSENT_VERSION,
                     SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
                     WEIGHT_PROFILE_CONSENT_VERSION,
+                    HEIGHT_PROFILE_CONSENT_VERSION,
                 ]
             ),
             Consent.revoked_at.is_(None),
@@ -819,6 +899,7 @@ async def delete_daily_health_data(
                     AGE_GUIDANCE_CONSENT_VERSION,
                     SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
                     WEIGHT_PROFILE_CONSENT_VERSION,
+                    HEIGHT_PROFILE_CONSENT_VERSION,
                     MODEL_TRAINING_CONSENT_VERSION,
                 ]
             ),

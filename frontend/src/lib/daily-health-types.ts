@@ -118,6 +118,8 @@ export type DailyHealthProfile = {
   age_guidance_consent_active: boolean;
   weight_profile_consent_active?: boolean;
   weight_kg?: number | null;
+  height_profile_consent_active?: boolean;
+  height_cm?: number | null;
   skin_type_guidance_consent_active?: boolean;
   model_training_consent_active: boolean;
   can_report_outcomes: boolean;

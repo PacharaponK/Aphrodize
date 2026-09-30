@@ -82,19 +82,13 @@ async def create_database_schema() -> None:
                 await connection.execute(
                     text("ALTER TABLE daily_health_profiles ADD COLUMN weight_kg FLOAT")
                 )
-        if connection.dialect.name == "postgresql":
-            # Refuse to discard historical rows from another deployment.
-            await connection.execute(
-                text(
-                    "DO $$ BEGIN "
-                    "IF to_regclass('public.daily_lifestyle_observations') IS NOT NULL THEN "
-                    "IF EXISTS (SELECT 1 FROM daily_lifestyle_observations) THEN "
-                    "RAISE EXCEPTION 'Legacy lifestyle observations need export before removal'; "
-                    "END IF; "
-                    "DROP TABLE daily_lifestyle_observations; "
-                    "END IF; END $$;"
+            if "height_cm" not in profile_columns:
+                await connection.execute(
+                    text("ALTER TABLE daily_health_profiles ADD COLUMN height_cm FLOAT")
                 )
-            )
+        if connection.dialect.name == "postgresql":
+            # Keep legacy tables intact during startup; data removal requires an
+            # explicit, separately reviewed migration rather than an implicit DDL step.
             # Existing installations predate the account lifecycle fields on users.
             await connection.execute(
                 text(
@@ -137,6 +131,9 @@ async def create_database_schema() -> None:
                 text("ALTER TABLE daily_health_profiles ADD COLUMN IF NOT EXISTS weight_kg FLOAT")
             )
             await connection.execute(
+                text("ALTER TABLE daily_health_profiles ADD COLUMN IF NOT EXISTS height_cm FLOAT")
+            )
+            await connection.execute(
                 text(
                     "DO $$ BEGIN "
                     "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
@@ -146,6 +143,18 @@ async def create_database_schema() -> None:
                     "ADD CONSTRAINT ck_daily_health_profile_skin_type CHECK "
                     "(skin_type IS NULL OR skin_type IN "
                     "('normal', 'dry', 'oily', 'combination', 'sensitive', 'prefer_not_to_say')); "
+                    "END IF; END $$;"
+                )
+            )
+            await connection.execute(
+                text(
+                    "DO $$ BEGIN "
+                    "IF NOT EXISTS (SELECT 1 FROM pg_constraint "
+                    "WHERE conname = 'ck_daily_health_profile_height' "
+                    "AND conrelid = 'daily_health_profiles'::regclass) THEN "
+                    "ALTER TABLE daily_health_profiles "
+                    "ADD CONSTRAINT ck_daily_health_profile_height CHECK "
+                    "(height_cm IS NULL OR (height_cm >= 30 AND height_cm <= 300)); "
                     "END IF; END $$;"
                 )
             )

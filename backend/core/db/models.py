@@ -362,6 +362,10 @@ class DailyHealthProfile(Base):
             "weight_kg IS NULL OR (weight_kg >= 1 AND weight_kg <= 500)",
             name="ck_daily_health_profile_weight",
         ),
+        CheckConstraint(
+            "height_cm IS NULL OR (height_cm >= 30 AND height_cm <= 300)",
+            name="ck_daily_health_profile_height",
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -370,6 +374,7 @@ class DailyHealthProfile(Base):
     smoking_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     skin_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
