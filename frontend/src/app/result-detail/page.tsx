@@ -175,7 +175,7 @@ export default function ResultDetailPage() {
     : currentArtifactAvailability;
 
   return (
-    <WorkspaceShell active="capture" eyebrow="FACE ANALYSIS" title="ผลวิเคราะห์ใบหน้า" detail={analysisDetail(analysis)}>
+    <WorkspaceShell eyebrow="FACE ANALYSIS" title="ผลวิเคราะห์ใบหน้า" detail={analysisDetail(analysis)}>
       <section className="page-content workspace-panel analysis-page">
         <div className="analysis-page-heading">
           <div>

@@ -136,7 +136,7 @@ export default function CapturePage() {
   }
 
   return (
-    <WorkspaceShell active="capture" eyebrow="IMAGE ANALYSIS" title="วิเคราะห์ภาพ" detail="ขั้นตอน 1 จาก 2 · เตรียมภาพ">
+    <WorkspaceShell eyebrow="IMAGE ANALYSIS" title="วิเคราะห์ภาพ" detail="ขั้นตอน 1 จาก 2 · เตรียมภาพ">
         <div className="capture-layout">
         <section className="page-content capture-panel" aria-labelledby="capture-title">
           <p className="eyebrow">{t("เริ่มวิเคราะห์", "START ANALYSIS")}</p>

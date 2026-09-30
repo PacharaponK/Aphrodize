@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "คำแนะนำ — Aphrodize"
 
 export default function Page() {
   return (
-    <WorkspaceShell active="none" eyebrow="PERSONAL GUIDANCE" title="คำแนะนำ">
+    <WorkspaceShell eyebrow="PERSONAL GUIDANCE" title="คำแนะนำ">
       <section className="page-content workspace-panel">
         <p className="eyebrow">คำแนะนำตามข้อมูลของคุณ</p>
         <h2>หมวดผลิตภัณฑ์ที่อาจตรงกับข้อมูลที่รายงาน</h2>
