@@ -14,6 +14,7 @@ class ConsentRead(BaseModel):
     consent_id: UUID
     version: str
     accepted_at: datetime
+    access_token: str | None = None
 
 
 class QuestionnaireCreate(BaseModel):
@@ -81,7 +82,9 @@ class InitialWellnessQuestionnaire(BaseModel):
     menstrual_status: Literal[
         "on_period", "not_on_period", "unsure", "prefer_not_to_say", "not_applicable"
     ]
-    wellness_goal: Literal["skin_tracking", "sleep", "hydration", "outdoor_habits", "general_wellness"]
+    wellness_goal: Literal[
+        "skin_tracking", "sleep", "hydration", "outdoor_habits", "general_wellness"
+    ]
     # Required only for a full revision. Initial creation has no base revision.
     base_revision_id: UUID | None = None
 

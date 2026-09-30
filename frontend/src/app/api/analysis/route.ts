@@ -1,9 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { accountSession } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
 const COOKIE = "aphrodize_analysis";
+const ANONYMOUS_COOKIE = "aphrodize_anonymous";
 const ANNOTATION_COOKIE = "aphrodize_annotations";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REVIEW_MS = 30 * DAY_MS;
@@ -41,6 +43,17 @@ function currentAnalysis(request: NextRequest): string | null {
   // Compare signatures in constant time before accepting the stored ID.
   const expected = signature(`${id}.${expiry}`);
   return timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex")) ? id : null;
+}
+
+function anonymousSession(request: NextRequest): { userId: string; token: string } | null {
+  const value = request.cookies.get(ANONYMOUS_COOKIE)?.value;
+  if (!value) return null;
+  const separator = value.indexOf(":");
+  const userId = value.slice(0, separator);
+  const token = value.slice(separator + 1);
+  return separator > 0 && UUID.test(userId) && /^[\w.-]+$/.test(token)
+    ? { userId, token }
+    : null;
 }
 
 function annotationUsers(request: NextRequest): string[] {
@@ -92,20 +105,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (image.size > MAX_BYTES) return failed(413, "Image exceeds 10 MiB");
 
   try {
-    const accountToken = request.cookies.get("aphrodize_session")?.value;
+    const account = await accountSession(request);
+    let anonymous = account ? null : anonymousSession(request);
     let user_id: string;
-    let userHeaders: HeadersInit = apiHeaders();
-    if (accountToken) {
-      // Resolve the account identity from its HttpOnly bearer session.
-      const profile = await fetch(backendUrl("/auth/profile"), {
-        headers: { Authorization: `Bearer ${accountToken}` },
-        cache: "no-store",
-      });
-      if (!profile.ok) return backendError(profile);
-      const account = await profile.json();
-      if (typeof account?.user_id !== "string" || !UUID.test(account.user_id)) throw new Error("Invalid account user id");
-      user_id = account.user_id;
-      userHeaders = apiHeaders();
+    let token: string;
+    if (account) {
+      user_id = account.userId;
+      token = account.token;
+    } else if (anonymous) {
+      user_id = anonymous.userId;
+      token = anonymous.token;
     } else {
       // Preserve the anonymous research capture flow for users without an account.
       const consent = await fetch(backendUrl("/consents"), {
@@ -116,9 +125,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
       if (!consent.ok) return backendError(consent);
       const result = await consent.json();
-      if (typeof result?.user_id !== "string" || !UUID.test(result.user_id)) throw new Error("Invalid user id");
+      if (typeof result?.user_id !== "string" || !UUID.test(result.user_id)
+        || typeof result?.access_token !== "string") throw new Error("Invalid anonymous session");
       user_id = result.user_id;
+      token = result.access_token;
+      anonymous = { userId: user_id, token };
     }
+    const userHeaders = { Authorization: `Bearer ${token}` };
     if (wantsAnnotation) {
       // Grant the separate human-review consent before queuing the image.
       const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
@@ -142,6 +155,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (typeof data.id !== "string" || !UUID.test(data.id)) throw new Error("Invalid analysis id");
     // Return the queued/rejected row immediately; inference continues in Redis.
     const response = NextResponse.json(data, { status: 202, headers: { "Cache-Control": "no-store" } });
+    if (anonymous && !anonymousSession(request)) {
+      response.cookies.set(ANONYMOUS_COOKIE, `${anonymous.userId}:${anonymous.token}`, {
+        httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production",
+        path: "/api/analysis", maxAge: REVIEW_MS / 1000,
+      });
+    }
     const expiry = Date.now() + DAY_MS;
     // ponytail: one browser session tracks its latest analysis; account history needs real user auth.
     response.cookies.set(COOKIE, `${data.id}.${expiry}.${signature(`${data.id}.${expiry}`)}`, {
@@ -182,11 +201,16 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     return failed(403, "Invalid request origin");
   }
   try {
+    const account = await accountSession(request);
+    const anonymous = account ? null : anonymousSession(request);
+    const owner = account ?? anonymous;
+    if (!owner) return failed(401, "No active analysis session in this browser");
     // Revoke every review consent represented in the signed browser cookie.
     for (const userId of annotationUsers(request)) {
+      if (userId !== owner.userId) continue;
       const response = await fetch(backendUrl(`/consents/users/${userId}/annotations`), {
         method: "DELETE",
-        headers: apiHeaders(),
+        headers: { Authorization: `Bearer ${owner.token}` },
         cache: "no-store",
       });
       if (!response.ok) return backendError(response);
@@ -205,6 +229,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // A valid signed cookie authorizes reading this browser's latest analysis.
     const id = currentAnalysis(request);
     if (!id) return failed(401, "No active analysis in this browser");
+    const account = await accountSession(request);
+    const owner = account ?? anonymousSession(request);
+    if (!owner) return failed(401, "No active analysis session in this browser");
     const artifact = request.nextUrl.searchParams.get("artifact");
     // Only the two display images can be fetched through this proxy.
     if (artifact && artifact !== "mask" && artifact !== "overlay") {
@@ -214,7 +241,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? `/analyses/${id}/artifacts/${artifact}`
       : `/analyses/${id}`;
     const response = await fetch(backendUrl(path), {
-      headers: apiHeaders(),
+      headers: { Authorization: `Bearer ${owner.token}` },
       cache: "no-store",
     });
     if (!response.ok) return backendError(response);

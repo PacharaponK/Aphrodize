@@ -96,7 +96,7 @@ erDiagram
 3. [ตารางรายวันปัจจุบัน](../../../backend/core/db/models.py) ยังใช้ `outdoor_exposure_choice` (ช่วง 1–4) ให้เก็บค่านาทีจริงเป็น source of truth และแปลงเป็นช่วงเฉพาะจุดที่โมเดลยังต้องการค่า 1–4
 4. `daily_lifestyle_observations` และ `daily_health_entries` เก็บข้อมูลการนอน น้ำ และ outdoor ที่ทับซ้อนกัน ให้ใช้ `daily_health_entries` เป็นข้อมูลรายวันที่ผู้ใช้กรอก และปรับ forecast ให้อ่านจากตารางนี้ ก่อนพิจารณาย้าย/เลิกใช้ตารางเดิม; `analyses` ยังเก็บผลวิเคราะห์ภาพแยกต่างหาก
 5. หน้าโปรไฟล์อ่านจาก `user_profiles` แล้ว; หน้า recommendation ยังให้คำแนะนำทั่วไปและยังไม่ใช้ข้อมูลโปรไฟล์เฉพาะบุคคล
-6. เสร็จแล้ว: [fixture](../../../fixtures/users.yaml) มี `profile` และ `daily_entries` สองวันที่ผูกกับ `user_id` เดียวกับบัญชี demo; เมื่อ login ด้วยบัญชี demo daily tracker จะอ่านประวัติชุดนี้
+6. เสร็จแล้ว: [fixture](../../../backend/fixtures/users.yaml) มี `profile` และ `daily_entries` สองวันที่ผูกกับ `user_id` เดียวกับบัญชี demo; เมื่อ login ด้วยบัญชี demo daily tracker จะอ่านประวัติชุดนี้
 
 ## การย้ายข้อมูลและเกณฑ์ตรวจรับ
 

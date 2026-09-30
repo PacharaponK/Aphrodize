@@ -8,9 +8,16 @@ from minio.error import S3Error
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api.deps import require_matching_user, require_user_token
 from backend.api.schemas.analysis import AnalysisRead
-from backend.api.deps import require_api_credentials, require_user_token
-from backend.core.db.models import Analysis, Consent, DailyHealthEntry, DailyHealthOutcome, Questionnaire, User
+from backend.core.db.models import (
+    Analysis,
+    Consent,
+    DailyHealthEntry,
+    DailyHealthOutcome,
+    Questionnaire,
+    User,
+)
 from backend.core.db.session import get_session
 from backend.libs.minio_client import analysis_artifact_key, get_bytes
 from backend.services.analysis_service import create_analysis, recommendations_for
@@ -40,8 +47,8 @@ def serialize(analysis: Analysis) -> AnalysisRead:
 async def submit_analysis(
     user_id: UUID,
     image: UploadFile = File(...),
+    _: UUID = Depends(require_matching_user),
     session: AsyncSession = Depends(get_session),
-    _: None = Depends(require_api_credentials),
 ) -> AnalysisRead:
     # Validate the user path parameter before the service reads the image.
     if await session.get(User, user_id) is None:
@@ -54,12 +61,12 @@ async def submit_analysis(
 @router.get("/{analysis_id}", response_model=AnalysisRead)
 async def get_analysis(
     analysis_id: UUID,
+    caller_id: UUID = Depends(require_user_token),
     session: AsyncSession = Depends(get_session),
-    _: None = Depends(require_api_credentials),
 ) -> AnalysisRead:
     # The result page polls this row while the worker changes its status.
     analysis = await session.get(Analysis, analysis_id)
-    if analysis is None:
+    if analysis is None or analysis.user_id != caller_id:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return serialize(analysis)
 
@@ -68,12 +75,12 @@ async def get_analysis(
 async def get_analysis_artifact(
     analysis_id: UUID,
     kind: Literal["overlay", "mask"],
+    caller_id: UUID = Depends(require_user_token),
     session: AsyncSession = Depends(get_session),
-    _: None = Depends(require_api_credentials),
 ) -> Response:
     # Display artifacts are available only when the analysis has a result.
     analysis = await session.get(Analysis, analysis_id)
-    if analysis is None or not analysis.result:
+    if analysis is None or analysis.user_id != caller_id or not analysis.result:
         raise HTTPException(status_code=404, detail="Artifact not found")
     expiry_text = analysis.result.get("artifacts_expires_at")
     # No expiry field means no viewable artifact was published.
@@ -195,7 +202,8 @@ async def get_recommendations(
             ))
         if candidates:
             reported_date, _, source_table, record_id, reported_dryness = max(
-                candidates, key=lambda candidate: (candidate[0], candidate[1], candidate[2], candidate[3])
+                candidates,
+                key=lambda candidate: (candidate[0], candidate[1], candidate[2], candidate[3]),
             )
             daily_context.update({
                 "status": "available",
@@ -206,6 +214,8 @@ async def get_recommendations(
                     "value": reported_dryness,
                 },
             })
-    response = recommendations_for(analysis, questionnaire.answers if questionnaire else {}, daily_context)
+    response = recommendations_for(
+        analysis, questionnaire.answers if questionnaire else {}, daily_context
+    )
     response["questionnaire_context"] = questionnaire_context
     return response

@@ -30,6 +30,9 @@ dist/
 # Local datasets and ML model binaries
 ai/ffhq-wrinkle/
 storage/data/ffhq-wrinkle/
+storage/data/uv/
+storage/models/uv/
+storage/artifacts/uv/
 storage/models/ffhq-wrinkle/
 data/
 *.ckpt

@@ -25,6 +25,9 @@ type Product = {
   target_skin_types: string[];
   concerns: string[];
   source_url: string | null;
+  spf: number | null;
+  broad_spectrum: boolean;
+  water_resistant_minutes: number | null;
   status: "draft" | "published" | "archived";
   reviewed_at: string | null;
 };
@@ -121,6 +124,9 @@ export default function AdminProductsPage() {
       target_skin_types: form.getAll("target_skin_types").map(String),
       concerns: String(form.get("concerns") ?? "").split("\n").map((item) => item.trim()).filter(Boolean),
       source_url: String(form.get("source_url") ?? "").trim() || null,
+      spf: form.get("spf") ? Number(form.get("spf")) : null,
+      broad_spectrum: form.has("broad_spectrum"),
+      water_resistant_minutes: form.get("water_resistant_minutes") ? Number(form.get("water_resistant_minutes")) : null,
     };
     try {
       await requestProducts(selected ? "PUT" : "POST", payload);
@@ -191,6 +197,7 @@ export default function AdminProductsPage() {
           </Card></section>
           <aside><Card className="admin-products-editor"><div className="admin-editor-heading"><div className="admin-editor-icon"><Pencil size={20} /></div><div><p className="eyebrow">PRODUCT DETAILS</p><h2 id="product-editor-heading">{selected ? "แก้ไขผลิตภัณฑ์" : "เพิ่มผลิตภัณฑ์"}</h2></div></div><p className="admin-editor-description">{selected ? `กำลังแก้ไข ${selected.brand} · ${selected.name}` : "กรอกข้อมูลจากฉลากและแหล่งอ้างอิงที่ตรวจสอบได้"}</p><form key={`${selected?.id ?? "new"}-${formVersion}`} onSubmit={save}>
             <div className="admin-form-section"><h3>ข้อมูลทั่วไป</h3><div className="admin-form-grid"><label>แบรนด์ <span>*</span><Input name="brand" required maxLength={120} placeholder="ชื่อแบรนด์" defaultValue={selected?.brand ?? ""} /></label><label>ชื่อสินค้า <span>*</span><Input name="name" required maxLength={200} placeholder="ชื่อผลิตภัณฑ์" defaultValue={selected?.name ?? ""} /></label><label>รุ่น / ขนาด<Input name="variant" maxLength={120} placeholder="เช่น 50 ml" defaultValue={selected?.variant ?? ""} /></label><label>หมวดสินค้า <span>*</span><select className="admin-select" name="category" required defaultValue={selected?.category ?? ""}><option value="" disabled>เลือกหมวดสินค้า</option><option value="sunscreen">กันแดด</option><option value="moisturizer">มอยส์เจอไรเซอร์</option><option value="cleanser">คลีนเซอร์</option><option value="treatment">ผลิตภัณฑ์บำรุงเฉพาะทาง</option><option value="other">อื่น ๆ</option></select></label><label className="admin-full-width">ราคา (บาท)<Input name="price_thb" type="number" min="0" max="1000000" step="0.01" placeholder="0.00" defaultValue={selected?.price_satang == null ? "" : (selected.price_satang / 100).toFixed(2)} /></label></div></div>
+            <div className="admin-form-section"><h3>ข้อมูลกันแดดตามฉลาก</h3><div className="admin-form-grid"><label>SPF<Input name="spf" type="number" min="1" max="100" defaultValue={selected?.spf ?? ""} /></label><label>ทนน้ำ (นาที) ถ้ามี<Input name="water_resistant_minutes" type="number" min="1" max="120" defaultValue={selected?.water_resistant_minutes ?? ""} /></label></div><label className="admin-checkbox"><input name="broad_spectrum" type="checkbox" defaultChecked={selected?.broad_spectrum ?? false} />ฉลากระบุการป้องกัน UVA และ UVB (broad-spectrum)</label><small>กรอกเฉพาะสิ่งที่ตรวจสอบได้จากฉลากหรือแหล่งข้อมูลของสินค้า</small></div>
             <div className="admin-form-section"><h3>ส่วนผสมและคำเตือน</h3><label>ส่วนผสมตามฉลาก<Textarea name="ingredients_label" maxLength={10000} rows={3} placeholder="คัดลอกรายการส่วนผสมตามฉลาก" defaultValue={selected?.ingredients_label ?? ""} /></label><label>ชื่อส่วนผสม INCI ที่ตรวจทานแล้ว<Textarea name="ingredients_inci" rows={3} placeholder="หนึ่งรายการต่อบรรทัด" defaultValue={selected?.ingredients_inci.join("\n") ?? ""} /><small>หนึ่งรายการต่อบรรทัด</small></label><label>คำเตือนบนฉลาก<Textarea name="warnings_label" rows={2} placeholder="ระบุคำเตือน ถ้ามี" defaultValue={selected?.warnings_label ?? ""} /></label></div>
             <div className="admin-form-section"><h3>ข้อมูลสำหรับการจัดกลุ่ม</h3><fieldset><legend>ประเภทผิวที่แหล่งข้อมูลระบุ</legend><div className="admin-skin-types">{skinTypes.map(([value, label]) => <label key={value} className="admin-checkbox"><input type="checkbox" name="target_skin_types" value={value} defaultChecked={selected?.target_skin_types.includes(value)} />{label}</label>)}</div></fieldset><label>ปัญหาผิวที่ระบุ<Textarea name="concerns" rows={2} placeholder="หนึ่งรายการต่อบรรทัด" defaultValue={selected?.concerns.join("\n") ?? ""} /></label></div>
             <div className="admin-form-section"><h3>แหล่งข้อมูล</h3><label>URL แหล่งข้อมูล<div className="admin-source-input"><ExternalLink size={16} aria-hidden="true" /><Input name="source_url" type="url" maxLength={1000} placeholder="https://..." defaultValue={selected?.source_url ?? ""} /></div></label><p className="admin-review-note"><ShieldCheck size={16} /> ประเภทผิวเป็นข้อมูลจากแหล่งอ้างอิง ไม่ได้รับรองว่าทุกคนจะไม่ระคายเคือง</p></div>

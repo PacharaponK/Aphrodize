@@ -3,14 +3,38 @@
 from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db.models import Analysis
 from backend.core.db.session import get_session
+from backend.services.uv_service import load_recommendation
 
 router = APIRouter()
+
+
+@router.get("/uv")
+async def uv_health() -> dict:
+    try:
+        forecasts = {
+            city: load_recommendation(city)
+            for city in ("bangkok", "songkhla", "chiang_mai")
+        }
+    except ValueError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return {
+        "status": "fresh",
+        "cities": {
+            city: {
+                "data_date": value["data_date"],
+                "generated_at": value["generated_at"],
+                "model_version": value["model_version"],
+                "weather_available": [day["weather"] is not None for day in value["days"]],
+            }
+            for city, value in forecasts.items()
+        },
+    }
 
 
 def summarize_analyses(rows: list[Analysis]) -> dict:

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
+import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!account) return failed(401, "Please sign in before reporting an outcome");
     const saved = await fetch(backendUrl("/daily-health/users/" + account.userId + "/outcomes"), {
       method: "PUT",
-      headers: { ...apiHeaders(), "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${account.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         target_date: body.target_date,
         reported_energy_level_0_10: body.reported_energy_level_0_10,

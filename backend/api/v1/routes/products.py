@@ -15,7 +15,6 @@ router = APIRouter()
 def require_publishable(product: Product) -> None:
     if not all(
         (
-            product.price_satang is not None,
             product.ingredients_label,
             product.ingredients_inci,
             product.target_skin_types,
@@ -24,13 +23,19 @@ def require_publishable(product: Product) -> None:
     ):
         raise HTTPException(
             status_code=422,
-            detail="Price, label ingredients, reviewed INCI ingredients, skin types, and source URL are required",
+            detail="Label ingredients, reviewed INCI, skin types, and source URL are required",
+        )
+    if getattr(product, "category", None) == "sunscreen" and not all(
+        (product.spf, product.broad_spectrum)
+    ):
+        raise HTTPException(
+            status_code=422, detail="Sunscreen SPF and broad-spectrum label are required"
         )
 
 
 @router.get("", response_model=list[ProductRead])
 async def list_products(session: AsyncSession = Depends(get_session)) -> list[Product]:
-    # ponytail: one bounded admin catalog view; add pagination when the catalog grows past 500 items.
+    # ponytail: bounded admin catalog; add pagination past 500 items.
     query = select(Product).order_by(Product.created_at.desc()).limit(500)
     return list((await session.scalars(query)).all())
 

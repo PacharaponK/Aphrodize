@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
+import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     const response = await fetch(
       backendUrl(`/daily-health/users/${account.userId}/entries?${query.toString()}`),
-      { headers: apiHeaders(), cache: "no-store" },
+      { headers: { Authorization: `Bearer ${account.token}` }, cache: "no-store" },
     );
     if (!response.ok) return backendFailure(response);
     return NextResponse.json(await response.json(), {
@@ -149,7 +149,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const account = await accountSession(request);
     if (!account) return failed(401, "กรุณาเข้าสู่ระบบก่อนบันทึกข้อมูลสุขภาพรายวัน");
-    const headers = apiHeaders();
     const consent = await fetch(backendUrl("/auth/daily-health-consent"), {
       method: "PUT",
       headers: { Authorization: `Bearer ${account.token}` },
@@ -158,7 +157,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!consent.ok) return backendFailure(consent);
     const saved = await fetch(backendUrl(`/daily-health/users/${account.userId}/entries`), {
       method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${account.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         local_date: body.local_date,
         timezone: body.timezone ?? "Asia/Bangkok",

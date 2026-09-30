@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
+import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     if (!account) return failed(401, "Please sign in to change training consent");
     const response = await fetch(
       backendUrl(`/daily-health/users/${account.userId}/training-consent`),
-      { method: "DELETE", headers: apiHeaders(), cache: "no-store" },
+      { method: "DELETE", headers: { Authorization: `Bearer ${account.token}` }, cache: "no-store" },
     );
     if (!response.ok) {
       const body = await response.json().catch(() => null);
