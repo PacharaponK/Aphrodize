@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import localFont from "next/font/local";
+import { LanguageProvider } from "@/components/language-provider";
 import "./globals.css";
 import "./prototype.css";
 import "./analysis.css";
@@ -38,12 +39,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="th"
+      lang="en"
       className={`${libreBaskerville.variable} ${montserrat.variable} ${notoSansThai.variable}`}
       suppressHydrationWarning
     >
       <body>
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
         <Script src="/legacy/theme.js" strategy="beforeInteractive" />
       </body>
     </html>

@@ -21,6 +21,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         has_session: false,
         consent_active: false,
         age_guidance_consent_active: false,
+        height_profile_consent_active: false,
+        height_cm: null,
         model_training_consent_active: false,
         can_report_outcomes: false,
         age_band: null,

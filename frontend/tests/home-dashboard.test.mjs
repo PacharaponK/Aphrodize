@@ -9,30 +9,47 @@ import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+const tsxModuleCache = new Map();
 
 // Compile the real TSX in memory; no extra test runner or generated files.
 function loadTsx(filename) {
+  filename = path.resolve(filename);
+  if (tsxModuleCache.has(filename)) return tsxModuleCache.get(filename).exports;
   const evaluatedModule = { exports: {} };
+  tsxModuleCache.set(filename, evaluatedModule);
   const nativeRequire = createRequire(filename);
   const source = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   const requireLocal = (name) => {
-    const local = path.resolve(path.dirname(filename), `${name}.tsx`);
-    return name.startsWith(".") && fs.existsSync(local) ? loadTsx(local) : nativeRequire(name);
+    const localBase = name.startsWith("@/")
+      ? path.resolve(testDirectory, "../src", name.slice(2))
+      : name.startsWith(".")
+        ? path.resolve(path.dirname(filename), name)
+        : null;
+    if (localBase) {
+      const local = [localBase, `${localBase}.tsx`, `${localBase}.ts`, path.join(localBase, "index.tsx")]
+        .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
+      if (local) return loadTsx(local);
+    }
+    return nativeRequire(name);
   };
   new Function("require", "module", "exports", source)(requireLocal, evaluatedModule, evaluatedModule.exports);
   return evaluatedModule.exports;
 }
 const { DashboardHistory } = loadTsx(path.resolve(testDirectory, "../src/app/clients/daily-health-history-panel.tsx"));
-const { AppNavigation } = loadTsx(path.resolve(testDirectory, "../src/components/app-navigation.tsx"));
-const render = (props = {}) => renderToStaticMarkup(React.createElement(DashboardHistory, {
+const { AppNavigation, AuthNavigationAction } = loadTsx(path.resolve(testDirectory, "../src/components/app-navigation.tsx"));
+const { LanguageProvider } = loadTsx(path.resolve(testDirectory, "../src/components/language-provider.tsx"));
+const withLanguage = (node) => React.createElement(LanguageProvider, null, node);
+const render = (props = {}) => renderToStaticMarkup(withLanguage(React.createElement(DashboardHistory, {
   items: [], loading: false, failed: false, requiresLogin: false, onRetry() {}, ...props,
-}));
+})));
 
 test("the looping decorative video belongs to main, not an article", () => {
   const filename = path.resolve(testDirectory, "../src/app/page.tsx");
   const source = ts.createSourceFile(filename, fs.readFileSync(filename, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const pageText = fs.readFileSync(filename, "utf8");
+  assert.doesNotMatch(pageText, /legacy\/home\.js/, "the stale legacy script must not inject duplicate navbar controls");
   const videoParents = [];
   function visit(node, ancestors = []) {
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName.getText(source)
@@ -87,15 +104,53 @@ test("dashboard chrome defaults to English without inventing personal content", 
 });
 
 test("Home navigation starts in English without changing other pages' default", () => {
-  const english = renderToStaticMarkup(React.createElement(AppNavigation, { active: "dashboard", initialLanguage: "en" }));
+  const english = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "dashboard", showThemeToggle: true, showSignIn: true })));
   assert.match(english, /aria-label="Open menu"/);
   assert.match(english, />Overview</);
   assert.match(english, />Daily health</);
-  assert.equal(/[\u0E00-\u0E7F]/u.test(english), false);
-  const unchanged = renderToStaticMarkup(React.createElement(AppNavigation, { active: "clients" }));
-  assert.match(unchanged, /aria-label="เปิดเมนู"/);
-  assert.match(unchanged, /สุขภาพรายวัน/);
+  assert.match(english, /href="\/login"/);
+  assert.match(english, />Sign in</);
+  assert.match(english, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
+  const unchanged = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "clients" })));
+  assert.match(unchanged, /aria-label="Open menu"/);
+  assert.match(unchanged, /Daily health/);
+  assert.match(unchanged, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
+  assert.equal(unchanged.includes('class="app-navigation-sign-in"'), false);
+  const homeCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/home.css"), "utf8");
+  assert.match(homeCss, /app-navigation-sign-in\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;/s);
+  assert.match(homeCss, /app-navigation-sign-in span\s*\{\s*display:\s*none;/);
+  const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
+  assert.match(navigationCss, /@media\s*\(max-width:\s*480px\)[\s\S]*?\.app-navigation-controls\s*\{[^}]*grid-row:\s*2;/);
 });
+
+test("the navbar switches from sign in to sign out with the authenticated session", () => {
+  const signInHtml = renderToStaticMarkup(withLanguage(React.createElement(AuthNavigationAction, {
+    language: "en", authStatus: "signed-out", showSignIn: true, signingOut: false, onSignOut() {},
+  })));
+  assert.match(signInHtml, /href="\/login"/);
+  assert.match(signInHtml, /aria-label="Sign in"/);
+  assert.match(signInHtml, />Sign in</);
+  assert.doesNotMatch(signInHtml, />Log out</);
+
+  const signOutHtml = renderToStaticMarkup(withLanguage(React.createElement(AuthNavigationAction, {
+    language: "en", authStatus: "signed-in", showSignIn: true, signingOut: false, onSignOut() {},
+  })));
+  assert.match(signOutHtml, /<button[^>]*aria-label="Log out"/);
+  assert.match(signOutHtml, />Log out</);
+  assert.doesNotMatch(signOutHtml, /href="\/login"/);
+
+  const thaiSignOutHtml = renderToStaticMarkup(withLanguage(React.createElement(AuthNavigationAction, {
+    language: "th", authStatus: "signed-in", showSignIn: true, signingOut: false, onSignOut() {},
+  })));
+  assert.match(thaiSignOutHtml, /aria-label="ออกจากระบบ"/);
+  assert.match(thaiSignOutHtml, />ออกจากระบบ</);
+
+  const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
+  assert.match(navigationCss, /app-navigation-auth-action\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+  assert.match(navigationCss, /@media\s*\(max-width:\s*900px\)[\s\S]*?\.app-navigation-auth-action\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+  assert.match(navigationCss, /\.app-navigation-auth-action\s+span\s*\{\s*display:\s*none;/);
+});
+
 test("the dashboard navbar and real data surfaces use restrained backdrop blur", () => {
   const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
   const homeCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/home.css"), "utf8");

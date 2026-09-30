@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Activity, Camera, House, Menu, TrendingUp, UserRound, X } from "lucide-react";
+import { Activity, Camera, House, LogIn, LogOut, Menu, TrendingUp, UserRound, X } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { LanguageToggle, useLanguage } from "./language-provider";
 
 type ActiveSection = "dashboard" | "capture" | "clients" | "trend" | "profile" | "none";
 
@@ -18,18 +19,99 @@ const navigationItems = [
 
 const englishNavigation = { dashboard: "Overview", capture: "Analyze image", clients: "Daily health", trend: "Trends", profile: "Skin profile" };
 
-export function AppNavigation({ active, showThemeToggle = false, initialLanguage = "th" }: { active: ActiveSection; showThemeToggle?: boolean; initialLanguage?: "th" | "en" }) {
+type AuthStatus = "checking" | "signed-in" | "signed-out";
+
+export function AuthNavigationAction({
+  language,
+  authStatus,
+  showSignIn,
+  signingOut,
+  logoutError,
+  onSignOut,
+}: {
+  language: "th" | "en";
+  authStatus: AuthStatus;
+  showSignIn: boolean;
+  signingOut: boolean;
+  logoutError: string;
+  onSignOut: () => void;
+}) {
+  if (authStatus === "signed-in") {
+    const label = signingOut
+      ? language === "en" ? "Signing out…" : "กำลังออกจากระบบ…"
+      : language === "en" ? "Log out" : "ออกจากระบบ";
+    return (
+      <>
+        <button
+          type="button"
+          className="app-navigation-auth-action app-navigation-sign-out"
+          aria-label={label}
+          title={label}
+          disabled={signingOut}
+          onClick={onSignOut}
+        >
+          <LogOut aria-hidden="true" size={18} />
+          <span>{label}</span>
+        </button>
+        {logoutError && <span className="app-navigation-auth-error" role="alert">{logoutError}</span>}
+      </>
+    );
+  }
+
+  if (!showSignIn) return null;
+
+  const label = language === "en" ? "Sign in" : "เข้าสู่ระบบ";
+  return (
+    <Link
+      className="app-navigation-auth-action app-navigation-sign-in"
+      href="/login"
+      aria-label={label}
+      title={label}
+    >
+      <LogIn aria-hidden="true" size={18} />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+export function AppNavigation({ active, showThemeToggle = false, showSignIn = false }: {
+  active: ActiveSection;
+  showThemeToggle?: boolean;
+  showSignIn?: boolean;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [language, setLanguage] = useState(initialLanguage);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const { language } = useLanguage();
   const dashboardHref = active === "dashboard" ? "#dashboard" : "/#dashboard";
 
   useEffect(() => {
-    if (active !== "dashboard") return;
-    const syncLanguage = () => setLanguage(localStorage.getItem("aphrodize-language") === "th" ? "th" : "en");
-    syncLanguage();
-    window.addEventListener("aphrodize-language-change", syncLanguage);
-    return () => window.removeEventListener("aphrodize-language-change", syncLanguage);
-  }, [active]);
+    const controller = new AbortController();
+    fetch("/api/profile", { cache: "no-store", signal: controller.signal })
+      .then((response) => {
+        if (response.ok) setAuthStatus("signed-in");
+        else if (response.status === 401) setAuthStatus("signed-out");
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  async function signOut() {
+    setSigningOut(true);
+    setLogoutError("");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST", cache: "no-store" });
+      if (!response.ok) throw new Error("Logout failed");
+      setAuthStatus("signed-out");
+      setMobileOpen(false);
+      // Reload so private client-side data is discarded along with the session cookie.
+      window.location.replace("/");
+    } catch {
+      setLogoutError(language === "en" ? "Could not log out. Try again." : "ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+      setSigningOut(false);
+    }
+  }
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -78,7 +160,18 @@ export function AppNavigation({ active, showThemeToggle = false, initialLanguage
             );
           })}
         </nav>
-        {showThemeToggle && <ThemeToggle className="app-navigation-theme-toggle" />}
+        <div className="app-navigation-controls">
+          <LanguageToggle className="app-navigation-language-toggle" />
+          {showThemeToggle && <ThemeToggle className="app-navigation-theme-toggle" />}
+          <AuthNavigationAction
+            language={language}
+            authStatus={authStatus}
+            showSignIn={showSignIn}
+            signingOut={signingOut}
+            logoutError={logoutError}
+            onSignOut={() => void signOut()}
+          />
+        </div>
       </div>
     </header>
   );
