@@ -96,3 +96,10 @@ test("Home navigation starts in English without changing other pages' default", 
   assert.match(unchanged, /aria-label="เปิดเมนู"/);
   assert.match(unchanged, /สุขภาพรายวัน/);
 });
+test("the dashboard navbar and real data surfaces use restrained backdrop blur", () => {
+  const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
+  const homeCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/home.css"), "utf8");
+  assert.match(navigationCss, /\.app-navigation\s*\{[^}]*backdrop-filter:\s*blur\(18px\)/s);
+  assert.match(homeCss, /@supports\s*\(\(backdrop-filter:[\s\S]*?\.home-dashboard-shell \.home-metric-card[\s\S]*?backdrop-filter:\s*blur\(14px\)/);
+  assert.match(homeCss, /@media\s*\(prefers-reduced-transparency:\s*reduce\)[\s\S]*?backdrop-filter:\s*none;/);
+});

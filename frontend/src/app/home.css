@@ -3,6 +3,7 @@
 .home-dashboard-shell .home-topbar h1,
 .home-dashboard-shell .home-overview-score h2,
 .home-dashboard-shell .home-card-heading h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: -.025em; }
+.home-dashboard-shell { --dashboard-glass-surface: color-mix(in srgb, var(--surface) 86%, transparent); }
 .home-dashboard-shell .home-action-card h2,
 .home-dashboard-shell .home-metric-card h3,
 .home-dashboard-shell .home-metric-value,
@@ -84,3 +85,38 @@ html[data-theme="black"] .home-motion-frame::after { background: color-mix(in sr
 @media (max-width: 480px) { .home-dashboard-shell #dashboard { padding: 18px 14px 36px; } .home-dashboard-grid, .home-quick-actions, .home-metric-grid { gap: 12px; } .home-overview-card { padding: 18px; } .home-overview-score h2 { font-size: 28px; } .home-wellness-card, .home-insights-card { padding: 18px; } .home-action-card, .home-metric-card { padding: 16px; } .home-action-card h2 { font-size: 16px; } .home-metric-value { font-size: 26px; } .home-metric-note { min-height: 58px; } }
 @media (max-width: 350px) { .home-quick-actions, .home-metric-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (prefers-reduced-motion: reduce) { .home-motion-video { transform: none !important; } .home-action-card { transition: none; } }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .home-dashboard-shell .home-topbar,
+  .home-dashboard-shell .home-overview-card,
+  .home-dashboard-shell .home-wellness-card,
+  .home-dashboard-shell .home-action-card,
+  .home-dashboard-shell .home-metric-card,
+  .home-dashboard-shell .home-insights-card,
+  .home-dashboard-shell .home-history-details,
+  .home-dashboard-shell .home-metric-section > .home-card-heading,
+  .home-dashboard-shell .home-day {
+    background: var(--dashboard-glass-surface);
+    -webkit-backdrop-filter: blur(14px) saturate(1.08);
+    backdrop-filter: blur(14px) saturate(1.08);
+  }
+  .home-dashboard-shell .home-action-card:hover {
+    background: color-mix(in srgb, var(--primary-soft) 82%, transparent);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-navigation,
+  .home-dashboard-shell .home-topbar,
+  .home-dashboard-shell .home-overview-card,
+  .home-dashboard-shell .home-wellness-card,
+  .home-dashboard-shell .home-action-card,
+  .home-dashboard-shell .home-action-card:hover,
+  .home-dashboard-shell .home-metric-card,
+  .home-dashboard-shell .home-insights-card,
+  .home-dashboard-shell .home-history-details,
+  .home-dashboard-shell .home-metric-section > .home-card-heading,
+  .home-dashboard-shell .home-day {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

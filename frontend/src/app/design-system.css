@@ -435,9 +435,10 @@ html[data-theme="black"] .onboarding-guardian { background: #3b3020; border-colo
   top: 0;
   z-index: 30;
   width: 100%;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
   border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  backdrop-filter: blur(18px) saturate(1.08);
 }
 .app-navigation-inner {
   display: flex;
