@@ -78,12 +78,15 @@ async def test_recommendation_endpoint_uses_only_consent_authorized_daily_contex
         water_intake_ml=1200, outdoor_exposure_choice=3,
     )
     consent = SimpleNamespace(id=uuid4(), version="daily-health-v1")
-    session = FakeSession(analysis, questionnaire, consent, lifestyle, None, None)
+    session = FakeSession(analysis, questionnaire, consent, lifestyle, None)
 
     result = await get_recommendations(analysis.id, user_id=owner_id, session=session)
 
     assert result["recommendations"][0]["category"] == "broad-spectrum sunscreen SPF 30+"
-    assert result["recommendations"][0]["signal_sources"] == ["self_reported", "daily_health_reported"]
+    assert result["recommendations"][0]["signal_sources"] == [
+        "self_reported",
+        "daily_health_reported",
+    ]
     assert result["daily_context"]["consent"] == {
         "record_id": str(consent.id), "version": "daily-health-v1",
     }
@@ -93,12 +96,13 @@ async def test_recommendation_endpoint_uses_only_consent_authorized_daily_contex
         "water_intake_ml": 1200, "outdoor_exposure_choice": 3,
     }
     sql = "\n".join(str(query) for query in session.queries)
-    assert "reported_dryness_score_0_10 IS NOT NULL" in sql
+    assert "reported_dryness_level_0_10 IS NOT NULL" in sql
     assert "local_date BETWEEN" in sql
+    assert "target_date BETWEEN" in sql
 
 
 @pytest.mark.asyncio
-async def test_recommendation_endpoint_prefers_outcome_for_same_day_dryness_with_provenance():
+async def test_recommendation_endpoint_uses_outcome_for_dryness_with_provenance():
     owner_id = uuid4()
     analysis = sample_analysis(owner_id)
     questionnaire = SimpleNamespace(id=uuid4(), answers={
@@ -106,10 +110,9 @@ async def test_recommendation_endpoint_prefers_outcome_for_same_day_dryness_with
         "known_product_allergy": "no", "severe_irritation": "no",
     })
     observed_on = __import__("datetime").date.today()
-    entry = SimpleNamespace(id=uuid4(), local_date=observed_on, reported_dryness_score_0_10=6)
     outcome = SimpleNamespace(id=uuid4(), target_date=observed_on, reported_dryness_level_0_10=7)
     consent = SimpleNamespace(id=uuid4(), version="daily-health-v1")
-    session = FakeSession(analysis, questionnaire, consent, None, entry, outcome)
+    session = FakeSession(analysis, questionnaire, consent, None, outcome)
 
     result = await get_recommendations(analysis.id, user_id=owner_id, session=session)
 
@@ -118,6 +121,9 @@ async def test_recommendation_endpoint_prefers_outcome_for_same_day_dryness_with
         "observed_date": observed_on.isoformat(), "value": 7,
     }
     assert result["recommendations"][0]["signal_sources"] == ["daily_health_reported"]
+    sql = "\n".join(str(query) for query in session.queries)
+    assert "daily_health_entries.reported_dryness_score_0_10" not in sql
+    assert "daily_health_outcomes.reported_dryness_level_0_10 IS NOT NULL" in sql
 
 
 @pytest.mark.asyncio

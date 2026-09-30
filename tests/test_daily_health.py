@@ -399,22 +399,20 @@ async def test_daily_health_route_requires_active_consent() -> None:
     assert session.committed is False
 
 
-def test_predictions_are_not_training_labels() -> None:
-    entry = DailyHealthEntry(
+def test_training_eligibility_uses_observed_outcomes_not_predictions() -> None:
+    predicted_entry = DailyHealthEntry(
         predicted_thirst_score_0_10=4.2,
         predicted_dryness_score_0_10=3.8,
-        reported_thirst_score_0_10=None,
-        reported_dryness_score_0_10=None,
     )
-    assert entry.training_eligible is False
-
-
-def test_both_reported_scores_enable_training() -> None:
-    entry = DailyHealthEntry(
-        reported_thirst_score_0_10=5.0,
-        reported_dryness_score_0_10=4.0,
+    incomplete_outcome = DailyHealthOutcome(reported_thirst_level_0_10=5.0)
+    complete_outcome = DailyHealthOutcome(
+        reported_thirst_level_0_10=5.0,
+        reported_dryness_level_0_10=4.0,
     )
-    assert entry.training_eligible is True
+
+    assert not hasattr(predicted_entry, "training_eligible")
+    assert incomplete_outcome.training_eligible is False
+    assert complete_outcome.training_eligible is True
 
 
 @pytest.mark.asyncio

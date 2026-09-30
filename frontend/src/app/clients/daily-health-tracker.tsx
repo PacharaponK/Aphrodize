@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import DailyHealthDashboard from "./daily-health-dashboard";
 import DailyHealthOutcomeForm from "./daily-health-outcome-form";
 import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
@@ -128,6 +129,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
   const [entry, setEntry] = useState<DailyEntry | null>(null);
   const [formError, setFormError] = useState("");
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
+  const [predictionError, setPredictionError] = useState(false);
   const [personalProfile, setPersonalProfile] = useState<DailyHealthProfile>({
     has_session: false,
     consent_active: false,
@@ -370,6 +372,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     const requestId = ++predictionRequestId.current;
     setEntry(dailyEntry);
     setPrediction(null);
+    setPredictionError(false);
     setIsPredicting(true);
     setStorageStatus("saving");
       setStorageMessage(t("กำลังบันทึกข้อมูลรายวันลงฐานข้อมูล", "Saving today's health record…"));
@@ -410,6 +413,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       if (requestId === predictionRequestId.current) setPrediction(predictionResult);
     } catch {
       predictionResult = null;
+      if (requestId === predictionRequestId.current) setPredictionError(true);
     }
     await saveEntry(dailyEntry, predictionResult);
     if (requestId === predictionRequestId.current) setIsPredicting(false);
@@ -420,6 +424,15 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     ? prediction?.calculated.sleep_score_0_100
       ?? Number(Math.min(100, (entry.sleepDurationMinutes / 540) * 100).toFixed(1))
     : null;
+  const thirstScore = prediction?.predictions.thirst_score_0_10.value;
+  const hydrationRangeStatus = prediction?.calculated.hydration?.range_status;
+  const thirstUnavailableMessage = predictionError
+    ? t("คำนวณคะแนนไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง", "Could not calculate the score. Check your connection and try again.")
+    : hydrationRangeStatus === "missing_weight"
+      ? t("ต้องมีน้ำหนักในโปรไฟล์และยินยอมให้ใช้คำนวณคะแนน", "A consented weight in your profile is needed to calculate this score.")
+      : hydrationRangeStatus === "unsupported_age"
+        ? t("สูตรอ้างอิงนี้ไม่ใช้กับช่วงอายุ 13–17 ปี", "This adult fluid reference is not applied to ages 13–17.")
+        : t("ไม่มีคะแนนในรอบนี้", "No score available this time");
 
   return (
     <div className="clients-tracker">
@@ -638,8 +651,11 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
               </article>
               <article className="tracker-metric pending-metric">
                 <p className="eyebrow">THIRST SCORE</p>
-                <strong>{isPredicting ? "…" : prediction?.predictions.thirst_score_0_10.value?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
-                <p>{prediction?.predictions.thirst_score_0_10.value == null ? t("ไม่มีคะแนนในรอบนี้", "No score available this time") : prediction.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
+                <strong>{isPredicting ? "…" : thirstScore?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
+                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : prediction?.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
+                {!isPredicting && thirstScore == null && hydrationRangeStatus === "missing_weight" && (
+                  <Link href="/profile">{t("ไปที่โปรไฟล์ →", "Open profile →")}</Link>
+                )}
               </article>
               <article className="tracker-metric pending-metric">
                 <p className="eyebrow">DRYNESS SCORE</p>
