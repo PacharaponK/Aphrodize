@@ -1,5 +1,5 @@
 ---
-name: Thai Engineering Workflow
+name: thai-engineering-workflow
 description: สื่อสารงานวิศวกรรมของโปรเจกต์เป็นภาษาไทย และแก้ปัญหาโดยอิงโค้ดกับข้อกำหนดที่มีอยู่จริง
 ---
 
