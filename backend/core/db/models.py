@@ -263,16 +263,6 @@ class DailyHealthEntry(Base):
             "(predicted_dryness_score_0_10 >= 0 AND predicted_dryness_score_0_10 <= 10)",
             name="ck_daily_health_predicted_dryness",
         ),
-        CheckConstraint(
-            "reported_thirst_score_0_10 IS NULL OR "
-            "(reported_thirst_score_0_10 >= 0 AND reported_thirst_score_0_10 <= 10)",
-            name="ck_daily_health_reported_thirst",
-        ),
-        CheckConstraint(
-            "reported_dryness_score_0_10 IS NULL OR "
-            "(reported_dryness_score_0_10 >= 0 AND reported_dryness_score_0_10 <= 10)",
-            name="ck_daily_health_reported_dryness",
-        ),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -295,21 +285,10 @@ class DailyHealthEntry(Base):
     prediction_status: Mapped[str] = mapped_column(String(32), default="not_run")
     prediction_model_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     data_source: Mapped[str] = mapped_column(String(32), default="user_reported")
-    # These remain NULL until the user supplies real observed outcomes; predictions are not labels.
-    reported_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
-    reported_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-
-    @property
-    def training_eligible(self) -> bool:
-        return (
-            self.reported_thirst_score_0_10 is not None
-            and self.reported_dryness_score_0_10 is not None
-        )
-
 
 class DailyHealthDatasetRecord(Base):
     """Imported historical dataset row, retained with provenance and excluded by default."""
@@ -454,6 +433,14 @@ class DailyHealthOutcome(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+    @property
+    def training_eligible(self) -> bool:
+        # Only user-observed labels, never model predictions, qualify a target row.
+        return (
+            self.reported_thirst_level_0_10 is not None
+            and self.reported_dryness_level_0_10 is not None
+        )
 
 
 class DailyHealthModelVersion(Base):

@@ -9,6 +9,7 @@ from backend.api.schemas.daily_health import DailyHealthOutcomeUpsert
 from backend.core.db.models import (
     DailyHealthAgeBand,
     DailyHealthDatasetRecord,
+    DailyHealthEntry,
     DailyHealthMenstrualCheckin,
     DailyHealthModelDeployment,
     DailyHealthModelDeploymentEvent,
@@ -16,6 +17,15 @@ from backend.core.db.models import (
     DailyHealthOutcome,
     DailyHealthProfile,
 )
+
+
+def test_daily_health_entry_model_matches_retired_observation_columns() -> None:
+    # PostgreSQL startup migration intentionally removes these old labels; observed
+    # outcomes are stored in daily_health_outcomes instead.
+    assert not {
+        "reported_thirst_score_0_10",
+        "reported_dryness_score_0_10",
+    } & set(DailyHealthEntry.__table__.columns.keys())
 
 
 def test_daily_health_collection_tables_are_defined_with_the_documented_keys() -> None:
