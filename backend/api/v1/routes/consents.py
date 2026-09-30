@@ -43,6 +43,40 @@ async def create_consent(
     )
 
 
+@user_router.get("/users/{user_id}")
+async def read_image_consents(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> dict[str, bool]:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    versions = await session.scalars(
+        select(Consent.version).where(
+            Consent.user_id == user_id,
+            Consent.version.in_([ANALYSIS_CONSENT_VERSION, ANNOTATION_CONSENT_VERSION]),
+            Consent.revoked_at.is_(None),
+        )
+    )
+    active = set(versions.all())
+    return {
+        "analysis": ANALYSIS_CONSENT_VERSION in active,
+        "annotations": ANNOTATION_CONSENT_VERSION in active,
+    }
+
+
+@user_router.delete("/users/{user_id}/analysis", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_analysis_consent(
+    user_id: UUID, session: AsyncSession = Depends(get_session)
+) -> None:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await session.execute(
+        Consent.__table__.update()
+        .where(Consent.user_id == user_id, Consent.version == ANALYSIS_CONSENT_VERSION)
+        .values(revoked_at=datetime.now(UTC))
+    )
+    await session.commit()
+
+
 @user_router.put("/users/{user_id}/analysis")
 async def grant_analysis_consent(
     user_id: UUID, session: AsyncSession = Depends(get_session)

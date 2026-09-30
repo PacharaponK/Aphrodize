@@ -28,6 +28,7 @@ dist/
 .ipynb_checkpoints/
 
 # Local datasets and ML model binaries
+backend/fixtures/local/
 ai/ffhq-wrinkle/
 storage/data/ffhq-wrinkle/
 storage/data/uv/

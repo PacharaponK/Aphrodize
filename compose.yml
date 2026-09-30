@@ -67,7 +67,10 @@ services:
   # MinIO keeps uploaded and derived image bytes out of PostgreSQL.
   minio:
     profiles: [ai]
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: aphrodize-minio:RELEASE.2025-09-07T16-13-09Z
+    build:
+      context: .
+      dockerfile: docker/minio.Dockerfile
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aphrodize}
@@ -77,23 +80,24 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     logging: *container-logging
 
   # Initialize the private, annotation, and MLflow buckets once per stack.
   minio-init:
     profiles: [ai]
-    image: quay.io/minio/mc:RELEASE.2024-11-21T17-21-54Z
-    environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-aphrodize}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-    entrypoint: >-
-      /bin/sh -c 'until mc alias set local http://minio:9000 "$${MINIO_ACCESS_KEY}" "$${MINIO_SECRET_KEY}";
-      do sleep 1; done; mc mb --ignore-existing local/aphrodize-private;
-      mc mb --ignore-existing local/aphrodize-annotation;
-      mc mb --ignore-existing local/mlflow'
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: python -m backend.scripts.init_buckets
+    environment: *api-environment
     depends_on:
       minio:
-        condition: service_started
+        condition: service_healthy
     logging: *container-logging
 
   # Human reviewers draw wrinkle masks in a separate Label Studio project.
@@ -101,7 +105,7 @@ services:
     profiles: [ai]
     image: heartexlabs/label-studio:latest
     environment:
-      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "false"
       LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize@example.local}
       LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?Set LABEL_STUDIO_PASSWORD in .env}
     volumes:

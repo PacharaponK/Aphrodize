@@ -96,9 +96,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const wantsAnnotation = form.get("annotation_consent") === "yes";
   // The analysis consent is mandatory; review consent is a separate choice.
   if (form.get("consent") !== "yes") return failed(403, "Consent is required");
-  if (wantsAnnotation && annotationUsers(request).length >= 50) {
-    return failed(409, "Too many active review consents in this browser");
-  }
   if (!(image instanceof File) || !IMAGE_TYPES.has(image.type) || !image.size) {
     return failed(415, "Choose a JPEG, PNG, or WebP image");
   }
@@ -132,6 +129,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       anonymous = { userId: user_id, token };
     }
     const userHeaders = { Authorization: `Bearer ${token}` };
+    const reviewUsers = [...new Set([...annotationUsers(request), user_id])];
+    if (wantsAnnotation && reviewUsers.length > 50) {
+      return failed(409, "Too many active review consents in this browser");
+    }
     // The checked analysis consent applies to the authenticated upload owner.
     const analysisConsent = await fetch(backendUrl(`/consents/users/${user_id}/analysis`), {
       method: "PUT",
@@ -179,9 +180,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     if (wantsAnnotation) {
       // Retain user IDs for browser-initiated review revocation during 30 days.
-      const users = [...annotationUsers(request), user_id];
       const reviewExpiry = Date.now() + REVIEW_MS;
-      const encoded = Buffer.from(users.join(",")).toString("base64url");
+      const encoded = Buffer.from(reviewUsers.join(",")).toString("base64url");
       response.cookies.set(
         ANNOTATION_COOKIE,
         `${encoded}.${reviewExpiry}.${signature(`${encoded}.${reviewExpiry}`)}`,
@@ -212,8 +212,16 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const anonymous = account ? null : anonymousSession(request);
     const owner = account ?? anonymous;
     if (!owner) return failed(401, "No active analysis session in this browser");
+    if (request.nextUrl.searchParams.get("scope") === "analysis") {
+      const response = await fetch(backendUrl(`/consents/users/${owner.userId}/analysis`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${owner.token}` },
+        cache: "no-store",
+      });
+      return response.ok ? new NextResponse(null, { status: 204 }) : backendError(response);
+    }
     // Revoke every review consent represented in the signed browser cookie.
-    for (const userId of annotationUsers(request)) {
+    for (const userId of new Set([...annotationUsers(request), owner.userId])) {
       if (userId !== owner.userId) continue;
       const response = await fetch(backendUrl(`/consents/users/${userId}/annotations`), {
         method: "DELETE",
@@ -233,6 +241,20 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    if (request.nextUrl.searchParams.get("consents") === "1") {
+      const owner = await accountSession(request) ?? anonymousSession(request);
+      if (!owner) {
+        return NextResponse.json({ analysis: false, annotations: false }, {
+          headers: { "Cache-Control": "no-store" },
+        });
+      }
+      const response = await fetch(backendUrl(`/consents/users/${owner.userId}`), {
+        headers: { Authorization: `Bearer ${owner.token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) return backendError(response);
+      return NextResponse.json(await response.json(), { headers: { "Cache-Control": "no-store" } });
+    }
     // A valid signed cookie authorizes reading this browser's latest analysis.
     const id = currentAnalysis(request);
     if (!id) return failed(401, "No active analysis in this browser");

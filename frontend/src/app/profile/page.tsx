@@ -344,7 +344,7 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  return <WorkspaceShell active="profile" eyebrow="SKIN PROFILE" title="โปรไฟล์ผิวของคุณ">
+  return <WorkspaceShell eyebrow="SKIN PROFILE" title="โปรไฟล์ผิวของคุณ">
     <section className="workspace-panel profile-panel">
       {loading && <p className="form-message" role="status">{t("กำลังโหลดข้อมูลโปรไฟล์…", "Loading your profile…")}</p>}
       {message && <p className="form-message" role="status">{message}</p>}

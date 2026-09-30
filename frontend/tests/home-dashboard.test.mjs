@@ -62,9 +62,9 @@ test("the looping decorative video belongs to main, not an article", () => {
   assert.deepEqual(videoParents[0].slice(-2), ["main", "figure"]);
   assert.equal(videoParents[0].includes("article"), false);
   const videoSource = fs.readFileSync(path.resolve(testDirectory, "../src/components/home-motion-video.tsx"), "utf8");
-  assert.match(videoSource, /\n\s+loop\n/);
-  assert.match(videoSource, /\n\s+muted\n/);
-  assert.match(videoSource, /\n\s+playsInline\n/);
+  assert.match(videoSource, /\r?\n\s+loop\r?\n/);
+  assert.match(videoSource, /\r?\n\s+muted\r?\n/);
+  assert.match(videoSource, /\r?\n\s+playsInline\r?\n/);
 });
 
 test("logged-out, loading and error states do not fabricate scores or records", () => {
@@ -103,7 +103,7 @@ test("dashboard chrome defaults to English without inventing personal content", 
   assert.equal(/[\u0E00-\u0E7F]/u.test(html), false);
 });
 
-test("Home navigation starts in English without changing other pages' default", () => {
+test("shared navigation defaults to English and keeps mobile controls in the menu", () => {
   const english = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "dashboard", showThemeToggle: true, showSignIn: true })));
   assert.match(english, /aria-label="Open menu"/);
   assert.match(english, />Overview</);
@@ -111,16 +111,33 @@ test("Home navigation starts in English without changing other pages' default", 
   assert.match(english, /href="\/login"/);
   assert.match(english, />Sign in</);
   assert.match(english, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
+  assert.match(english, /aria-label="Switch to dark theme"/);
+  assert.match(english, />Dark</);
+  assert.match(english, /aria-controls="primary-navigation navigation-controls"/);
+  assert.match(english, /id="navigation-controls"/);
   const unchanged = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "clients" })));
   assert.match(unchanged, /aria-label="Open menu"/);
   assert.match(unchanged, /Daily health/);
   assert.match(unchanged, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
   assert.equal(unchanged.includes('class="app-navigation-sign-in"'), false);
-  const homeCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/home.css"), "utf8");
-  assert.match(homeCss, /app-navigation-sign-in\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;/s);
-  assert.match(homeCss, /app-navigation-sign-in span\s*\{\s*display:\s*none;/);
   const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
-  assert.match(navigationCss, /@media\s*\(max-width:\s*480px\)[\s\S]*?\.app-navigation-controls\s*\{[^}]*grid-row:\s*2;/);
+  assert.match(navigationCss, /@media\s*\(max-width:\s*1200px\)[\s\S]*?\.app-navigation-controls\s*\{[^}]*display:\s*none;/);
+  assert.match(navigationCss, /\.app-navigation\.is-open \.app-navigation-controls\s*\{\s*display:\s*flex;/);
+});
+
+test("the root layout owns navigation so changing pages does not remount it", () => {
+  const readSource = (file) => fs.readFileSync(path.resolve(testDirectory, "../src", file), "utf8");
+  assert.match(readSource("app/layout.tsx"), /<SharedNavigation\s*\/>\{children\}/);
+  const sourceDirectory = path.resolve(testDirectory, "../src");
+  for (const file of fs.readdirSync(sourceDirectory, { recursive: true }).filter((file) => file.endsWith(".tsx"))) {
+    const normalized = file.replaceAll("\\", "/");
+    if (normalized === "app/layout.tsx" || normalized === "components/shared-navigation.tsx") continue;
+    assert.doesNotMatch(readSource(file), /<(?:AppNavigation|SharedNavigation)\b/, `${file} must not mount another navbar`);
+  }
+  const source = readSource("components/shared-navigation.tsx");
+  assert.match(source, /usePathname\(\)/);
+  assert.match(source, /if \(!active\) return null;/, "auth and admin pages keep their own chrome");
+  assert.doesNotMatch(source, /key=/, "a route key would remount the navbar");
 });
 
 test("the navbar switches from sign in to sign out with the authenticated session", () => {
@@ -147,8 +164,7 @@ test("the navbar switches from sign in to sign out with the authenticated sessio
 
   const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
   assert.match(navigationCss, /app-navigation-auth-action\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
-  assert.match(navigationCss, /@media\s*\(max-width:\s*900px\)[\s\S]*?\.app-navigation-auth-action\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
-  assert.match(navigationCss, /\.app-navigation-auth-action\s+span\s*\{\s*display:\s*none;/);
+  assert.doesNotMatch(navigationCss, /\.app-navigation-auth-action\s+span\s*\{\s*display:\s*none;/, "account actions keep their labels in the mobile menu");
 });
 
 test("the dashboard navbar and real data surfaces use restrained backdrop blur", () => {

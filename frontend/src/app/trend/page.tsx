@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import DailyHealthHistoryPanel from "../clients/daily-health-history-panel";
-import { AppNavigation } from "@/components/app-navigation";
 import { LocalizedText } from "@/components/language-provider";
 import "../clients/clients.css";
 import "../clients/daily-health-history.css";
@@ -13,7 +12,6 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <>
-      <AppNavigation active="trend" showThemeToggle />
       <div className="simple-page clients-page trend-page">
       <main className="page-frame">
         <section className="page-content clients-content">

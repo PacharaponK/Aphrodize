@@ -8,7 +8,7 @@ export default function Page() {
   const { language } = useLanguage();
   const t = (th: string, en: string) => language === "en" ? en : th;
   return (
-    <WorkspaceShell active="capture" eyebrow="QUALITY GATE" title="ตรวจคุณภาพภาพ">
+    <WorkspaceShell eyebrow="QUALITY GATE" title="ตรวจคุณภาพภาพ">
       <section className="page-content workspace-panel quality-panel">
         <div className="quality-symbol">!</div>
         <p className="eyebrow">QUALITY GATE</p>

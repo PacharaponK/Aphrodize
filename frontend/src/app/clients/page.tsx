@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import DailyHealthTracker from "./daily-health-tracker";
-import { AppNavigation } from "@/components/app-navigation";
 import { LocalizedText } from "@/components/language-provider";
 import "./clients.css";
 import { todayInBangkok } from "@/lib/daily-health-prediction";
@@ -16,7 +15,6 @@ export default async function ClientsPage() {
   const initialDate = todayInBangkok();
   return (
     <>
-      <AppNavigation active="clients" showThemeToggle />
       <div className="simple-page clients-page">
       <main className="page-frame">
         <section className="page-content clients-content">

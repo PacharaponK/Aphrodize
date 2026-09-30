@@ -1,7 +1,7 @@
 users:
-  - display_name: Demo User
-    email: demo@example.local
-    password: demo-password-123
+  - display_name: PacharaponK
+    email: ball@gmail.com
+    password: 123456789
     consent_accepted: true
     profile:
       sex: female
@@ -28,8 +28,6 @@ users:
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
         data_source: fixture
-        reported_thirst_score_0_10: 4.0
-        reported_dryness_score_0_10: 3.0
       - local_date: 2026-09-27
         timezone: Asia/Bangkok
         sleep_duration_minutes: 390
@@ -46,5 +44,3 @@ users:
         prediction_status: not_run
         prediction_model_id: null
         data_source: fixture
-        reported_thirst_score_0_10: null
-        reported_dryness_score_0_10: null

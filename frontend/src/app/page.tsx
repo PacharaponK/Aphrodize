@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, ArrowUpRight } from "lucide-react";
-import { AppNavigation } from "../components/app-navigation";
 import { LocalizedText } from "../components/language-provider";
 import HomeMotionVideo from "../components/home-motion-video";
 import { HomeScrollMotion } from "../components/home-scroll-motion";
@@ -16,7 +15,6 @@ export default function Page() {
   return (
     <div className="app-shell home-dashboard-shell">
       <HomeScrollMotion />
-      <AppNavigation active="dashboard" showThemeToggle showSignIn />
       <main id="dashboard">
         <figure className="home-motion-frame" aria-hidden="true"><HomeMotionVideo /></figure>
         <header className="topbar home-topbar">

@@ -15,7 +15,7 @@ const pages = [
 
 export default function Page() {
   return (
-    <WorkspaceShell active="none" eyebrow="UI FLOWS" title="ตัวอย่างหน้าจอ">
+    <WorkspaceShell eyebrow="UI FLOWS" title="ตัวอย่างหน้าจอ">
       <section className="page-content workspace-panel">
         <p className="eyebrow">UI FLOWS</p>
         <h2>เลือกหน้าที่ต้องการดู</h2>

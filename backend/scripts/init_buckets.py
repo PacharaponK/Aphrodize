@@ -5,7 +5,7 @@ import time
 from backend.core.config import settings
 from backend.libs.minio_client import get_minio_client
 
-BUCKETS = (settings.minio_bucket, "mlflow")
+BUCKETS = (settings.minio_bucket, settings.annotation_bucket, "mlflow")
 MAX_ATTEMPTS = 30
 
 
