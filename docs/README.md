@@ -9,6 +9,7 @@
 | ภาพรวมระบบที่ทำงานอยู่ | [Architecture diagram](architecture/diagrams/diagram.md) และ [ER ของฐานข้อมูลปัจจุบัน](architecture/diagrams/database-er.md) |
 | ตั้งค่าและรัน FFHQ-Wrinkle | [AI README](../ai/README.md) |
 | กรอก Daily Health และดูผล | [Daily Health Input Flow](lifestyle/Daily-Health-Input-Flow.md) |
+| เข้าใจโมเดลและเส้นทางข้อมูล UV | [การทำงานของโมเดลทำนาย UV](uv-model-workflow.md) |
 | ใช้และดูแลฟีเจอร์ UV | [UV delivery and operation](uv-implementation.md) |
 
 ## รายละเอียดเมื่อทำงานในส่วนนั้น
