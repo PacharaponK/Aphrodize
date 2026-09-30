@@ -1,6 +1,6 @@
 # Safety and Governance
 
-> ข้อกำหนดด้าน consent, privacy, fairness และขอบเขตการกล่าวอ้างของ [Aphrodize](Aphrodize.md)
+> ข้อกำหนดด้าน consent, privacy, fairness และขอบเขตการกล่าวอ้างของ [Product and Scope](Product%20and%20Scope.md)
 
 ## Product boundary
 

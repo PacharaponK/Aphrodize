@@ -94,7 +94,7 @@ Dryness ไม่ได้คำนวณจากสมการต่อเน
 | `S < 360` และ `W < 1500` | Uniform(7, 10) |
 | เงื่อนไขอื่น | Uniform(2, 7) |
 
-ตัวอย่างที่มา: [`make_lifestyle_dataset.py`](../../sandboxes/datamake/make_lifestyle_dataset.py); trainer อ่านเฉพาะแถว synthetic ที่มี sleep record และค่า input/target ครบจาก [`train_daily_score_regressors.py`](../../sandboxes/model/train_daily_score_regressors.py). ค่า `420` นาทีและ `1,500` มล. เป็นจุดอ้างอิงที่ผู้ใช้เลือกไว้ในการจำลองข้อมูล ไม่ใช่เกณฑ์ทางการแพทย์; `O` ไม่ได้อยู่ในสูตรสร้าง thirst/dryness target นี้ แม้จะถูกส่งให้ Random Forest เป็น feature ดังนั้นโมเดลนี้ไม่ได้พิสูจน์ผลเชิงสาเหตุของเวลานอกบ้านต่อคะแนนเหล่านั้น
+ตัวอย่างที่มา: `sandboxes/datamake/make_lifestyle_dataset.py` (ไฟล์ทดลองเดิม ไม่อยู่ใน repository); trainer อ่านเฉพาะแถว synthetic ที่มี sleep record และค่า input/target ครบจาก `sandboxes/model/train_daily_score_regressors.py` (ไฟล์ทดลองเดิม ไม่อยู่ใน repository). ค่า `420` นาทีและ `1,500` มล. เป็นจุดอ้างอิงที่ผู้ใช้เลือกไว้ในการจำลองข้อมูล ไม่ใช่เกณฑ์ทางการแพทย์; `O` ไม่ได้อยู่ในสูตรสร้าง thirst/dryness target นี้ แม้จะถูกส่งให้ Random Forest เป็น feature ดังนั้นโมเดลนี้ไม่ได้พิสูจน์ผลเชิงสาเหตุของเวลานอกบ้านต่อคะแนนเหล่านั้น
 
 การศึกษาทบทวนเรื่องการดื่มน้ำกับผิวพบหลักฐานจำนวนและคุณภาพจำกัด และสรุปว่ายังต้องมีงานวิจัยเพิ่มเพื่อยืนยันว่าการดื่มน้ำเพิ่มช่วยลดอาการผิวแห้งหรือไม่ จึงไม่ควรอธิบายสูตรสังเคราะห์ข้างต้นว่าเป็นสูตรแพทย์หรือข้อสรุปว่าดื่มน้ำน้อย/นอนน้อยแล้วผิวแห้งแน่นอน ([Akdeniz et al., 2018](https://doi.org/10.1111/srt.12454))
 

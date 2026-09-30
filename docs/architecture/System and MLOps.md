@@ -1,6 +1,6 @@
 # System and MLOps
 
-> โครงสร้างระบบขั้นต่ำของ [Aphrodize](../project/Aphrodize.md) ตั้งแต่รับภาพจนถึงแสดงผลและติดตามแนวโน้ม
+> โครงสร้างระบบขั้นต่ำของ [Product and Scope](../project/Product%20and%20Scope.md) ตั้งแต่รับภาพจนถึงแสดงผลและติดตามแนวโน้ม
 
 ## Architecture
 

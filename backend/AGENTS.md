@@ -6,4 +6,4 @@
 - Apply the route's appropriate Basic, admin, or user-token dependency. Check consent before accessing or using personal data, and preserve separate analysis, annotation, and training consent. Validate uploads before storage or queueing.
 - Keep photos, health data, credentials, and model artifacts out of logs and Git. Preserve cleanup and expiry behavior for stored images. Never present model output as diagnosis or treatment advice.
 - Add or update a focused test in the root `tests/` for changed behavior. Run `python -m pytest` for affected tests and `ruff check backend tests`; use the root `pyproject.toml` for configured tooling.
-- See the root `README.md` and `docs/architecture/README.md` for service setup and data flow.
+- See the root `README.md` for service setup and `docs/architecture/diagrams/diagram.md` for data flow.

@@ -35,7 +35,7 @@ Client
      -> Label Studio SDK -> Label Studio
 ```
 
-For design decisions and data-flow detail, see [docs/architecture/README.md](docs/architecture/README.md).
+For data-flow detail, see the [architecture diagram](docs/architecture/diagrams/diagram.md).
 
 ## Requirements
 
@@ -209,9 +209,4 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 
 ## Further documentation
 
-- [Implementation architecture](docs/architecture/README.md)
-- [Project overview](docs/project/Aphrodize.md)
-- [Product and scope](docs/project/Product%20and%20Scope.md)
-- [AI and data](docs/ai/AI%20and%20Data.md)
-- [System and MLOps](docs/architecture/System%20and%20MLOps.md)
-- [Safety and governance](docs/project/Safety%20and%20Governance.md)
+- [Documentation guide](docs/README.md)
