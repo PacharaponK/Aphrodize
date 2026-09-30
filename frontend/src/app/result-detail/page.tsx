@@ -325,9 +325,9 @@ export default function ResultDetailPage() {
                     {analysis.result?.recommendation_gate?.eligible === true && (
                       <section className="analysis-section analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
                         <div className="analysis-section-heading">
-                          <div><p className="eyebrow">PERSONAL GUIDANCE</p><h3 id="analysis-recommendations-heading">คำแนะนำที่ผ่านเกณฑ์</h3></div>
+                          <div><p className="eyebrow">SKIN ANALYSIS GUIDANCE</p><h3 id="analysis-recommendations-heading">คำแนะนำจากผลวิเคราะห์ผิว</h3></div>
                         </div>
-                        <RecommendationPanel />
+                        <RecommendationPanel source="analysis" />
                       </section>
                     )}
                   </div>

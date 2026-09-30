@@ -28,6 +28,26 @@ KNOWLEDGE_SOURCES = {
         "title": "How to select a sunscreen",
         "url": "https://www.aad.org/spot-skin-cancer/learn-about-skin-cancer/prevent-skin-cancer/how-to-select-a-sunscreen",
     },
+    "aad_oily_skin": {
+        "id": "aad-oily-skin-care",
+        "title": "How to control oily skin",
+        "url": "https://www.aad.org/public/everyday-care/skin-care-basics/dry/oily-skin",
+    },
+    "aad_basic_routine": {
+        "id": "aad-basic-skin-care-routine",
+        "title": "Skin care on a budget",
+        "url": "https://www.aad.org/public/everyday-care/skin-care-basics/care/skin-care-budget",
+    },
+    "aad_moisturizer_by_skin_type": {
+        "id": "aad-moisturizer-by-skin-type",
+        "title": "How to pick the right moisturizer for your skin",
+        "url": "https://www.aad.org/public/everyday-care/skin-care-basics/dry/pick-moisturizer",
+    },
+    "aad_youth_skin_care": {
+        "id": "aad-youth-skin-care",
+        "title": "A dermatologist’s guide to skincare from growing up to glowing up",
+        "url": "https://www.aad.org/news/dermatologist-guide-skincare",
+    },
 }
 RECOMMENDATION_DISCLAIMER = (
     "General product-category information only. It is not a diagnosis, treatment advice, "
@@ -70,21 +90,28 @@ def _released_wrinkle_context(analysis: Analysis) -> dict[str, object]:
 
 
 def recommendations_for(
-    analysis: Analysis, answers: dict, daily_context: dict[str, object] | None = None
+    analysis: Analysis | None, answers: dict, daily_context: dict[str, object] | None = None
 ) -> dict:
     """Build deterministic category recommendations from reported inputs and eligible scores."""
     answers = answers if isinstance(answers, dict) else {}
     daily_context = daily_context if isinstance(daily_context, dict) else {}
-    image_context = _released_wrinkle_context(analysis)
+    image_context = (
+        _released_wrinkle_context(analysis)
+        if analysis is not None
+        else {"status": "unavailable", "reason": "no_analysis"}
+    )
 
     # Safety exclusions take precedence and never infer that missing answers mean "no".
     severe_value = answers.get("severe_irritation")
     severe = severe_value is True or severe_value == "yes" or answers.get("severe_skin_irritation") is True
     allergy_value = answers.get("known_product_allergy")
     allergy = allergy_value is True or allergy_value == "yes" or answers.get("allergy_or_irritation") is True
+    allergy_details = answers.get("allergy_details")
+    allergy_details_present = isinstance(allergy_details, str) and bool(allergy_details.strip())
     sensitivity = answers.get("skin_sensitivity")
-    safety_unknown = severe_value not in {False, "no"} or allergy_value not in {False, "no"} or sensitivity not in {"low", "medium"}
-    if severe or allergy or sensitivity == "high" or safety_unknown:
+    allergy_unresolved = allergy_value not in {False, "no"} and not (allergy and allergy_details_present)
+    safety_unknown = severe_value not in {False, "no"} or allergy_unresolved or sensitivity not in {"low", "medium"}
+    if severe or (allergy and not allergy_details_present) or sensitivity == "high" or safety_unknown:
         reason = "reported_severe_irritation" if severe else "reported_allergy" if allergy else "reported_high_sensitivity" if sensitivity == "high" else "safety_screening_incomplete"
         return {
             "status": "safety_blocked",
@@ -99,6 +126,8 @@ def recommendations_for(
 
     items: list[dict[str, object]] = []
     skin_type = answers.get("skin_type")
+    age_years = answers.get("age_years")
+    age_group = answers.get("age_group")
     sunscreen = answers.get("sunscreen_frequency")
     outdoor_minutes = answers.get("outdoor_minutes")
     reported_dryness_context = daily_context.get("reported_dryness")
@@ -151,6 +180,37 @@ def recommendations_for(
             moisturizer_rationale, moisturizer_fields, moisturizer_sources, KNOWLEDGE_SOURCES["aad_dry_skin"],
         )
 
+    if skin_type == "oily":
+        add(
+            "gentle, oil-free non-comedogenic cleanser", "R-CLEANSE-OILY-001",
+            "You reported oily skin. The American Academy of Dermatology recommends a mild, gentle face wash and products labelled oil-free or non-comedogenic for oily skin.",
+            ["skin_type"], ["self_reported"], KNOWLEDGE_SOURCES["aad_oily_skin"],
+        )
+
+    if skin_type == "combination":
+        add(
+            "lightweight moisturizer for combination skin", "R-MOIST-COMBINATION-001",
+            "You reported combination skin. Consider a lightweight moisturizer for dry areas and avoid applying it to areas that feel oily.",
+            ["skin_type"], ["self_reported"], KNOWLEDGE_SOURCES["aad_moisturizer_by_skin_type"],
+        )
+
+    if skin_type == "unsure":
+        add(
+            "gentle cleanser", "R-CLEANSE-STARTER-001",
+            "You are unsure of your skin type, so this starts with a simple gentle-cleanser category rather than a targeted active product.",
+            ["skin_type"], ["self_reported"], KNOWLEDGE_SOURCES["aad_basic_routine"],
+        )
+
+    is_under_18 = (
+        isinstance(age_years, (int, float)) and age_years < 18
+    ) or age_group in {"under_13", "13_17"}
+    if is_under_18:
+        add(
+            "simple gentle youth skin-care routine", "R-YOUTH-BASIC-001",
+            "You reported an age under 18. Keep the routine simple: gentle cleansing, a fragrance-free moisturizer, and broad-spectrum SPF 30+ sun protection; avoid adding anti-aging active products without professional advice.",
+            ["age_years" if isinstance(age_years, (int, float)) else "age_group"], ["self_reported"], KNOWLEDGE_SOURCES["aad_youth_skin_care"],
+        )
+
     initial_outdoor_high = isinstance(outdoor_minutes, (int, float)) and outdoor_minutes >= 60
     daily_outdoor_high = isinstance(daily_outdoor, int) and daily_outdoor >= 3
     if sunscreen in {"never", "sometimes"} and (initial_outdoor_high or daily_outdoor_high):
@@ -167,6 +227,19 @@ def recommendations_for(
             "broad-spectrum sunscreen SPF 30+", "R-SUN-OUTDOOR-001",
             "You reported infrequent sunscreen use and recent outdoor exposure. AAD recommends broad-spectrum sunscreen with SPF 30 or higher; this does not explain wrinkle scores.",
             sunscreen_fields, sunscreen_sources, KNOWLEDGE_SOURCES["aad_sunscreen"],
+        )
+    elif sunscreen in {"most_days", "every_day"}:
+        add(
+            "broad-spectrum sunscreen SPF 30+", "R-SUN-ROUTINE-001",
+            "You reported regular sunscreen use. Continue choosing broad-spectrum SPF 30+ sun protection as part of a daily routine.",
+            ["sunscreen_frequency"], ["self_reported"], KNOWLEDGE_SOURCES["aad_basic_routine"],
+        )
+
+    if skin_type == "normal":
+        add(
+            "lightweight daily moisturizer", "R-MOIST-NORMAL-001",
+            "You reported normal skin. A simple moisturizer is a general routine option; choose a texture that feels comfortable on your skin.",
+            ["skin_type"], ["self_reported"], KNOWLEDGE_SOURCES["aad_moisturizer_by_skin_type"],
         )
 
     # Eligible image context can support a moisturizer suggestion only alongside a user-reported factor.
@@ -203,6 +276,16 @@ def recommendations_for(
         # This contains user-reported daily signals only.  Synthetic model predictions
         # are intentionally never returned to or consumed by recommendation rules.
         "daily_context": daily_context,
+        "allergy_context": {
+            "reported": allergy,
+            "details": allergy_details.strip() if allergy_details_present else None,
+        },
+        "profile_context": {
+            "age_years": age_years if isinstance(age_years, (int, float)) else None,
+            "age_group": age_group if isinstance(age_group, str) else None,
+            "sex": answers.get("sex") if isinstance(answers.get("sex"), str) else None,
+            "sex_note": "Sex is recorded for the profile but does not by itself select a skincare product category.",
+        },
         "rule_version": RECOMMENDATION_RULE_VERSION,
         "knowledge_base": {"id": RECOMMENDATION_KNOWLEDGE_ID, "version": RECOMMENDATION_KNOWLEDGE_VERSION},
         "disclaimer": RECOMMENDATION_DISCLAIMER,

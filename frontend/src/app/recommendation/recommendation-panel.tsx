@@ -33,6 +33,7 @@ type LifestyleRecord = DailyRecord & {
 };
 
 type Result = {
+  demo?: boolean;
   status: "ready" | "no_recommendation" | "safety_blocked" | "pending";
   recommendations: Recommendation[];
   blocked_reason: string | null;
@@ -47,6 +48,8 @@ type Result = {
   rule_version: string;
   knowledge_base: { id: string; version: string };
   disclaimer: string;
+  allergy_context?: { reported: boolean; details: string | null };
+  profile_context?: { age_years: number | null; age_group: string | null; sex: string | null; sex_note: string };
 };
 
 const REGION_LABELS: Record<string, string> = {
@@ -73,6 +76,7 @@ const REASON_LABELS: Record<string, string> = {
   wrinkle_calibration_not_released: "ยังไม่มีการเผยแพร่การปรับเทียบคะแนนริ้วรอยนี้",
   wrinkle_provenance_incomplete: "ข้อมูลรุ่นของคะแนนริ้วรอยไม่ครบ",
   released_score_missing: "ไม่มีคะแนนริ้วรอยที่เผยแพร่สำหรับภาพนี้",
+  no_analysis: "ยังไม่มีผลวิเคราะห์ภาพ จึงใช้ข้อมูลที่คุณกรอกเป็นหลัก",
 };
 
 function formatThaiDate(value: string | undefined): string {
@@ -81,14 +85,20 @@ function formatThaiDate(value: string | undefined): string {
   return Number.isNaN(parsed.valueOf()) ? value : new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric" }).format(parsed);
 }
 
-export function RecommendationPanel() {
+export function RecommendationPanel({ compact = false, source = "analysis" }: {
+  compact?: boolean;
+  source?: "profile" | "analysis";
+}) {
   const [data, setData] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    fetch("/api/analysis/recommendations", { cache: "no-store" })
+    const demo = new URLSearchParams(window.location.search).get("demo") === "1";
+    const query = new URLSearchParams({ scope: source });
+    if (demo) query.set("demo", "1");
+    fetch(`/api/analysis/recommendations?${query.toString()}`, { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
@@ -98,16 +108,18 @@ export function RecommendationPanel() {
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : "โหลดคำแนะนำไม่สำเร็จ"); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [source]);
 
   if (loading) return <p role="status">กำลังโหลดคำแนะนำ…</p>;
   if (error) {
-    return <div className="recommendation-card" role="status"><p>{error}</p>{error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">เข้าสู่ระบบ →</Link>}</div>;
+    const needsAnalysis = source === "analysis" && error.includes("ยังไม่มีผลวิเคราะห์");
+    return <div className="recommendation-card" role="status"><p>{needsAnalysis ? "ถ่ายภาพและรอผลวิเคราะห์ก่อน เพื่อให้แสดงคำแนะนำที่อ้างอิงข้อมูลของคุณได้" : error}</p>{needsAnalysis ? <Link className="primary-button" href="/capture">วิเคราะห์ภาพเพื่อรับคำแนะนำ →</Link> : error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">เข้าสู่ระบบ →</Link>}</div>;
   }
   if (!data) return <p role="status">ยังไม่มีข้อมูลคำแนะนำ</p>;
 
   return (
     <div aria-live="polite">
+      {data.demo && !compact ? <p className="recommendation-note" role="status">โหมดสาธิต: ใช้ข้อมูล fixture เพื่อทดสอบหน้าจอเท่านั้น</p> : null}
       {data.status === "safety_blocked" ? (
         <article className="recommendation-card recommendation-blocked"><span className="status">หยุดคำแนะนำเพื่อความปลอดภัย</span><h3>ต้องอัปเดตข้อมูลก่อน</h3><p>{REASON_LABELS[data.blocked_reason ?? ""] ?? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน"}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? "เริ่มตอบแบบสอบถาม →" : "อัปเดตข้อมูลความปลอดภัย →"}</Link></article>
       ) : data.recommendations.length ? (
@@ -117,21 +129,27 @@ export function RecommendationPanel() {
               <span className="status moderate">หมวดผลิตภัณฑ์</span>
               <h3>{item.category}</h3>
               <p>{item.rationale}</p>
-              <div className="rule-box">
+              {!compact && <div className="rule-box">
                 <h3>ที่มาของคำแนะนำ</h3>
                 <p>ข้อมูลที่ใช้: {item.signal_sources.map((source) => source === "image" ? "คะแนนจากภาพ" : source === "daily_health_reported" ? "Daily Health ที่คุณรายงาน" : "คุณรายงาน").join(" + ")}</p>
                 {item.wrinkle_regions?.length ? <p>บริเวณคะแนนที่เผยแพร่: {item.wrinkle_regions.map((region) => REGION_LABELS[region] ?? region).join(", ")}</p> : null}
                 {item.wrinkle_region_scores?.map((region) => <p key={region.region}>{REGION_LABELS[region.region] ?? region.region}: wrinkle score {region.score.toFixed(1)} / 100</p>)}
                 <p className="metadata">กฎ {item.rule_id} · v{item.rule_version} · ฐานข้อมูล {item.knowledge_source.id} v{item.knowledge_source.version}</p>
                 <p><a href={item.knowledge_source.reference.url} target="_blank" rel="noreferrer">{item.knowledge_source.reference.title} ↗</a></p>
-              </div>
+              </div>}
             </article>
           ))}
         </div>
       ) : (
         <article className="recommendation-card recommendation-blocked"><span className="status">ยังไม่มีคำแนะนำ</span><h3>เริ่มจากข้อมูลที่มี</h3><p>{REASON_LABELS[data.blocked_reason ?? ""] ?? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ"}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? "เริ่มตอบแบบสอบถาม →" : "แก้ไขข้อมูลผิวและการกันแดด →"}</Link></article>
       )}
-      {(data.daily_context.reported_dryness || data.daily_context.lifestyle) && (
+      {data.allergy_context?.reported && data.allergy_context.details && (
+        <p className="recommendation-warning">คุณระบุว่าแพ้: {data.allergy_context.details} โปรดตรวจส่วนผสมจริงบนฉลากและหลีกเลี่ยงสิ่งที่ระบุ ระบบยังไม่สามารถยืนยันส่วนผสมของสินค้าแต่ละรายการได้</p>
+      )}
+      {compact && data.profile_context && (
+        <p className="metadata">{data.profile_context.age_years != null ? `พิจารณาอายุ ${data.profile_context.age_years} ปี` : "พิจารณาช่วงอายุที่รายงาน"} และข้อมูลโปรไฟล์ที่กรอกไว้; เพศไม่ถูกใช้เป็นเกณฑ์เหมารวมในการเลือกหมวดสกินแคร์</p>
+      )}
+      {!compact && (data.daily_context.reported_dryness || data.daily_context.lifestyle) && (
         <section className="recommendation-context" aria-label="ข้อมูลประกอบจาก Daily Health">
           <div className="recommendation-context-heading"><div><p className="eyebrow">ข้อมูลประกอบ</p><h3>Daily Health ที่คุณรายงาน</h3></div></div>
           <div className="recommendation-context-grid">
@@ -141,11 +159,11 @@ export function RecommendationPanel() {
           <p>ใช้เฉพาะข้อมูลที่คุณรายงานเอง; ค่าคาดการณ์จากโมเดล Daily Health ไม่ถูกใช้เพื่อแนะนำผลิตภัณฑ์</p>
         </section>
       )}
-      {data.image_context.status !== "eligible" && (
+      {!compact && data.image_context.status !== "eligible" && (
         <p className="recommendation-note">คะแนนจากภาพไม่ได้ถูกใช้: {REASON_LABELS[data.image_context.reason ?? ""] ?? "คะแนนภาพไม่พร้อมใช้งาน"}</p>
       )}
-      <p className="metadata">กฎคำแนะนำ v{data.rule_version}{data.image_context.score_version ? ` · score ${data.image_context.score_version}` : ""}{data.image_context.calibration_version ? ` · calibration ${data.image_context.calibration_version}` : ""}</p>
-      <p className="recommendation-warning">{data.disclaimer}</p>
+      {!compact && <><p className="metadata">กฎคำแนะนำ v{data.rule_version}{data.image_context.score_version ? ` · score ${data.image_context.score_version}` : ""}{data.image_context.calibration_version ? ` · calibration ${data.image_context.calibration_version}` : ""}</p>
+      <p className="recommendation-warning">{data.disclaimer}</p></>}
     </div>
   );
 }

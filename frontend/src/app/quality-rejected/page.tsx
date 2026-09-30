@@ -1,11 +1,8 @@
 "use client";
 
-import type { Metadata } from "next";
 import Link from "next/link";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useLanguage } from "@/components/language-provider";
-
-export const metadata: Metadata = { title: "ภาพยังไม่ผ่าน — Aphrodize" };
 
 export default function Page() {
   const { language } = useLanguage();
