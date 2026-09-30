@@ -1,60 +1,22 @@
 ---
-name: Thai Engineering Expert (Unified)
-description: The specific, unified standard for this project. Combines strict Thai communication with rigorous Engineering Best Practices and Workflow.
+name: Thai Engineering Workflow
+description: สื่อสารงานวิศวกรรมของโปรเจกต์เป็นภาษาไทย และแก้ปัญหาโดยอิงโค้ดกับข้อกำหนดที่มีอยู่จริง
 ---
 
-# Thai Engineering Expert Skill
+# Thai Engineering Workflow
 
-This skill is the **GOLDEN RULE** for this project. It strictly combines **Thai Language Communication** with **Engineering Best Practices**.
+## การสื่อสาร
 
-## 1. Thai Communication Rules (กฎการสื่อสาร)
+- อธิบายแผน ความคืบหน้า และผลลัพธ์เป็นภาษาไทยอย่างกระชับและชัดเจน
+- คงชื่อไฟล์ โค้ด คำสั่ง และชื่อเทคโนโลยีตามต้นฉบับ
+- อธิบายเหตุผลและข้อจำกัดที่ผู้ใช้ต้องรู้ โดยไม่อ้างถึงกระบวนการคิดภายใน
 
-- **Language**: You **MUST** always communicate in **Thai** (ภาษาไทย) for all responses, reasoning, and plans.
-  - _Exception_: Code, variable names, file names, and strict technical terms (e.g., specific library names) should remain in English.
-- **Tone**: Professional, helpful, and "Engineering-focused" (สุภาพ, เป็นทางการแบบวิศวกร).
+## การทำงาน
 
-## 2. Engineering Workflow Rules (กฎการทำงานแบบวิศวกรรม)
+1. ทำความเข้าใจคำขอและตรวจเส้นทางการทำงานที่เกี่ยวข้องก่อนแก้ไข
+2. อ่าน `AGENTS.md` ในพื้นที่ที่จะแก้ และดูโค้ดใกล้เคียงก่อนเลือกวิธีทำ สำหรับ UI ให้ดู `frontend/DESIGN.md` ด้วย
+3. ใช้รูปแบบและเครื่องมือที่โปรเจกต์มีอยู่ เลือกวิธีที่เรียบง่ายที่สุดซึ่งแก้สาเหตุและรักษาความปลอดภัย ความถูกต้อง และการเข้าถึงได้
+4. ลงมือทำเมื่อคำขอชัดเจน ขอข้อมูลหรือคำอนุมัติเฉพาะเมื่อจำเป็นต่อการตัดสินใจหรือก่อนการกระทำที่ย้อนกลับยาก อย่ากำหนดให้ผู้ใช้ต้องพิมพ์คำเฉพาะ
+5. ตรวจสอบตามข้อกำหนดใน `AGENTS.md` ที่เกี่ยวข้อง แล้วรายงานสิ่งที่เปลี่ยน ผลการตรวจ และข้อจำกัดที่ยังเหลือ
 
-### Core Directives
-
-1.  **Analyze First (คิดก่อนทำ)**: Do **NOT** write code immediately. You must analyze the requirements first.
-2.  **Strict Best Practice**: "Good enough" is unacceptable. Solutions must adhere to **SOLID**, **DRY**, **Clean Architecture**, and **Security Best Practices**.
-3.  **Mandatory Reference (ต้องอ่านก่อนเสมอ)**:
-    Before planning, you **MUST** read/verify against these files to ensure consistency:
-    - `client/app/features/_example/pages/ExamplePage.tsx`
-    - `client/AI_CODING_GUIDE.md`
-    - `server/AI_CODING_GUIDE.md`
-
-### Execution Protocol (ขั้นตอนการทำงาน)
-
-You must follow this cycle for every request:
-
-1.  **Phase 1: Analysis & Plan (วิเคราะห์และวางแผน)**
-    - Read references.
-    - Analyze the problem.
-    - Propose a plan in Thai, explaining _why_ it is the Best Practice.
-    - **STOP** and ask for approval.
-
-2.  **Phase 2: Approval (รออนุมัติ)**
-    - Wait for the user to type **"ready"** or **"approve"**.
-    - Do not proceed without explicit approval.
-
-3.  **Phase 3: Execution (ลงมือทำ)**
-    - Implement the code following the approved plan strictly.
-
-## Example Interaction
-
-**User**: "เพิ่มปุ่ม Delete ให้หน่อย"
-
-**Agent**:
-"รับทราบครับ ผมขอวิเคราะห์ตามหลัก Best Practice ก่อนนะครับ...
-(Internal: _Reading `client/AI_CODING_GUIDE.md`..._)
-
-ผมได้ตรวจสอบ `AI_CODING_GUIDE.md` แล้วครับ
-**Plan**:
-
-1.  สร้างปุ่ม `DeleteButton` โดยใช้ `shadcn/ui` ตามมาตรฐาน
-2.  ใช้ `useMutation` จาก `TanStack Query` สำหรับการลบข้อมูล (Best Practice for Async State)
-3.  เพิ่ม Confirmation Dialog เพื่อ UX ที่ดี
-
-หากเห็นด้วย พิมพ์ **'approve'** เพื่อให้ผมเริ่ม implement ได้เลยครับ"
+แนวทางอย่าง SOLID, DRY และ Clean Architecture ใช้เมื่อช่วยแก้ปัญหาจริง ไม่ต้องเพิ่มชั้นโค้ดหรือ dependency เพียงเพื่อให้ตรงชื่อแนวทาง
