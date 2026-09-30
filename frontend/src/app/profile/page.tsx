@@ -329,6 +329,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [requiresLogin, setRequiresLogin] = useState(false);
   const menstrualSex = String(profile?.answers?.sex ?? profile?.profile?.sex ?? "").trim().toLowerCase();
   const shouldShowMenstrualCalendar = menstrualSex === "female" && profile?.answers?.menstrual_tracking === "yes";
 
@@ -336,8 +337,13 @@ export default function ProfilePage() {
     fetch("/api/profile", { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
+        if (response.status === 401) {
+          setRequiresLogin(true);
+          return;
+        }
         if (!response.ok) throw new Error(body?.detail ?? "ไม่สามารถโหลดข้อมูลโปรไฟล์ได้");
         setProfile(body);
+        setRequiresLogin(false);
         setMessage("");
       })
       .catch((error: Error) => setMessage(error.message))
@@ -348,6 +354,11 @@ export default function ProfilePage() {
     <section className="workspace-panel profile-panel">
       {loading && <p className="form-message" role="status">{t("กำลังโหลดข้อมูลโปรไฟล์…", "Loading your profile…")}</p>}
       {message && <p className="form-message" role="status">{message}</p>}
+      {!loading && requiresLogin && <div className="profile-auth-gate">
+        <div className="profile-auth-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg></div>
+        <div className="profile-auth-copy"><p className="eyebrow">{t("พื้นที่สมาชิก", "MEMBER PROFILE")}</p><h2>{t("เข้าสู่ระบบเพื่อดูโปรไฟล์", "Sign in to view your profile")}</h2><p>{t("ข้อมูลสุขภาพ คำตอบที่บันทึกไว้ และคำแนะนำส่วนบุคคลของคุณจะแสดงที่นี่หลังเข้าสู่ระบบ", "Your saved wellness information, profile answers, and personalized guidance will appear here after you sign in.")}</p></div>
+        <div className="profile-auth-actions"><Link className="primary-button" href="/login">{t("เข้าสู่ระบบ", "Sign in")} <span aria-hidden="true">→</span></Link><Link className="secondary-button" href="/signup">{t("สร้างบัญชีใหม่", "Create an account")}</Link></div>
+      </div>}
       {profile && <><article className="profile-account"><h2>{profile.display_name}</h2><p>{profile.email}</p></article>
         <ProfileMeasurements />
         {profile.answers || profile.profile ? <>
