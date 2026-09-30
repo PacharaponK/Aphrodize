@@ -51,3 +51,7 @@ On 2026-09-29, the complete Python suite passed (**125 tests**), the changed Pyt
 - Watch the authenticated `/api/v1/monitoring/uv` endpoint, the snapshot's `generated_at`, each city's `data_date`, and the API's 503 response. Investigate if no fresh snapshot appears for eight hours or TEMIS lags more than one day.
 - Once independent observed UV becomes available for all three cities, first lock an unseen time split and evaluate cloud correction against the present SARIMAX and persistence baselines. Do not call all-sky accuracy validated before that study.
 - To replace the clear-sky model, rerun `python scripts/train_uv_model.py` and `python scripts/evaluate_uv_model.py`. Compare each city's two-day MAE and UV ≥8/≥11 undercall counts to the recorded version. Keep the prior three `.pkl` files and snapshot for rollback before replacing them. Do not automatically deploy a candidate that worsens the protection gate.
+
+## งานถัดไปเมื่อมีข้อมูล UV ที่เหมาะสม
+
+ตอนนี้ยังไม่มี observed all-sky UV ที่เป็นอิสระและครอบคลุมทั้งสามเมือง จึงยังไม่ฝึก cloud-correction model หรือกล่าวอ้างความแม่นยำของ UV จริง หากพบข้อมูลดังกล่าว ให้ตรวจพิกัด ช่วงเวลา หน่วย สิทธิ์ใช้งาน และความเป็นอิสระจาก TEMIS ก่อน จากนั้นล็อกช่วงทดสอบใหม่หรือ rolling-origin protocol ก่อนเลือกโมเดล ใช้ cloud forecast ที่มีอยู่ ณ เวลาพยากรณ์จริงเพื่อป้องกันข้อมูลรั่ว เปรียบเทียบ MAE/RMSE และอัตราทำนายระดับ UV ต่ำเกินกับ SARIMAX และ persistence baseline แล้วจึงพิจารณาปล่อยรุ่นใหม่โดยมีรุ่นเก่าสำหรับ rollback

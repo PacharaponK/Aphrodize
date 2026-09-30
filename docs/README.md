@@ -1,45 +1,21 @@
-# Aphrodize Project
+# เอกสาร Aphrodize
 
-โฟลเดอร์นี้เก็บเอกสารออกแบบโครงการ Aphrodize โดยเริ่มอ่านได้จาก [ภาพรวมโครงการ](project/Aphrodize.md)
+เริ่มจาก [README หลัก](../README.md) เพื่อรันระบบ แล้วเลือกอ่านตามงาน:
 
-## Project
+| ต้องการรู้เรื่อง | อ่านเอกสารนี้ |
+| --- | --- |
+| เป้าหมายและขอบเขตผลิตภัณฑ์ | [Product and Scope](project/Product%20and%20Scope.md) |
+| ข้อกำหนด consent, privacy และคำกล่าวอ้าง | [Safety and Governance](project/Safety%20and%20Governance.md) |
+| ภาพรวมระบบที่ทำงานอยู่ | [Architecture diagram](architecture/diagrams/diagram.md) และ [ER ของฐานข้อมูลปัจจุบัน](architecture/diagrams/database-er.md) |
+| ตั้งค่าและรัน FFHQ-Wrinkle | [AI README](../ai/README.md) |
+| กรอก Daily Health และดูผล | [Daily Health Input Flow](lifestyle/Daily-Health-Input-Flow.md) |
+| ใช้และดูแลฟีเจอร์ UV | [UV delivery and operation](uv-implementation.md) |
 
-- [ภาพรวมโครงการ](project/Aphrodize.md)
-- [Product and Scope](project/Product%20and%20Scope.md)
-- [Safety and Governance](project/Safety%20and%20Governance.md)
+## รายละเอียดเมื่อทำงานในส่วนนั้น
 
-## Architecture
+- **AI:** [การออกแบบและประเมินข้อมูล](ai/AI%20and%20Data.md), [annotation review](ai/Annotation-Review.md), [controlled training](ai/Curated-Training.md), [EDA](ai/EDA.md), [สรุปการพัฒนา FFHQ-Wrinkle](ai/implementation/FFHQ-Wrinkle-Implementation-Summary.md)
+- **ระบบและข้อมูล:** [System and MLOps](architecture/System%20and%20MLOps.md), [Auth and Account Database Design](architecture/Auth-Account-Database-Design.md), [เส้นทางภาพเข้า AI](architecture/diagrams/ai-photo-data-flow.md), [เส้นทาง review และ training](architecture/diagrams/ai-review-mlops-flow.md)
+- **Daily Health:** [โมเดลที่ใช้](lifestyle/Lifestyle-Model-Summary.md), [ข้อมูลและเวอร์ชันโมเดล](lifestyle/Daily-Health-Training-Pipeline.md)
+- **UV:** [ข้อมูลและผลประเมิน](uv-data-feasibility.md)
 
-- [Implementation architecture](architecture/README.md)
-- [System and MLOps](architecture/System%20and%20MLOps.md)
-- [Auth and Account Database Design](architecture/Auth-Account-Database-Design.md)
-- [Diagrams](architecture/diagrams/diagram.md)
-- [ER diagram ของฐานข้อมูลปัจจุบัน](architecture/diagrams/database-er.md)
-
-## AI
-
-- [AI and Data](ai/AI%20and%20Data.md)
-- [AI/Data prototype](ai/AI-Data-Prototype.md)
-- [Annotation review](ai/Annotation-Review.md)
-- [Controlled wrinkle training](ai/Curated-Training.md)
-- [FFHQ-Wrinkle EDA](ai/EDA.md)
-- [Implementation plans and reports](ai/implementation/FFHQ-Wrinkle-Research-Implementation-Plan.md)
-
-## Lifestyle
-
-- [Daily Health Input Flow](lifestyle/Daily-Health-Input-Flow.md)
-- [Daily-health training pipeline](lifestyle/Daily-Health-Training-Pipeline.md)
-- [Lifestyle model summary](lifestyle/Lifestyle-Model-Summary.md)
-- [Lifestyle-aware wrinkle forecast](lifestyle/Lifestyle-Aware-Wrinkle-Forecast.md)
-- [Dataset preparation plan](lifestyle/Lifestyle-Forecast-Training-Dataset-Preparation-Plan.md)
-
-## อะไรควรอยู่ที่นี่
-
-- ขอบเขตและแผนส่งมอบของโครงการ
-- การออกแบบ AI, data, system และ MLOps ที่เฉพาะกับ Aphrodize
-- ข้อกำหนดด้าน privacy, safety และ governance
-
-## อะไรไม่ควรอยู่ที่นี่
-
-- Dataset, model artifact และ source code
-- โน้ตหรือเอกสารที่ไม่เกี่ยวข้องกับโครงการ
+เอกสารที่ชื่อ `Plan` และ `proposed` เป็นข้อเสนอหรือแผนงาน ไม่ใช่คำยืนยันว่าระบบทำได้แล้ว ให้ตรวจโค้ดและคู่มือการใช้งานข้างต้นเมื่อดูสถานะปัจจุบัน รายงานการพัฒนาฉบับเดิมยังดูได้ใน Git history

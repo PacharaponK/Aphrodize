@@ -35,7 +35,7 @@ Client
      -> Label Studio SDK -> Label Studio
 ```
 
-For design decisions and data-flow detail, see [docs/architecture/README.md](docs/architecture/README.md).
+For data-flow detail, see the [architecture diagram](docs/architecture/diagrams/diagram.md).
 
 ## Requirements
 
@@ -76,8 +76,6 @@ docker compose up -d --build
 ```
 
 For local demos, run `docker compose run --rm fixture` to load the account, profile, daily-health consent, and two dated tracker entries in [`backend/fixtures/users.yaml`](backend/fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; repeated runs do not duplicate the profile or daily entries. Fixture entries use `data_source=fixture` and are excluded from user-model training.
-
-Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
 
 Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
 
@@ -209,9 +207,4 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 
 ## Further documentation
 
-- [Implementation architecture](docs/architecture/README.md)
-- [Project overview](docs/project/Aphrodize.md)
-- [Product and scope](docs/project/Product%20and%20Scope.md)
-- [AI and data](docs/ai/AI%20and%20Data.md)
-- [System and MLOps](docs/architecture/System%20and%20MLOps.md)
-- [Safety and governance](docs/project/Safety%20and%20Governance.md)
+- [Documentation guide](docs/README.md)
