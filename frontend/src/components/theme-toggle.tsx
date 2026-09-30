@@ -2,6 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLanguage } from "./language-provider";
 
 type ThemeApi = {
   setTheme: (theme: "black" | "pastel") => void;
@@ -16,6 +17,7 @@ declare global {
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const [isDark, setIsDark] = useState(false);
+  const { language } = useLanguage();
 
   useEffect(() => {
     const syncTheme = () => setIsDark(document.documentElement.dataset.theme === "black");
@@ -43,7 +45,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     setIsDark(nextTheme === "black");
   }
 
-  const label = isDark ? "เปลี่ยนเป็นธีมสว่าง" : "เปลี่ยนเป็นธีมมืด";
+  const label = language === "en"
+    ? isDark ? "Switch to light theme" : "Switch to dark theme"
+    : isDark ? "เปลี่ยนเป็นธีมสว่าง" : "เปลี่ยนเป็นธีมมืด";
 
   return (
     <button
@@ -55,7 +59,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggleTheme}
     >
       {isDark ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
-      <span>{isDark ? "สว่าง" : "มืด"}</span>
+      <span>{language === "en" ? isDark ? "Light" : "Dark" : isDark ? "สว่าง" : "มืด"}</span>
     </button>
   );
 }

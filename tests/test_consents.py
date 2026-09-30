@@ -5,9 +5,15 @@ import pytest
 from fastapi import HTTPException
 
 from backend.api.schemas.consent import ConsentCreate
-from backend.api.v1.routes.consents import create_consent, grant_analysis_consent
+from backend.api.v1.routes.consents import (
+    create_consent,
+    grant_analysis_consent,
+    read_image_consents,
+    revoke_analysis_consent,
+)
 from backend.core.db.models import Consent, User
 from backend.services.analysis_service import create_analysis
+from backend.services.annotation_service import ANNOTATION_CONSENT_VERSION
 from backend.services.tokens import read_access_token
 
 
@@ -98,4 +104,67 @@ async def test_grant_analysis_consent_rejects_unknown_user() -> None:
 
     with pytest.raises(HTTPException) as error:
         await grant_analysis_consent(uuid4(), Session())
+    assert error.value.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("analysis,annotations", [(False, False), (True, False), (True, True)])
+async def test_read_saved_image_consents(analysis: bool, annotations: bool) -> None:
+    owner = uuid4()
+
+    class Session:
+        async def get(self, _model, user_id):
+            assert user_id == owner
+            return User(id=owner)
+
+        async def scalars(self, statement):
+            query = statement.compile()
+            assert owner in query.params.values()
+            assert "revoked_at IS NULL" in str(query)
+            return self
+
+        def all(self):
+            return (["1.0"] if analysis else []) + (
+                [ANNOTATION_CONSENT_VERSION] if annotations else []
+            )
+
+    assert await read_image_consents(owner, Session()) == {
+        "analysis": analysis, "annotations": annotations,
+    }
+
+
+@pytest.mark.asyncio
+async def test_withdraw_analysis_consent_preserves_other_scopes() -> None:
+    owner = uuid4()
+
+    class Session:
+        committed = False
+
+        async def get(self, _model, user_id):
+            assert user_id == owner
+            return User(id=owner)
+
+        async def execute(self, statement):
+            query = statement.compile()
+            assert query.params["user_id_1"] == owner
+            assert query.params["version_1"] == "1.0"
+            assert isinstance(query.params["revoked_at"], datetime)
+
+        async def commit(self):
+            self.committed = True
+
+    session = Session()
+    await revoke_analysis_consent(owner, session)
+    assert session.committed
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("route", [read_image_consents, revoke_analysis_consent])
+async def test_saved_consent_routes_reject_unknown_user(route) -> None:
+    class Session:
+        async def get(self, _model, _id):
+            return None
+
+    with pytest.raises(HTTPException) as error:
+        await route(uuid4(), Session())
     assert error.value.status_code == 404

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, House, LogIn, LogOut, Menu, TrendingUp, UserRound, X } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { LanguageToggle, useLanguage } from "./language-provider";
@@ -80,6 +80,7 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
   showSignIn?: boolean;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
@@ -117,7 +118,10 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
     if (!mobileOpen) return;
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileOpen(false);
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+        menuButton.current?.focus();
+      }
     };
 
     window.addEventListener("keydown", closeOnEscape);
@@ -132,10 +136,11 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
           <span>Aphrodize</span>
         </Link>
         <button
+          ref={menuButton}
           type="button"
           className="app-nav-toggle"
           aria-label={language === "en" ? (mobileOpen ? "Close menu" : "Open menu") : (mobileOpen ? "ปิดเมนู" : "เปิดเมนู")}
-          aria-controls="primary-navigation"
+          aria-controls="primary-navigation navigation-controls"
           aria-expanded={mobileOpen}
           onClick={() => setMobileOpen((isOpen) => !isOpen)}
         >
@@ -160,7 +165,7 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
             );
           })}
         </nav>
-        <div className="app-navigation-controls">
+        <div id="navigation-controls" className="app-navigation-controls">
           <LanguageToggle className="app-navigation-language-toggle" />
           {showThemeToggle && <ThemeToggle className="app-navigation-theme-toggle" />}
           <AuthNavigationAction

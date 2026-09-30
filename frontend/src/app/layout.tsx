@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import localFont from "next/font/local";
 import { LanguageProvider } from "@/components/language-provider";
+import { SharedNavigation } from "@/components/shared-navigation";
 import "./globals.css";
 import "./prototype.css";
 import "./analysis.css";
@@ -44,7 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       suppressHydrationWarning
     >
       <body>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider><SharedNavigation />{children}</LanguageProvider>
         <Script src="/legacy/theme.js" strategy="beforeInteractive" />
       </body>
     </html>

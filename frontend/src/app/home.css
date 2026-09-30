@@ -106,10 +106,6 @@ html[data-theme="black"] .home-motion-frame::after { background: color-mix(in sr
     background: color-mix(in srgb, var(--primary-soft) 82%, transparent);
   }
 }
-@media (max-width: 900px) {
-  .home-dashboard-shell .app-navigation-sign-in { width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; }
-  .home-dashboard-shell .app-navigation-sign-in span { display: none; }
-}
 @media (prefers-reduced-transparency: reduce) {
   .app-navigation,
   .home-dashboard-shell .home-topbar,
