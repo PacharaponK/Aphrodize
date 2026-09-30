@@ -105,7 +105,7 @@ services:
     profiles: [ai]
     image: heartexlabs/label-studio:latest
     environment:
-      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "true"
+      LABEL_STUDIO_DISABLE_SIGNUP_WITHOUT_LINK: "false"
       LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-aphrodize@example.local}
       LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:?Set LABEL_STUDIO_PASSWORD in .env}
     volumes:

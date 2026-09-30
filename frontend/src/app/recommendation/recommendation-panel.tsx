@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { Language } from "@/components/language-provider";
 
 type Recommendation = {
   category: string;
@@ -49,39 +50,118 @@ type Result = {
   disclaimer: string;
 };
 
-const REGION_LABELS: Record<string, string> = {
-  image_left_periocular: "รอบดวงตาด้านซ้ายของภาพ",
-  image_right_periocular: "รอบดวงตาด้านขวาของภาพ",
+const COPY = {
+  th: {
+    loading: "กำลังโหลดคำแนะนำ…",
+    errorFallback: "โหลดคำแนะนำไม่สำเร็จ",
+    signIn: "เข้าสู่ระบบ",
+    noData: "ยังไม่มีข้อมูลคำแนะนำ",
+    safetyBlocked: "หยุดคำแนะนำเพื่อความปลอดภัย",
+    updateFirst: "ต้องอัปเดตข้อมูลก่อน",
+    startQuestionnaire: "เริ่มตอบแบบสอบถาม →",
+    updateSafety: "อัปเดตข้อมูลความปลอดภัย →",
+    editProfile: "แก้ไขข้อมูลผิวและการกันแดด →",
+    category: "หมวดผลิตภัณฑ์",
+    source: "ที่มาของคำแนะนำ",
+    dataUsed: "ข้อมูลที่ใช้:",
+    imageScore: "คะแนนจากภาพ",
+    dailyReported: "ข้อมูลสุขภาพรายวันที่คุณรายงาน",
+    selfReported: "ข้อมูลที่คุณรายงาน",
+    regions: "บริเวณคะแนนที่เผยแพร่:",
+    rule: "กฎ",
+    knowledgeBase: "ฐานข้อมูล",
+    noGuidance: "ยังไม่มีคำแนะนำ",
+    startWithData: "เริ่มจากข้อมูลที่มี",
+    updateProfile: "แก้ไขข้อมูลผิวและการกันแดด →",
+    supportingData: "ข้อมูลประกอบ",
+    dailyHealth: "ข้อมูลสุขภาพรายวันที่คุณรายงาน",
+    dryness: "ความแห้งผิว",
+    sleep: "การนอน",
+    water: "น้ำ",
+    outdoor: "กิจกรรมกลางแจ้ง",
+    minutes: "นาที",
+    ml: "มล.",
+    notRecorded: "ไม่ระบุ",
+    usesReportedData: "ใช้เฉพาะข้อมูลที่คุณรายงานเอง; ค่าคาดการณ์จากโมเดล Daily Health ไม่ถูกใช้เพื่อแนะนำผลิตภัณฑ์",
+    sourceLanguage: "คำอธิบายคำแนะนำและแหล่งอ้างอิงแสดงตามภาษาต้นฉบับ",
+    imageNotUsed: "คะแนนจากภาพไม่ได้ถูกใช้:",
+    imageScoreUnavailable: "คะแนนภาพไม่พร้อมใช้งาน",
+    dateUnknown: "วันที่ไม่ระบุ",
+  },
+  en: {
+    loading: "Loading guidance…",
+    errorFallback: "Could not load guidance",
+    signIn: "Sign in",
+    noData: "No guidance data is available yet.",
+    safetyBlocked: "Guidance paused for safety",
+    updateFirst: "Update your information first",
+    startQuestionnaire: "Start questionnaire →",
+    updateSafety: "Update safety information →",
+    editProfile: "Edit skin and sun-care information →",
+    category: "Product category",
+    source: "Why this is shown",
+    dataUsed: "Information used:",
+    imageScore: "Image score",
+    dailyReported: "Self-reported daily health data",
+    selfReported: "Self-reported information",
+    regions: "Released scored areas:",
+    rule: "Rule",
+    knowledgeBase: "Knowledge base",
+    noGuidance: "No guidance available",
+    startWithData: "Start with your information",
+    updateProfile: "Edit skin and sun-care information →",
+    supportingData: "Supporting data",
+    dailyHealth: "Your self-reported daily health data",
+    dryness: "Skin dryness",
+    sleep: "Sleep",
+    water: "Water",
+    outdoor: "Outdoor exposure",
+    minutes: "min",
+    ml: "ml",
+    notRecorded: "Not recorded",
+    usesReportedData: "Only information you reported is used. Daily Health model estimates are not used for product guidance.",
+    sourceLanguage: "Guidance descriptions and references are shown in their source language.",
+    imageNotUsed: "Image score not used:",
+    imageScoreUnavailable: "Image score is unavailable",
+    dateUnknown: "Date not specified",
+  },
+} as const;
+
+const REGION_LABELS: Record<string, { th: string; en: string }> = {
+  image_left_periocular: { th: "รอบดวงตาด้านซ้ายของภาพ", en: "Image-left eye area" },
+  image_right_periocular: { th: "รอบดวงตาด้านขวาของภาพ", en: "Image-right eye area" },
 };
 
-const OUTDOOR_LABELS: Record<number, string> = {
-  1: "ต่ำกว่า 1 ชั่วโมง",
-  2: "1–น้อยกว่า 3 ชั่วโมง",
-  3: "3–น้อยกว่า 4 ชั่วโมง",
-  4: "4 ชั่วโมงขึ้นไป",
+const OUTDOOR_LABELS: Record<number, { th: string; en: string }> = {
+  1: { th: "ต่ำกว่า 1 ชั่วโมง", en: "Under 1 hour" },
+  2: { th: "1–น้อยกว่า 3 ชั่วโมง", en: "1 to under 3 hours" },
+  3: { th: "3–น้อยกว่า 4 ชั่วโมง", en: "3 to under 4 hours" },
+  4: { th: "4 ชั่วโมงขึ้นไป", en: "4 hours or more" },
 };
 
-const REASON_LABELS: Record<string, string> = {
-  reported_severe_irritation: "คุณรายงานการระคายเคืองรุนแรง",
-  reported_allergy: "คุณรายงานประวัติการแพ้ผลิตภัณฑ์",
-  reported_high_sensitivity: "คุณรายงานว่าผิวไวต่อการระคายเคืองสูง",
-  no_supported_rule_inputs: "ข้อมูลที่บันทึกยังไม่ตรงกับกฎคำแนะนำที่มี",
-  safety_screening_incomplete: "กรุณาบันทึกข้อมูลความไวต่อการระคายเคืองและประวัติแพ้ผลิตภัณฑ์ก่อน",
-  analysis_not_complete: "ผลวิเคราะห์ภาพยังไม่เสร็จ",
-  image_quality_below_threshold: "คุณภาพภาพไม่ผ่านเกณฑ์",
-  wrinkle_confidence_not_released: "คะแนนริ้วรอยยังไม่ผ่านเกณฑ์ความเชื่อมั่นที่เผยแพร่",
-  wrinkle_calibration_not_released: "ยังไม่มีการเผยแพร่การปรับเทียบคะแนนริ้วรอยนี้",
-  wrinkle_provenance_incomplete: "ข้อมูลรุ่นของคะแนนริ้วรอยไม่ครบ",
-  released_score_missing: "ไม่มีคะแนนริ้วรอยที่เผยแพร่สำหรับภาพนี้",
+const REASON_LABELS: Record<string, { th: string; en: string }> = {
+  reported_severe_irritation: { th: "คุณรายงานการระคายเคืองรุนแรง", en: "You reported severe irritation." },
+  reported_allergy: { th: "คุณรายงานประวัติการแพ้ผลิตภัณฑ์", en: "You reported a product allergy." },
+  reported_high_sensitivity: { th: "คุณรายงานว่าผิวไวต่อการระคายเคืองสูง", en: "You reported high skin sensitivity." },
+  no_supported_rule_inputs: { th: "ข้อมูลที่บันทึกยังไม่ตรงกับกฎคำแนะนำที่มี", en: "Your recorded information does not match an available guidance rule." },
+  safety_screening_incomplete: { th: "กรุณาบันทึกข้อมูลความไวต่อการระคายเคืองและประวัติแพ้ผลิตภัณฑ์ก่อน", en: "Complete the skin-sensitivity and product-allergy questions first." },
+  analysis_not_complete: { th: "ผลวิเคราะห์ภาพยังไม่เสร็จ", en: "Image analysis is not complete." },
+  image_quality_below_threshold: { th: "คุณภาพภาพไม่ผ่านเกณฑ์", en: "The image did not meet the quality threshold." },
+  wrinkle_confidence_not_released: { th: "คะแนนริ้วรอยยังไม่ผ่านเกณฑ์ความเชื่อมั่นที่เผยแพร่", en: "The wrinkle score has not met its release confidence threshold." },
+  wrinkle_calibration_not_released: { th: "ยังไม่มีการเผยแพร่การปรับเทียบคะแนนริ้วรอยนี้", en: "Calibration for this wrinkle score has not been released." },
+  wrinkle_provenance_incomplete: { th: "ข้อมูลรุ่นของคะแนนริ้วรอยไม่ครบ", en: "The wrinkle score version information is incomplete." },
+  released_score_missing: { th: "ไม่มีคะแนนริ้วรอยที่เผยแพร่สำหรับภาพนี้", en: "No released wrinkle score is available for this image." },
 };
 
-function formatThaiDate(value: string | undefined): string {
-  if (!value) return "วันที่ไม่ระบุ";
+function formatDate(value: string | undefined, language: Language): string {
+  const copy = COPY[language];
+  if (!value) return copy.dateUnknown;
   const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf()) ? value : new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "short", year: "numeric" }).format(parsed);
+  return Number.isNaN(parsed.valueOf()) ? value : new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(parsed);
 }
 
-export function RecommendationPanel() {
+export function RecommendationPanel({ language = "th" }: { language?: Language }) {
+  const copy = COPY[language];
   const [data, setData] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -100,49 +180,54 @@ export function RecommendationPanel() {
     return () => { active = false; };
   }, []);
 
-  if (loading) return <p role="status">กำลังโหลดคำแนะนำ…</p>;
+  if (loading) return <p role="status">{copy.loading}</p>;
   if (error) {
-    return <div className="recommendation-card" role="status"><p>{error}</p>{error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">เข้าสู่ระบบ →</Link>}</div>;
+    return <div className="recommendation-card" role="status"><p>{error || copy.errorFallback}</p>{error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">{copy.signIn} →</Link>}</div>;
   }
-  if (!data) return <p role="status">ยังไม่มีข้อมูลคำแนะนำ</p>;
+  if (!data) return <p role="status">{copy.noData}</p>;
+
+  const reason = (key: string | null | undefined, fallback: string) => key
+    ? REASON_LABELS[key]?.[language] ?? fallback
+    : fallback;
 
   return (
     <div aria-live="polite">
+      {language === "th" && <p className="analysis-localization-note">{copy.sourceLanguage}</p>}
       {data.status === "safety_blocked" ? (
-        <article className="recommendation-card recommendation-blocked"><span className="status">หยุดคำแนะนำเพื่อความปลอดภัย</span><h3>ต้องอัปเดตข้อมูลก่อน</h3><p>{REASON_LABELS[data.blocked_reason ?? ""] ?? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน"}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? "เริ่มตอบแบบสอบถาม →" : "อัปเดตข้อมูลความปลอดภัย →"}</Link></article>
+        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link></article>
       ) : data.recommendations.length ? (
         <div className="recommendation-list">
           {data.recommendations.map((item) => (
             <article className="recommendation-card" key={item.rule_id}>
-              <span className="status moderate">หมวดผลิตภัณฑ์</span>
+              <span className="status moderate">{copy.category}</span>
               <h3>{item.category}</h3>
               <p>{item.rationale}</p>
               <div className="rule-box">
-                <h3>ที่มาของคำแนะนำ</h3>
-                <p>ข้อมูลที่ใช้: {item.signal_sources.map((source) => source === "image" ? "คะแนนจากภาพ" : source === "daily_health_reported" ? "Daily Health ที่คุณรายงาน" : "คุณรายงาน").join(" + ")}</p>
-                {item.wrinkle_regions?.length ? <p>บริเวณคะแนนที่เผยแพร่: {item.wrinkle_regions.map((region) => REGION_LABELS[region] ?? region).join(", ")}</p> : null}
-                {item.wrinkle_region_scores?.map((region) => <p key={region.region}>{REGION_LABELS[region.region] ?? region.region}: wrinkle score {region.score.toFixed(1)} / 100</p>)}
-                <p className="metadata">กฎ {item.rule_id} · v{item.rule_version} · ฐานข้อมูล {item.knowledge_source.id} v{item.knowledge_source.version}</p>
+                <h3>{copy.source}</h3>
+                <p>{copy.dataUsed} {item.signal_sources.map((source) => source === "image" ? copy.imageScore : source === "daily_health_reported" ? copy.dailyReported : copy.selfReported).join(" + ")}</p>
+                {item.wrinkle_regions?.length ? <p>{copy.regions} {item.wrinkle_regions.map((region) => REGION_LABELS[region]?.[language] ?? region).join(", ")}</p> : null}
+                {item.wrinkle_region_scores?.map((region) => <p key={region.region}>{REGION_LABELS[region.region]?.[language] ?? region.region}: wrinkle score {region.score.toFixed(1)} / 100</p>)}
+                <p className="metadata">{copy.rule} {item.rule_id} · v{item.rule_version} · {copy.knowledgeBase} {item.knowledge_source.id} v{item.knowledge_source.version}</p>
                 <p><a href={item.knowledge_source.reference.url} target="_blank" rel="noreferrer">{item.knowledge_source.reference.title} ↗</a></p>
               </div>
             </article>
           ))}
         </div>
       ) : (
-        <article className="recommendation-card recommendation-blocked"><span className="status">ยังไม่มีคำแนะนำ</span><h3>เริ่มจากข้อมูลที่มี</h3><p>{REASON_LABELS[data.blocked_reason ?? ""] ?? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ"}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? "เริ่มตอบแบบสอบถาม →" : "แก้ไขข้อมูลผิวและการกันแดด →"}</Link></article>
+        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.noGuidance}</span><h3>{copy.startWithData}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ" : "There is not enough recorded information for an available guidance rule.")}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.editProfile}</Link></article>
       )}
       {(data.daily_context.reported_dryness || data.daily_context.lifestyle) && (
-        <section className="recommendation-context" aria-label="ข้อมูลประกอบจาก Daily Health">
-          <div className="recommendation-context-heading"><div><p className="eyebrow">ข้อมูลประกอบ</p><h3>Daily Health ที่คุณรายงาน</h3></div></div>
+        <section className="recommendation-context" aria-label={copy.supportingData}>
+          <div className="recommendation-context-heading"><div><p className="eyebrow">{copy.supportingData}</p><h3>{copy.dailyHealth}</h3></div></div>
           <div className="recommendation-context-grid">
-            {data.daily_context.reported_dryness && <div><span>ความแห้งผิว · {formatThaiDate(data.daily_context.reported_dryness.observed_date)}</span><strong>{data.daily_context.reported_dryness.value} <small>/ 10</small></strong></div>}
-            {data.daily_context.lifestyle && <><div><span>การนอน · {formatThaiDate(data.daily_context.lifestyle.observed_date)}</span><strong>{data.daily_context.lifestyle.sleep_duration_minutes} <small>นาที</small></strong></div><div><span>น้ำ · {formatThaiDate(data.daily_context.lifestyle.observed_date)}</span><strong>{data.daily_context.lifestyle.water_intake_ml} <small>มล.</small></strong></div><div><span>กิจกรรมกลางแจ้ง · {formatThaiDate(data.daily_context.lifestyle.observed_date)}</span><strong><small>{OUTDOOR_LABELS[data.daily_context.lifestyle.outdoor_exposure_choice] ?? "ไม่ระบุ"}</small></strong></div></>}
+            {data.daily_context.reported_dryness && <div><span>{copy.dryness} · {formatDate(data.daily_context.reported_dryness.observed_date, language)}</span><strong>{data.daily_context.reported_dryness.value} <small>/ 10</small></strong></div>}
+            {data.daily_context.lifestyle && <><div><span>{copy.sleep} · {formatDate(data.daily_context.lifestyle.observed_date, language)}</span><strong>{data.daily_context.lifestyle.sleep_duration_minutes} <small>{copy.minutes}</small></strong></div><div><span>{copy.water} · {formatDate(data.daily_context.lifestyle.observed_date, language)}</span><strong>{data.daily_context.lifestyle.water_intake_ml} <small>{copy.ml}</small></strong></div><div><span>{copy.outdoor} · {formatDate(data.daily_context.lifestyle.observed_date, language)}</span><strong><small>{OUTDOOR_LABELS[data.daily_context.lifestyle.outdoor_exposure_choice]?.[language] ?? copy.notRecorded}</small></strong></div></>}
           </div>
-          <p>ใช้เฉพาะข้อมูลที่คุณรายงานเอง; ค่าคาดการณ์จากโมเดล Daily Health ไม่ถูกใช้เพื่อแนะนำผลิตภัณฑ์</p>
+          <p>{copy.usesReportedData}</p>
         </section>
       )}
       {data.image_context.status !== "eligible" && (
-        <p className="recommendation-note">คะแนนจากภาพไม่ได้ถูกใช้: {REASON_LABELS[data.image_context.reason ?? ""] ?? "คะแนนภาพไม่พร้อมใช้งาน"}</p>
+        <p className="recommendation-note">{copy.imageNotUsed} {reason(data.image_context.reason, copy.imageScoreUnavailable)}</p>
       )}
       <p className="metadata">กฎคำแนะนำ v{data.rule_version}{data.image_context.score_version ? ` · score ${data.image_context.score_version}` : ""}{data.image_context.calibration_version ? ` · calibration ${data.image_context.calibration_version}` : ""}</p>
       <p className="recommendation-warning">{data.disclaimer}</p>

@@ -14,7 +14,7 @@ const navigationItems = [
   { id: "capture", href: "/capture", label: "วิเคราะห์ภาพ", Icon: Camera },
   { id: "clients", href: "/clients", label: "สุขภาพรายวัน", Icon: Activity },
   { id: "trend", href: "/trend", label: "แนวโน้ม", Icon: TrendingUp },
-  { id: "profile", href: "/profile", label: "Skin profile", Icon: UserRound },
+  { id: "profile", href: "/profile", label: "โปรไฟล์ผิว", Icon: UserRound },
 ] as const;
 
 const englishNavigation = { dashboard: "Overview", capture: "Analyze image", clients: "Daily health", trend: "Trends", profile: "Skin profile" };
