@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight, Camera, Check, ImagePlus, ScanFace, ShieldCheck, Sun, UserRound } from "lucide-react";
+import "./capture.css";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { WorkspaceShell } from "@/components/workspace-shell";
@@ -136,63 +138,81 @@ export default function CapturePage() {
   }
 
   return (
-    <WorkspaceShell eyebrow="IMAGE ANALYSIS" title="วิเคราะห์ภาพ" detail="ขั้นตอน 1 จาก 2 · เตรียมภาพ">
-        <div className="capture-layout">
-        <section className="page-content capture-panel" aria-labelledby="capture-title">
-          <p className="eyebrow">{t("เริ่มวิเคราะห์", "START ANALYSIS")}</p>
-          <h2 id="capture-title">{t("แนบภาพหรือถ่ายภาพใบหน้า", "Upload or capture a face image")}</h2>
-          <p className="capture-intro">{t("เลือกภาพที่เห็นใบหน้าชัดเจน หรือเปิดกล้องเพื่อถ่ายภาพใหม่", "Choose a clear face image or open the camera to take a new one.")}</p>
-          <div className="upload-box capture-preview">
-            {/* Show live video first, a selected-file preview second, or the empty prompt. */}
-            {cameraOpen ? (
-              <video ref={video} autoPlay muted playsInline aria-label={t("ภาพจากกล้อง", "Camera preview")} />
-            ) : preview ? (
-              // Browser object URLs cannot be optimized by Next Image.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview} alt={t("ภาพที่เลือกเพื่อวิเคราะห์", "Selected image for analysis")} />
-            ) : (
-              <div><div className="upload-icon">⌁</div><h3>{t("เลือกภาพหรือเปิดกล้อง", "Choose an image or open the camera")}</h3><p>JPEG, PNG, WebP · {t("ไม่เกิน", "up to")} 10 MB</p></div>
-            )}
+    <div className="capture-page">
+      <WorkspaceShell eyebrow="" title={t("วิเคราะห์ภาพใบหน้า", "Analyze your face image")}>
+        <ol className="capture-steps" aria-label={t("ขั้นตอนการวิเคราะห์", "Analysis steps")}>
+          <li aria-current="step"><span>1</span>{t("เตรียมภาพ", "Prepare image")}</li>
+          <li><ArrowRight size={16} aria-hidden="true" /><span>2</span>{t("ดูผลวิเคราะห์", "View results")}</li>
+        </ol>
+        <section className="capture-studio" aria-labelledby="capture-title">
+          <div className="capture-image-area">
+            <h2 id="capture-title">{t("เริ่มจากภาพที่ชัดเจน", "Start with a clear image")}</h2>
+            <p className="capture-description">{t("เลือกภาพใบหน้าหรือถ่ายภาพใหม่ เพื่อเตรียมส่งวิเคราะห์", "Choose a face image or take a new photo to prepare your analysis.")}</p>
+            <div className={`capture-image-frame${preview || cameraOpen ? " has-image" : ""}`}>
+              {cameraOpen ? (
+                <video ref={video} autoPlay muted playsInline aria-label={t("ภาพจากกล้อง", "Camera preview")} />
+              ) : preview ? (
+                // Browser object URLs cannot be optimized by Next Image.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={preview} alt={t("ภาพที่เลือกเพื่อวิเคราะห์", "Selected image for analysis")} />
+              ) : (
+                <div className="capture-empty">
+                  <ScanFace size={88} strokeWidth={1} aria-hidden="true" />
+                  <h3>{t("ภาพใบหน้าของคุณ", "Your face image")}</h3>
+                  <p>{t("หน้าตรง เห็นใบหน้าชัดเจน", "Face forward, with your face clearly visible")}</p>
+                  <small>JPEG, PNG, WebP · {t("ไม่เกิน 10 MB", "up to 10 MB")}</small>
+                </div>
+              )}
+            </div>
+            {file && <p className="capture-selected" role="status"><Check size={16} aria-hidden="true" /><span>{file.name}</span><small>{t("ยังไม่ได้ส่งภาพ", "Not uploaded yet")}</small></p>}
+            <div className="capture-image-controls">
+              <label className="primary-button capture-file"><ImagePlus size={18} aria-hidden="true" />{preview ? t("เปลี่ยนภาพ", "Change image") : t("เลือกภาพ", "Choose image")}
+                <input type="file" aria-label={t("เลือกภาพจากเครื่อง", "Choose an image file")} accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
+              </label>
+              {!cameraOpen && <label className="secondary-button capture-file capture-phone"><Camera size={18} aria-hidden="true" />{t("ถ่ายภาพ", "Take a photo")}
+                <input type="file" aria-label={t("ถ่ายภาพด้วยโทรศัพท์", "Take a phone photo")} accept="image/*" capture="user" disabled={busy} onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
+              </label>}
+              {cameraOpen ? (
+                <><button type="button" className="primary-button" disabled={busy} onClick={capturePhoto}><Camera size={18} aria-hidden="true" />{t("ใช้ภาพนี้", "Use this photo")}</button><button type="button" className="secondary-button" onClick={stopCamera}>{t("ปิดกล้อง", "Close camera")}</button></>
+              ) : (
+                <button type="button" className="secondary-button capture-webcam" disabled={busy} onClick={openCamera}><Camera size={18} aria-hidden="true" />{t("เปิดกล้อง", "Open camera")}</button>
+              )}
+            </div>
           </div>
-          <div className="capture-controls">
-            {/* Both file inputs end at chooseImage, so they share validation. */}
-            <label className="secondary-button capture-file">{t("เลือกภาพจากเครื่อง", "Choose a file")}
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
+          <aside className="capture-tips" aria-labelledby="capture-tips-title">
+            <h2 id="capture-tips-title">{t("เตรียมภาพให้พร้อม", "A little preparation")}</h2>
+            <p>{t("ถ่ายในเงื่อนไขใกล้เคียงกันทุกครั้ง เพื่อให้เทียบภาพได้ดีขึ้น", "Use similar conditions each time for more comparable images.")}</p>
+            <ul>
+              <li><UserRound size={22} aria-hidden="true" /><div><strong>{t("หันหน้าตรง", "Face forward")}</strong><p>{t("เห็นใบหน้าเพียงหนึ่งคนในภาพ", "Keep just one person in the frame.")}</p></div></li>
+              <li><Sun size={22} aria-hidden="true" /><div><strong>{t("ใช้แสงสม่ำเสมอ", "Find even lighting")}</strong><p>{t("ให้เห็นรายละเอียดชัดเจน ภาพไม่เบลอ", "Keep facial details clear and avoid blur.")}</p></div></li>
+              <li><ScanFace size={22} aria-hidden="true" /><div><strong>{t("ไม่ใช้ฟิลเตอร์", "Skip the filters")}</strong><p>{t("ใช้ภาพอย่างน้อย 512 × 512 พิกเซล", "Use an image of at least 512 × 512 pixels.")}</p></div></li>
+            </ul>
+            <div className="capture-local-note"><ShieldCheck size={20} aria-hidden="true" /><p>{t("ภาพตัวอย่างอยู่ในเบราว์เซอร์จนกว่าคุณจะกดวิเคราะห์", "Your preview stays in this browser until you choose to analyze.")}</p></div>
+          </aside>
+          <div className="capture-permissions">
+            <h2>{t("ความยินยอมและข้อมูลของคุณ", "Your consent, your data")}</h2>
+            <label className="capture-consent-row"><input type="checkbox" checked={consent} disabled={busy} onChange={(event) => setConsent(event.target.checked)} />
+              <span><span className="capture-consent-heading"><strong>{t("ยินยอมให้วิเคราะห์ภาพ", "Consent to image analysis")}</strong><small>{t("จำเป็น", "Required")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมให้วิเคราะห์ภาพใบหน้าเพื่อแสดงคะแนนทดลองและภาพ mask โดยภาพผลจะถูกลบภายใน 24 ชั่วโมง ผลนี้ยังไม่ผ่านการตรวจสอบทางคลินิก", "I consent to face-image analysis for experimental scores and a mask preview. Result images are deleted within 24 hours. This system has not been clinically validated.")}</span></span>
             </label>
-            <label className="secondary-button capture-file">{t("ถ่ายด้วยโทรศัพท์", "Take a phone photo")}
-              <input type="file" accept="image/*" capture="user" onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
+            <label className="capture-consent-row"><input type="checkbox" checked={annotationConsent} disabled={busy} onChange={(event) => setAnnotationConsent(event.target.checked)} />
+              <span><span className="capture-consent-heading"><strong>{t("อนุญาตให้ผู้ตรวจทบทวนป้ายกำกับภาพ", "Allow human image-label review")}</strong><small>{t("ไม่บังคับ", "Optional")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมเพิ่มเติมให้เก็บภาพใบหน้าที่จัดแนวแล้วเพื่อให้ผู้ตรวจแก้ป้ายกำกับริ้วรอยใน Label Studio โดยกำหนดลบหลัง 30 วัน และไม่นำไปฝึกโมเดลอัตโนมัติ", "I separately consent to retain an aligned face image for human wrinkle-label review in Label Studio. It will be deleted after 30 days and will not be used for automated model training.")}</span></span>
             </label>
-            {cameraOpen ? (
-              <><button type="button" className="primary-button" onClick={capturePhoto}>{t("ใช้ภาพจากกล้อง", "Use camera image")}</button><button type="button" className="secondary-button" onClick={stopCamera}>{t("ปิดกล้อง", "Close camera")}</button></>
-            ) : (
-              <button type="button" className="secondary-button" onClick={openCamera}>{t("เปิดเว็บแคม", "Open webcam")}</button>
-            )}
+            <details className="capture-privacy">
+              <summary>{t("การเก็บภาพและถอนความยินยอม", "Image retention and consent withdrawal")}</summary>
+              <p>{t("ภาพผลทั่วไปลบภายใน 24 ชั่วโมง หากเลือกให้ตรวจป้ายกำกับ ภาพที่จัดแนวแล้วจะถูกลบหลัง 30 วันหรือเมื่อถอนความยินยอม", "Standard result images are deleted within 24 hours. If you opt into label review, the aligned image is deleted after 30 days or when consent is withdrawn.")}</p>
+              <button type="button" className="secondary-button" disabled={busy} onClick={revokeAnnotationConsent}>{t("ถอนความยินยอมตรวจป้ายกำกับภาพที่ส่งจากเบราว์เซอร์นี้", "Revoke image-label review consent for this browser")}</button>
+            </details>
+            {notice && <p className="capture-notice" role="status">{notice}</p>}
+            {error && <p className="capture-error" role="alert">{error}</p>}
+            <div className="capture-submit-area">
+              <div><button type="button" className="primary-button" aria-describedby="capture-submit-hint" disabled={busy || !file || !consent} onClick={submit}>{busy ? t("กำลังส่งภาพ…", "Submitting image…") : t("วิเคราะห์ภาพ", "Analyze image")}<ArrowRight size={18} aria-hidden="true" /></button>
+                <p id="capture-submit-hint">{!file || !consent ? t("เลือกภาพและให้ความยินยอมเพื่อเริ่ม", "Choose an image and give consent to begin.") : t("พร้อมส่งภาพเพื่อวิเคราะห์", "Ready to submit your image for analysis.")}</p>
+              </div>
+              <Link href="/#dashboard">{t("กลับหน้าภาพรวม", "Back to overview")}</Link>
+            </div>
           </div>
-          {/* Analysis consent is required before the submit button can be used. */}
-          <label className="capture-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-            <span>{t("ฉันยินยอมให้วิเคราะห์ภาพใบหน้าเพื่อแสดงคะแนนทดลองและภาพ mask โดยภาพผลจะถูกลบภายใน 24 ชั่วโมง ผลนี้ยังไม่ผ่านการตรวจสอบทางคลินิก", "I consent to face-image analysis for experimental scores and a mask preview. Result images are deleted within 24 hours. This system has not been clinically validated.")}</span>
-          </label>
-          {/* Human review is optional and has a separate 30-day retention window. */}
-          <label className="capture-consent"><input type="checkbox" checked={annotationConsent} onChange={(event) => setAnnotationConsent(event.target.checked)} />
-            <span>{t("ฉันยินยอมเพิ่มเติมให้เก็บภาพใบหน้าที่จัดแนวแล้วเพื่อให้ผู้ตรวจแก้ป้ายกำกับริ้วรอยใน Label Studio โดยกำหนดลบหลัง 30 วัน และไม่นำไปฝึกโมเดลอัตโนมัติ", "I separately consent to retain an aligned face image for human wrinkle-label review in Label Studio. It will be deleted after 30 days and will not be used for automated model training.")}</span>
-          </label>
-          {/* Revocation applies to review consents tracked by this browser. */}
-          <button type="button" className="secondary-button" disabled={busy} onClick={revokeAnnotationConsent}>{t("ถอนความยินยอมตรวจป้ายกำกับภาพที่ส่งจากเบราว์เซอร์นี้", "Revoke image-label review consent for this browser")}</button>
-          {notice && <p role="status">{notice}</p>}
-          {error && <p className="capture-error" role="alert">{error}</p>}
-          <div className="page-actions"><button type="button" className="primary-button" disabled={busy || !file || !consent} onClick={submit}>{busy ? t("กำลังส่งภาพ…", "Submitting image…") : t("วิเคราะห์ภาพ →", "Analyze image →")}</button><Link className="secondary-button" href="/">{t("กลับหน้าภาพรวม", "Back to overview")}</Link></div>
         </section>
-        <aside className="capture-guide" aria-label={t("คำแนะนำก่อนวิเคราะห์", "Before you analyze")}>
-          <p className="eyebrow">{t("ภาพที่เหมาะสม", "IMAGE GUIDANCE")}</p>
-          <h2>{t("ถ่ายภาพให้เทียบผลได้ดีขึ้น", "Get more comparable images")}</h2>
-          <ul>
-            <li><strong>01</strong><span>{t("หันหน้าตรงและเห็นใบหน้าเพียงหนึ่งคน", "Face forward with only one person in frame")}</span></li>
-            <li><strong>02</strong><span>{t("ใช้แสงสม่ำเสมอ ภาพไม่เบลอ", "Use even lighting and avoid blur")}</span></li>
-            <li><strong>03</strong><span>{t("ไม่ใช้ฟิลเตอร์ และให้ภาพมีขนาดอย่างน้อย 512 × 512 พิกเซล", "Avoid filters and use an image at least 512 × 512 pixels")}</span></li>
-          </ul>
-          <div className="capture-guide-note"><strong>{t("ข้อมูลของคุณ", "YOUR DATA")}</strong><p>{t("ภาพผลทั่วไปลบภายใน 24 ชั่วโมง หากเลือกให้ตรวจป้ายกำกับ ภาพที่จัดแนวแล้วจะถูกลบหลัง 30 วันหรือเมื่อถอนความยินยอม", "Standard result images are deleted within 24 hours. If you opt into label review, the aligned image is deleted after 30 days or when consent is withdrawn.")}</p></div>
-        </aside>
-        </div>
-    </WorkspaceShell>
+      </WorkspaceShell>
+    </div>
   );
 }
