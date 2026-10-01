@@ -24,6 +24,8 @@ x-api-environment: &api-environment
   MLFLOW_TRACKING_URI: http://mlflow:5000
   MODEL_VERSION: ${MODEL_VERSION:-ffhq-wrinkle-stage2-unet}
   APHRODIZE_WRINKLE_APPROVED_MANIFEST: ${APHRODIZE_WRINKLE_APPROVED_MANIFEST:-}
+  APHRODIZE_WRINKLE_REVIEWED_POLICY: ${APHRODIZE_WRINKLE_REVIEWED_POLICY:-}
+  APHRODIZE_WRINKLE_POLICY_BUNDLE: ${APHRODIZE_WRINKLE_POLICY_BUNDLE:-}
 
 x-container-logging: &container-logging
   driver: local
@@ -220,6 +222,8 @@ services:
     restart: unless-stopped
     environment: *api-environment
     volumes:
+      - ./backend:/app/backend:ro
+      - ./ai:/app/ai:ro
       - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
     depends_on:
       api:

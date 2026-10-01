@@ -69,6 +69,8 @@ You may also change the matching usernames, plus `MINIO_ACCESS_KEY`, `LABEL_STUD
 
 The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ffhq-wrinkle/`; see [ai/README.md](ai/README.md) for the required layout and checksums. Compose mounts this directory read-only.
 
+The project owner approved the deployed UNet checkpoint on 2026-10-01. To activate that reviewed release, set `APHRODIZE_WRINKLE_REVIEWED_POLICY=/app/ai/ffhq_wrinkle/reviewed_policy.json` in the local `.env`, then run `docker compose --profile ai up -d --no-deps inference-worker`. The [reviewed policy](ai/ffhq_wrinkle/reviewed_policy.json) pins the checkpoint hash and pipeline versions; a mismatch withholds scores. Manual release records `release_basis=manual_review`, an approval reference, and `calibration_status=not_calibrated` without inventing a validation dataset, sample count, or threshold. Image quality, consent, and product-allergy screening still apply. A statistically calibrated release instead uses `APHRODIZE_WRINKLE_POLICY_BUNDLE`; only one release source can be configured. New analyses use the active policy; saved results retain their original release metadata. In this local development stack, the inference worker mounts backend and AI source read-only; restart it after changing worker code.
+
 ### 2. Build and start services
 
 ```powershell

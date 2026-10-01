@@ -30,21 +30,30 @@ class ConfidencePolicy:
     prediction_version: str | None = None
     preprocessing_version: str | None = None
     threshold_version: str | None = None
+    approval_reference: str | None = None
 
     @classmethod
-    def from_dict(cls, value: dict[str, object]) -> "ConfidencePolicy":
+    def from_dict(cls, value: dict[str, object]) -> ConfidencePolicy:
         policy = cls(**value)
         policy.validate()
         return policy
 
     def validate(self) -> None:
-        if self.status not in {"calibrated", "not_calibrated"}:
-            raise ValueError("confidence policy status must be calibrated or not_calibrated")
+        if self.status not in {"calibrated", "not_calibrated", "manually_approved"}:
+            raise ValueError("unsupported confidence policy status")
         if self.status == "calibrated":
             if self.minimum_confidence is None or not 0 <= self.minimum_confidence <= 1:
                 raise ValueError("calibrated policy requires a threshold within [0, 1]")
             if not self.calibration_version or not self.validation_dataset or self.sample_count < 1:
                 raise ValueError("calibrated policy requires validation provenance")
+        if self.status == "manually_approved":
+            if not isinstance(self.approval_reference, str) or not self.approval_reference.strip():
+                raise ValueError("manual release requires an approval reference")
+            if any(value is not None for value in (
+                self.minimum_confidence, self.calibration_version, self.validation_dataset,
+            )) or self.sample_count != 0:
+                raise ValueError("manual release must not claim statistical calibration")
+        if self.status in {"calibrated", "manually_approved"}:
             lineage = (
                 self.model_architecture,
                 self.checkpoint_sha256,
@@ -53,11 +62,11 @@ class ConfidencePolicy:
                 self.threshold_version,
             )
             if not all(lineage):
-                raise ValueError("calibrated policy requires complete model lineage")
+                raise ValueError("released policy requires complete model lineage")
 
     def compatibility_reasons(self, metadata: dict[str, object]) -> list[str]:
-        """Require a calibrated policy to match this exact model and pipeline."""
-        if self.status != "calibrated":
+        """Require a released policy to match this exact model and pipeline."""
+        if self.status not in {"calibrated", "manually_approved"}:
             return []
         model = metadata.get("model", {})
         threshold = metadata.get("threshold", {})
@@ -114,18 +123,22 @@ def evaluate_confidence(
     # Compute one image-wide summary from the probability map.
     value = decision_margin_confidence(probability, face_mask)
     reasons: list[str] = []
-    # The repository default is uncalibrated, so approved scores are withheld.
-    if policy.status != "calibrated":
+    if not np.any(face_mask):
+        reasons.append("no_evaluated_face_pixels")
+    # Manual release is explicit model approval, not a calibrated confidence threshold.
+    if policy.status == "not_calibrated":
         reasons.append("confidence_not_calibrated")
     # A calibrated policy can still reject an indecisive image.
-    elif value < float(policy.minimum_confidence):
+    elif policy.status == "calibrated" and value < float(policy.minimum_confidence):
         reasons.append("low_confidence")
     # `passed` controls whether service returns derived or experimental scores.
     return {
         "value": value,
         "method": policy.method,
         "policy_version": policy.policy_version,
-        "calibration_status": policy.status,
+        "calibration_status": "calibrated" if policy.status == "calibrated" else "not_calibrated",
+        "release_basis": "manual_review" if policy.status == "manually_approved" else "calibration",
+        "approval_reference": policy.approval_reference,
         "calibration_version": policy.calibration_version,
         "minimum_confidence": policy.minimum_confidence,
         "validation_dataset": policy.validation_dataset,

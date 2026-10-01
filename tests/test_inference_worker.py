@@ -1,3 +1,5 @@
+import sys
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -7,6 +9,30 @@ from ai.ffhq_wrinkle.quality import QualityAssessment, QualityGateError
 from backend.core.db.models import AnalysisStatus
 from backend.services.analysis_service import recommendations_for
 from backend.workers import inference_worker
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reviewed", [False, True])
+async def test_startup_normalizes_empty_optional_policy_paths(monkeypatch, reviewed) -> None:
+    policy_path = Path(__file__).parents[1] / "ai/ffhq_wrinkle/reviewed_policy.json"
+    monkeypatch.setenv("APHRODIZE_WRINKLE_REVIEWED_POLICY", str(policy_path) if reviewed else "")
+    monkeypatch.setenv("APHRODIZE_WRINKLE_POLICY_BUNDLE", "")
+    monkeypatch.setenv("APHRODIZE_WRINKLE_APPROVED_MANIFEST", "")
+    monkeypatch.setitem(
+        sys.modules, "backend.wrinkle.service",
+        SimpleNamespace(WrinkleAnalysisService=lambda **kwargs: kwargs),
+    )
+    ctx = {}
+
+    await inference_worker.startup(ctx)
+
+    options = ctx["wrinkle_service"]
+    assert options["released_policy_bundle"] is None
+    assert options["approved_model_manifest"] is None
+    if reviewed:
+        assert options["confidence_policy"].status == "manually_approved"
+    else:
+        assert options["confidence_policy"] is None
 
 
 class FakeSession:

@@ -155,7 +155,7 @@ class WrinkleAnalysisService:
         # Decision margin measures distance from a 50/50 pixel prediction.
         # It is not the probability that the score is medically correct.
         confidence = evaluate_confidence(result.probability, face_mask, self.confidence_policy)
-        # A calibrated policy is valid only for the exact model and pipeline versions.
+        # A released policy is valid only for the exact model and pipeline versions.
         compatibility_reasons = self.confidence_policy.compatibility_reasons(metadata)
         if compatibility_reasons:
             # A mismatched model or preprocessing version withholds released scores.

@@ -16,6 +16,8 @@ class ConfidenceResult(StrictModel):
     method: str
     policy_version: str
     calibration_status: Literal["calibrated", "not_calibrated"]
+    release_basis: Literal["calibration", "manual_review"] = "calibration"
+    approval_reference: str | None = None
     calibration_version: str | None
     minimum_confidence: float | None
     validation_dataset: str | None

@@ -36,12 +36,18 @@ logger = logging.getLogger(__name__)
 async def startup(ctx: dict) -> None:
     """Create one service per worker process so its model can stay in memory."""
     # Import here so the queue can start without loading AI code before startup.
+    from ai.ffhq_wrinkle.confidence import load_confidence_policy
     from backend.wrinkle.service import WrinkleAnalysisService
 
+    reviewed_policy_path = os.environ.get("APHRODIZE_WRINKLE_REVIEWED_POLICY") or None
+    reviewed_policy = load_confidence_policy(reviewed_policy_path) if reviewed_policy_path else None
+    if reviewed_policy is not None and reviewed_policy.status != "manually_approved":
+        raise ValueError("reviewed policy must record manual approval")
     # A process-local service caches its model between analysis jobs.
     ctx["wrinkle_service"] = WrinkleAnalysisService(
-        released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE"),
-        approved_model_manifest=os.environ.get("APHRODIZE_WRINKLE_APPROVED_MANIFEST"),
+        confidence_policy=reviewed_policy,
+        released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None,
+        approved_model_manifest=os.environ.get("APHRODIZE_WRINKLE_APPROVED_MANIFEST") or None,
     )
 
 

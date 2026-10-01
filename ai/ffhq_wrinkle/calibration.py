@@ -286,6 +286,8 @@ def load_released_policy_bundle(directory: str | Path) -> ConfidencePolicy:
     policy_path = directory / "candidate_confidence_policy.json"
     report_path = directory / "calibration_report.json"
     policy_value = json.loads(policy_path.read_text(encoding="utf-8"))
+    if policy_value.get("status") != "calibrated":
+        raise ValueError("calibration bundle requires a statistically calibrated policy")
     report = json.loads(report_path.read_text(encoding="utf-8"))
     if report.get("report_version") != CALIBRATION_REPORT_VERSION:
         raise ValueError("unsupported calibration report version")
