@@ -223,6 +223,8 @@ def catalog_product(**changes):
             "price_satang": 15900,
             "price_checked_at": None,
             "price_source_url": None,
+            "purchase_url": "https://example.com/buy",
+            "image_url": "https://example.com/product.jpg",
             "market": "TH",
             "application_regions": [],
             "ingredients_label": "Aqua, Glycerin",
@@ -251,6 +253,9 @@ def catalog_product(**changes):
         {"target_skin_types": ["oily"]},
         {"concerns": []},
         {"ingredients_inci": ["Aqua", "Parfum"]},
+        {"image_url": None},
+        {"purchase_url": None},
+        {"purchase_url": "javascript:alert(1)"},
         {"category": "treatment"},
     ],
 )
@@ -269,6 +274,8 @@ def test_catalog_preserves_actual_product_data_and_limits_each_category():
     assert len(matched) == 3
     assert matched[0]["id"] == str(products[0].id)
     assert matched[0]["price_satang"] == 15900
+    assert matched[0]["purchase_url"] == products[0].purchase_url
+    assert matched[0]["image_url"] == products[0].image_url
     assert matched[0]["warnings_label"] == products[0].warnings_label
     assert matched[0]["matched_claims"] == ["fragrance-free"]
     assert response["product_context"]["status"] == "ready"

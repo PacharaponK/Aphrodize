@@ -535,6 +535,15 @@ def attach_catalog_products(
         for product in products:
             if product.status != "published" or product.reviewed_at is None:
                 continue
+            # Named recommendations must include reviewed shopping links and real photos.
+            if not all(
+                isinstance(url, str) and url.startswith("https://")
+                for url in (
+                    getattr(product, "purchase_url", None),
+                    getattr(product, "image_url", None),
+                )
+            ):
+                continue
             if market is not None and getattr(product, "market", None) != market:
                 continue
             if max_price_satang is not None:
@@ -597,6 +606,8 @@ def attach_catalog_products(
                     "reviewed_at": product.reviewed_at,
                     "market": getattr(product, "market", None),
                     "price_source_url": getattr(product, "price_source_url", None),
+                    "purchase_url": getattr(product, "purchase_url", None),
+                    "image_url": getattr(product, "image_url", None),
                     "application_regions": getattr(product, "application_regions", None) or [],
                     "matched_skin_type": skin_type
                     if skin_type in product.target_skin_types

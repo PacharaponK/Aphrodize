@@ -49,3 +49,22 @@ No ninth verified candidate was added. **Bioderma Sensibio Defensive, 40 ml** ha
 ### Existing fixture identity collision
 
 The existing fixture row `CeraVe / AM Facial Moisturising Lotion SPF 50 / สูตรเว็บไซต์ผู้ผลิตไทย (TH)` and proposed priced row `CeraVe / AM Facial Moisturising Lotion SPF 50 / 52 ml สูตรเว็บไซต์ไทย (TH)` share the exact source URL `https://www.cerave.co.th/skincare/facial-moisturising-lotion-spf-50`. A loader that identifies rows by source URL alone will collide. The implementation must deliberately update the existing variant or support distinct exact variant identities. This research did not edit either fixture row.
+
+## Product photos and direct purchase links
+
+All eight media URLs below were taken from the first product-gallery image link on the exact Watsons retail product page already used for the price snapshot. No image or product URL was constructed from a guessed SKU. The observed image URLs retain the retailer's version query. Each image was fetched successfully as `image/jpeg`, decoded and verified at 880 × 880 pixels, then visually checked together for the corresponding product packaging. Purchase links are the same exact retailer pages in the price table above; no search page, affiliate redirect or unverified marketplace listing is substituted.
+
+| Exact product | Retailer SKU / purchase source | Main product photo |
+| --- | --- | --- |
+| CeraVe Moisturising Cream, 50 g | [Watsons 275377](https://www.watsons.co.th/en/cerave-cerave-moisturizing-cream-50-g./p/BP_275377) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-275377-front-zoom.jpg?version=1733499772) |
+| CeraVe PM Facial Moisturising Lotion, 52 ml | [Watsons 275384](https://www.watsons.co.th/en/cerave-cerave-facial-lotion-52ml/p/BP_275384) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-275384-front-zoom.jpg?version=1733502004) |
+| CeraVe Oil Control Moisturising Gel-Cream, 52 ml | [Watsons 313220](https://www.watsons.co.th/th/cerave-เซราวี-ออยล์-คอนโทรล-มอยซ์เจอไรซิ่ง-เจล-ครีม-52-มล.-ผิวผสม-ผิวมัน/p/BP_313220) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-313220-front-zoom.jpg?version=1733877176) |
+| CeraVe Hydrating Facial Cleanser, 473 ml | [Watsons 275380](https://www.watsons.co.th/en/cerave-cerave-hydrating-facial-cleanser-473ml/p/BP_275380) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-275380-front-zoom.jpg?version=1733499880) |
+| CeraVe Foaming Facial Cleanser, 473 ml | [Watsons 275385](https://www.watsons.co.th/en/cerave-cerave-foaming-facial-cleanser-473ml/p/BP_275385) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-275385-front-zoom.jpg?version=1733513586) |
+| CeraVe AM Facial Moisturising Lotion SPF 50, 52 ml | [Watsons 313221](https://www.watsons.co.th/en/cerave-cerave-facial-moisturising-lotion-spf50-am-52-ml.-normal-to-dry-skin/p/BP_313221) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-313221-front-zoom.jpg?version=1733877181) |
+| Eucerin HYALURON (3X)+ FILLER EYE CARE SPF 15, 15 ml | [Watsons 322349](https://www.watsons.co.th/th/eucerin-ยูเซอริน-ไฮยาลูรอน-3x-ฟิลเลอร์-อาย-แคร์-spf15-15-มล./p/BP_322349) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-322349-front-zoom.jpg?version=1763061016) |
+| La Roche-Posay HYALU B5 SERUM, 30 ml | [Watsons 279157](https://www.watsons.co.th/th/laroche-posay-เซรั่ม-laroche-posay-hyalu-b5-serum-ลาโรช-โพเซย์-ไฮยาลู-บี-5-เซรั่ม-30-มล./p/BP_279157) | [Official retailer image](https://medias.watsons.co.th/publishing/WTCTH-279157-front-zoom.jpg?version=1774379582) |
+
+Machine-readable media metadata is saved in `.pytest_cache/thai-product-media.json`, keyed by the manufacturer `source_url`, with `purchase_url`, `image_url` and `image_source_url`. `image_source_url` records the exact retailer page where the gallery URL was observed. Research verification downloads and a contact sheet are under `.pytest_cache/thai-product-images/`; these are inspection artifacts, not frontend mock data or implementation assets.
+
+Watsons was selected because it supplies verified direct Thai product listings for all eight exact variants. A Shopee listing was not necessary to satisfy the user's Shopee-or-other-retailer choice and was not claimed as verified. Image validity was checked on 1 October 2026; retailer URLs and packaging may change later.

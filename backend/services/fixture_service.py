@@ -35,16 +35,17 @@ def products_from_fixture(path: Path) -> list[Product]:
         raise ValueError("Product fixture cannot be empty")
     reviewed_at = TypeAdapter(AwareDatetime).validate_python(data.get("reviewed_at"))
     products = []
-    source_urls = set()
+    identities = set()
     for row in data["products"]:
         payload = ProductInput.model_validate(row)
         if not payload.ingredients_label:
             payload.ingredients_label = ", ".join(payload.ingredients_inci)
         product = Product(**payload.model_dump(), status="published", reviewed_at=reviewed_at)
         require_publishable(product)
-        if product.source_url in source_urls:
-            raise ValueError("Product fixture contains duplicate source URLs")
-        source_urls.add(product.source_url)
+        identity = (product.source_url, product.variant)
+        if identity in identities:
+            raise ValueError("Product fixture contains duplicate product variants")
+        identities.add(identity)
         if product.price_satang is not None:
             product.price_checked_at = reviewed_at
         products.append(product)
@@ -56,25 +57,37 @@ async def load_products(path: Path, session: AsyncSession) -> int:
     inserted = 0
     enriched = False
     for product in products:
-        existing = await session.scalar(select(Product).where(
-            Product.source_url == product.source_url,
-        ).limit(1))
+        existing = await session.scalar(
+            select(Product)
+            .where(
+                Product.source_url == product.source_url,
+                Product.variant == product.variant,
+            )
+            .limit(1)
+        )
         if existing is None:
             session.add(product)
             inserted += 1
         elif (
-            existing.status == "published" and existing.reviewed_at is not None
+            existing.status == "published"
+            and existing.reviewed_at is not None
             and [v.strip().casefold() for v in existing.ingredients_inci]
             == [v.strip().casefold() for v in product.ingredients_inci]
         ):
-            # Fill missing market/price provenance only for the identical reviewed formula.
+            # Fill missing shopping metadata only for the identical reviewed variant/formula.
             # Preserve archived rows, edited labels and any price already entered by an admin.
             if existing.market is None and product.market is not None:
                 existing.market = product.market
                 enriched = True
+            for field in ("purchase_url", "image_url"):
+                if getattr(existing, field) is None and getattr(product, field) is not None:
+                    setattr(existing, field, getattr(product, field))
+                    enriched = True
             if (
-                existing.price_satang is None and existing.price_source_url is None
-                and product.price_satang is not None and product.price_source_url
+                existing.price_satang is None
+                and existing.price_source_url is None
+                and product.price_satang is not None
+                and product.price_source_url
             ):
                 existing.price_satang = product.price_satang
                 existing.price_source_url = product.price_source_url
@@ -92,10 +105,7 @@ async def load_users(path: Path, session: AsyncSession) -> None:
 
     for row in data.get("users", []):
         user = SignupRequest.model_validate(row)
-        profile = (
-            WellnessProfileUpsert.model_validate(row["profile"])
-            if "profile" in row else None
-        )
+        profile = WellnessProfileUpsert.model_validate(row["profile"]) if "profile" in row else None
         account = await session.scalar(select(Account).where(Account.email == user.email))
         user_id = account.user_id if account else (await signup(user, session)).user_id
         changed = False
@@ -108,11 +118,13 @@ async def load_users(path: Path, session: AsyncSession) -> None:
         entries = row.get("daily_entries", [])
         if entries:
             consent = await session.scalar(
-                select(Consent.id).where(
+                select(Consent.id)
+                .where(
                     Consent.user_id == user_id,
                     Consent.version == "daily-health-v1",
                     Consent.revoked_at.is_(None),
-                ).limit(1)
+                )
+                .limit(1)
             )
             if consent is None:
                 session.add(Consent(user_id=user_id, version="daily-health-v1"))

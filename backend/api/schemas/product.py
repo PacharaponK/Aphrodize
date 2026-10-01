@@ -16,6 +16,8 @@ class ProductInput(BaseModel):
     price_source_url: str | None = Field(
         default=None, max_length=1000, pattern=r"^https?://[^\s]+$"
     )
+    purchase_url: str | None = Field(default=None, max_length=1000, pattern=r"^https://[^\s]+$")
+    image_url: str | None = Field(default=None, max_length=1000, pattern=r"^https://[^\s]+$")
     application_regions: list[Literal["face", "eye_contour"]] = Field(
         default_factory=list, max_length=2
     )

@@ -21,12 +21,13 @@ class CatalogSession:
 
     async def scalar(self, query):
         source_url = query.compile().params["source_url_1"]
-        product = self.products.get(source_url)
+        variant = query.compile().params["variant_1"]
+        product = self.products.get((source_url, variant))
         return product
 
     def add(self, product):
         product.id = uuid4()
-        self.products[product.source_url] = product
+        self.products[(product.source_url, product.variant)] = product
 
     async def commit(self):
         self.commits += 1
@@ -56,6 +57,36 @@ async def test_product_import_is_repeatable_and_keeps_admin_edits():
     assert "1,2-hexanediol" in vanicream.ingredients_inci
 
 
+async def test_price_and_shopping_media_do_not_enrich_a_different_pack_size():
+    session = CatalogSession()
+    products = products_from_fixture(FIXTURE)
+    priced = next(p for p in products if p.price_satang is not None)
+    old = SimpleNamespace(
+        **{
+            field: getattr(priced, field)
+            for field in (
+                "source_url",
+                "ingredients_inci",
+                "reviewed_at",
+                "market",
+            )
+        },
+        variant="Legacy unspecified pack",
+        status="published",
+        price_satang=None,
+        price_source_url=None,
+        purchase_url=None,
+        image_url=None,
+    )
+    session.products[(old.source_url, old.variant)] = old
+    assert await load_products(FIXTURE, session) == len(products)
+    assert old.price_satang is None
+    assert old.purchase_url is None
+    new = session.products[(priced.source_url, priced.variant)]
+    assert new.purchase_url == priced.price_source_url
+    assert new.image_url.startswith("https://medias.watsons.co.th/")
+
+
 @pytest.mark.parametrize("invalid", ["missing_ingredients", "duplicate", "naive_review_date"])
 async def test_invalid_product_batch_does_not_write_any_rows(tmp_path, invalid):
     data = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))
@@ -76,13 +107,13 @@ async def test_invalid_product_batch_does_not_write_any_rows(tmp_path, invalid):
 
 @pytest.mark.parametrize("skin_type", ["dry", "normal", "combination", "oily", "unsure"])
 @pytest.mark.parametrize("sensitivity", ["low", "medium"])
-def test_real_fixture_matches_each_supported_profile(skin_type, sensitivity):
+def test_real_shopping_fixture_matches_only_verified_skin_profiles(skin_type, sensitivity):
     profile = {
         "skin_type": skin_type,
         "skin_sensitivity": sensitivity,
         "known_product_allergy": "no",
         "severe_irritation": "no",
-        "sunscreen_frequency": "never",
+        "sunscreen_frequency": "every_day",
     }
     analysis = SimpleNamespace(
         id=uuid4(),
@@ -94,10 +125,18 @@ def test_real_fixture_matches_each_supported_profile(skin_type, sensitivity):
     attach_catalog_products(response, products_from_fixture(FIXTURE))
     assert response["status"] == "ready"
     assert response["recommendations"]
-    assert all(item["products"] for item in response["recommendations"])
-    if skin_type in {"dry", "normal", "combination"}:
-        moisturizer = next(i for i in response["recommendations"] if "moisturizer" in i["category"])
-        assert len(moisturizer["products"]) >= 2
+    matched = [product for item in response["recommendations"] for product in item["products"]]
+    # Only exact verified shopping variants can appear as named recommendations.
+    expected_count = (
+        2
+        if skin_type in {"dry", "normal"}
+        else 1
+        if skin_type == "combination" and sensitivity == "low"
+        else 0
+    )
+    assert len(matched) == expected_count
+    assert all(product["image_url"] and product["purchase_url"] for product in matched)
+    assert all(product["market"] == "TH" for product in matched)
 
 
 def test_real_fixture_does_not_bypass_reported_allergy():
