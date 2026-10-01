@@ -11,8 +11,8 @@
 .home-dashboard-shell .home-week-status,
 .home-dashboard-shell .home-history-details summary { font-family: var(--font-ui); }
 .home-dashboard-shell .home-action-card h2 { font-weight: 700; letter-spacing: normal; }
-.home-dashboard-shell #dashboard { position: relative; isolation: isolate; width: 100%; min-width: 0; max-width: 1920px; margin-inline: auto; padding: 28px clamp(18px, 3vw, 56px) 48px; }
-.home-topbar { gap: 20px; padding: 20px 24px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.home-dashboard-shell #dashboard { position: relative; isolation: isolate; width: 100%; min-width: 0; max-width: 1920px; margin-inline: auto; padding: 28px clamp(18px, 3vw, 56px) 48px; scroll-margin-top: 80px; }
+.home-topbar { gap: 20px; padding: 20px 24px; margin-bottom: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); will-change: transform, opacity; backface-visibility: hidden; }
 .home-topbar h1 { font-size: clamp(26px, 2.6vw, 40px); }
 .home-intro { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
 .home-log-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; margin-left: auto; text-decoration: none; }
@@ -24,13 +24,13 @@
 html[data-theme="black"] .home-topbar .home-button img { filter: invert(1); }
 .home-dashboard-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(180px, .8fr) minmax(0, 1.2fr); grid-template-rows: auto auto; gap: clamp(16px, 1.4vw, 26px); }
 .home-health-content { display: contents; }
-.home-overview-card, .home-wellness-card, .home-action-card, .home-metric-card, .home-insights-card, .home-history-details { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+.home-overview-card, .home-wellness-card, .home-action-card, .home-metric-card, .home-insights-card, .home-history-details { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); will-change: transform, opacity; backface-visibility: hidden; }
 .home-overview-card { grid-column: 1; grid-row: 1 / 3; align-self: center; position: relative; display: flex; flex-direction: column; gap: clamp(20px, 1.5vw, 30px); padding: clamp(20px, 1.6vw, 34px); }
 /* One decorative layer belongs to main, not to any article. The center lane
    keeps the video visible while every content card remains opaque. */
 .home-motion-frame { position: absolute; z-index: -1; top: 120px; left: 0; right: 0; height: clamp(560px, 78svh, 820px); margin: 0; overflow: hidden; pointer-events: none; background: var(--canvas); mask-image: linear-gradient(to bottom, transparent, #000 10%, #000 78%, transparent); }
 .home-motion-frame::after { position: absolute; inset: 0; content: ""; pointer-events: none; background: color-mix(in srgb, var(--canvas) 12%, transparent); }
-.home-motion-video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; transform-origin: center; background: var(--surface-muted); }
+.home-motion-video { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; transform-origin: center; background: var(--surface-muted); will-change: transform; backface-visibility: hidden; transform: translateZ(0); }
 .home-media-label { align-self: flex-start; margin: 0; color: var(--muted); font-size: 12px; }
 .home-overview-score { position: relative; width: 100%; }
 .home-overview-score h2 { margin: 0 0 16px; font-size: clamp(28px, 2.4vw, 40px); line-height: 1.22; text-wrap: balance; }
@@ -51,7 +51,7 @@ html[data-theme="black"] .home-topbar .home-button img { filter: invert(1); }
 .home-week-status p { margin: 0; font-size: 13px; color: var(--muted); }
 .home-week-status .text-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 .home-quick-actions { grid-column: 3; grid-row: 2; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 1.4vw, 24px); }
-.home-action-card { display: block; position: relative; padding: clamp(18px, 1.35vw, 28px); color: var(--ink); text-decoration: none; transition: border-color .2s ease, background .2s ease; }
+.home-action-card { display: block; position: relative; padding: clamp(18px, 1.35vw, 28px); color: var(--ink); text-decoration: none; }
 .home-action-card:hover { border-color: var(--primary); background: var(--surface-soft); }
 .home-action-icon { display: block; width: 42px; height: 42px; margin-bottom: 18px; padding: 9px; color: var(--primary-deep); background: var(--primary-soft); border-radius: 12px; }
 .home-action-card h2 { margin: 0 0 6px; padding-right: 16px; font-size: 18px; line-height: 1.4; }
@@ -106,33 +106,48 @@ html[data-theme="black"] .home-motion-frame::after { background: color-mix(in sr
 @media (max-width: 350px) { .home-quick-actions, .home-metric-grid { grid-template-columns: minmax(0, 1fr); } }
 /* Motion follows actual records; empty charts and missing days stay unchanged. */
 .home-dashboard-shell #dashboard { overflow-x: clip; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
 .home-dashboard-shell .primary-button,
 .home-action-card .home-action-arrow,
 .home-dashboard-shell .primary-button svg,
-.home-day { transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms ease, border-color 180ms ease; }
+.home-day { transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease, border-color 200ms ease; }
 .home-action-card:focus-visible .home-action-arrow,
-.home-dashboard-shell .primary-button:focus-visible svg:last-child { transform: translate(2px, -2px); }
+.home-dashboard-shell .primary-button:focus-visible svg:last-child { transform: translate(3px, -3px); }
 .home-dashboard-shell .primary-button:active { transform: scale(.98); }
-.home-action-card { transition: translate 220ms ease, box-shadow 220ms ease, border-color 180ms ease, background-color 180ms ease; }
+.home-action-card { transition: translate 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease, background-color 200ms ease; }
+.home-overview-card,
+.home-wellness-card,
+.home-insights-card,
+.home-metric-card { transition: box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease; }
 @media (hover: hover) and (pointer: fine) {
   .home-action-card:hover .home-action-arrow,
-  .home-dashboard-shell .primary-button:hover svg:last-child { transform: translate(5px, -5px); }
-  .home-action-card:hover { translate: 0 -8px; box-shadow: 0 14px 28px color-mix(in srgb, var(--ink) 14%, transparent); }
-  .home-dashboard-shell .primary-button:hover { transform: translateY(-3px); }
+  .home-dashboard-shell .primary-button:hover svg:last-child { transform: translate(4px, -4px); }
+  .home-action-card:hover { translate: 0 -4px; box-shadow: 0 12px 24px -4px color-mix(in srgb, var(--ink) 12%, transparent); }
+  .home-dashboard-shell .primary-button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px -2px color-mix(in srgb, var(--primary) 28%, transparent); }
+  .home-metric-card:hover { border-color: color-mix(in srgb, var(--primary) 38%, var(--line)); box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--ink) 8%, transparent); }
+  .home-overview-card:hover,
+  .home-wellness-card:hover,
+  .home-insights-card:hover { border-color: color-mix(in srgb, var(--primary) 30%, var(--line)); box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--ink) 7%, transparent); }
+  .home-day:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 4px 10px -2px color-mix(in srgb, var(--ink) 10%, transparent); }
 }
-.home-action-card:focus-visible { translate: 0 -8px; }
-.home-action-card:active { translate: 0 -2px; }
-@keyframes home-record-confirm { from { transform: scale(.88); } to { transform: scale(1); } }
-@keyframes home-chart-grow { from { transform: scaleY(.15); } to { transform: scaleY(1); } }
+.home-action-card:focus-visible { translate: 0 -4px; }
+.home-action-card:active { translate: 0 -1px; }
+@keyframes home-record-confirm { 0% { transform: scale(.7); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes home-chart-grow { 0% { transform: scaleY(.04); opacity: .25; } 100% { transform: scaleY(1); opacity: 1; } }
 @media (prefers-reduced-motion: no-preference) {
-  .home-day.is-recorded svg { animation: home-record-confirm 240ms cubic-bezier(0.16, 1, 0.3, 1); }
-  .home-metric-chart rect { transform-box: fill-box; transform-origin: center bottom; animation: home-chart-grow 550ms cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+  .home-day.is-recorded svg { animation: home-record-confirm 280ms cubic-bezier(0.16, 1, 0.3, 1); }
+  .home-metric-chart rect { transform-box: fill-box; transform-origin: center bottom; animation: home-chart-grow 580ms cubic-bezier(0.16, 1, 0.3, 1) backwards; transition: opacity 180ms ease, fill 180ms ease, transform 180ms cubic-bezier(0.16, 1, 0.3, 1); }
   .home-metric-chart rect:nth-child(2) { animation-delay: 35ms; }
   .home-metric-chart rect:nth-child(3) { animation-delay: 70ms; }
   .home-metric-chart rect:nth-child(4) { animation-delay: 105ms; }
   .home-metric-chart rect:nth-child(5) { animation-delay: 140ms; }
   .home-metric-chart rect:nth-child(6) { animation-delay: 175ms; }
   .home-metric-chart rect:nth-child(7) { animation-delay: 210ms; }
+}
+@media (hover: hover) and (pointer: fine) {
+  .home-metric-chart rect:hover { fill: var(--primary-deep); opacity: .92; transform: scaleY(1.04); }
 }
 @media (prefers-reduced-motion: reduce) {
   .home-motion-video { transform: none !important; }
