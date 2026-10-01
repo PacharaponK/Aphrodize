@@ -120,6 +120,8 @@ async def update_safety_screening(
             detail="Questionnaire changed elsewhere. Reload it before saving your edits.",
         )
     answers = {**latest.answers, **payload.safety_answers()}
+    if payload.known_product_allergy != "yes":
+        answers.pop("allergy_details", None)
     questionnaire = Questionnaire(user_id=user_id, answers=answers)
     session.add(questionnaire)
     await session.commit()

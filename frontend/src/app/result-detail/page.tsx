@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { RecommendationPanel } from "@/app/recommendation/recommendation-panel";
+import "./result-detail.css";
+import { useLanguage, type Language } from "@/components/language-provider";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
 type AreaScore = { score: number; wrinkle_area_ratio: number; wrinkle_pixels: number; evaluated_pixels: number };
@@ -25,36 +27,167 @@ type Analysis = {
 };
 type ArtifactAvailability = "available" | "expired" | "unavailable" | "load-error";
 
-const REGIONS: Record<string, string> = {
-  forehead: "หน้าผาก",
-  glabella: "ระหว่างคิ้ว",
-  image_left_periocular: "รอบดวงตาซ้ายของภาพ",
-  image_right_periocular: "รอบดวงตาขวาของภาพ",
-  image_left_cheek: "แก้มซ้ายของภาพ",
-  image_right_cheek: "แก้มขวาของภาพ",
-  nasolabial: "ร่องแก้ม",
-  perioral: "รอบปาก",
+const PAGE_COPY = {
+  th: {
+    pageTitle: "ผลวิเคราะห์ใบหน้า",
+    resultTitle: "ผลจากภาพที่ส่งวิเคราะห์",
+    resultIntro: "แสดงค่าที่ระบบประเมินได้จากภาพนี้เท่านั้น",
+    retryAnalysis: "วิเคราะห์ภาพใหม่",
+    backHome: "กลับหน้าภาพรวม",
+    actions: "การดำเนินการกับผลวิเคราะห์",
+    noAnalysis: "ยังไม่มีผลวิเคราะห์ในเบราว์เซอร์นี้",
+    noAnalysisBody: "ส่งภาพใบหน้าที่หน้า “วิเคราะห์” เมื่อประมวลผลเสร็จ ผลจริงจะแสดงที่หน้านี้",
+    loadErrorTitle: "โหลดผลวิเคราะห์ไม่สำเร็จ",
+    loadError: "ไม่สามารถโหลดผลวิเคราะห์ได้ในขณะนี้ กรุณาลองอีกครั้ง",
+    retryLoad: "ลองโหลดอีกครั้ง",
+    loading: "กำลังโหลดผลวิเคราะห์…",
+    processing: "กำลังประมวลผลภาพ กรุณารอสักครู่…",
+    rejectedTitle: "ภาพไม่ผ่านการตรวจคุณภาพ",
+    rejectedBody: "กรุณาลองถ่ายภาพใหม่ โดยจัดใบหน้าให้ชัดและหันตรงเข้าหากล้อง",
+    chooseImage: "เลือกภาพใหม่",
+    failedTitle: "ประมวลผลไม่สำเร็จ",
+    failedBody: "กรุณาลองอีกครั้งด้วยภาพใหม่",
+    tryAgain: "ลองใหม่",
+    imageHeading: "ภาพผลวิเคราะห์",
+    artifactControls: "เลือกรูปแบบภาพผลวิเคราะห์",
+    overlay: "ภาพซ้อนตำแหน่ง",
+    mask: "เฉพาะพื้นที่ตรวจพบ",
+    overlayAlt: "ภาพใบหน้าพร้อมบริเวณที่โมเดลทำเครื่องหมาย",
+    maskAlt: "ภาพแสดงเฉพาะบริเวณที่โมเดลทำเครื่องหมาย",
+    expired: "ภาพผลวิเคราะห์หมดอายุแล้ว กรุณาวิเคราะห์ภาพใหม่เพื่อดูภาพประกอบ",
+    unavailable: "ไม่มีภาพผลวิเคราะห์ที่เปิดดูได้ กรุณาวิเคราะห์ภาพใหม่",
+    imageLoadError: "โหลดภาพผลวิเคราะห์ไม่สำเร็จ กรุณาลองอีกครั้งหรือวิเคราะห์ภาพใหม่",
+    overlayCaption: "สีบนภาพแสดงบริเวณที่โมเดลทำเครื่องหมาย",
+    expiryPrefix: "ภาพส่วนตัวเปิดดูได้ถึง",
+    thailandTime: "เวลาไทย",
+    artifactExpired: "ภาพหมดอายุการเข้าถึงแล้ว",
+    markedArea: "พื้นที่ที่โมเดลทำเครื่องหมาย",
+    markedAreaExplanation: "เปอร์เซ็นต์คือสัดส่วนพิกเซลที่โมเดลทำเครื่องหมายจากพื้นที่ใบหน้าที่ประเมินได้ ไม่ใช่คะแนนผิวหรือการวินิจฉัย",
+    experimentalScore: "คะแนนเชิงทดลอง",
+    scoreExplanation: "คะแนน 0–100 คำนวณจากสัดส่วนพื้นที่ที่ทำเครื่องหมายและมีเพดานที่ 100 คะแนนสูงขึ้นหมายถึงสัดส่วนตามสูตรสูงขึ้น ไม่ได้บอกว่าผิวดีขึ้นหรือแย่ลง",
+    regionsHeading: "พื้นที่ที่ประเมิน",
+    regionsScored: "บริเวณที่มีคะแนน",
+    regionExplanation: "แถบแสดงสัดส่วนพิกเซลที่ทำเครื่องหมายในแต่ละบริเวณ",
+    unscorable: "ประเมินไม่ได้",
+    noRegionPixels: "ไม่มีพิกเซลเพียงพอสำหรับคำนวณ",
+    area: "พื้นที่ที่ทำเครื่องหมาย",
+    percentageOfEvaluatedArea: "ของพื้นที่ที่ประเมินได้",
+    viewAllRegionsAndPixels: "ดูบริเวณที่เหลือและจำนวนพิกเซล",
+    viewPixelCounts: "ดูจำนวนพิกเซล",
+    pixelCounts: "พิกเซลที่ทำเครื่องหมาย / ที่ประเมินได้",
+    pixels: "พิกเซล",
+    recommendations: "คำแนะนำที่ผ่านเกณฑ์",
+    noRecommendations: "ไม่มีคำแนะนำสำหรับผลนี้ จะแสดงคำแนะนำเฉพาะเมื่อระบบระบุว่าผลผ่านเกณฑ์เท่านั้น",
+    method: "วิธีคำนวณคะแนน",
+    ratioFormula: "สัดส่วนพื้นที่ที่ทำเครื่องหมาย = พิกเซลที่ทำเครื่องหมาย ÷ พิกเซลที่ประเมินได้",
+    scoreFormula: "สูตรคะแนน 0–100:",
+    decimalNote: "ใช้สัดส่วนแบบทศนิยม (1% = 0.01)",
+    thisImage: "ภาพนี้:",
+    scoreCapped: "คะแนนมีเพดานที่ 100 จึงควรดูเปอร์เซ็นต์พื้นที่จริงประกอบ คะแนนนี้ไม่ยืนยันว่ามีหรือไม่มีริ้วรอยจริง",
+    disclaimerTitle: "ข้อควรรู้",
+    disclaimer: "ผลนี้เป็นการวัดเชิงทดลองจากภาพ ไม่ใช่การวินิจฉัยหรือการประเมินสุขภาพผิว และยังไม่ได้รับการรับรองทางคลินิก",
+    noScore: "ไม่มีคะแนนสำหรับภาพนี้",
+    queued: "รอประมวลผล",
+    running: "กำลังประมวลผล",
+    analyzed: "วิเคราะห์เมื่อ",
+    regionsSummary: (scored: number, total: number) => `${scored} จาก ${total} บริเวณมีคะแนน`,
+  },
+  en: {
+    pageTitle: "Face analysis results",
+    resultTitle: "Results from this image",
+    resultIntro: "Only measurements returned for this image are shown.",
+    retryAnalysis: "Analyze a new image",
+    backHome: "Back to overview",
+    actions: "Face analysis actions",
+    noAnalysis: "No analysis is available in this browser",
+    noAnalysisBody: "Submit a face image from Analyze. Its result will appear here when processing is complete.",
+    loadErrorTitle: "Could not load analysis",
+    loadError: "The analysis result could not be loaded. Please try again.",
+    retryLoad: "Try loading again",
+    loading: "Loading analysis…",
+    processing: "Your image is being processed. Please wait…",
+    rejectedTitle: "Image did not pass quality checks",
+    rejectedBody: "Try a new image with one clear face looking directly at the camera.",
+    chooseImage: "Choose a new image",
+    failedTitle: "Analysis could not be completed",
+    failedBody: "Please try again with a new image.",
+    tryAgain: "Try again",
+    imageHeading: "Analysis image",
+    artifactControls: "Choose an analysis image view",
+    overlay: "Marked areas",
+    mask: "Mask only",
+    overlayAlt: "Face image with the areas marked by the model",
+    maskAlt: "Image showing only the areas marked by the model",
+    expired: "This analysis image has expired. Analyze a new image to view an artifact.",
+    unavailable: "No analysis image is available to view. Analyze a new image.",
+    imageLoadError: "Could not load this analysis image. Try again or analyze a new image.",
+    overlayCaption: "Color shows the areas marked by the model.",
+    expiryPrefix: "Private image available until",
+    thailandTime: "Thailand time",
+    artifactExpired: "Image access has expired.",
+    markedArea: "Area marked by the model",
+    markedAreaExplanation: "This percentage is the share of evaluated face pixels marked by the model. It is not a skin grade or diagnosis.",
+    experimentalScore: "Experimental score",
+    scoreExplanation: "The 0–100 score is calculated from marked-area proportion and capped at 100. A higher score means a higher proportion under this formula, not better or worse skin.",
+    regionsHeading: "Evaluated areas",
+    regionsScored: "regions scored",
+    regionExplanation: "Each bar shows the share of evaluated pixels marked in that region.",
+    unscorable: "Not scored",
+    noRegionPixels: "There are not enough evaluated pixels to calculate a value.",
+    area: "Marked area",
+    percentageOfEvaluatedArea: "of evaluated area",
+    viewAllRegionsAndPixels: "View remaining regions and pixel counts",
+    viewPixelCounts: "View pixel counts",
+    pixelCounts: "Pixels marked / evaluated",
+    pixels: "pixels",
+    recommendations: "Eligible guidance",
+    noRecommendations: "No guidance is available for this result. Recommendations appear only when the system marks a result as eligible.",
+    method: "How the score is calculated",
+    ratioFormula: "Marked-area proportion = marked pixels ÷ evaluated pixels",
+    scoreFormula: "0–100 score formula:",
+    decimalNote: "The proportion uses decimal form (1% = 0.01).",
+    thisImage: "This image:",
+    scoreCapped: "The score is capped at 100, so refer to the area percentage as well. It does not confirm whether wrinkles are or are not present.",
+    disclaimerTitle: "Important note",
+    disclaimer: "This is an experimental image measurement, not a diagnosis or skin-health assessment. It has not been clinically validated.",
+    noScore: "No score is available for this image.",
+    queued: "Queued for processing",
+    running: "Processing",
+    analyzed: "Analyzed",
+    regionsSummary: (scored: number, total: number) => `${scored} of ${total} regions scored`,
+  },
+} as const;
+
+const REGIONS: Record<string, { th: string; en: string }> = {
+  forehead: { th: "หน้าผาก", en: "Forehead" },
+  glabella: { th: "ระหว่างคิ้ว", en: "Glabella" },
+  image_left_periocular: { th: "รอบดวงตาซ้ายของภาพ", en: "Image-left eye area" },
+  image_right_periocular: { th: "รอบดวงตาขวาของภาพ", en: "Image-right eye area" },
+  image_left_cheek: { th: "แก้มซ้ายของภาพ", en: "Image-left cheek" },
+  image_right_cheek: { th: "แก้มขวาของภาพ", en: "Image-right cheek" },
+  nasolabial: { th: "ร่องแก้ม", en: "Nasolabial fold" },
+  perioral: { th: "รอบปาก", en: "Perioral area" },
 };
 
-const QUALITY_FLAG_COPY: Record<string, string> = {
-  unreadable_image: "ระบบเปิดอ่านไฟล์ภาพนี้ไม่ได้",
-  resolution_too_low: "ภาพมีความละเอียดไม่เพียงพอสำหรับการประเมิน",
-  no_face_detected: "ระบบหาใบหน้าในภาพไม่พบ",
-  multiple_faces_detected: "พบหลายใบหน้า กรุณาใช้ภาพที่มีใบหน้าคนเดียว",
-  face_too_small_pixels: "ใบหน้าอยู่ไกลหรือมีขนาดเล็กเกินไปในภาพ",
-  face_too_small_ratio: "กรุณาถ่ายให้ใบหน้าอยู่ใกล้และมีขนาดใหญ่ขึ้นในภาพ",
-  landmark_confidence_too_low: "ระบบระบุตำแหน่งใบหน้าได้ไม่ชัดเจน",
-  exposure_too_dark: "ภาพมืดเกินไป กรุณาถ่ายในบริเวณที่มีแสงเพียงพอ",
-  exposure_too_bright: "ภาพสว่างเกินไป กรุณาหลีกเลี่ยงแสงจ้าที่ใบหน้า",
-  dark_clipping_excessive: "รายละเอียดในภาพมืดเกินกว่าจะประเมินได้",
-  bright_clipping_excessive: "แสงจ้าทำให้รายละเอียดใบหน้าบางส่วนหายไป",
-  image_too_blurry: "ภาพไม่คมชัด กรุณาถือกล้องให้นิ่งแล้วถ่ายใหม่",
-  pose_roll_excessive: "กรุณาจัดศีรษะให้ตรงกับกล้อง",
-  pose_yaw_excessive: "กรุณาหันหน้าเข้าหากล้องโดยตรง",
-  pose_pitch_excessive: "กรุณามองตรงและจัดกล้องให้อยู่ระดับใบหน้า",
-  invalid_face_bounds: "ระบบระบุขอบเขตใบหน้าได้ไม่ครบถ้วน",
-  face_parsing_area_too_small: "พื้นที่ใบหน้าที่ระบบระบุมีขนาดเล็กเกินไป",
-  face_parsing_area_too_large: "ระบบแยกพื้นที่ใบหน้าออกจากภาพได้ไม่ชัดเจน",
+const QUALITY_FLAG_COPY: Record<string, { th: string; en: string }> = {
+  unreadable_image: { th: "ระบบเปิดอ่านไฟล์ภาพนี้ไม่ได้", en: "The image file could not be read." },
+  resolution_too_low: { th: "ภาพมีความละเอียดไม่เพียงพอสำหรับการประเมิน", en: "The image resolution is too low for assessment." },
+  no_face_detected: { th: "ระบบหาใบหน้าในภาพไม่พบ", en: "No face was detected in the image." },
+  multiple_faces_detected: { th: "พบหลายใบหน้า กรุณาใช้ภาพที่มีใบหน้าคนเดียว", en: "More than one face was detected. Use an image with one face." },
+  face_too_small_pixels: { th: "ใบหน้าอยู่ไกลหรือมีขนาดเล็กเกินไปในภาพ", en: "The face is too small or too far away." },
+  face_too_small_ratio: { th: "กรุณาถ่ายให้ใบหน้าอยู่ใกล้และมีขนาดใหญ่ขึ้นในภาพ", en: "Move closer so the face takes up more of the image." },
+  landmark_confidence_too_low: { th: "ระบบระบุตำแหน่งใบหน้าได้ไม่ชัดเจน", en: "Facial landmarks could not be located confidently." },
+  exposure_too_dark: { th: "ภาพมืดเกินไป กรุณาถ่ายในบริเวณที่มีแสงเพียงพอ", en: "The image is too dark. Try a well-lit area." },
+  exposure_too_bright: { th: "ภาพสว่างเกินไป กรุณาหลีกเลี่ยงแสงจ้าที่ใบหน้า", en: "The image is overexposed. Avoid harsh light on the face." },
+  dark_clipping_excessive: { th: "รายละเอียดในภาพมืดเกินกว่าจะประเมินได้", en: "Too much image detail is lost in shadow." },
+  bright_clipping_excessive: { th: "แสงจ้าทำให้รายละเอียดใบหน้าบางส่วนหายไป", en: "Harsh light obscures some facial detail." },
+  image_too_blurry: { th: "ภาพไม่คมชัด กรุณาถือกล้องให้นิ่งแล้วถ่ายใหม่", en: "The image is blurry. Hold the camera steady and try again." },
+  pose_roll_excessive: { th: "กรุณาจัดศีรษะให้ตรงกับกล้อง", en: "Keep your head level with the camera." },
+  pose_yaw_excessive: { th: "กรุณาหันหน้าเข้าหากล้องโดยตรง", en: "Face the camera directly." },
+  pose_pitch_excessive: { th: "กรุณามองตรงและจัดกล้องให้อยู่ระดับใบหน้า", en: "Look forward and hold the camera at face level." },
+  invalid_face_bounds: { th: "ระบบระบุขอบเขตใบหน้าได้ไม่ครบถ้วน", en: "The full face boundary could not be identified." },
+  face_parsing_area_too_small: { th: "พื้นที่ใบหน้าที่ระบบระบุมีขนาดเล็กเกินไป", en: "The detected face area is too small." },
+  face_parsing_area_too_large: { th: "ระบบแยกพื้นที่ใบหน้าออกจากภาพได้ไม่ชัดเจน", en: "The face area could not be separated clearly from the image." },
 };
 
 function getArtifactAvailability(expiresAt?: string, expiryTick = 0): ArtifactAvailability {
@@ -64,41 +197,84 @@ function getArtifactAvailability(expiresAt?: string, expiryTick = 0): ArtifactAv
   return expiration <= Date.now() || expiryTick >= expiration ? "expired" : "available";
 }
 
-function formatArtifactExpiry(expiresAt: string): string | null {
+function formatArtifactExpiry(expiresAt: string, language: Language): string | null {
   const timestamp = Date.parse(expiresAt);
   if (!Number.isFinite(timestamp)) return null;
-  return new Intl.DateTimeFormat("th-TH", {
+  return new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Bangkok",
   }).format(timestamp);
 }
 
-function formatAnalysisDate(createdAt?: string): string | null {
+function formatAnalysisDate(createdAt: string | undefined, language: Language): string | null {
   if (!createdAt) return null;
   const timestamp = Date.parse(createdAt);
   if (!Number.isFinite(timestamp)) return null;
-  return new Intl.DateTimeFormat("th-TH", {
+  return new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Bangkok",
   }).format(timestamp);
 }
 
-function analysisDetail(analysis: Analysis | null): string | undefined {
+function analysisDetail(analysis: Analysis | null, language: Language): string | undefined {
   if (!analysis) return undefined;
-  const date = formatAnalysisDate(analysis.created_at);
+  const copy = PAGE_COPY[language];
+  const date = formatAnalysisDate(analysis.created_at, language);
   if (analysis.status === "queued" || analysis.status === "running") {
-    return [analysis.status === "queued" ? "รอประมวลผล" : "กำลังประมวลผล", date].filter(Boolean).join(" · ");
+    return [analysis.status === "queued" ? copy.queued : copy.running, date].filter(Boolean).join(" · ");
   }
-  return date ? `วิเคราะห์เมื่อ ${date}` : undefined;
+  return date ? `${copy.analyzed} ${date}` : undefined;
 }
 
-function qualityFlagLabel(flag: string): string {
-  return QUALITY_FLAG_COPY[flag] ?? "รูปภาพไม่ผ่านเงื่อนไขคุณภาพที่ระบบใช้ประเมิน";
+function regionLabel(name: string, language: Language): string {
+  return REGIONS[name]?.[language] ?? name;
+}
+
+function qualityFlagLabel(flag: string, language: Language): string {
+  return QUALITY_FLAG_COPY[flag]?.[language] ?? (language === "th"
+    ? "รูปภาพไม่ผ่านเงื่อนไขคุณภาพที่ระบบใช้ประเมิน"
+    : "The image did not meet the quality requirements for assessment.");
+}
+
+function RegionBar({ name, value, language }: { name: string; value: AreaScore; language: Language }) {
+  const copy = PAGE_COPY[language];
+  const label = regionLabel(name, language);
+  if (value.evaluated_pixels <= 0) {
+    return (
+      <div className="analysis-region analysis-region-unscorable">
+        <div className="analysis-region-top"><strong>{label}</strong><span>{copy.unscorable}</span></div>
+        <p>{copy.noRegionPixels}</p>
+      </div>
+    );
+  }
+
+  const areaPercent = value.wrinkle_area_ratio * 100;
+  const clampedPercent = Math.min(100, Math.max(0, areaPercent));
+  return (
+    <div className="analysis-region">
+      <div className="analysis-region-top">
+        <strong>{label}</strong>
+        <span className="analysis-region-area">{areaPercent.toFixed(2)}%</span>
+      </div>
+      <div
+        className="analysis-region-track"
+        role="progressbar"
+        aria-label={`${copy.area}: ${label}`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={clampedPercent}
+        aria-valuetext={`${areaPercent.toFixed(2)}% ${copy.percentageOfEvaluatedArea}`}
+      ><span style={{ width: `${clampedPercent}%` }} /></div>
+      <p><span>{copy.experimentalScore}</span><strong>{value.score.toFixed(1)} / 100</strong></p>
+    </div>
+  );
 }
 
 export default function ResultDetailPage() {
+  const { language } = useLanguage();
+  const copy = PAGE_COPY[language];
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [error, setError] = useState("");
   const [noAnalysis, setNoAnalysis] = useState(false);
@@ -119,7 +295,7 @@ export default function ResultDetailPage() {
             if (!stopped) setNoAnalysis(true);
             return;
           }
-          throw new Error("ไม่สามารถโหลดผลวิเคราะห์ได้ในขณะนี้");
+          throw new Error("analysis-load-error");
         }
         const next = (await response.json()) as Analysis;
         // Ignore a response arriving after this page has unmounted.
@@ -132,7 +308,7 @@ export default function ResultDetailPage() {
           timer = setTimeout(poll, 2500);
         }
       } catch {
-        if (!stopped) setError("ไม่สามารถโหลดผลวิเคราะห์ได้ในขณะนี้ กรุณาลองอีกครั้ง");
+        if (!stopped) setError("analysis-load-error");
       }
     }
     poll();
@@ -147,8 +323,10 @@ export default function ResultDetailPage() {
     .sort(([, left], [, right]) => right.wrinkle_area_ratio - left.wrinkle_area_ratio);
   const unevaluableRegions = allRegions.filter(([, value]) => value.evaluated_pixels <= 0);
   const displayedRegions = [...evaluableRegions, ...unevaluableRegions];
+  const primaryRegions = evaluableRegions.slice(0, 4);
+  const additionalRegions = [...evaluableRegions.slice(4), ...unevaluableRegions];
   const hasScorableOverall = Boolean(score && score.overall.evaluated_pixels > 0);
-  const expiryLabel = expiresAt ? formatArtifactExpiry(expiresAt) : null;
+  const expiryLabel = expiresAt ? formatArtifactExpiry(expiresAt, language) : null;
 
   // Re-render at expiry so the artifact message changes even if the page stays open.
   useEffect(() => {
@@ -175,20 +353,19 @@ export default function ResultDetailPage() {
     : currentArtifactAvailability;
 
   return (
-    <WorkspaceShell eyebrow="FACE ANALYSIS" title="ผลวิเคราะห์ใบหน้า" detail={analysisDetail(analysis)}>
-      <section className="page-content workspace-panel analysis-page">
+    <WorkspaceShell eyebrow={language === "en" ? "FACE ANALYSIS" : "วิเคราะห์ใบหน้า"} title={copy.pageTitle} detail={analysisDetail(analysis, language)}>
+      <section className="page-content workspace-panel analysis-page analysis-page--face">
         <div className="analysis-page-heading">
           <div>
-            <p className="eyebrow">EXPERIMENTAL RESULT</p>
-            <h2>ผลจากภาพที่ส่งวิเคราะห์</h2>
-            <p>แสดงเฉพาะค่าที่ระบบประเมินได้จากภาพนี้ คะแนนเป็นการวัดเชิงทดลอง ไม่ใช่การวินิจฉัย</p>
+            <h2>{copy.resultTitle}</h2>
+            <p>{copy.resultIntro}</p>
           </div>
-          <nav className="analysis-page-actions" aria-label="การดำเนินการกับผลวิเคราะห์">
-            <Link className="primary-button" href="/capture">วิเคราะห์ภาพใหม่ →</Link>
-            <Link className="secondary-button" href="/">กลับหน้าภาพรวม</Link>
+          <nav className="analysis-page-actions" aria-label={copy.actions}>
+            <Link className="primary-button" href="/capture">{copy.retryAnalysis} →</Link>
+            <Link className="secondary-button" href="/">{copy.backHome}</Link>
           </nav>
         </div>
-        {/* Render one status-specific message while the analysis is not complete. */}
+
         {noAnalysis && (
           <div className="analysis-empty-state" role="status">
             <div className="analysis-empty-icon" aria-hidden="true">
@@ -199,143 +376,166 @@ export default function ResultDetailPage() {
               </svg>
             </div>
             <div>
-              <p className="eyebrow">NO ANALYSIS YET</p>
-              <h3>ยังไม่มีผลวิเคราะห์ในเบราว์เซอร์นี้</h3>
-              <p>เริ่มจากส่งภาพใบหน้าที่หน้า “วิเคราะห์” เมื่อระบบประมวลผลเสร็จ ผลจริงจะแสดงที่หน้านี้</p>
+              <h3>{copy.noAnalysis}</h3>
+              <p>{copy.noAnalysisBody}</p>
             </div>
           </div>
         )}
-        {error && <div className="analysis-state-message" role="alert"><h3>โหลดผลวิเคราะห์ไม่สำเร็จ</h3><p>{error}</p><button className="secondary-button" type="button" onClick={() => window.location.reload()}>ลองโหลดอีกครั้ง</button></div>}
-        {!analysis && !error && !noAnalysis && <div className="analysis-state-message" role="status">กำลังโหลดผลวิเคราะห์…</div>}
+        {error && (
+          <div className="analysis-state-message" role="alert">
+            <h3>{copy.loadErrorTitle}</h3>
+            <p>{copy.loadError}</p>
+            <button className="secondary-button" type="button" onClick={() => window.location.reload()}>{copy.retryLoad}</button>
+          </div>
+        )}
+        {!analysis && !error && !noAnalysis && <div className="analysis-state-message" role="status">{copy.loading}</div>}
         {analysis && (analysis.status === "queued" || analysis.status === "running") && (
-          <div className="result-wait" role="status">กำลังประมวลผลภาพ กรุณารอสักครู่…</div>
+          <div className="result-wait" role="status">{copy.processing}</div>
         )}
         {analysis?.status === "rejected" && (
           <div className="result-wait" role="alert">
-            <h2>ภาพไม่ผ่านการตรวจคุณภาพ</h2>
+            <h2>{copy.rejectedTitle}</h2>
             {analysis.quality_flags.length ? (
               <ul className="quality-flag-list">
-                {[...new Set(analysis.quality_flags)].map((flag) => <li key={flag}>{qualityFlagLabel(flag)}</li>)}
+                {[...new Set(analysis.quality_flags)].map((flag) => <li key={flag}>{qualityFlagLabel(flag, language)}</li>)}
               </ul>
-            ) : <p>กรุณาลองถ่ายภาพใหม่ โดยจัดใบหน้าให้ชัดและหันตรงเข้าหากล้อง</p>}
-            <Link className="primary-button" href="/capture">เลือกภาพใหม่ →</Link>
+            ) : <p>{copy.rejectedBody}</p>}
+            <Link className="primary-button" href="/capture">{copy.chooseImage} →</Link>
           </div>
         )}
         {analysis?.status === "failed" && (
-          <div className="result-wait" role="alert"><h2>ประมวลผลไม่สำเร็จ</h2><p>กรุณาลองอีกครั้งด้วยภาพใหม่</p><Link className="primary-button" href="/capture">ลองใหม่ →</Link></div>
+          <div className="result-wait" role="alert">
+            <h2>{copy.failedTitle}</h2>
+            <p>{copy.failedBody}</p>
+            <Link className="primary-button" href="/capture">{copy.tryAgain} →</Link>
+          </div>
         )}
-        {/* A completed inference can still contain an experimental, abstained score. */}
+
         {analysis?.status === "completed" && (
-          <>
-            {score && hasScorableOverall ? (
-              <>
-                <div className="analysis-result-grid">
-                  <section className="analysis-section analysis-image-section" aria-labelledby="analysis-image-heading">
-                    <div className="analysis-section-heading">
-                      <div><p className="eyebrow">VISUAL RESULT</p><h3 id="analysis-image-heading">ภาพผลวิเคราะห์</h3></div>
+          score && hasScorableOverall ? (
+            <>
+              <div className="analysis-result-grid">
+                <section className="analysis-section analysis-image-section" aria-labelledby="analysis-image-heading">
+                  <div className="analysis-section-heading">
+                    <h3 id="analysis-image-heading">{copy.imageHeading}</h3>
+                  </div>
+                  <div className="artifact-tabs" role="group" aria-label={copy.artifactControls}>
+                    <button type="button" aria-pressed={artifact === "overlay"} className={artifact === "overlay" ? "active" : ""} onClick={() => { setArtifact("overlay"); setArtifactLoadError(false); }}>{copy.overlay}</button>
+                    <button type="button" aria-pressed={artifact === "mask"} className={artifact === "mask" ? "active" : ""} onClick={() => { setArtifact("mask"); setArtifactLoadError(false); }}>{copy.mask}</button>
+                  </div>
+                  <figure className="overlay-card result-artifact" aria-live="polite">
+                    {artifactAvailability === "available" ? (
+                      <Image
+                        key={artifact}
+                        className="analysis-result-image"
+                        unoptimized
+                        width={512}
+                        height={512}
+                        src={`/api/analysis?artifact=${artifact}`}
+                        alt={artifact === "overlay" ? copy.overlayAlt : copy.maskAlt}
+                        onError={() => setArtifactLoadError(true)}
+                      />
+                    ) : (
+                      <p role={artifactAvailability === "load-error" || artifactAvailability === "expired" ? "alert" : "status"}>
+                        {artifactAvailability === "expired" && copy.expired}
+                        {artifactAvailability === "unavailable" && copy.unavailable}
+                        {artifactAvailability === "load-error" && copy.imageLoadError}
+                      </p>
+                    )}
+                    <figcaption className="analysis-caption">
+                      {copy.overlayCaption}
+                      {artifactAvailability === "available" && expiryLabel && ` · ${copy.expiryPrefix} ${expiryLabel} (${copy.thailandTime})`}
+                      {artifactAvailability === "expired" && ` · ${copy.artifactExpired}`}
+                    </figcaption>
+                  </figure>
+                </section>
+
+                <div className="analysis-results-column">
+                  <section className="analysis-summary" aria-labelledby="analysis-score-heading">
+                    <div className="analysis-summary-copy">
+                      <h3 id="analysis-score-heading">{copy.markedArea}</h3>
+                      <p>{copy.markedAreaExplanation}</p>
                     </div>
-                    <div className="artifact-tabs" role="group" aria-label="เลือกรูปแบบภาพผลวิเคราะห์">
-                      {/* Switch only the displayed artifact; no new inference runs here. */}
-                      <button type="button" aria-pressed={artifact === "overlay"} className={artifact === "overlay" ? "active" : ""} onClick={() => { setArtifact("overlay"); setArtifactLoadError(false); }}>ภาพซ้อนตำแหน่ง</button>
-                      <button type="button" aria-pressed={artifact === "mask"} className={artifact === "mask" ? "active" : ""} onClick={() => { setArtifact("mask"); setArtifactLoadError(false); }}>เฉพาะพื้นที่ตรวจพบ</button>
+                    <div className="analysis-summary-values">
+                      <div className="analysis-coverage">
+                        <strong>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</strong>
+                        <span>{copy.percentageOfEvaluatedArea}</span>
+                      </div>
+                      <div className="analysis-total">
+                        <span>{copy.experimentalScore}</span>
+                        <strong>{score.overall.score.toFixed(1)} <small>/ 100</small></strong>
+                      </div>
                     </div>
-                    <div className="overlay-card result-artifact" aria-live="polite">
-                      {artifactAvailability === "available" ? (
-                        <Image
-                          key={artifact}
-                          className="analysis-result-image"
-                          unoptimized
-                          width={512}
-                          height={512}
-                          src={`/api/analysis?artifact=${artifact}`}
-                          alt={artifact === "overlay" ? "ภาพใบหน้าที่ซ้อนตำแหน่งพื้นที่ริ้วรอยที่ตรวจพบ" : "ภาพแสดงเฉพาะพื้นที่ริ้วรอยที่ตรวจพบ"}
-                          onError={() => setArtifactLoadError(true)}
-                        />
-                      ) : (
-                        <p role={artifactAvailability === "load-error" || artifactAvailability === "expired" ? "alert" : "status"}>
-                          {artifactAvailability === "expired" && "ภาพผลวิเคราะห์หมดอายุแล้ว กรุณาวิเคราะห์ภาพใหม่เพื่อดูภาพประกอบ"}
-                          {artifactAvailability === "unavailable" && "ไม่มีภาพผลวิเคราะห์ที่เปิดดูได้ กรุณาวิเคราะห์ภาพใหม่"}
-                          {artifactAvailability === "load-error" && "โหลดภาพผลวิเคราะห์ไม่สำเร็จ กรุณาลองอีกครั้งหรือวิเคราะห์ภาพใหม่"}
-                        </p>
-                      )}
-                    </div>
-                    <p className="analysis-caption">
-                      สีบนภาพแสดงตำแหน่งที่โมเดลทำเครื่องหมาย
-                      {artifactAvailability === "available" && expiryLabel && ` · ภาพส่วนตัวเปิดดูได้ถึง ${expiryLabel} น. (เวลาไทย)`}
-                      {artifactAvailability === "expired" && " · ภาพหมดอายุการเข้าถึงแล้ว"}
-                    </p>
+                    <p className="analysis-score-explanation">{copy.scoreExplanation}</p>
                   </section>
 
-                  <div className="analysis-results-column">
-                    <section className="analysis-summary" aria-labelledby="analysis-score-heading">
-                      <div className="analysis-summary-copy">
-                        <p className="eyebrow">EXPERIMENTAL SCORE</p>
-                        <h3 id="analysis-score-heading">คะแนนพื้นที่ที่โมเดลทำเครื่องหมาย</h3>
-                        <p>คะแนน 0–100 คำนวณจากสัดส่วนพื้นที่ที่โมเดลทำเครื่องหมายและมีเพดาน 100; คะแนนที่สูงขึ้นหมายถึงสัดส่วนตามสูตรสูงขึ้น ไม่ใช่คะแนนสุขภาพผิวหรือการวินิจฉัย หากถึงเพดานให้ดูเปอร์เซ็นต์จริงประกอบ</p>
-                      </div>
-                      <div className="analysis-summary-values">
-                        <div className="analysis-total"><strong>{score.overall.score.toFixed(1)}</strong><span>/ 100</span></div>
-                        <div className="analysis-coverage"><span>สัดส่วนพื้นที่ที่ทำเครื่องหมาย</span><strong>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</strong></div>
-                      </div>
+                  {analysis.result?.recommendation_gate?.eligible === true ? (
+                    <section className="analysis-section analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
+                      <div className="analysis-section-heading"><h3 id="analysis-recommendations-heading">{copy.recommendations}</h3></div>
+                      <RecommendationPanel language={language} />
                     </section>
+                  ) : (
+                    <p className="analysis-guidance-note" role="note">{copy.noRecommendations}</p>
+                  )}
 
-                    <section className="analysis-section analysis-region-section" aria-labelledby="analysis-regions-heading">
-                      <div className="analysis-section-heading">
-                        <div><p className="eyebrow">BY REGION</p><h3 id="analysis-regions-heading">คะแนนแยกตามบริเวณ</h3></div>
-                        <span>{evaluableRegions.length} จาก {allRegions.length} บริเวณที่ประเมินได้</span>
+                  <section className="analysis-section analysis-region-section" aria-labelledby="analysis-regions-heading">
+                    <div className="analysis-section-heading">
+                      <h3 id="analysis-regions-heading">{copy.regionsHeading}</h3>
+                      <span>{copy.regionsSummary(evaluableRegions.length, allRegions.length)}</span>
+                    </div>
+                    <p className="analysis-section-intro">{copy.regionExplanation}</p>
+                    {primaryRegions.length ? (
+                      <div className="analysis-regions">
+                        {primaryRegions.map(([name, value]) => <RegionBar key={name} name={name} value={value} language={language} />)}
                       </div>
-                      <p className="analysis-section-intro">ค่าคะแนนและสัดส่วนพื้นที่เป็นผลจากภาพ ไม่ใช่ระดับความรุนแรงหรือความเสี่ยงทางสุขภาพ</p>
-                      {displayedRegions.length ? (
-                        <div className="analysis-regions">
-                          {displayedRegions.map(([name, value]) => {
-                            if (value.evaluated_pixels <= 0) {
-                              return (
-                                <div className="analysis-region analysis-region-unscorable" key={name}>
-                                  <div className="analysis-region-top"><strong>{REGIONS[name] ?? name}</strong><span>ประเมินไม่ได้</span></div>
-                                  <p>ไม่มีพิกเซลเพียงพอสำหรับคำนวณ</p>
-                                </div>
-                              );
-                            }
-                            const areaPercent = value.wrinkle_area_ratio * 100;
-                            return (
-                              <div className="analysis-region" key={name}>
-                                <div className="analysis-region-top">
-                                  <strong>{REGIONS[name] ?? name}</strong>
-                                  <span><b>{value.score.toFixed(1)}</b> / 100</span>
-                                </div>
-                                <div className="analysis-region-track" role="progressbar" aria-label={`สัดส่วนพื้นที่ทำเครื่องหมาย: ${REGIONS[name] ?? name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.max(0, areaPercent))} aria-valuetext={`${areaPercent.toFixed(2)}% ของพื้นที่ที่ประเมินได้`}><span style={{ width: `${Math.min(100, Math.max(0, areaPercent))}%` }} /></div>
-                                <p>พื้นที่ทำเครื่องหมาย <strong>{areaPercent.toFixed(2)}%</strong><span className="analysis-region-pixels">{value.wrinkle_pixels.toLocaleString()} / {value.evaluated_pixels.toLocaleString()} พิกเซล</span></p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : <p className="analysis-section-intro">ไม่มีบริเวณที่มีพิกเซลเพียงพอสำหรับคำนวณ</p>}
-                    </section>
-
-                    <details className="analysis-method">
-                      <summary>วิธีคำนวณคะแนน</summary>
-                      <div className="analysis-method-content">
-                        <p>สัดส่วนพื้นที่ทำเครื่องหมาย = พิกเซลที่โมเดลทำเครื่องหมาย ÷ พิกเซลที่ใช้ประเมินได้</p>
-                        <p>สูตรคะแนน 0–100 = <code>{score.formula}</code> โดยใช้สัดส่วนแบบทศนิยม (1% = 0.01)</p>
-                        <p>ภาพนี้: {score.overall.wrinkle_pixels.toLocaleString()} ÷ {score.overall.evaluated_pixels.toLocaleString()} พิกเซล = {(score.overall.wrinkle_area_ratio * 100).toFixed(2)}% และได้คะแนน {score.overall.score.toFixed(1)} / 100</p>
-                        <p>คะแนนมีเพดานที่ 100 จึงควรดูสัดส่วนเปอร์เซ็นต์จริงประกอบ คะแนนนี้ไม่ยืนยันว่ามีหรือไม่มีริ้วรอยจริง</p>
-                      </div>
-                    </details>
-
-                    {analysis.result?.recommendation_gate?.eligible === true && (
-                      <section className="analysis-section analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
-                        <div className="analysis-section-heading">
-                          <div><p className="eyebrow">PERSONAL GUIDANCE</p><h3 id="analysis-recommendations-heading">คำแนะนำที่ผ่านเกณฑ์</h3></div>
-                        </div>
-                        <RecommendationPanel />
-                      </section>
+                    ) : <p className="analysis-section-intro">{copy.noRegionPixels}</p>}
+                    {displayedRegions.length > 0 && (
+                      <details className="analysis-extra-regions">
+                        <summary>{additionalRegions.length ? copy.viewAllRegionsAndPixels : copy.viewPixelCounts}</summary>
+                        {additionalRegions.length > 0 && (
+                          <div className="analysis-regions analysis-additional-regions">
+                            {additionalRegions.map(([name, value]) => <RegionBar key={name} name={name} value={value} language={language} />)}
+                          </div>
+                        )}
+                        <p className="analysis-pixel-count-label">{copy.pixelCounts}</p>
+                        <dl className="analysis-region-detail-list">
+                          {displayedRegions.map(([name, value]) => (
+                            <div className="analysis-region-detail" key={name}>
+                              <dt>{regionLabel(name, language)}</dt>
+                              <dd>
+                                {value.evaluated_pixels > 0 ? (
+                                  <>
+                                    {value.wrinkle_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} / {value.evaluated_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} {copy.pixels}
+                                    <small>{(value.wrinkle_area_ratio * 100).toFixed(2)}% · {value.score.toFixed(1)} / 100</small>
+                                  </>
+                                ) : copy.noRegionPixels}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </details>
                     )}
-                  </div>
+                  </section>
+
+                  <details className="analysis-method">
+                    <summary>{copy.method}</summary>
+                    <div className="analysis-method-content">
+                      <p>{copy.ratioFormula}</p>
+                      <p>{copy.scoreFormula} <code>{score.formula}</code>. {copy.decimalNote}</p>
+                      <p>{copy.thisImage} {score.overall.wrinkle_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} ÷ {score.overall.evaluated_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} {copy.pixels} = {(score.overall.wrinkle_area_ratio * 100).toFixed(2)}% · {copy.experimentalScore.toLowerCase()} {score.overall.score.toFixed(1)} / 100.</p>
+                      <p>{copy.scoreCapped}</p>
+                    </div>
+                  </details>
                 </div>
-                <div className="analysis-disclaimer"><strong>ข้อควรรู้</strong><p>ผลนี้เป็นการวัดเชิงทดลองจากภาพ ไม่ใช่การวินิจฉัยหรือการประเมินสุขภาพผิว และยังไม่ได้รับการรับรองทางคลินิก</p></div>
-              </>
-            ) : <div className="result-wait" role="status">ไม่มีคะแนนสำหรับภาพนี้</div>}
-          </>
+              </div>
+              <div className="analysis-disclaimer"><strong>{copy.disclaimerTitle}</strong><p>{copy.disclaimer}</p></div>
+            </>
+          ) : (
+            <div className="result-wait" role="status">
+              <h2>{copy.noScore}</h2>
+              <Link className="primary-button" href="/capture">{copy.retryAnalysis} →</Link>
+            </div>
+          )
         )}
       </section>
     </WorkspaceShell>

@@ -5,8 +5,8 @@
 .admin-products-page .admin-select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--input); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; }
 .admin-products-editor form, .admin-products-editor label { display: grid; gap: 8px; }
 
-.admin-products-page { padding: 0 24px 72px; color: var(--ink); }
-.admin-products-container { max-width: 1480px; margin: auto; }
+.admin-products-page { padding: 0 clamp(16px, 3vw, 56px) 72px; color: var(--ink); }
+.admin-products-container { width: min(100%, 1920px); max-width: 1920px; margin: auto; }
 .admin-products-header { min-height: 80px; margin: 0; border-bottom: 1px solid var(--line); }
 .admin-products-brand { display: flex; align-items: center; gap: 11px; font-size: 13px; font-weight: 800; letter-spacing: .08em; }
 .admin-products-brand strong { color: var(--primary-deep); }
@@ -104,6 +104,24 @@
 .admin-review-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 12px; border-radius: 8px; background: var(--warning); color: #604e1d; font-size: 12px; line-height: 1.55; }
 .admin-review-note svg { flex: none; margin-top: 1px; }
 .admin-form-actions { justify-content: flex-end; flex-wrap: wrap; padding-top: 22px; border-top: 1px solid var(--line); }
+
+@media (min-width: 1600px) {
+  .admin-products-heading { padding: clamp(28px, 2vw, 38px) clamp(30px, 2.2vw, 42px) 24px; }
+  .admin-products-filters { padding-inline: clamp(30px, 2.2vw, 42px); }
+  .admin-product-row { padding-inline: clamp(30px, 2.2vw, 42px); }
+  .admin-products-editor { padding: clamp(30px, 2vw, 40px); }
+  .admin-products-layout { gap: clamp(22px, 1.6vw, 32px); }
+}
+
+@media (max-width: 900px) {
+  .admin-products-header,
+  .admin-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .admin-header-actions { justify-content: flex-end; }
+  .admin-products-layout { grid-template-columns: minmax(0, 1fr); }
+}
 
 html[data-theme="black"] .admin-products-page [data-slot="input"], html[data-theme="black"] .admin-products-page [data-slot="textarea"], html[data-theme="black"] .admin-select { background: var(--surface); color: var(--ink); }
 html[data-theme="black"] .admin-product-status.draft { border-color: #76642c; background: #3e3621; color: #ffe7a0; }

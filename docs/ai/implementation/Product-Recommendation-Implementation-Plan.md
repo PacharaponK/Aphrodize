@@ -1,6 +1,19 @@
 # Product recommendation implementation plan
 
-Status: planning document. Reviewed against the working tree on 2026-09-29 (Asia/Bangkok). “Done” below means code exists in this working tree; it does **not** mean it has passed PostgreSQL, HTTP, browser, clinical, or production-release verification.
+Status: planning document. Revised against `dev`/`origin/dev` after the latest team push on 2026-09-29 (Asia/Bangkok). “Done” below means code exists in this working tree; it does **not** mean it has passed PostgreSQL, HTTP, browser, clinical, or production-release verification.
+
+## Post-push baseline and plan reset
+
+The previous plan was written before the latest team integration. The current baseline is commit `7d8f4b0` and must be treated as the only source of truth for new work. Since that push, the repository also contains the profile/questionnaire compatibility layer, product catalog routes, Daily Health model lifecycle files, documentation reorganization under `docs/ai`, `docs/architecture`, and `docs/lifestyle`, and removal of the deprecated lifestyle-forecast route.
+
+The first deliverable is therefore an integration baseline, not another rule change:
+
+1. Inventory the current router, schema, model, migration, frontend proxy, and test contracts after the merge. Do not restore deleted forecast code merely to satisfy an old test.
+2. Make the test suite importable again by either updating stale tests to the current contracts or restoring only an explicitly supported compatibility API. Missing optional tooling such as `mlflow` must be isolated behind optional imports or a documented test extra.
+3. Declare the canonical user-profile path: `UserProfile` is the current profile read/write model; `Questionnaire` remains append-only compatibility history and is dual-written by onboarding/profile updates. No recommendation rule may read an unversioned browser payload directly.
+4. Re-run backend collection, targeted unit tests, frontend lint/typecheck, and `git diff --check` before claiming any feature is complete. Record the exact baseline failures and do not count skipped integration/browser checks as passes.
+
+This reset supersedes “done” claims inherited from the pre-push working tree. Every section below must be revalidated against the current baseline before release.
 
 ## Goal and scope
 

@@ -7,6 +7,7 @@ const englishTitles: Record<string, string> = {
   "วิเคราะห์ภาพ": "Analyze image",
   "โปรไฟล์ผิวของคุณ": "Your skin profile",
   "คำแนะนำ": "Guidance",
+  "คำแนะนำจากผลวิเคราะห์ผิว": "Skin analysis guidance",
   "ผลวิเคราะห์ใบหน้า": "Face analysis results",
   "ตรวจคุณภาพภาพ": "Image quality check",
   "ตัวอย่างหน้าจอ": "UI preview",

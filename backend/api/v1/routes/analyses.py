@@ -28,6 +28,85 @@ DAILY_CONTEXT_MAX_AGE_DAYS = 30
 router = APIRouter()
 
 
+async def recommendation_context(
+    session: AsyncSession, user_id: UUID
+) -> tuple[Questionnaire | None, dict[str, object]]:
+    """Load only consented, recent, user-reported data for recommendation rules."""
+    questionnaire = await session.scalar(
+        select(Questionnaire)
+        .where(Questionnaire.user_id == user_id)
+        .order_by(Questionnaire.created_at.desc(), Questionnaire.id.desc())
+        .limit(1)
+    )
+    daily_context: dict[str, object] = {"status": "not_consented"}
+    daily_consent = await session.scalar(
+        select(Consent)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == DAILY_HEALTH_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .order_by(Consent.accepted_at.desc(), Consent.id.desc())
+        .limit(1)
+    )
+    if daily_consent is None:
+        return questionnaire, daily_context
+
+    today = date.today()
+    since = today - timedelta(days=DAILY_CONTEXT_MAX_AGE_DAYS)
+    lifestyle_entry = await session.scalar(
+        select(DailyHealthEntry)
+        .where(
+            DailyHealthEntry.user_id == user_id,
+            DailyHealthEntry.local_date.between(since, today),
+            DailyHealthEntry.data_source == "user_reported",
+        )
+        .order_by(DailyHealthEntry.local_date.desc(), DailyHealthEntry.id.desc())
+        .limit(1)
+    )
+    outcome = await session.scalar(
+        select(DailyHealthOutcome)
+        .where(
+            DailyHealthOutcome.user_id == user_id,
+            DailyHealthOutcome.target_date.between(since, today),
+            DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
+        )
+        .order_by(DailyHealthOutcome.target_date.desc(), DailyHealthOutcome.id.desc())
+        .limit(1)
+    )
+    daily_context = {
+        "status": "no_recent_reported_dryness",
+        "consent": {"record_id": str(daily_consent.id), "version": daily_consent.version},
+    }
+    if lifestyle_entry is not None:
+        daily_context["lifestyle"] = {
+            "source_table": "daily_health_entries",
+            "record_id": str(lifestyle_entry.id),
+            "observed_date": lifestyle_entry.local_date.isoformat(),
+            "sleep_duration_minutes": lifestyle_entry.sleep_duration_minutes,
+            "water_intake_ml": lifestyle_entry.water_intake_ml,
+            "outdoor_exposure_choice": lifestyle_entry.outdoor_exposure_choice,
+        }
+    if outcome is not None and outcome.reported_dryness_level_0_10 is not None:
+        daily_context.update({
+            "status": "available",
+            "reported_dryness": {
+                "source_table": "daily_health_outcomes",
+                "record_id": str(outcome.id),
+                "observed_date": outcome.target_date.isoformat(),
+                "value": outcome.reported_dryness_level_0_10,
+            },
+        })
+    return questionnaire, daily_context
+
+
+def questionnaire_context(questionnaire: Questionnaire | None) -> dict[str, str | None]:
+    return {
+        "status": "available" if questionnaire is not None else "missing",
+        "revision_id": str(questionnaire.id) if questionnaire is not None else None,
+    }
+
+
 def serialize(analysis: Analysis) -> AnalysisRead:
     return AnalysisRead(
         id=analysis.id,
@@ -56,6 +135,20 @@ async def submit_analysis(
     # The service performs consent, image, storage, and queue checks.
     analysis = await create_analysis(session, user_id, image)
     return serialize(analysis)
+
+
+@router.get("/recommendations")
+async def get_profile_recommendations(
+    user_id: UUID = Depends(require_user_token),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Recommend from the latest self-reported profile even when no image exists."""
+    questionnaire, daily_context = await recommendation_context(session, user_id)
+    response = recommendations_for(
+        None, questionnaire.answers if questionnaire else {}, daily_context
+    )
+    response["questionnaire_context"] = questionnaire_context(questionnaire)
+    return response
 
 
 @router.get("/{analysis_id}", response_model=AnalysisRead)
@@ -113,82 +206,9 @@ async def get_recommendations(
     analysis = await session.get(Analysis, analysis_id)
     if analysis is None or analysis.user_id != user_id:
         raise HTTPException(status_code=404, detail="Analysis not found")
-    questionnaire = await session.scalar(
-        select(Questionnaire)
-        .where(Questionnaire.user_id == analysis.user_id)
-        .order_by(Questionnaire.created_at.desc(), Questionnaire.id.desc())
-        .limit(1)
-    )
-    questionnaire_context = {
-        "status": "available" if questionnaire is not None else "missing",
-        "revision_id": str(questionnaire.id) if questionnaire is not None else None,
-    }
-    daily_context: dict[str, object] = {"status": "not_consented"}
-    daily_consent = await session.scalar(
-        select(Consent)
-        .where(
-            Consent.user_id == analysis.user_id,
-            Consent.version == DAILY_HEALTH_CONSENT_VERSION,
-            Consent.revoked_at.is_(None),
-        )
-        .order_by(Consent.accepted_at.desc(), Consent.id.desc())
-        .limit(1)
-    )
-    if daily_consent is not None:
-        today = date.today()
-        since = today - timedelta(days=DAILY_CONTEXT_MAX_AGE_DAYS)
-        lifestyle_entry = await session.scalar(
-            select(DailyHealthEntry)
-            .where(
-                DailyHealthEntry.user_id == analysis.user_id,
-                DailyHealthEntry.local_date.between(since, today),
-                DailyHealthEntry.data_source == "user_reported",
-            )
-            .order_by(DailyHealthEntry.local_date.desc(), DailyHealthEntry.id.desc())
-            .limit(1)
-        )
-        outcome = await session.scalar(
-            select(DailyHealthOutcome)
-            .where(
-                DailyHealthOutcome.user_id == analysis.user_id,
-                DailyHealthOutcome.target_date.between(since, today),
-                DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
-            )
-            .order_by(DailyHealthOutcome.target_date.desc(), DailyHealthOutcome.id.desc())
-            .limit(1)
-        )
-        daily_context = {
-            "status": "no_recent_reported_dryness",
-            "consent": {
-                "record_id": str(daily_consent.id),
-                "version": daily_consent.version,
-            },
-        }
-        if lifestyle_entry is not None:
-            daily_context.update({
-                "lifestyle": {
-                    "source_table": "daily_health_entries",
-                    "record_id": str(lifestyle_entry.id),
-                    "observed_date": lifestyle_entry.local_date.isoformat(),
-                    "sleep_duration_minutes": lifestyle_entry.sleep_duration_minutes,
-                    "water_intake_ml": lifestyle_entry.water_intake_ml,
-                    "outdoor_exposure_choice": lifestyle_entry.outdoor_exposure_choice,
-                },
-            })
-        # Keep observed labels in the dedicated outcome table, separate from inputs
-        # and model predictions stored in daily_health_entries.
-        if outcome is not None and outcome.reported_dryness_level_0_10 is not None:
-            daily_context.update({
-                "status": "available",
-                "reported_dryness": {
-                    "source_table": "daily_health_outcomes",
-                    "record_id": str(outcome.id),
-                    "observed_date": outcome.target_date.isoformat(),
-                    "value": outcome.reported_dryness_level_0_10,
-                },
-            })
+    questionnaire, daily_context = await recommendation_context(session, analysis.user_id)
     response = recommendations_for(
         analysis, questionnaire.answers if questionnaire else {}, daily_context
     )
-    response["questionnaire_context"] = questionnaire_context
+    response["questionnaire_context"] = questionnaire_context(questionnaire)
     return response

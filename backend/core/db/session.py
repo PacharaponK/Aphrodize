@@ -240,23 +240,13 @@ async def create_database_schema() -> None:
                     "END IF; END $$;"
                 )
             )
-            # Retired entry labels were never written by the current API. Refuse to
-            # discard values from an older deployment without a deliberate backfill.
+            # These are user-reported signals used by the recommendation rules.  Keep
+            # existing values and add the fields for databases created by older builds.
             await connection.execute(
                 text(
-                    "DO $$ BEGIN "
-                    "IF EXISTS (SELECT 1 FROM information_schema.columns "
-                    "WHERE table_name = 'daily_health_entries' "
-                    "AND column_name = 'reported_thirst_score_0_10') THEN "
-                    "IF EXISTS (SELECT 1 FROM daily_health_entries "
-                    "WHERE reported_thirst_score_0_10 IS NOT NULL "
-                    "OR reported_dryness_score_0_10 IS NOT NULL) THEN "
-                    "RAISE EXCEPTION 'Legacy daily-health labels need manual migration'; "
-                    "END IF; "
                     "ALTER TABLE daily_health_entries "
-                    "DROP COLUMN reported_thirst_score_0_10, "
-                    "DROP COLUMN reported_dryness_score_0_10; "
-                    "END IF; END $$;"
+                    "ADD COLUMN IF NOT EXISTS reported_thirst_score_0_10 FLOAT, "
+                    "ADD COLUMN IF NOT EXISTS reported_dryness_score_0_10 FLOAT"
                 )
             )
             await connection.execute(

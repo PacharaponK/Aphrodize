@@ -311,6 +311,14 @@ a { color: var(--link); }
 .wizard-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .wizard-actions button { margin: 0; }
 .profile-panel { max-width: 760px; }
+.profile-auth-gate { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: start; gap: 18px; max-width: 680px; margin-top: 20px; padding: clamp(22px, 4vw, 32px); border: 1px solid var(--line); border-radius: 16px; background: radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--primary) 9%, transparent), transparent 58%), var(--surface); box-shadow: 0 12px 32px rgb(52 24 34 / 6%); }
+.profile-auth-icon { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--line)); border-radius: 50%; background: color-mix(in srgb, var(--primary) 10%, var(--surface)); color: var(--primary); }
+.profile-auth-icon svg { width: 24px; height: 24px; }
+.profile-auth-copy .eyebrow { margin: 0 0 6px; color: var(--primary-deep); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.profile-auth-copy h2 { margin: 0 0 8px; color: var(--ink); font-size: clamp(20px, 3vw, 26px); }
+.profile-auth-copy > p:last-child { margin: 0; color: var(--muted); line-height: 1.65; }
+.profile-auth-actions { display: flex; flex-wrap: wrap; gap: 10px; grid-column: 2; }
+@media (max-width: 600px) { .profile-auth-gate { grid-template-columns: 42px minmax(0, 1fr); gap: 12px; padding: 20px; } .profile-auth-icon { width: 40px; height: 40px; } .profile-auth-actions { grid-column: 1 / -1; } .profile-auth-actions a { flex: 1 1 150px; } }
 .profile-account { margin-bottom: 28px; padding: 24px; border: 1px solid var(--line); border-radius: 12px; background: var(--canvas); }
 .profile-account h2 { margin: 0 0 4px; }
 .profile-account p { margin: 0; color: var(--muted); }
@@ -321,6 +329,39 @@ a { color: var(--link); }
 .profile-measurements { display: grid; gap: 10px; margin: 28px 0; }
 .profile-measurements > h2, .profile-measurement-card h3 { margin: 0; }
 .profile-measurements > p { margin: 0; color: var(--muted); font-size: 14px; }
+.profile-menstrual { display: grid; gap: 10px; margin: 28px 0; }
+.profile-menstrual > h2, .profile-menstrual > p { margin: 0; }
+.profile-menstrual > p { color: var(--muted); font-size: 14px; }
+.profile-consent-prompt { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.profile-consent-prompt p { margin: 0; color: var(--muted); }
+.profile-consent-prompt .primary-button { justify-self: start; }
+.profile-menstrual-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.profile-menstrual table { width: 100%; border-collapse: collapse; min-width: 360px; }
+.profile-menstrual th, .profile-menstrual td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--line); }
+.profile-menstrual th { color: var(--muted); font-size: 12px; font-weight: 600; }
+.profile-menstrual tr:last-child td { border-bottom: 0; }
+.cycle-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cycle-summary-grid article { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.cycle-summary-grid span { color: var(--muted); font-size: 12px; }
+.cycle-summary-grid strong { color: var(--ink); font-size: 15px; }
+.cycle-calendar { display: grid; gap: 12px; max-width: 440px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.cycle-calendar > header { display: flex; align-items: center; justify-content: space-between; }
+.cycle-calendar > header h3 { margin: 0; font-size: 17px; }
+.cycle-calendar > header button { min-width: 40px; min-height: 40px; padding: 4px 10px; }
+.cycle-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; text-align: center; }
+.cycle-weekday { padding: 6px 0; color: var(--muted); font-size: 12px; }
+.cycle-day, .cycle-calendar-empty { display: grid; place-items: center; min-width: 36px; min-height: 38px; padding: 0; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--ink); font: inherit; }
+.cycle-day { cursor: pointer; }
+.cycle-day:hover:not(:disabled) { border-color: var(--primary); }
+.cycle-day:disabled { cursor: default; opacity: .45; }
+.cycle-day.is-period { background: #f4a6b2; color: #421c25; }
+.cycle-day.is-estimated { border: 2px dashed #ad7093; }
+.cycle-day.is-today { box-shadow: inset 0 0 0 1px var(--primary); font-weight: 700; }
+.cycle-legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--muted); font-size: 12px; }
+.cycle-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cycle-legend i { width: 12px; height: 12px; border-radius: 50%; background: #f4a6b2; }
+.cycle-legend i.is-estimated { border: 2px dashed #ad7093; background: transparent; }
+@media (max-width: 600px) { .cycle-summary-grid { grid-template-columns: 1fr; } .cycle-calendar { padding: 12px; } .cycle-calendar-grid { gap: 3px; } .cycle-day, .cycle-calendar-empty { min-width: 32px; min-height: 35px; } }
 .profile-measurement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .profile-measurement-card { display: grid; align-content: start; gap: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .profile-measurement-card > label:not(.profile-measurement-consent) { color: var(--muted); font-size: 13px; }
@@ -762,4 +803,134 @@ html[data-theme="black"] .app-shell main .capture-card .eyebrow {
 
 html[data-theme="black"] .app-shell main .capture-card p:not(.eyebrow) {
   color: var(--muted);
+}
+
+/* Give wide screens room to breathe while keeping every layout shrink-safe. */
+:root {
+  --responsive-page-gutter: clamp(16px, 3.4vw, 72px);
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 320px;
+}
+
+.app-shell,
+.simple-page,
+.workspace-shell,
+.auth-page,
+.onboarding-page,
+.admin-products-page,
+.page-frame,
+.page-content,
+.workspace-main,
+.workspace-panel {
+  min-width: 0;
+}
+
+.app-shell > main,
+.workspace-shell > .workspace-main {
+  width: 100%;
+  max-width: 1920px;
+  margin-inline: auto;
+  padding-inline: var(--responsive-page-gutter);
+}
+
+.app-shell > main {
+  padding-block: clamp(28px, 3vw, 56px) 72px;
+}
+
+.simple-page {
+  width: 100%;
+  padding-inline: var(--responsive-page-gutter);
+}
+
+.page-frame {
+  width: min(100%, 1920px);
+  margin-inline: auto;
+}
+
+.page-content {
+  padding: clamp(20px, 2.2vw, 42px);
+}
+
+.daily-entry-dialog h2 { font-size: clamp(22px, 1.5vw, 30px); }
+.capture-preview { min-height: clamp(280px, 38svh, 620px); }
+.capture-preview img,
+.capture-preview video { max-height: min(68svh, 760px); }
+.analysis-section .result-artifact { min-height: clamp(340px, 42svh, 620px); }
+
+h1 { font-size: clamp(32px, 2.8vw, 56px); }
+h2 { font-size: clamp(24px, 2.1vw, 40px); }
+h3 { font-size: clamp(17px, 1.12vw, 21px); }
+
+.primary-button,
+.secondary-button,
+.artifact-tabs button {
+  font-size: clamp(14px, .72vw, 16px);
+}
+
+.workspace-topbar {
+  flex-wrap: wrap;
+  gap: clamp(12px, 1.5vw, 24px);
+}
+
+.workspace-topbar > div:first-child,
+.workspace-header-actions {
+  min-width: 0;
+}
+
+.workspace-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.recommendation-card,
+.workspace-shell .recommendation-card {
+  width: min(100%, 1240px);
+  max-width: 1240px;
+  margin-inline: auto;
+}
+
+.profile-panel {
+  width: min(100%, 1240px);
+  max-width: 1240px;
+  margin-inline: auto;
+}
+
+.recommendation-context,
+.recommendation-note,
+.recommendation-warning {
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+@media (min-width: 1600px) {
+  .page-content { padding: clamp(32px, 2.2vw, 48px); }
+  .workspace-topbar { margin-bottom: clamp(28px, 2vw, 40px); }
+}
+
+@media (max-width: 900px) {
+  .app-shell > main,
+  .workspace-shell > .workspace-main,
+  .simple-page {
+    padding-inline: 18px;
+  }
+
+  .workspace-topbar { align-items: flex-start; }
+  .workspace-header-actions { justify-content: flex-start; }
+  .page-header { margin-inline: -18px; padding-inline: 18px; }
+}
+
+@media (max-width: 480px) {
+  .app-shell > main,
+  .workspace-shell > .workspace-main,
+  .simple-page {
+    padding-inline: 14px;
+  }
+
+  .page-header { margin-inline: -14px; padding-inline: 14px; }
+  .page-content { padding: clamp(16px, 5vw, 22px); }
 }
