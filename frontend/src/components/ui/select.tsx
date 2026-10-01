@@ -86,13 +86,6 @@ export function Select({
     };
   }, [isOpen]);
 
-  // Sync internal state if controlled value changes
-  useEffect(() => {
-    if (isControlled) {
-      setInternalValue(controlledValue ?? "");
-    }
-  }, [isControlled, controlledValue]);
-
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
