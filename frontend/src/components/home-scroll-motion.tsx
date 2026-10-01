@@ -34,71 +34,35 @@ export function HomeScrollMotion() {
         );
       }
 
-      const resultCards = gsap.utils.toArray<HTMLElement>(
-        ".home-result-detail-list .result-card",
+      const cards = gsap.utils.toArray<HTMLElement>(
+        ".home-topbar, .home-overview-card, .home-wellness-card, .home-action-card, .home-metric-card, .home-insights-card",
         dashboard,
       );
-      resultCards.forEach((card, index) => {
+      cards.forEach((card, index) => {
         gsap.fromTo(
           card,
-          { y: 26 + index * 8, autoAlpha: 0.55, scale: 0.985 },
           {
+            x: card.matches(".home-overview-card") ? -40 : card.matches(".home-wellness-card") ? 40 : 0,
+            y: 44,
+            scale: 0.96,
+            opacity: 0.2,
+          },
+          {
+            x: 0,
             y: 0,
-            autoAlpha: 1,
             scale: 1,
-            ease: "none",
+            opacity: 1,
+            duration: 0.85,
+            delay: Math.min(index * 0.1, 0.3),
+            ease: "power3.out",
             scrollTrigger: {
               trigger: card,
-              start: "top 88%",
-              end: "top 58%",
-              scrub: 0.5,
-              invalidateOnRefresh: true,
-            },
-          },
-        );
-      });
-
-      const revealTargets = gsap.utils.toArray<HTMLElement>(
-        "[data-scroll-reveal]",
-        dashboard,
-      );
-      revealTargets.forEach((target) => {
-        gsap.fromTo(
-          target,
-          { y: 24, autoAlpha: 0.65 },
-          {
-            y: 0,
-            autoAlpha: 1,
-            duration: 0.7,
-            ease: "power2.out",
-            scrollTrigger: {
-              trigger: target,
-              start: "top 88%",
-              toggleActions: "play none none reverse",
-              invalidateOnRefresh: true,
-            },
-          },
-        );
-      });
-
-      const score = dashboard.querySelector<HTMLElement>(".home-overview-score");
-      if (score) {
-        gsap.fromTo(
-          score,
-          { y: 18 },
-          {
-            y: 0,
-            ease: "none",
-            scrollTrigger: {
-              trigger: score,
               start: "top 92%",
-              end: "top 62%",
-              scrub: 0.5,
-              invalidateOnRefresh: true,
+              toggleActions: "restart none restart reverse",
             },
           },
         );
-      }
+      });
     });
 
     return () => media.revert();
