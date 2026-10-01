@@ -72,7 +72,7 @@ The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ff
 ### 2. Build and start services
 
 ```powershell
-docker compose up -d --build
+docker compose --profile ai up -d --build
 ```
 
 For local demos, run `docker compose run --rm fixture` to load the account, profile, daily-health consent, and two dated tracker entries in [`backend/fixtures/users.yaml`](backend/fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; repeated runs do not duplicate the profile or daily entries. Fixture entries use `data_source=fixture` and are excluded from user-model training.
@@ -80,6 +80,8 @@ For local demos, run `docker compose run --rm fixture` to load the account, prof
 Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
 
 Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
+
+The `ai` profile starts MinIO and the inference worker required by `/capture`. Without it, account and health APIs can run, but image analysis cannot.
 
 Check the startup state:
 
@@ -185,7 +187,7 @@ docker compose logs --tail 200 trainer-worker
 docker compose down
 
 # Restart after a configuration or Compose change.
-docker compose up -d --build
+docker compose --profile ai up -d --build
 
 # Follow one service's output.
 docker compose logs -f api
