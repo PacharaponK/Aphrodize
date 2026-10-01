@@ -56,6 +56,7 @@ def test_sunscreen_needs_verified_label_before_publication():
     product = SimpleNamespace(
         category="sunscreen",
         price_satang=10000,
+        price_source_url="https://example.com/price",
         ingredients_label="Water",
         ingredients_inci=["Aqua"],
         target_skin_types=["all"],

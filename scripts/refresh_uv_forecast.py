@@ -12,6 +12,8 @@ from statsmodels.tsa.statespace.sarimax import SARIMAXResults
 from train_uv_model import ARTIFACTS, CITIES, MODELS, fourier, load_data
 from train_uv_model import main as train_models
 
+from backend.services.uv_map_service import refresh_api_map
+
 COORDINATES = {
     "bangkok": (13.7563, 100.5018),
     "songkhla": (7.1988, 100.5951),
@@ -63,7 +65,7 @@ def build_snapshot(series, today):
         model = SARIMAXResults.load(model_path)
         if model.nobs > len(days):
             raise ValueError(f"{city}: saved model is newer than TEMIS data")
-        if not np.allclose(np.asarray(model.model.endog).ravel(), values[:model.nobs]):
+        if not np.allclose(np.asarray(model.model.endog).ravel(), values[: model.nobs]):
             raise ValueError(f"{city}: TEMIS history changed; retrain before publishing")
         if model.nobs < len(days):
             new_days = days[model.nobs :]
@@ -71,6 +73,13 @@ def build_snapshot(series, today):
                 np.asarray(values[model.nobs :]), exog=fourier(new_days), refit=False
             )
             model.save(model_path)
+        # Keep today's map value a prediction, even when TEMIS already publishes today.
+        if days[-1] >= today:
+            history_end = days.index(today)
+            model = model.apply(
+                np.asarray(values[:history_end]), exog=fourier(days[:history_end]), refit=False
+            )
+            days, values = days[:history_end], values[:history_end]
         forecast_days = [day for day in (today, today + timedelta(days=1)) if day > days[-1]]
         if len(forecast_days) > 2:
             raise ValueError(f"{city}: forecast horizon exceeds evaluated two days")
@@ -102,11 +111,16 @@ def build_snapshot(series, today):
 
 
 def main():
+    today = datetime.now(ZoneInfo("Asia/Bangkok")).date()
+    try:
+        map_failures = refresh_api_map(today)
+    except (OSError, ValueError, TypeError) as error:
+        print(f"UV map snapshot unavailable ({type(error).__name__})")
+        map_failures = 1
     download_temis()
     if any(not (MODELS / f"{city}.pkl").exists() for city in CITIES):
         train_models()
     series = load_data()
-    today = datetime.now(ZoneInfo("Asia/Bangkok")).date()
     snapshot = build_snapshot(series, today)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     temporary = SNAPSHOT.with_suffix(".json.tmp")
@@ -115,6 +129,8 @@ def main():
     )
     temporary.replace(SNAPSHOT)
     print(f"Published {SNAPSHOT} for {today} and {today + timedelta(days=1)}")
+    if map_failures:
+        raise RuntimeError("Some UV map batches failed; retry refresh in 30 minutes")
 
 
 if __name__ == "__main__":

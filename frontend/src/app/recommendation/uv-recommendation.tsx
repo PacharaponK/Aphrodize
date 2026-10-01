@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Select } from "@/components/ui/select";
 
 type City = "bangkok" | "songkhla" | "chiang_mai";
@@ -58,6 +59,7 @@ export function UvRecommendation() {
   const dateLabel = day && new Intl.DateTimeFormat("th-TH", { dateStyle: "full", timeZone: "Asia/Bangkok" }).format(new Date(`${day.date}T12:00:00+07:00`));
   return <section id="uv" lang="th" aria-labelledby="uv-heading" className="page-content workspace-panel uv-page">
     <div className="uv-intro"><p className="eyebrow">ข้อมูลสำหรับวางแผนกลางแจ้ง</p><h2 id="uv-heading">UV และการป้องกันแดด</h2><p>เลือกพื้นที่และวันที่เพื่อดูประมาณการ UV ตอนเที่ยงภายใต้ท้องฟ้าโปร่ง พร้อมวิธีป้องกันแสงแดด</p></div>
+    <Link href="/uv-map">ดูแผนที่ UV ครบทุกจังหวัด ↗</Link>
       <div className="uv-controls">
         <label htmlFor="uv-city">พื้นที่</label>
         <Select

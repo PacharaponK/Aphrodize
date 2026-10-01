@@ -27,6 +27,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 include = ["backend*"]
 
+[tool.setuptools.package-data]
+"backend.libs" = ["uv_provinces.json"]
+
 [dependency-groups]
 dev = [
   "httpx>=0.28,<0.29",

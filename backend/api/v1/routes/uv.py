@@ -6,10 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db.models import Product
 from backend.core.db.session import get_session
+from backend.services.uv_map_service import load_map
 from backend.services.uv_service import load_recommendation
 
 router = APIRouter()
 City = Literal["bangkok", "songkhla", "chiang_mai"]
+
+
+@router.get("/map")
+async def uv_map(
+    day: Literal["today", "tomorrow"] = Query("today"),
+    source: Literal["api", "model"] = Query("api"),
+) -> dict:
+    return load_map(day, source=source)
 
 
 @router.get("/recommendation")

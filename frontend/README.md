@@ -4,6 +4,11 @@ Next.js App Router workspace for the skin-tracking UI. Capture, analysis results
 daily health, and product recommendations connect to the backend API.
 Recommendations use the signed-in user's profile and reviewed database catalog;
 there is no frontend demo response or sample-product fallback.
+Product cards render real catalog photos, reference THB prices, and direct retailer
+purchase links from the API. The current Thai shopping snapshot covers eight exact
+Watsons variants; Shopee links may be added through the reviewed admin catalog when
+the exact listing is verified. Budget filtering applies per product and requires a
+sourced price checked within 30 days. Reported allergies still withhold named products.
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -33,3 +38,9 @@ references are in `design/`.
 The admin product catalog is at `/admin/products`. Set `ADMIN_USERNAME` and
 `ADMIN_PASSWORD` in both root `.env` and `frontend/.env.local` to enable it.
 Catalog edits stay separate from user profiles and recommendations.
+
+Thailand's clear-sky UV map is at `/uv-map`, linked from the dashboard UV section.
+`UvMapExplorer` provides fetching, date selection and province details;
+`ThailandUvMap` accepts province data and controlled selection props without fetching.
+Both live in `src/components/uv/`. See [the map guide](../docs/uv-thailand-map.md)
+for refresh setup, data sources, reuse examples and map-data licences.

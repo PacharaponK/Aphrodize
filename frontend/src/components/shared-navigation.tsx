@@ -11,6 +11,7 @@ const sections = {
   "/profile": "profile",
   "/quality-rejected": "capture",
   "/showcase": "none",
+  "/uv-map": "none",
 } as const;
 
 export function SharedNavigation() {
