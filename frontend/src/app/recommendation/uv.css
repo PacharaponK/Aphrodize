@@ -4,7 +4,7 @@
 .uv-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; }
 .uv-controls label { flex-basis: 100%; font-weight: 700; }
 .uv-controls select, .uv-day-buttons button, .uv-notice button { min-height: 44px; border: 1px solid #c8ccd8; border-radius: 8px; padding: 8px 14px; background: white; color: #172032; }
-.uv-controls select { min-width: 210px; }
+.uv-controls select, .uv-controls .aphrodize-select-container { min-width: 210px; width: auto; }
 .uv-day-buttons { display: flex; gap: 8px; }
 .uv-day-buttons button[aria-pressed="true"] { background: #4631a5; border-color: #4631a5; color: white; }
 .uv-controls :focus-visible, .uv-notice button:focus-visible, .uv-panel a:focus-visible { outline: 3px solid #865eff; outline-offset: 2px; }

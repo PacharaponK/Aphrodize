@@ -7,6 +7,7 @@ import DailyHealthDashboard from "./daily-health-dashboard";
 import DailyHealthOutcomeForm from "./daily-health-outcome-form";
 import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
+import { Select } from "@/components/ui/select";
 
 type OutdoorChoice = "under_1_hour" | "1_to_under_3_hours" | "3_to_under_4_hours" | "4_hours_or_more";
 
@@ -510,19 +511,19 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
               <div className="personal-context-fields">
                 <label className="tracker-field" htmlFor="smoking-status">
                   <span>{t("สถานะการสูบบุหรี่", "Smoking status")}</span>
-                  <select
+                  <Select
                     id="smoking-status"
                     value={form.smokingStatus}
-                    onChange={(event) => updateForm("smokingStatus", event.target.value as SmokingStatus | "")}
-                  >
-                    <option value="">
-                      {personalProfile.smoking_status ? t("ใช้สถานะเดิมที่บันทึกไว้", "Use saved status") : t("ยังไม่ระบุ", "Not specified")}
-                    </option>
-                    <option value="current">{t("ปัจจุบันสูบบุหรี่", "Currently smoke")}</option>
-                    <option value="former">{t("เคยสูบ แต่เลิกแล้ว", "Former smoker")}</option>
-                    <option value="never">{t("ไม่เคยสูบ", "Never smoked")}</option>
-                    <option value="prefer_not_to_say">{t("ไม่ต้องการระบุ", "Prefer not to say")}</option>
-                  </select>
+                    onChange={(val) => updateForm("smokingStatus", val as SmokingStatus | "")}
+                    placeholder={personalProfile.smoking_status ? t("ใช้สถานะเดิมที่บันทึกไว้", "Use saved status") : t("ยังไม่ระบุ", "Not specified")}
+                    options={[
+                      { value: "", label: personalProfile.smoking_status ? t("ใช้สถานะเดิมที่บันทึกไว้", "Use saved status") : t("ยังไม่ระบุ", "Not specified") },
+                      { value: "current", label: t("ปัจจุบันสูบบุหรี่", "Currently smoke") },
+                      { value: "former", label: t("เคยสูบ แต่เลิกแล้ว", "Former smoker") },
+                      { value: "never", label: t("ไม่เคยสูบ", "Never smoked") },
+                      { value: "prefer_not_to_say", label: t("ไม่ต้องการระบุ", "Prefer not to say") },
+                    ]}
+                  />
                 </label>
                 <fieldset className="tracker-field">
                   <legend>{t("กำลังมีประจำเดือนวันนี้หรือไม่ (ไม่บังคับ)", "Are you menstruating today? (Optional)")}</legend>
@@ -569,17 +570,19 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             {form.ageGuidanceConsent && (
               <label className="tracker-field" htmlFor="age-band">
                 <span>{t("ช่วงวัยสำหรับคำแนะนำการนอน", "Age group for sleep guidance")}</span>
-                <select
+                <Select
                   id="age-band"
                   value={form.ageBand}
-                  onChange={(event) => updateForm("ageBand", event.target.value as AgeBand | "")}
-                >
-                  <option value="">{personalProfile.age_band ? t("ใช้ช่วงวัยเดิมที่บันทึกไว้", "Use saved age group") : t("เลือกช่วงวัย", "Choose an age group")}</option>
-                  <option value="13_17">{t("13–17 ปี", "13–17 years")}</option>
-                  <option value="18_60">{t("18–60 ปี", "18–60 years")}</option>
-                  <option value="61_64">{t("61–64 ปี", "61–64 years")}</option>
-                  <option value="65_plus">{t("65 ปีขึ้นไป", "65 years and older")}</option>
-                </select>
+                  onChange={(val) => updateForm("ageBand", val as AgeBand | "")}
+                  placeholder={personalProfile.age_band ? t("ใช้ช่วงวัยเดิมที่บันทึกไว้", "Use saved age group") : t("เลือกช่วงวัย", "Choose an age group")}
+                  options={[
+                    { value: "", label: personalProfile.age_band ? t("ใช้ช่วงวัยเดิมที่บันทึกไว้", "Use saved age group") : t("เลือกช่วงวัย", "Choose an age group") },
+                    { value: "13_17", label: t("13–17 ปี", "13–17 years") },
+                    { value: "18_60", label: t("18–60 ปี", "18–60 years") },
+                    { value: "61_64", label: t("61–64 ปี", "61–64 years") },
+                    { value: "65_plus", label: t("65 ปีขึ้นไป", "65 years and older") },
+                  ]}
+                />
                 <small>{t("เก็บเฉพาะช่วงอายุ ไม่เก็บวันเกิด; หากไม่เลือกจะใช้คำแนะนำทั่วไป", "Only the age group is saved, not date of birth. General guidance is used when not selected.")}</small>
               </label>
             )}

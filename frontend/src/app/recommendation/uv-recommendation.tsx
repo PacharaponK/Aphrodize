@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Select } from "@/components/ui/select";
 
 type City = "bangkok" | "songkhla" | "chiang_mai";
 type ForecastDay = {
@@ -57,11 +58,23 @@ export function UvRecommendation() {
   const dateLabel = day && new Intl.DateTimeFormat("th-TH", { dateStyle: "full", timeZone: "Asia/Bangkok" }).format(new Date(`${day.date}T12:00:00+07:00`));
   return <section className="page-content workspace-panel uv-page">
     <div className="uv-intro"><p className="eyebrow">ข้อมูลสำหรับวางแผนกลางแจ้ง</p><h2>เลือกพื้นที่และวันที่</h2><p>ประมาณการ UV ตอนเที่ยงภายใต้ท้องฟ้าโปร่ง พร้อมวิธีป้องกันแสงแดด</p></div>
-    <div className="uv-controls">
-      <label htmlFor="uv-city">พื้นที่</label>
-      <select id="uv-city" value={city} onChange={(event) => { setLoading(true); setResult(null); setError(""); setCity(event.target.value as City); setDayIndex(0); }}>
-        {Object.entries(cityNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-      </select>
+      <div className="uv-controls">
+        <label htmlFor="uv-city">พื้นที่</label>
+        <Select
+          id="uv-city"
+          value={city}
+          onChange={(val) => {
+            setLoading(true);
+            setResult(null);
+            setError("");
+            setCity(val as City);
+            setDayIndex(0);
+          }}
+          options={Object.entries(cityNames).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+        />
       <div className="uv-day-buttons" role="group" aria-label="วันที่พยากรณ์">
         {["วันนี้", "พรุ่งนี้"].map((label, index) => <button key={label} type="button" aria-pressed={dayIndex === index} onClick={() => setDayIndex(index)}>{label}</button>)}
       </div>

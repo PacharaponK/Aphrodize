@@ -31,7 +31,7 @@ function durationLabel(totalMinutes: number): string {
 }
 
 function outdoorLabel(choice: number): string {
-  return ["น้อยกว่า 1 ชม.", "1–2 ชม.", "3–4 ชม.", "4 ชม.ขึ้นไป"][choice - 1]
+  return ["น้อยกว่า 1 ชม.", "1–น้อยกว่า 3 ชม.", "3–น้อยกว่า 4 ชม.", "4 ชม.ขึ้นไป"][choice - 1]
     ?? "ไม่ระบุ";
 }
 

@@ -1,8 +1,9 @@
 # Aphrodize frontend
 
-Next.js App Router workspace for the skin-tracking UI. The `/capture` and
-`/result-detail` routes connect to the local API; other prototype pages still
-show sample content.
+Next.js App Router workspace for the skin-tracking UI. Capture, analysis results,
+daily health, and product recommendations connect to the backend API.
+Recommendations use the signed-in user's profile and reviewed database catalog;
+there is no frontend demo response or sample-product fallback.
 
 ```powershell
 pnpm install --frozen-lockfile

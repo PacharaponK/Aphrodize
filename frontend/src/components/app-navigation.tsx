@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, House, LogIn, LogOut, Menu, TrendingUp, UserRound, X } from "lucide-react";
-import { ThemeToggle } from "./theme-toggle";
-import { LanguageToggle, useLanguage } from "./language-provider";
+import { NavSettingsDropdown } from "./nav-settings-dropdown";
+import { useLanguage } from "./language-provider";
 
 type ActiveSection = "dashboard" | "capture" | "clients" | "trend" | "profile" | "none";
 
@@ -166,8 +166,7 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
           })}
         </nav>
         <div id="navigation-controls" className="app-navigation-controls">
-          <LanguageToggle className="app-navigation-language-toggle" />
-          {showThemeToggle && <ThemeToggle className="app-navigation-theme-toggle" />}
+          <NavSettingsDropdown showTheme={showThemeToggle} />
           <AuthNavigationAction
             language={language}
             authStatus={authStatus}

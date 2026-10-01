@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { useLanguage } from "@/components/language-provider";
+import { Select } from "@/components/ui/select";
 
 export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: string }) {
   const { language } = useLanguage();
@@ -75,30 +76,51 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
         <div className="outcome-score-fields">
           <label className="tracker-field" htmlFor="reported-energy">
             <span>{t("พลังงานที่รู้สึก (0–10)", "Perceived energy (0–10)")}</span>
-            <select id="reported-energy" value={energy} onChange={(event) => setEnergy(event.target.value)}>
-              <option value="">{t("ยังไม่ระบุ", "Not specified")}</option>
-              {Array.from({ length: 11 }, (_, score) => (
-                <option key={score} value={score}>{score} · {score === 0 ? t("ต่ำมาก", "Very low") : score === 10 ? t("สูงมาก", "Very high") : ""}</option>
-              ))}
-            </select>
+            <Select
+              id="reported-energy"
+              value={energy}
+              onChange={(val) => setEnergy(val)}
+              placeholder={t("ยังไม่ระบุ", "Not specified")}
+              options={[
+                { value: "", label: t("ยังไม่ระบุ", "Not specified") },
+                ...Array.from({ length: 11 }, (_, score) => ({
+                  value: String(score),
+                  label: `${score} · ${score === 0 ? t("ต่ำมาก", "Very low") : score === 10 ? t("สูงมาก", "Very high") : score}`,
+                })),
+              ]}
+            />
           </label>
           <label className="tracker-field" htmlFor="reported-thirst">
             <span>{t("ความกระหายที่รู้สึก (0–10)", "Perceived thirst (0–10)")}</span>
-            <select id="reported-thirst" value={thirst} onChange={(event) => setThirst(event.target.value)}>
-              <option value="">{t("ยังไม่ระบุ", "Not specified")}</option>
-              {Array.from({ length: 11 }, (_, score) => (
-                <option key={score} value={score}>{score} · {score === 0 ? t("ไม่กระหาย", "Not thirsty") : score === 10 ? t("กระหายมาก", "Very thirsty") : ""}</option>
-              ))}
-            </select>
+            <Select
+              id="reported-thirst"
+              value={thirst}
+              onChange={(val) => setThirst(val)}
+              placeholder={t("ยังไม่ระบุ", "Not specified")}
+              options={[
+                { value: "", label: t("ยังไม่ระบุ", "Not specified") },
+                ...Array.from({ length: 11 }, (_, score) => ({
+                  value: String(score),
+                  label: `${score} · ${score === 0 ? t("ไม่กระหาย", "Not thirsty") : score === 10 ? t("กระหายมาก", "Very thirsty") : score}`,
+                })),
+              ]}
+            />
           </label>
           <label className="tracker-field" htmlFor="reported-dryness">
             <span>{t("ความรู้สึกผิวแห้งที่สังเกต (0–10)", "Observed skin dryness (0–10)")}</span>
-            <select id="reported-dryness" value={dryness} onChange={(event) => setDryness(event.target.value)}>
-              <option value="">{t("ยังไม่ระบุ", "Not specified")}</option>
-              {Array.from({ length: 11 }, (_, score) => (
-                <option key={score} value={score}>{score} · {score === 0 ? t("ไม่แห้ง", "Not dry") : score === 10 ? t("แห้งมาก", "Very dry") : ""}</option>
-              ))}
-            </select>
+            <Select
+              id="reported-dryness"
+              value={dryness}
+              onChange={(val) => setDryness(val)}
+              placeholder={t("ยังไม่ระบุ", "Not specified")}
+              options={[
+                { value: "", label: t("ยังไม่ระบุ", "Not specified") },
+                ...Array.from({ length: 11 }, (_, score) => ({
+                  value: String(score),
+                  label: `${score} · ${score === 0 ? t("ไม่แห้ง", "Not dry") : score === 10 ? t("แห้งมาก", "Very dry") : score}`,
+                })),
+              ]}
+            />
           </label>
         </div>
         {error && <p className="tracker-form-error" role="alert">{error}</p>}

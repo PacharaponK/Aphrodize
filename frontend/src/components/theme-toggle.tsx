@@ -15,9 +15,8 @@ declare global {
   }
 }
 
-export function ThemeToggle({ className = "" }: { className?: string }) {
+export function useTheme() {
   const [isDark, setIsDark] = useState(false);
-  const { language } = useLanguage();
 
   useEffect(() => {
     const syncTheme = () => setIsDark(document.documentElement.dataset.theme === "black");
@@ -30,20 +29,38 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     };
   }, []);
 
-  function toggleTheme() {
-    const nextTheme = isDark ? "pastel" : "black";
-    const themeApi = window.AphrodizeTheme;
+  const setTheme = (nextTheme: "black" | "pastel") => {
+    const themeApi = typeof window !== "undefined" ? window.AphrodizeTheme : undefined;
     if (themeApi) {
       themeApi.setTheme(nextTheme);
-    } else {
+    } else if (typeof document !== "undefined") {
       const root = document.documentElement;
       root.dataset.theme = nextTheme;
       root.classList.toggle("dark", nextTheme === "black");
       root.style.colorScheme = nextTheme === "black" ? "dark" : "light";
+      try {
+        window.localStorage?.setItem("aphrodize-theme", nextTheme);
+      } catch {
+        // Storage unavailable
+      }
       window.dispatchEvent(new Event("aphrodize-theme-change"));
     }
     setIsDark(nextTheme === "black");
-  }
+  };
+
+  const toggleTheme = () => setTheme(isDark ? "pastel" : "black");
+
+  return {
+    isDark,
+    theme: isDark ? "black" : ("pastel" as const),
+    setTheme,
+    toggleTheme,
+  };
+}
+
+export function ThemeToggle({ className = "" }: { className?: string }) {
+  const { isDark, toggleTheme } = useTheme();
+  const { language } = useLanguage();
 
   const label = language === "en"
     ? isDark ? "Switch to light theme" : "Switch to dark theme"
@@ -63,3 +80,4 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     </button>
   );
 }
+

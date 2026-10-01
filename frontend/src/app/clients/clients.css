@@ -15,6 +15,8 @@ html[data-theme="black"] .clients-page .model-status{background:#3b2f18;color:#f
 .score-method-content .dryness-formula{white-space:pre-wrap}
 
 .tracker-field select{width:100%;min-height:46px;border:1px solid #cfd7e4;border-radius:10px;background:#fff;padding:10px 12px;color:var(--ink);font:inherit}
+.tracker-field .aphrodize-select-container{width:100%}
+.tracker-field .aphrodize-select-trigger{min-height:46px;border-radius:10px}
 .tracker-field select:focus-visible{outline:3px solid #7059cf45;outline-offset:2px;border-color:var(--purple)}
 .personal-context-fieldset{display:grid;gap:12px;margin:0;padding:15px;border:1px solid var(--line);border-radius:12px;background:#faf9ff}
 .personal-context-fieldset>legend{padding:0 5px;font-size:14px;font-weight:750;color:#344258}

@@ -115,6 +115,9 @@ test("shared navigation defaults to English and keeps mobile controls in the men
   assert.match(english, />Dark</);
   assert.match(english, /aria-controls="primary-navigation navigation-controls"/);
   assert.match(english, /id="navigation-controls"/);
+  assert.match(english, /class="[^"]*app-nav-settings-trigger[^"]*"/);
+  assert.match(english, /aria-label="Settings"/);
+  assert.match(english, /id="nav-settings-dropdown"/);
   const unchanged = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "clients" })));
   assert.match(unchanged, /aria-label="Open menu"/);
   assert.match(unchanged, /Daily health/);
