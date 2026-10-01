@@ -66,6 +66,15 @@ test("overview omits product and UV guidance, with the old route redirecting to 
   assert.match(onboarding, /router\.push\(effectiveFullEdit \? "\/profile" : "\/"\)/);
 });
 
+test("UV map entry appears before personal insights even without health records", () => {
+  for (const state of [{}, { requiresLogin: true }, { loading: true }, { failed: true }]) {
+    const html = render(state);
+    assert.match(html, /aria-labelledby="home-uv-map-heading"/);
+    assert.match(html, /href="\/uv-map"/);
+    assert.ok(html.indexOf('id="home-uv-map-heading"') < html.indexOf("Personal insights"));
+  }
+});
+
 test("the looping decorative video belongs to main, not an article", () => {
   const filename = path.resolve(testDirectory, "../src/app/page.tsx");
   const source = ts.createSourceFile(filename, fs.readFileSync(filename, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
