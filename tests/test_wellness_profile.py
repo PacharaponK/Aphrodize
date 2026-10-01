@@ -9,6 +9,8 @@ from backend.api.v1.routes.auth import (
     grant_daily_health_consent,
     save_wellness_profile,
     skin_profile,
+)
+from backend.api.v1.routes.auth import (
     router as auth_router,
 )
 from backend.api.v1.routes.questionnaires import router as questionnaire_router
@@ -17,21 +19,26 @@ from backend.core.db.models import Account, Consent, Questionnaire, User, UserPr
 
 
 def profile_payload(**changes):
-    return WellnessProfileUpsert.model_validate({
-        "sex": "female",
-        "age_group": "25_34",
-        "skin_type": "combination",
-        "wellness_goal": "skin_tracking",
-        "sunscreen_frequency": "every_day",
-        "menstrual_tracking": "yes",
-        **changes,
-    })
+    return WellnessProfileUpsert.model_validate(
+        {
+            "sex": "female",
+            "age_group": "25_34",
+            "skin_type": "combination",
+            "wellness_goal": "skin_tracking",
+            "sunscreen_frequency": "every_day",
+            "menstrual_tracking": "yes",
+            **changes,
+        }
+    )
 
 
 def test_profile_schema_coexists_with_questionnaire_compatibility_and_validates_guardian() -> None:
     assert "questionnaires" in Base.metadata.tables
     assert any(route.path == "/profile" and "PUT" in route.methods for route in auth_router.routes)
-    assert any(route.path == "/initial" and "POST" in route.methods for route in questionnaire_router.routes)
+    assert any(
+        route.path == "/initial" and "POST" in route.methods
+        for route in questionnaire_router.routes
+    )
     assert Questionnaire.__table__.columns["user_id"].index is True
     assert UserProfile.__table__.primary_key.columns.keys() == ["user_id"]
     assert profile_payload().profile_values()["skin_type"] == "combination"

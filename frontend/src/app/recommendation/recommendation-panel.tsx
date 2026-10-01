@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { ArrowRight, LockKeyhole, Store, Globe } from "lucide-react";
+import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { useLanguage, type Language } from "@/components/language-provider";
+import { ALLERGY_INGREDIENTS } from "@/components/allergy-ingredients";
 
 type Recommendation = {
   category: string;
@@ -20,6 +22,14 @@ type Recommendation = {
   };
   wrinkle_regions?: string[];
   wrinkle_region_scores?: { region: string; score: number }[];
+  products?: {
+    id: string; brand: string; name: string; variant: string;
+    price_satang: number | null; price_checked_at: string | null;
+    market?: string | null; price_source_url?: string | null; application_regions?: string[];
+    ingredients_inci: string[]; warnings_label: string;
+    source_url: string; reviewed_at: string;
+    matched_skin_type: string; matched_claims: string[];
+  }[];
 };
 
 type DailyRecord = {
@@ -35,7 +45,6 @@ type LifestyleRecord = DailyRecord & {
 };
 
 type Result = {
-  demo?: boolean;
   status: "ready" | "no_recommendation" | "safety_blocked" | "pending";
   recommendations: Recommendation[];
   blocked_reason: string | null;
@@ -50,8 +59,9 @@ type Result = {
   rule_version: string;
   knowledge_base: { id: string; version: string };
   disclaimer: string;
-  allergy_context?: { reported: boolean; details: string | null };
-  profile_context?: { age_years: number | null; age_group: string | null; sex: string | null; sex_note: string };
+  allergy_context?: { reported: boolean; details: string | null; ingredients?: string[] };
+  profile_context?: { skin_type: string; skin_sensitivity: string; age_years: number | null; age_group: string | null; sex: string | null; sex_note: string };
+  product_context?: { status: string };
 };
 
 const COPY = {
@@ -136,8 +146,21 @@ const COPY = {
 } as const;
 
 const REGION_LABELS: Record<string, { th: string; en: string }> = {
+  forehead: { th: "หน้าผาก", en: "Forehead" },
+  glabella: { th: "ระหว่างคิ้ว", en: "Glabella" },
   image_left_periocular: { th: "รอบดวงตาด้านซ้ายของภาพ", en: "Image-left eye area" },
   image_right_periocular: { th: "รอบดวงตาด้านขวาของภาพ", en: "Image-right eye area" },
+  image_left_cheek: { th: "แก้มซ้ายของภาพ", en: "Image-left cheek" },
+  image_right_cheek: { th: "แก้มขวาของภาพ", en: "Image-right cheek" },
+  nasolabial: { th: "ร่องแก้ม", en: "Nasolabial fold" },
+  perioral: { th: "รอบปาก", en: "Perioral area" },
+};
+
+const SKIN_LABELS: Record<string, { th: string; en: string }> = {
+  dry: { th: "ผิวแห้ง", en: "Dry skin" }, normal: { th: "ผิวปกติ", en: "Normal skin" },
+  oily: { th: "ผิวมัน", en: "Oily skin" }, combination: { th: "ผิวผสม", en: "Combination skin" },
+  unsure: { th: "ยังไม่ทราบประเภทผิว", en: "Skin type unknown" },
+  all: { th: "ทุกประเภทผิวตามฉลาก", en: "All skin types on the label" },
 };
 
 const OUTDOOR_LABELS: Record<number, { th: string; en: string }> = {
@@ -148,6 +171,7 @@ const OUTDOOR_LABELS: Record<number, { th: string; en: string }> = {
 };
 
 const REASON_LABELS: Record<string, { th: string; en: string }> = {
+  profile_consent_required: { th: "ไม่มีความยินยอมที่ยังใช้งานได้สำหรับใช้ข้อมูลโปรไฟล์", en: "Active consent is required to use your profile." },
   reported_severe_irritation: { th: "คุณรายงานการระคายเคืองรุนแรง", en: "You reported severe irritation." },
   reported_allergy: { th: "คุณรายงานประวัติการแพ้ผลิตภัณฑ์", en: "You reported a product allergy." },
   reported_high_sensitivity: { th: "คุณรายงานว่าผิวไวต่อการระคายเคืองสูง", en: "You reported high skin sensitivity." },
@@ -180,23 +204,32 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
   const [data, setData] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [market, setMarket] = useState("TH");
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
-    const demo = new URLSearchParams(window.location.search).get("demo") === "1";
-    const query = new URLSearchParams({ scope: source });
-    if (demo) query.set("demo", "1");
-    fetch(`/api/analysis/recommendations?${query.toString()}`, { cache: "no-store" })
+    let timer: ReturnType<typeof setTimeout>;
+    const query = new URLSearchParams({ scope: source, market });
+    if (maxPrice !== null) query.set("max_price_satang", String(maxPrice));
+    function load() {
+      fetch(`/api/analysis/recommendations?${query.toString()}`, { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
         if (!response.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
         return body as Result;
       })
-      .then((result) => { if (active) setData(result); })
+      .then((result) => {
+        if (!active) return;
+        setData(result);
+        if (result.status === "pending") timer = setTimeout(load, 2500);
+      })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : "โหลดคำแนะนำไม่สำเร็จ"); })
       .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [source]);
+    }
+    load();
+    return () => { active = false; clearTimeout(timer); };
+  }, [source, market, maxPrice]);
 
   if (loading) return <p role="status">{copy.loading}</p>;
   if (error) {
@@ -211,6 +244,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
     return <div className="recommendation-card" role="status"><p>{error || copy.errorFallback}</p>{error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">{copy.signIn} →</Link>}</div>;
   }
   if (!data) return <p role="status">{copy.noData}</p>;
+  if (data.status === "pending") return <p role="status">{language === "th" ? "รอวิเคราะห์ภาพสำเร็จก่อนแนะนำผลิตภัณฑ์" : "Product guidance will be available after image analysis completes."}</p>;
 
   const reason = (key: string | null | undefined, fallback: string) => key
     ? REASON_LABELS[key]?.[language] ?? fallback
@@ -218,10 +252,58 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
 
   return (
     <div aria-live="polite">
-      {data.demo && !compact ? <p className="recommendation-note" role="status">โหมดสาธิต: ใช้ข้อมูล fixture เพื่อทดสอบหน้าจอเท่านั้น</p> : null}
+      <form className="recommendation-filters" onSubmit={(event) => {
+        event.preventDefault();
+        const values = new FormData(event.currentTarget);
+        const price = String(values.get("budget") ?? "");
+        const [baht, satang = ""] = price.split(".");
+        const nextMarket = String(values.get("market") ?? "TH");
+        const nextPrice = price === "" ? null : Number(baht) * 100 + Number(satang.padEnd(2, "0"));
+        if (nextMarket !== market || nextPrice !== maxPrice) {
+          setLoading(true);
+          setError("");
+          setMarket(nextMarket);
+          setMaxPrice(nextPrice);
+        }
+      }}>
+        <label>
+          <span className="filter-label">{language === "th" ? "ตลาดสินค้า" : "Product market"}</span>
+          <Select
+            name="market"
+            defaultValue={market}
+            value={market}
+            onChange={(val) => {
+              setMarket(val);
+              setLoading(true);
+              setError("");
+            }}
+            options={[
+              {
+                value: "TH",
+                label: language === "th" ? "จำหน่ายในไทย" : "Sold in Thailand",
+                description: language === "th" ? "เฉพาะสินค้าที่มีจำหน่ายในประเทศไทย" : "Available in Thailand",
+                icon: <Store size={15} />,
+              },
+              {
+                value: "all",
+                label: language === "th" ? "ทุกตลาด" : "All markets",
+                description: language === "th" ? "รวมสินค้าทุกตลาดและสินค้านำเข้า" : "All international markets",
+                icon: <Globe size={15} />,
+              },
+            ]}
+          />
+        </label>
+        <label>
+          <span className="filter-label">{language === "th" ? "งบสูงสุดต่อสินค้า (บาท)" : "Maximum per product (THB)"}</span>
+          <input name="budget" type="number" min="0" max="1000000" step="0.01" inputMode="decimal" placeholder={language === "th" ? "ไม่จำกัด" : "No limit"} defaultValue={maxPrice === null ? "" : maxPrice / 100} />
+        </label>
+        <button className="secondary-button" type="submit">{language === "th" ? "ใช้ตัวกรอง" : "Apply filters"}</button>
+        {maxPrice !== null && <small>{language === "th" ? "ใช้เฉพาะราคาที่มีแหล่งอ้างอิงและตรวจสอบใน 30 วันล่าสุด งบนี้ต่อสินค้า ไม่ใช่ราคารวมทั้งชุด" : "Uses sourced prices checked within 30 days. This limit applies to each product, not the whole routine."}</small>}
+      </form>
       {language === "th" && <p className="analysis-localization-note">{copy.sourceLanguage}</p>}
+      {data.profile_context && <p>{language === "th" ? "ข้อมูลผิวที่ใช้: " : "Skin profile used: "}{SKIN_LABELS[data.profile_context.skin_type]?.[language] ?? copy.notRecorded}{language === "th" ? " · ความไวต่อการระคายเคือง: " : " · Sensitivity: "}{data.profile_context.skin_sensitivity === "medium" ? (language === "th" ? "ปานกลาง" : "Moderate") : (language === "th" ? "ต่ำ" : "Low")} · <Link href="/profile">{language === "th" ? "ดูโปรไฟล์" : "View profile"}</Link></p>}
       {data.status === "safety_blocked" ? (
-        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link></article>
+        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p>{data.blocked_reason !== "profile_consent_required" && <Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link>}</article>
       ) : data.recommendations.length ? (
         <div className="recommendation-list">
           {data.recommendations.map((item) => (
@@ -229,6 +311,17 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
               <span className="status moderate">{copy.category}</span>
               <h3>{item.category}</h3>
               <p>{item.rationale}</p>
+              {item.products?.length ? <div className="recommendation-list" aria-label={language === "th" ? "ผลิตภัณฑ์จากแค็ตตาล็อกที่ตรวจทานแล้ว" : "Products from the reviewed catalog"}>
+                {item.products.map((product) => <div className="rule-box recommendation-product" key={product.id}>
+                  <h4>{product.brand} · {product.name}{product.variant ? ` · ${product.variant}` : ""}</h4>
+                  <p>{language === "th" ? "ประเภทผิวตามฉลาก: " : "Label skin type: "}{SKIN_LABELS[product.matched_skin_type]?.[language] ?? product.matched_skin_type}{product.matched_claims.length > 0 && ` · ${product.matched_claims.join(", ")}`}</p>
+                  {product.price_satang != null && <p>{new Intl.NumberFormat(language === "th" ? "th-TH" : "en-GB", { style: "currency", currency: "THB" }).format(product.price_satang / 100)} · {language === "th" ? "ราคาอ้างอิง ตรวจเมื่อ " : "Reference price checked "}{formatDate(product.price_checked_at?.split("T")[0], language)}</p>}
+                  {product.warnings_label && <p className="recommendation-warning">{product.warnings_label}</p>}
+                  <details><summary>{language === "th" ? "ดูส่วนผสม INCI ที่ตรวจทานแล้ว" : "View reviewed INCI ingredients"}</summary><p>{product.ingredients_inci.join(", ")}</p></details>
+                  <p>{product.price_source_url && <><a href={product.price_source_url} target="_blank" rel="noreferrer">{language === "th" ? "แหล่งราคาและขนาดสินค้า" : "Price and pack size source"} ↗</a> · </>}<a href={product.source_url} target="_blank" rel="noreferrer">{language === "th" ? "ข้อมูลผลิตภัณฑ์จากแหล่งอ้างอิง" : "Product source"} ↗</a></p>
+                  <p className="metadata">{language === "th" ? "ตรวจข้อมูลเมื่อ " : "Catalog reviewed "}{formatDate(product.reviewed_at.split("T")[0], language)} · {language === "th" ? "การจับคู่จากฉลากไม่รับประกันว่าจะไม่แพ้ โปรดตรวจสูตรปัจจุบันก่อนใช้" : "Label matching does not guarantee against allergy. Check the current formula before use."}</p>
+                </div>)}
+              </div> : data.product_context?.status !== "allergy_review_required" && <p className="metadata">{language === "th" ? "ยังไม่มีผลิตภัณฑ์ที่ตรวจทานแล้วตรงกับเงื่อนไขนี้" : "No reviewed product matches this guidance yet."}</p>}
               {!compact && <div className="rule-box">
                 <h3>{copy.source}</h3>
                 <p>{copy.dataUsed} {item.signal_sources.map((source) => source === "image" ? copy.imageScore : source === "daily_health_reported" ? copy.dailyReported : copy.selfReported).join(" + ")}</p>
@@ -243,9 +336,10 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
       ) : (
         <article className="recommendation-card recommendation-blocked"><span className="status">{copy.noGuidance}</span><h3>{copy.startWithData}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ" : "There is not enough recorded information for an available guidance rule.")}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.editProfile}</Link></article>
       )}
-      {data.allergy_context?.reported && data.allergy_context.details && (
-        <p className="recommendation-warning">{language === "th" ? "คุณระบุว่าแพ้" : "You reported an allergy to"}: {data.allergy_context.details}. {language === "th" ? "โปรดตรวจส่วนผสมจริงบนฉลากและหลีกเลี่ยงสิ่งที่ระบุ ระบบยังไม่สามารถยืนยันส่วนผสมของสินค้าแต่ละรายการได้" : "Check product labels and avoid the listed substances. Product ingredients are not verified by this system."}</p>
+      {data.allergy_context?.reported && (
+        <p className="recommendation-warning">{language === "th" ? "คุณรายงานประวัติแพ้" : "You reported an allergy"}{data.allergy_context.details ? `: ${data.allergy_context.details}` : ""}. {language === "th" ? "ระบบงดเลือกสินค้ารายชิ้น แม้บันทึกสารที่แพ้แล้ว การตรวจชื่อส่วนผสมและสารที่เกี่ยวข้องยังไม่ครบถ้วน โปรดให้ผู้เชี่ยวชาญตรวจฉลากจริงก่อนเลือกใช้" : "Named products are withheld because recorded allergens cannot reliably resolve every ingredient and related substance. Have a professional review the current label before use."}</p>
       )}
+      {!!data.allergy_context?.ingredients?.length && <p>{language === "th" ? "สารที่รายงานว่าแพ้: " : "Reported allergens: "}{data.allergy_context.ingredients.map((value) => { const entry = ALLERGY_INGREDIENTS.find(([key]) => key === value); return entry ? entry[language === "th" ? 1 : 2] : value; }).join(", ")}</p>}
       {compact && data.profile_context && (
         <p className="metadata">{data.profile_context.age_years != null ? (language === "th" ? `พิจารณาอายุ ${data.profile_context.age_years} ปี` : `Age ${data.profile_context.age_years} considered`) : (language === "th" ? "พิจารณาช่วงอายุที่รายงาน" : "Reported age group considered")}{language === "th" ? " และข้อมูลโปรไฟล์ที่กรอกไว้; เพศไม่ถูกใช้เป็นเกณฑ์เหมารวมในการเลือกหมวดสกินแคร์" : "; profile answers considered. Gender is not used to stereotype skin-care categories."}</p>
       )}

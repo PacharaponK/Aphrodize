@@ -3,17 +3,15 @@ import hashlib
 import hmac
 import secrets
 
-
 _ITERATIONS = 600_000
 
 
 def hash_password(password: str) -> str:
     salt = secrets.token_bytes(16)
     derived_key = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, _ITERATIONS)
-    return "pbkdf2_sha256${}${}${}".format(
-        _ITERATIONS,
-        base64.b64encode(salt).decode(),
-        base64.b64encode(derived_key).decode(),
+    return (
+        f"pbkdf2_sha256${_ITERATIONS}${base64.b64encode(salt).decode()}$"
+        f"{base64.b64encode(derived_key).decode()}"
     )
 
 

@@ -13,6 +13,8 @@ class TemisParserTest(unittest.TestCase):
         rows = parse_series("bangkok", content)
         self.assertEqual([row[2] for row in rows], ["10.000", ""])
 
-        duplicate = (header + line("20260101", "10.000") + "\n" + line("20260101", "11.000")).encode()
+        duplicate = (
+            header + line("20260101", "10.000") + "\n" + line("20260101", "11.000")
+        ).encode()
         with self.assertRaisesRegex(ValueError, "date after"):
             parse_series("bangkok", duplicate)

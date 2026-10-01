@@ -12,6 +12,13 @@ class ProductInput(BaseModel):
     brand: str = Field(min_length=1, max_length=120)
     name: str = Field(min_length=1, max_length=200)
     variant: str = Field(default="", max_length=120)
+    market: Literal["TH", "US", "SG", "UK", "other"] | None = None
+    price_source_url: str | None = Field(
+        default=None, max_length=1000, pattern=r"^https?://[^\s]+$"
+    )
+    application_regions: list[Literal["face", "eye_contour"]] = Field(
+        default_factory=list, max_length=2
+    )
     category: Literal["sunscreen", "moisturizer", "cleanser", "treatment", "other"]
     price_satang: int | None = Field(default=None, ge=0, le=100_000_000)
     ingredients_label: str = Field(default="", max_length=10_000)

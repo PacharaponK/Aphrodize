@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle, useLanguage } from "@/components/language-provider";
+import { AllergyIngredients } from "@/components/allergy-ingredients";
+import { Select } from "@/components/ui/select";
 
 type SubmissionState = "idle" | "error";
 type AccountDetails = { displayName: string; email: string; password: string };
@@ -70,9 +72,9 @@ function ageGroupForAge(age: number): string {
   return "55_plus";
 }
 
-function wellnessPayload(answers: AnswerMap, guardianConsent: boolean) {
+function wellnessPayload(answers: AnswerMap, guardianConsent: boolean, allergyIngredients: string[]) {
   const ageYears = Number(answers.age_years);
-  return { sex: answers.sex, age_group: ageGroupForAge(ageYears), age_years: ageYears, guardian_consent: guardianConsent, height_cm: Number(answers.height_cm), weight_kg: Number(answers.weight_kg), sleep_hours: Number(answers.sleep_hours), sleep_quality: answers.sleep_quality, water_liters: Number(answers.water_liters), outdoor_minutes: Number(answers.outdoor_minutes), sunscreen_frequency: answers.sunscreen_frequency, skin_type: answers.skin_type, skin_sensitivity: answers.skin_sensitivity, known_product_allergy: answers.known_product_allergy, allergy_details: answers.known_product_allergy === "yes" ? answers.allergy_details : null, severe_irritation: answers.severe_irritation, stress_level: Number(answers.stress_level), menstrual_tracking: answers.sex === "male" ? "not_applicable" : answers.menstrual_tracking, menstrual_status: answers.sex === "male" ? "not_applicable" : answers.menstrual_status, wellness_goal: answers.wellness_goal };
+  return { allergy_ingredients: answers.known_product_allergy === "yes" ? allergyIngredients : [], sex: answers.sex, age_group: ageGroupForAge(ageYears), age_years: ageYears, guardian_consent: guardianConsent, height_cm: Number(answers.height_cm), weight_kg: Number(answers.weight_kg), sleep_hours: Number(answers.sleep_hours), sleep_quality: answers.sleep_quality, water_liters: Number(answers.water_liters), outdoor_minutes: Number(answers.outdoor_minutes), sunscreen_frequency: answers.sunscreen_frequency, skin_type: answers.skin_type, skin_sensitivity: answers.skin_sensitivity, known_product_allergy: answers.known_product_allergy, allergy_details: answers.known_product_allergy === "yes" ? answers.allergy_details : null, severe_irritation: answers.severe_irritation, stress_level: Number(answers.stress_level), menstrual_tracking: answers.sex === "male" ? "not_applicable" : answers.menstrual_tracking, menstrual_status: answers.sex === "male" ? "not_applicable" : answers.menstrual_status, wellness_goal: answers.wellness_goal };
 }
 
 export default function SignupPage() {
@@ -87,6 +89,7 @@ export default function SignupPage() {
   const [accountCreated, setAccountCreated] = useState(false);
   const [answers, setAnswers] = useState<AnswerMap>({});
   const [guardianConsent, setGuardianConsent] = useState(false);
+  const [allergyIngredients, setAllergyIngredients] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
   const visibleQuestions = useMemo(() => questions.filter(([name]) => (answers.sex !== "male" || (name !== "menstrual_tracking" && name !== "menstrual_status")) && (name !== "allergy_details" || answers.known_product_allergy === "yes")), [answers.sex, answers.known_product_allergy]);
   const [questionName, questionLabel] = visibleQuestions[questionIndex];
@@ -108,7 +111,7 @@ export default function SignupPage() {
   }
 
   function goNext() {
-    if (!answers[questionName]) { setMessage(t("กรุณาเลือกคำตอบก่อนดำเนินการต่อ", "Choose an answer before continuing.")); setSubmissionState("error"); return; }
+    if (!answers[questionName] && !(questionName === "allergy_details" && allergyIngredients.length)) { setMessage(t("กรุณาเลือกคำตอบก่อนดำเนินการต่อ", "Choose an answer before continuing.")); setSubmissionState("error"); return; }
     if (questionName === "age_years" && Number(answers.age_years) < 13 && !guardianConsent) { setMessage(t("กรุณายืนยันความยินยอมของผู้ปกครอง", "Parent or guardian consent is required.")); setSubmissionState("error"); return; }
     setQuestionIndex((current) => current + 1);
     clearMessage();
@@ -116,7 +119,7 @@ export default function SignupPage() {
 
   async function submitQuestions(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!account || visibleQuestions.some(([name]) => !answers[name])) { setMessage(t("กรุณาตอบคำถามให้ครบถ้วน", "Please answer every required question.")); setSubmissionState("error"); return; }
+    if (!account || visibleQuestions.some(([name]) => !answers[name] && !(name === "allergy_details" && allergyIngredients.length))) { setMessage(t("กรุณาตอบคำถามให้ครบถ้วน", "Please answer every required question.")); setSubmissionState("error"); return; }
     setIsSubmitting(true); clearMessage();
     try {
       if (!accountCreated) {
@@ -125,7 +128,7 @@ export default function SignupPage() {
         if (!signup.ok) { setMessage(body?.detail ?? "สร้างบัญชีไม่สำเร็จ โปรดลองอีกครั้ง"); setSubmissionState("error"); return; }
         setAccountCreated(true);
       }
-      const questionnaire = await fetch("/api/onboarding/health", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(wellnessPayload(answers, guardianConsent)) });
+      const questionnaire = await fetch("/api/onboarding/health", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(wellnessPayload(answers, guardianConsent, allergyIngredients)) });
       const body = await questionnaire.json().catch(() => null);
       if (!questionnaire.ok) { setMessage(body?.detail ?? "บัญชีถูกสร้างแล้ว แต่บันทึกข้อมูลสุขภาพไม่สำเร็จ กรุณาลองอีกครั้ง"); setSubmissionState("error"); return; }
       const measurements = await Promise.all([
@@ -183,14 +186,25 @@ export default function SignupPage() {
                 <div className="wizard-question">
                   <label htmlFor={questionName}>{questionIndex + 1}. {displayedQuestion}</label>
                   {questionName === "allergy_details" ? (
-                    <textarea id={questionName} maxLength={500} value={answers[questionName] ?? ""} onChange={(event) => { setAnswers((current) => ({ ...current, [questionName]: event.target.value })); clearMessage(); }} disabled={isSubmitting} required />
+                    <><AllergyIngredients values={allergyIngredients} onChange={setAllergyIngredients} disabled={isSubmitting} /><textarea id={questionName} maxLength={500} value={answers[questionName] ?? ""} onChange={(event) => { setAnswers((current) => ({ ...current, [questionName]: event.target.value })); clearMessage(); }} disabled={isSubmitting} required={allergyIngredients.length === 0} /></>
                   ) : questionName === "age_years" || questionName === "height_cm" || questionName === "weight_kg" ? (
                     <input id={questionName} type="number" min={questionName === "age_years" ? 1 : questionName === "height_cm" ? 30 : 1} max={questionName === "age_years" ? 120 : questionName === "height_cm" ? 300 : 500} step={questionName === "age_years" ? 1 : 0.1} value={answers[questionName] ?? ""} onChange={(event) => { setAnswers((current) => ({ ...current, [questionName]: event.target.value })); clearMessage(); }} disabled={isSubmitting} required />
                   ) : (
-                    <select id={questionName} value={answers[questionName] ?? ""} onChange={(item) => { setAnswers((current) => ({ ...current, [questionName]: item.target.value })); clearMessage(); }} disabled={isSubmitting} required>
-                      <option value="" disabled>{t("เลือกคำตอบ", "Choose an answer")}</option>
-                      {options[questionName].map(([value, thaiText]) => <option key={value} value={value}>{language === "en" ? englishOptions[questionName]?.[value] ?? thaiText : thaiText}</option>)}
-                    </select>
+                    <Select
+                      id={questionName}
+                      value={answers[questionName] ?? ""}
+                      onChange={(val) => {
+                        setAnswers((current) => ({ ...current, [questionName]: val }));
+                        clearMessage();
+                      }}
+                      disabled={isSubmitting}
+                      required
+                      placeholder={t("เลือกคำตอบ", "Choose an answer")}
+                      options={options[questionName].map(([value, thaiText]) => ({
+                        value,
+                        label: language === "en" ? englishOptions[questionName]?.[value] ?? thaiText : thaiText,
+                      }))}
+                    />
                   )}
                   {questionName === "age_years" && Number(answers.age_years) < 13 && <label className="onboarding-guardian"><input type="checkbox" checked={guardianConsent} onChange={(item) => setGuardianConsent(item.target.checked)} disabled={isSubmitting} /> <span>{t("ฉันเป็นผู้ปกครองตามกฎหมายและยินยอมให้เก็บข้อมูลนี้เพื่อการติดตามสุขภาพ", "I am the legal guardian and consent to storing these answers for wellness tracking.")}</span></label>}
                 </div>

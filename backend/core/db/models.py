@@ -209,6 +209,9 @@ class Product(Base):
     brand: Mapped[str] = mapped_column(String(120))
     name: Mapped[str] = mapped_column(String(200))
     variant: Mapped[str] = mapped_column(String(120), default="")
+    market: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    price_source_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    application_regions: Mapped[list[str]] = mapped_column(JSON, default=list)
     category: Mapped[str] = mapped_column(String(64))
     price_satang: Mapped[int | None] = mapped_column(Integer, nullable=True)
     price_checked_at: Mapped[datetime | None] = mapped_column(

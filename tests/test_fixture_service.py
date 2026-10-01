@@ -108,7 +108,8 @@ async def test_fixture_creates_account_profile_and_daily_entries(monkeypatch) ->
     session = FakeSession(user_id, account_exists=False)
     await fixture_service.load_users(FIXTURE, session)
 
-    assert created[0].email == "demo@example.local"
+    row = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))["users"][0]
+    assert created[0].email == row["email"].strip().lower()
     assert session.profile.user_id == user_id
     assert len(session.entries) == 2
 

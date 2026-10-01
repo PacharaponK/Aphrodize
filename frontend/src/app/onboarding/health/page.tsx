@@ -5,6 +5,8 @@ import { FormEvent, Suspense, useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle, useLanguage } from "@/components/language-provider";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AllergyIngredients } from "@/components/allergy-ingredients";
+import { Select } from "@/components/ui/select";
 
 const questions = [
   ["sex", "1. เพศ", "select"],
@@ -100,6 +102,7 @@ function HealthOnboardingForm() {
   const [submitting, setSubmitting] = useState(false);
   const [sex, setSex] = useState("");
   const [knownProductAllergy, setKnownProductAllergy] = useState("");
+  const [allergyIngredients, setAllergyIngredients] = useState<string[]>([]);
   const [ageYears, setAgeYears] = useState("");
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [revisionId, setRevisionId] = useState("");
@@ -131,6 +134,8 @@ function HealthOnboardingForm() {
         setRevisionId(saved.id);
         setSex(stringAnswer(saved.answers, "sex"));
         setKnownProductAllergy(stringAnswer(saved.answers, "known_product_allergy"));
+        setAllergyIngredients(Array.isArray(saved.answers.allergy_ingredients)
+          ? saved.answers.allergy_ingredients.filter((value): value is string => typeof value === "string") : []);
         setAgeYears(stringAnswer(saved.answers, "age_years"));
       })
       .catch((reason: unknown) => {
@@ -164,6 +169,7 @@ function HealthOnboardingForm() {
           skin_sensitivity: data.get("skin_sensitivity"),
           known_product_allergy: data.get("known_product_allergy"),
           allergy_details: data.get("known_product_allergy") === "yes" ? data.get("allergy_details") : null,
+          allergy_ingredients: data.get("known_product_allergy") === "yes" ? data.getAll("allergy_ingredients") : [],
           severe_irritation: data.get("severe_irritation"),
           base_revision_id: revisionId,
         } : {
@@ -182,6 +188,7 @@ function HealthOnboardingForm() {
           skin_sensitivity: data.get("skin_sensitivity"),
           known_product_allergy: data.get("known_product_allergy"),
           allergy_details: data.get("known_product_allergy") === "yes" ? data.get("allergy_details") : null,
+          allergy_ingredients: data.get("known_product_allergy") === "yes" ? data.getAll("allergy_ingredients") : [],
           severe_irritation: data.get("severe_irritation"),
           stress_level: Number(data.get("stress_level")),
           menstrual_tracking: sex === "male" ? "not_applicable" : data.get("menstrual_tracking"),
@@ -236,11 +243,29 @@ function HealthOnboardingForm() {
           }).map(([name, label, type]) => (
             <label key={name} htmlFor={name}>
               <span>{language === "en" ? englishQuestionLabels[name] ?? label : label}</span>
-              {type === "select" && <select id={name} name={name} required disabled={submitting || loadingQuestionnaire} defaultValue={stringAnswer(answers, name)} onChange={name === "sex" ? (event) => setSex(event.target.value) : name === "known_product_allergy" ? (event) => setKnownProductAllergy(event.target.value) : undefined}><option value="" disabled>{t("เลือกคำตอบ", "Choose an answer")}</option>{options[name].map(([value, text]) => <option key={value} value={value}>{language === "en" ? englishOptions[name]?.[value] ?? text : text}</option>)}</select>}
+              {type === "select" && (
+                <Select
+                  id={name}
+                  name={name}
+                  required
+                  disabled={submitting || loadingQuestionnaire}
+                  defaultValue={stringAnswer(answers, name)}
+                  placeholder={t("เลือกคำตอบ", "Choose an answer")}
+                  onChange={(val) => {
+                    if (name === "sex") setSex(val);
+                    if (name === "known_product_allergy") setKnownProductAllergy(val);
+                  }}
+                  options={options[name].map(([value, text]) => ({
+                    value,
+                    label: language === "en" ? englishOptions[name]?.[value] ?? text : text,
+                  }))}
+                />
+              )}
               {type === "number" && <input id={name} name={name} type="number" required disabled={submitting || loadingQuestionnaire} defaultValue={stringAnswer(answers, name)} min={name === "age_years" ? 1 : name === "height_cm" ? 30 : 1} max={name === "age_years" ? 120 : name === "height_cm" ? 300 : 500} step={name === "age_years" ? 1 : 0.1} inputMode="decimal" onChange={name === "age_years" ? (event) => setAgeYears(event.target.value) : undefined} />}
-              {type === "text" && <textarea id={name} name={name} required maxLength={500} disabled={submitting || loadingQuestionnaire} defaultValue={stringAnswer(answers, name)} />}
+              {type === "text" && <textarea id={name} name={name} required={allergyIngredients.length === 0} maxLength={500} disabled={submitting || loadingQuestionnaire} defaultValue={stringAnswer(answers, name)} />}
             </label>
           ))}
+          {knownProductAllergy === "yes" && <AllergyIngredients values={allergyIngredients} onChange={setAllergyIngredients} disabled={submitting || loadingQuestionnaire} />}
           {ageYears !== "" && Number(ageYears) < 13 && <label className="onboarding-guardian"><input type="checkbox" name="guardian_consent" value="yes" required disabled={submitting || loadingQuestionnaire} defaultChecked={answers.guardian_consent === true} /> <span>{t("ฉันเป็นผู้ปกครองตามกฎหมายและยินยอมให้เก็บข้อมูลที่ตอบในแบบสอบถามนี้เพื่อการติดตามสุขภาพ", "I am the legal guardian and consent to collecting these questionnaire responses for wellness tracking.")}</span></label>}
           <p className="form-message" role="status" aria-live="polite">{message}</p>
           <button className="primary-button" type="submit" disabled={submitting || loadingQuestionnaire}>{submitting ? t("กำลังบันทึก…", "Saving…") : editing ? t("บันทึกการอัปเดต →", "Save updates →") : t("บันทึกและเริ่มใช้งาน →", "Save and continue →")}</button>

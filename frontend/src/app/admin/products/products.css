@@ -64,7 +64,7 @@
 .admin-search { position: relative; flex: 1; min-width: 0; }
 .admin-search svg, .admin-source-input svg { position: absolute; top: 50%; left: 13px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .admin-search [data-slot="input"], .admin-source-input [data-slot="input"] { padding-left: 40px; }
-.admin-products-filters > .admin-select { width: auto; min-width: 140px; }
+.admin-products-filters > .admin-select, .admin-status-filter .aphrodize-select-container { width: auto; min-width: 150px; }
 .admin-empty { display: grid; justify-items: center; padding: 70px 24px; color: var(--muted); text-align: center; }
 .admin-empty svg { color: var(--purple); }
 .admin-empty h3 { margin: 16px 0 4px; }

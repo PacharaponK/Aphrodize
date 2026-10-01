@@ -6,7 +6,11 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import require_api_credentials, require_user_token
-from backend.api.schemas import InitialWellnessQuestionnaire, QuestionnaireCreate, SafetyScreeningUpdate
+from backend.api.schemas import (
+    InitialWellnessQuestionnaire,
+    QuestionnaireCreate,
+    SafetyScreeningUpdate,
+)
 from backend.core.db.models import Questionnaire, User, UserProfile
 from backend.core.db.session import get_session
 
@@ -18,8 +22,12 @@ async def sync_profile_compatibility(session: AsyncSession, user_id: UUID, answe
     values = {
         key: answers[key]
         for key in (
-            "sex", "age_group", "skin_type", "wellness_goal",
-            "sunscreen_frequency", "menstrual_tracking",
+            "sex",
+            "age_group",
+            "skin_type",
+            "wellness_goal",
+            "sunscreen_frequency",
+            "menstrual_tracking",
         )
         if key in answers
     }
@@ -66,7 +74,9 @@ async def save_initial_questionnaire(
         select(Questionnaire.id).where(Questionnaire.user_id == user_id)
     )
     if existing is not None:
-        raise HTTPException(status_code=409, detail="Initial health questionnaire already completed")
+        raise HTTPException(
+            status_code=409, detail="Initial health questionnaire already completed"
+        )
     answers = payload.answers_for_storage()
     questionnaire = Questionnaire(user_id=user_id, answers=answers)
     session.add(questionnaire)
@@ -88,7 +98,9 @@ async def update_initial_questionnaire(
         raise HTTPException(status_code=422, detail="A base questionnaire revision is required")
     latest = await session.scalar(latest_questionnaire_query(user_id).with_for_update().limit(1))
     if latest is None:
-        raise HTTPException(status_code=409, detail="Complete the initial health questionnaire first")
+        raise HTTPException(
+            status_code=409, detail="Complete the initial health questionnaire first"
+        )
     if latest.id != payload.base_revision_id:
         raise HTTPException(
             status_code=409,
@@ -109,11 +121,11 @@ async def update_safety_screening(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
     """Append a safety-only revision, preserving all previously reported answers."""
-    latest = await session.scalar(
-        latest_questionnaire_query(user_id).with_for_update().limit(1)
-    )
+    latest = await session.scalar(latest_questionnaire_query(user_id).with_for_update().limit(1))
     if latest is None:
-        raise HTTPException(status_code=409, detail="Complete the initial health questionnaire first")
+        raise HTTPException(
+            status_code=409, detail="Complete the initial health questionnaire first"
+        )
     if latest.id != payload.base_revision_id:
         raise HTTPException(
             status_code=409,

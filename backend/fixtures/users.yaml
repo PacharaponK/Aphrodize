@@ -1,7 +1,7 @@
 users:
   - display_name: PacharaponK
     email: ball@gmail.com
-    password: 123456789
+    password: "123456789"
     consent_accepted: true
     profile:
       sex: female

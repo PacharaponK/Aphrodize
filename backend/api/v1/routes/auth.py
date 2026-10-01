@@ -39,7 +39,9 @@ async def skin_profile(
         .order_by(Questionnaire.created_at.desc(), Questionnaire.id.desc())
         .limit(1)
     )
-    age_years = questionnaire.answers.get("age_years") if isinstance(questionnaire, Questionnaire) else None
+    age_years = (
+        questionnaire.answers.get("age_years") if isinstance(questionnaire, Questionnaire) else None
+    )
     return SkinProfileResponse(
         user_id=user_id,
         display_name=account.display_name,
@@ -52,9 +54,10 @@ async def skin_profile(
                 "wellness_goal": profile.wellness_goal,
                 "sunscreen_frequency": profile.sunscreen_frequency,
                 "menstrual_tracking": profile.menstrual_tracking,
-                **({"age_years": age_years} if isinstance(age_years, (int, float)) else {}),
+                **({"age_years": age_years} if isinstance(age_years, int | float) else {}),
             }
-            if profile else None
+            if profile
+            else None
         ),
         answers=questionnaire.answers if isinstance(questionnaire, Questionnaire) else None,
     )
@@ -68,11 +71,13 @@ async def grant_daily_health_consent(
     if await session.scalar(select(Account.id).where(Account.user_id == user_id)) is None:
         raise HTTPException(status_code=401, detail="Account no longer exists")
     existing = await session.scalar(
-        select(Consent.id).where(
+        select(Consent.id)
+        .where(
             Consent.user_id == user_id,
             Consent.version == "daily-health-v1",
             Consent.revoked_at.is_(None),
-        ).limit(1)
+        )
+        .limit(1)
     )
     if existing is None:
         session.add(Consent(user_id=user_id, version="daily-health-v1"))
@@ -89,21 +94,25 @@ async def save_wellness_profile(
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=401, detail="Account no longer exists")
     consent = await session.scalar(
-        select(Consent.id).where(
+        select(Consent.id)
+        .where(
             Consent.user_id == user_id,
             Consent.version == "signup-v1",
             Consent.revoked_at.is_(None),
-        ).limit(1)
+        )
+        .limit(1)
     )
     if consent is None:
         raise HTTPException(status_code=403, detail="Active consent is required")
     if payload.age_group == "under_13":
         guardian_consent = await session.scalar(
-            select(Consent.id).where(
+            select(Consent.id)
+            .where(
                 Consent.user_id == user_id,
                 Consent.version == "guardian-health-v1",
                 Consent.revoked_at.is_(None),
-            ).limit(1)
+            )
+            .limit(1)
         )
         if guardian_consent is None:
             session.add(Consent(user_id=user_id, version="guardian-health-v1"))

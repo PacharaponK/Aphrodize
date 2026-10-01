@@ -19,6 +19,46 @@ function load(file, overrides) {
   return evaluated.exports;
 }
 
+test("recommendations always require a session and forward backend data, even with demo=1", async (context) => {
+  const route = load("../src/app/api/analysis/recommendations/route.ts", {});
+  const url = "http://localhost/api/analysis/recommendations?scope=profile&demo=1";
+  const calls = [];
+  const backendBody = { status: "pending", recommendations: [], marker: "backend-response" };
+  context.mock.method(globalThis, "fetch", async (url, options) => {
+    calls.push({ url, options });
+    return Response.json(backendBody);
+  });
+  const signedOut = await route.GET(new NextRequest(url));
+  assert.equal(signedOut.status, 401);
+  assert.equal(calls.length, 0);
+  const request = new NextRequest(url, { headers: { cookie: "aphrodize_session=test-token" } });
+  const response = await route.GET(request);
+  assert.deepEqual(await response.json(), backendBody);
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.ok(calls[0].url.endsWith("/api/v1/analyses/recommendations?market=TH"));
+  assert.equal(calls[0].options.headers.Authorization, "Bearer test-token");
+  assert.equal(calls[0].options.cache, "no-store");
+  context.mock.method(globalThis, "fetch", async () => { throw new Error("Backend unavailable"); });
+  const failed = await route.GET(request);
+  assert.equal(failed.status, 502);
+  assert.equal(Object.hasOwn(await failed.json(), "recommendations"), false);
+});
+
+test("recommendation filters forward satang unchanged and reject invalid inputs", async (context) => {
+  const route = load("../src/app/api/analysis/recommendations/route.ts", {});
+  const calls = [];
+  context.mock.method(globalThis, "fetch", async (url) => { calls.push(url); return Response.json({ status: "ready" }); });
+  const request = (query) => new NextRequest(`http://localhost/api/analysis/recommendations?scope=profile&${query}`, {
+    headers: { cookie: "aphrodize_session=test-token" },
+  });
+  assert.equal((await route.GET(request("market=TH&max_price_satang=49900"))).status, 200);
+  assert.ok(calls[0].endsWith("?market=TH&max_price_satang=49900"));
+  for (const query of ["market=XX", "max_price_satang=-1", "max_price_satang=0.5", "max_price_satang=100000001"]) {
+    assert.equal((await route.GET(request(query))).status, 400);
+  }
+  assert.equal(calls.length, 1);
+});
+
 test("saved consent uses the current account without a latest-analysis cookie; withdrawal is scoped", async (context) => {
   const owner = { userId: "d4e251fd-0f48-42b1-89df-42cf727cd43d", token: "test-token" };
   const route = load("../src/app/api/analysis/route.ts", {

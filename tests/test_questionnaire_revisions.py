@@ -45,6 +45,7 @@ async def test_safety_revision_merges_only_safety_answers_after_matching_base_re
     assert session.added[0].answers == {
         "skin_type": "dry", "sunscreen_frequency": "sometimes",
         "skin_sensitivity": "low", "known_product_allergy": "no", "severe_irritation": "no",
+        "allergy_ingredients": [],
     }
     assert "base_revision_id" not in session.added[0].answers
 

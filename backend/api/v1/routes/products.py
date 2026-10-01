@@ -25,6 +25,14 @@ def require_publishable(product: Product) -> None:
             status_code=422,
             detail="Label ingredients, reviewed INCI, skin types, and source URL are required",
         )
+    if getattr(product, "price_satang", None) is not None and not getattr(
+        product, "price_source_url", None
+    ):
+        raise HTTPException(status_code=422, detail="A source URL for this price is required")
+    if "wrinkle-care" in (getattr(product, "concerns", None) or []) and not getattr(
+        product, "application_regions", None
+    ):
+        raise HTTPException(status_code=422, detail="Reviewed application regions are required")
     if getattr(product, "category", None) == "sunscreen" and not all(
         (product.spf, product.broad_spectrum)
     ):
@@ -60,11 +68,14 @@ async def update_product(
     product = await session.get(Product, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    old_price = product.price_satang
+    old_price = (product.price_satang, product.price_source_url)
     for field, value in payload.model_dump().items():
         setattr(product, field, value)
-    if old_price != product.price_satang:
-        product.price_checked_at = datetime.now(UTC) if product.price_satang is not None else None
+    # Saving a sourced price records the admin's fresh review, even if it has not changed.
+    if product.price_satang is not None and product.price_source_url:
+        product.price_checked_at = datetime.now(UTC)
+    elif old_price != (product.price_satang, product.price_source_url):
+        product.price_checked_at = None
     if product.status == "published":
         product.status = "draft"
         product.reviewed_at = None

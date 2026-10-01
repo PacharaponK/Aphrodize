@@ -97,5 +97,7 @@ async def test_signup_requires_consent_and_unique_email() -> None:
     assert consent_error.value.status_code == 422
 
     with pytest.raises(HTTPException, match="already exists") as duplicate_error:
-        await signup(without_consent.model_copy(update={"consent_accepted": True}), FakeSession(True))
+        await signup(
+            without_consent.model_copy(update={"consent_accepted": True}), FakeSession(True)
+        )
     assert duplicate_error.value.status_code == 409

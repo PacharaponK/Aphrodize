@@ -76,8 +76,7 @@ const PAGE_COPY = {
     viewPixelCounts: "ดูจำนวนพิกเซล",
     pixelCounts: "พิกเซลที่ทำเครื่องหมาย / ที่ประเมินได้",
     pixels: "พิกเซล",
-    recommendations: "คำแนะนำที่ผ่านเกณฑ์",
-    noRecommendations: "ไม่มีคำแนะนำสำหรับผลนี้ จะแสดงคำแนะนำเฉพาะเมื่อระบบระบุว่าผลผ่านเกณฑ์เท่านั้น",
+    recommendations: "ผลิตภัณฑ์และคำแนะนำสำหรับคุณ",
     method: "วิธีคำนวณคะแนน",
     ratioFormula: "สัดส่วนพื้นที่ที่ทำเครื่องหมาย = พิกเซลที่ทำเครื่องหมาย ÷ พิกเซลที่ประเมินได้",
     scoreFormula: "สูตรคะแนน 0–100:",
@@ -140,8 +139,7 @@ const PAGE_COPY = {
     viewPixelCounts: "View pixel counts",
     pixelCounts: "Pixels marked / evaluated",
     pixels: "pixels",
-    recommendations: "Eligible guidance",
-    noRecommendations: "No guidance is available for this result. Recommendations appear only when the system marks a result as eligible.",
+    recommendations: "Products and guidance for you",
     method: "How the score is calculated",
     ratioFormula: "Marked-area proportion = marked pixels ÷ evaluated pixels",
     scoreFormula: "0–100 score formula:",
@@ -469,14 +467,10 @@ export default function ResultDetailPage() {
                     <p className="analysis-score-explanation">{copy.scoreExplanation}</p>
                   </section>
 
-                  {analysis.result?.recommendation_gate?.eligible === true ? (
-                    <section className="analysis-section analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
-                      <div className="analysis-section-heading"><h3 id="analysis-recommendations-heading">{copy.recommendations}</h3></div>
-                      <RecommendationPanel language={language} />
-                    </section>
-                  ) : (
-                    <p className="analysis-guidance-note" role="note">{copy.noRecommendations}</p>
-                  )}
+                  <section className="analysis-section analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
+                    <div className="analysis-section-heading"><h3 id="analysis-recommendations-heading">{copy.recommendations}</h3></div>
+                    <RecommendationPanel language={language} />
+                  </section>
 
                   <section className="analysis-section analysis-region-section" aria-labelledby="analysis-regions-heading">
                     <div className="analysis-section-heading">
@@ -534,6 +528,10 @@ export default function ResultDetailPage() {
             <div className="result-wait" role="status">
               <h2>{copy.noScore}</h2>
               <Link className="primary-button" href="/capture">{copy.retryAnalysis} →</Link>
+              <section className="analysis-section analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
+                <h3 id="analysis-recommendations-heading">{copy.recommendations}</h3>
+                <RecommendationPanel language={language} />
+              </section>
             </div>
           )
         )}

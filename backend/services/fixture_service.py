@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from pydantic import AwareDatetime, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,14 +13,76 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.schemas.auth import SignupRequest
 from backend.api.schemas.consent import WellnessProfileUpsert
 from backend.api.schemas.daily_health import DailyHealthEntryUpsert
+from backend.api.schemas.product import ProductInput
 from backend.api.v1.routes.auth import signup
+from backend.api.v1.routes.products import require_publishable
 from backend.core.db.models import (
     Account,
     Consent,
     DailyHealthDatasetRecord,
     DailyHealthEntry,
+    Product,
     UserProfile,
 )
+
+
+def products_from_fixture(path: Path) -> list[Product]:
+    """Validate the entire source snapshot before writing any catalog rows."""
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not isinstance(data.get("products"), list):
+        raise ValueError("Fixture must contain a products list")
+    if not data["products"]:
+        raise ValueError("Product fixture cannot be empty")
+    reviewed_at = TypeAdapter(AwareDatetime).validate_python(data.get("reviewed_at"))
+    products = []
+    source_urls = set()
+    for row in data["products"]:
+        payload = ProductInput.model_validate(row)
+        if not payload.ingredients_label:
+            payload.ingredients_label = ", ".join(payload.ingredients_inci)
+        product = Product(**payload.model_dump(), status="published", reviewed_at=reviewed_at)
+        require_publishable(product)
+        if product.source_url in source_urls:
+            raise ValueError("Product fixture contains duplicate source URLs")
+        source_urls.add(product.source_url)
+        if product.price_satang is not None:
+            product.price_checked_at = reviewed_at
+        products.append(product)
+    return products
+
+
+async def load_products(path: Path, session: AsyncSession) -> int:
+    products = products_from_fixture(path)
+    inserted = 0
+    enriched = False
+    for product in products:
+        existing = await session.scalar(select(Product).where(
+            Product.source_url == product.source_url,
+        ).limit(1))
+        if existing is None:
+            session.add(product)
+            inserted += 1
+        elif (
+            existing.status == "published" and existing.reviewed_at is not None
+            and [v.strip().casefold() for v in existing.ingredients_inci]
+            == [v.strip().casefold() for v in product.ingredients_inci]
+        ):
+            # Fill missing market/price provenance only for the identical reviewed formula.
+            # Preserve archived rows, edited labels and any price already entered by an admin.
+            if existing.market is None and product.market is not None:
+                existing.market = product.market
+                enriched = True
+            if (
+                existing.price_satang is None and existing.price_source_url is None
+                and product.price_satang is not None and product.price_source_url
+            ):
+                existing.price_satang = product.price_satang
+                existing.price_source_url = product.price_source_url
+                existing.price_checked_at = product.price_checked_at
+                enriched = True
+    if inserted or enriched:
+        await session.commit()
+    return inserted
 
 
 async def load_users(path: Path, session: AsyncSession) -> None:

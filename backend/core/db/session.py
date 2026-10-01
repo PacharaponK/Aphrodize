@@ -27,6 +27,9 @@ async def create_database_schema() -> None:
         ) or set()
         product_additions = {
             "variant": "VARCHAR(120) NOT NULL DEFAULT ''",
+            "market": "VARCHAR(8)",
+            "price_source_url": "VARCHAR(1000)",
+            "application_regions": "JSON NOT NULL DEFAULT '[]'",
             "price_satang": "INTEGER",
             "price_checked_at": "TIMESTAMP WITH TIME ZONE",
             "ingredients_label": "TEXT NOT NULL DEFAULT ''",
