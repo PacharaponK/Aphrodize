@@ -132,6 +132,9 @@ async def update_safety_screening(
             detail="Questionnaire changed elsewhere. Reload it before saving your edits.",
         )
     answers = {**latest.answers, **payload.safety_answers()}
+    # The explicit current screening replaces these legacy combined flags.
+    answers.pop("allergy_or_irritation", None)
+    answers.pop("severe_skin_irritation", None)
     if payload.known_product_allergy != "yes":
         answers.pop("allergy_details", None)
     questionnaire = Questionnaire(user_id=user_id, answers=answers)

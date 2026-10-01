@@ -28,14 +28,25 @@ class FakeSession:
 async def test_safety_revision_merges_only_safety_answers_after_matching_base_revision():
     user_id = uuid4()
     revision_id = uuid4()
-    session = FakeSession(SimpleNamespace(id=revision_id, answers={
-        "skin_type": "dry", "sunscreen_frequency": "sometimes",
-        "skin_sensitivity": "unsure", "known_product_allergy": "unsure",
-        "severe_irritation": "unsure",
-    }))
+    session = FakeSession(
+        SimpleNamespace(
+            id=revision_id,
+            answers={
+                "skin_type": "dry",
+                "sunscreen_frequency": "sometimes",
+                "skin_sensitivity": "unsure",
+                "known_product_allergy": "unsure",
+                "severe_irritation": "unsure",
+                "allergy_or_irritation": True,
+                "severe_skin_irritation": True,
+            },
+        )
+    )
     payload = SafetyScreeningUpdate(
         base_revision_id=revision_id,
-        skin_sensitivity="low", known_product_allergy="no", severe_irritation="no",
+        skin_sensitivity="low",
+        known_product_allergy="no",
+        severe_irritation="no",
     )
 
     result = await update_safety_screening(payload, user_id=user_id, session=session)
@@ -43,8 +54,11 @@ async def test_safety_revision_merges_only_safety_answers_after_matching_base_re
     assert result["status"] == "updated"
     assert session.committed is True
     assert session.added[0].answers == {
-        "skin_type": "dry", "sunscreen_frequency": "sometimes",
-        "skin_sensitivity": "low", "known_product_allergy": "no", "severe_irritation": "no",
+        "skin_type": "dry",
+        "sunscreen_frequency": "sometimes",
+        "skin_sensitivity": "low",
+        "known_product_allergy": "no",
+        "severe_irritation": "no",
         "allergy_ingredients": [],
     }
     assert "base_revision_id" not in session.added[0].answers
@@ -55,7 +69,9 @@ async def test_safety_revision_rejects_stale_base_instead_of_overwriting_newer_a
     session = FakeSession(SimpleNamespace(id=uuid4(), answers={"skin_type": "dry"}))
     payload = SafetyScreeningUpdate(
         base_revision_id=uuid4(),
-        skin_sensitivity="low", known_product_allergy="no", severe_irritation="no",
+        skin_sensitivity="low",
+        known_product_allergy="no",
+        severe_irritation="no",
     )
 
     with pytest.raises(HTTPException) as error:
