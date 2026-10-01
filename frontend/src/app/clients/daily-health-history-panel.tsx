@@ -9,7 +9,6 @@ import type {
   HealthSignal,
 } from "@/lib/daily-health-types";
 import DailyHealthRiskResults from "./daily-health-risk-results";
-import { RecommendationPanel } from "../recommendation/recommendation-panel";
 
 type HistoryView = "overview" | "trend" | "dashboard";
 const DAILY_HEALTH_DATA_UPDATED_EVENT = "daily-health-data-updated";
@@ -252,12 +251,6 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
       <section className="home-insights-card" aria-label={t("สัญญาณและคำแนะนำจากข้อมูลล่าสุด", "Signals and guidance from your latest record")}>
         <header className="home-card-heading"><h2>{t("สิ่งที่ควรใส่ใจ", "Personal insights")}</h2>{latest && !unavailable ? <span className="home-period">{t("จากบันทึก", "From your record on")} {dateLabel(latest.local_date)}</span> : null}</header>
         {unavailable || !latest ? <p>{t("เมื่อมีข้อมูล ระบบจะแสดงสัญญาณและคำแนะนำเฉพาะคุณที่นี่", "Your personal signals and guidance will appear here when records are available")}</p> : <div lang="th">{language === "en" ? <p lang="en">Recorded guidance is currently available in Thai.</p> : null}<DailyHealthRiskResults interpretation={latest.interpretation} /></div>}
-      </section>
-      <section id="dashboard-product-recommendations" className="home-insights-card home-product-recommendations" aria-labelledby="dashboard-product-recommendations-title">
-        <header className="home-card-heading"><h2 id="dashboard-product-recommendations-title">{t("คำแนะนำสินค้าจากโปรไฟล์", "Profile-based product recommendations")}</h2></header>
-        <p>{t("อ้างอิงคำตอบสุขภาพที่คุณกรอกไว้", "Based on your wellness profile answers")}</p>
-        <RecommendationPanel compact source="profile" />
-        {!requiresLogin && <Link className="text-button" href="/profile">{t("ดูและแก้ไขข้อมูลโปรไฟล์ →", "View and edit your profile →")}</Link>}
       </section>
       {!unavailable && items.length > 0 ? <details className="home-history-details"><summary>{t("ข้อมูลรายวันที่ใช้ในภาพรวม", "Recorded daily details (Thai)")} ({items.length} {t("วัน", "days")})</summary><div className="daily-history-list" lang="th">{[...items].sort((a, b) => b.local_date.localeCompare(a.local_date)).map((item) => <DailyHistoryEntry key={item.local_date} item={item} />)}</div></details> : null}
     </div>

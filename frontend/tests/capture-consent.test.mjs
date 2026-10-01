@@ -59,6 +59,50 @@ test("recommendation filters forward satang unchanged and reject invalid inputs"
   assert.equal(calls.length, 1);
 });
 
+test("product cards render shopping media and convert valid budget numbers to satang", (context) => {
+  const product = { id: "catalog-product", brand: "CeraVe", name: "Cream", variant: "50 g",
+    price_satang: 17900, price_checked_at: "2026-09-30T17:00:00Z",
+    reviewed_at: "2026-09-30T17:00:00Z", matched_claims: [], matched_skin_type: "dry",
+    ingredients_inci: ["Aqua"], warnings_label: "", source_url: "https://www.cerave.co.th/",
+    image_url: "https://medias.watsons.co.th/publishing/verified.jpg",
+    purchase_url: "https://www.watsons.co.th/en/verified/p/BP_275377" };
+  const values = [{ status: "ready", recommendations: [{ category: "moisturizer", rule_id: "test", products: [product] }],
+    questionnaire_context: { status: "available" }, daily_context: {}, disclaimer: "" }, "", false, "TH", null];
+  let index = 0;
+  const changes = [];
+  const panel = load("../src/app/recommendation/recommendation-panel.tsx", {
+    react: { useState: () => { const slot = index++; return [values[slot], (value) => changes.push([slot, value])]; }, useEffect: () => {} },
+    "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },
+    "@/components/allergy-ingredients": { ALLERGY_INGREDIENTS: [] },
+    "@/components/ui/select": { Select: "select" }, "next/image": "img",
+  }).RecommendationPanel;
+  const nodes = [], texts = [];
+  function visit(node) {
+    if (Array.isArray(node)) return node.forEach(visit);
+    if (typeof node === "string" || typeof node === "number") { texts.push(String(node)); return; }
+    if (!node?.props) return;
+    nodes.push(node); visit(node.props.children);
+  }
+  visit(panel({ compact: true }));
+  assert.ok(nodes.some(node => node.type === "img" && node.props.src === product.image_url && node.props.alt.includes("50 g")));
+  assert.ok(nodes.some(node => node.type === "a" && node.props.href === product.purchase_url && node.props.rel.includes("noreferrer")));
+  assert.ok(texts.join(" ").includes("179.00"));
+  assert.ok(texts.join(" ").includes("1 Oct 2026"));
+  let budget = "1.2e2";
+  const nativeFormData = globalThis.FormData;
+  context.after(() => { globalThis.FormData = nativeFormData; });
+  globalThis.FormData = class { get(name) { return name === "market" ? "TH" : budget; } };
+  const form = nodes.find(node => node.type === "form");
+  form.props.onSubmit({ preventDefault() {}, currentTarget: {} });
+  assert.ok(changes.some(([slot, value]) => slot === 4 && value === 12000));
+  changes.length = 0; budget = "0.29";
+  form.props.onSubmit({ preventDefault() {}, currentTarget: {} });
+  assert.ok(changes.some(([slot, value]) => slot === 4 && value === 29));
+  changes.length = 0; budget = "";
+  form.props.onSubmit({ preventDefault() {}, currentTarget: {} });
+  assert.equal(changes.length, 0); // Reapplying unchanged filters must not leave loading stuck.
+});
+
 test("saved consent uses the current account without a latest-analysis cookie; withdrawal is scoped", async (context) => {
   const owner = { userId: "d4e251fd-0f48-42b1-89df-42cf727cd43d", token: "test-token" };
   const route = load("../src/app/api/analysis/route.ts", {
@@ -132,6 +176,7 @@ function pageHarness() {
   let mounted = false;
   const page = load("../src/app/capture/page.tsx", {
     react: {
+      startTransition: (callback) => callback(),
       useState(initial) {
         const index = cursor++;
         if (!(index in states)) states[index] = initial;
@@ -140,7 +185,7 @@ function pageHarness() {
       useEffect(effect) { if (!mounted) effects.push(effect); },
       useRef: () => ({ current: null }),
     },
-    "next/navigation": { useRouter: () => ({ push() {} }) },
+    "./analysis-result": { __esModule: true, default: "analysis-result" },
     "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },
     "@/components/workspace-shell": { WorkspaceShell: "section" },
     "./capture.css": {},
@@ -148,18 +193,60 @@ function pageHarness() {
   return () => {
     cursor = 0;
     const inputs = [];
+    const nodes = [];
     function visit(node) {
       if (Array.isArray(node)) return node.forEach(visit);
       if (!node?.props) return;
+      nodes.push(node);
       if (node.type === "input" && node.props.type === "checkbox") inputs.push(node.props);
       visit(node.props.children);
     }
     visit(page());
+    inputs.nodes = nodes;
     if (!mounted) { mounted = true; effects.forEach((effect) => effect()); }
     return inputs;
   };
 }
 const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+test("capture keeps upload errors, results and another analysis on the same page", async (context) => {
+  const originalWindow = globalThis.window;
+  const paths = [];
+  globalThis.window = { location: { hash: "", pathname: "/capture", search: "" },
+    addEventListener() {}, removeEventListener() {},
+    history: { state: {}, replaceState(_state, _title, path) { paths.push(path); } } };
+  context.after(() => { if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow; });
+  context.mock.method(URL, "createObjectURL", () => "blob:test-image");
+  let uploadFails = true;
+  context.mock.method(globalThis, "fetch", async (_url, options) => options?.method === "POST"
+    ? Response.json(uploadFails ? { detail: "Upload failed" } : { status: "queued" }, { status: uploadFails ? 503 : 202 })
+    : Response.json({ analysis: false, annotations: false }));
+  const render = pageHarness();
+  render();
+  await settle();
+  render().nodes.find((node) => node.type === "input" && node.props.type === "file").props.onChange({
+    target: { files: [new File(["image"], "face.png", { type: "image/png" })] },
+  });
+  render()[0].onChange({ target: { checked: true } });
+  const submit = () => render().nodes.find((node) => node.props["aria-describedby"] === "capture-submit-hint").props.onClick();
+  await submit();
+  assert.ok(render().nodes.some((node) => node.props.role === "alert"));
+  assert.equal(paths.length, 0);
+  uploadFails = false;
+  await submit();
+  const result = render().nodes.find((node) => node.type === "analysis-result");
+  assert.ok(result);
+  assert.ok(render().nodes.some((node) => node.props.className === "capture-studio"), "the image form stays above the result");
+  assert.ok(render().nodes.some((node) => node.props.id === "results"), "results have a scroll target");
+  assert.deepEqual(paths, ["#results"]);
+  result.props.onNewAnalysis();
+  assert.equal(paths.at(-1), "/capture");
+  assert.ok(render().nodes.some((node) => node.props["aria-describedby"] === "capture-submit-hint" && !node.props.disabled));
+  globalThis.window.location.hash = "#results";
+  const deepLink = pageHarness();
+  deepLink();
+  assert.ok(deepLink().nodes.some((node) => node.type === "analysis-result"));
+});
 
 test("return visits restore both choices; failed withdrawal keeps consent checked", async (context) => {
   const requests = [];

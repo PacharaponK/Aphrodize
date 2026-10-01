@@ -9,8 +9,7 @@ const pages = [
   ["Dashboard", "/"],
   ["Capture guide", "/capture"],
   ["Quality rejected", "/quality-rejected"],
-  ["Result detail", "/result-detail"],
-  ["Recommendation", "/recommendation"],
+  ["Results and recommendations", "/capture#results"],
 ];
 
 export default function Page() {

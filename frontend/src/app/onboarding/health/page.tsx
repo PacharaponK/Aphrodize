@@ -217,7 +217,7 @@ function HealthOnboardingForm() {
           return;
         }
       }
-      router.push(effectiveFullEdit ? "/profile" : editing ? "/recommendation" : "/");
+      router.push(effectiveFullEdit ? "/profile" : "/");
     } catch {
       setMessage("เชื่อมต่อบริการไม่ได้ กรุณาลองใหม่อีกครั้ง");
     } finally {

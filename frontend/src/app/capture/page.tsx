@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { ArrowRight, Camera, Check, ImagePlus, ScanFace, ShieldCheck, Sun, UserRound } from "lucide-react";
 import "./capture.css";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
+import AnalysisResult from "./analysis-result";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useLanguage } from "@/components/language-provider";
 
@@ -27,7 +27,23 @@ export default function CapturePage() {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const previewRef = useRef<string | null>(null);
-  const router = useRouter();
+  const [showResults, setShowResults] = useState(false);
+  const resultView = useRef<HTMLDivElement>(null);
+  const captureView = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncResults = () => startTransition(() => setShowResults(window.location.hash === "#results"));
+    syncResults();
+    window.addEventListener("hashchange", syncResults);
+    return () => window.removeEventListener("hashchange", syncResults);
+  }, []);
+
+  useEffect(() => {
+    if (!showResults) return;
+    resultView.current?.focus({ preventScroll: true });
+    resultView.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+  }, [showResults]);
 
   useEffect(() => {
     let active = true;
@@ -119,6 +135,7 @@ export default function CapturePage() {
     if (!file || !consent) return setError(t("เลือกภาพและยอมรับการวิเคราะห์ก่อนดำเนินการ", "Choose an image and consent to analysis before continuing."));
     setBusy(true);
     setError("");
+    setShowResults(false);
     // FormData carries the image and the two consent decisions to the Next.js route.
     const form = new FormData();
     form.set("image", file);
@@ -131,8 +148,12 @@ export default function CapturePage() {
         const body = await response.json().catch(() => null);
         throw new Error(typeof body?.detail === "string" ? body.detail : t("ส่งภาพไม่สำเร็จ", "Could not submit the image."));
       }
-      // The result page polls the status using the signed browser cookie.
-      router.push("/result-detail");
+      // Show and poll the result in this page using the signed browser cookie.
+      stopCamera();
+      setSavedConsents({ analysis: true, annotations: annotationConsent });
+      setBusy(false);
+      window.history.replaceState(window.history.state, "", "#results");
+      setShowResults(true);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("ส่งภาพไม่สำเร็จ", "Could not submit the image."));
       setBusy(false);
@@ -162,11 +183,12 @@ export default function CapturePage() {
   return (
     <div className="capture-page">
       <WorkspaceShell eyebrow="" title={t("วิเคราะห์ภาพใบหน้า", "Analyze your face image")}>
+        <p className="capture-intro">{t("เลือกภาพ ให้ความยินยอม แล้วดูผลวิเคราะห์และคำแนะนำได้ด้านล่าง", "Choose a photo, give consent, then explore your results and guidance below.")}</p>
         <ol className="capture-steps" aria-label={t("ขั้นตอนการวิเคราะห์", "Analysis steps")}>
-          <li aria-current="step"><span>1</span>{t("เตรียมภาพ", "Prepare image")}</li>
-          <li><ArrowRight size={16} aria-hidden="true" /><span>2</span>{t("ดูผลวิเคราะห์", "View results")}</li>
+          <li aria-current={!showResults ? "step" : undefined}><span>1</span>{t("เตรียมภาพ", "Prepare image")}</li>
+          <li aria-current={showResults ? "step" : undefined}><ArrowRight size={16} aria-hidden="true" /><span>2</span>{t("ดูผลวิเคราะห์", "View results")}</li>
         </ol>
-        <section className="capture-studio" aria-labelledby="capture-title">
+        <section ref={captureView} tabIndex={-1} className="capture-studio" aria-labelledby="capture-title">
           <div className="capture-image-area">
             <h2 id="capture-title">{t("เริ่มจากภาพที่ชัดเจน", "Start with a clear image")}</h2>
             <p className="capture-description">{t("เลือกภาพใบหน้าหรือถ่ายภาพใหม่ เพื่อเตรียมส่งวิเคราะห์", "Choose a face image or take a new photo to prepare your analysis.")}</p>
@@ -179,7 +201,7 @@ export default function CapturePage() {
                 <img src={preview} alt={t("ภาพที่เลือกเพื่อวิเคราะห์", "Selected image for analysis")} />
               ) : (
                 <div className="capture-empty">
-                  <ScanFace size={88} strokeWidth={1} aria-hidden="true" />
+                  <ScanFace size={64} strokeWidth={1.25} aria-hidden="true" />
                   <h3>{t("ภาพใบหน้าของคุณ", "Your face image")}</h3>
                   <p>{t("หน้าตรง เห็นใบหน้าชัดเจน", "Face forward, with your face clearly visible")}</p>
                   <small>JPEG, PNG, WebP · {t("ไม่เกิน 10 MB", "up to 10 MB")}</small>
@@ -188,7 +210,7 @@ export default function CapturePage() {
             </div>
             {file && <p className="capture-selected" role="status"><Check size={16} aria-hidden="true" /><span>{file.name}</span><small>{t("ยังไม่ได้ส่งภาพ", "Not uploaded yet")}</small></p>}
             <div className="capture-image-controls">
-              <label className="primary-button capture-file"><ImagePlus size={18} aria-hidden="true" />{preview ? t("เปลี่ยนภาพ", "Change image") : t("เลือกภาพ", "Choose image")}
+              <label className="secondary-button capture-file"><ImagePlus size={18} aria-hidden="true" />{preview ? t("เปลี่ยนภาพ", "Change image") : t("เลือกภาพ", "Choose image")}
                 <input type="file" aria-label={t("เลือกภาพจากเครื่อง", "Choose an image file")} accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={(event) => chooseImage(event.target.files?.[0] ?? null)} />
               </label>
               {!cameraOpen && <label className="secondary-button capture-file capture-phone"><Camera size={18} aria-hidden="true" />{t("ถ่ายภาพ", "Take a photo")}
@@ -200,7 +222,6 @@ export default function CapturePage() {
                 <button type="button" className="secondary-button capture-webcam" disabled={busy} onClick={openCamera}><Camera size={18} aria-hidden="true" />{t("เปิดกล้อง", "Open camera")}</button>
               )}
             </div>
-          </div>
           <aside className="capture-tips" aria-labelledby="capture-tips-title">
             <h2 id="capture-tips-title">{t("เตรียมภาพให้พร้อม", "A little preparation")}</h2>
             <p>{t("ถ่ายในเงื่อนไขใกล้เคียงกันทุกครั้ง เพื่อให้เทียบภาพได้ดีขึ้น", "Use similar conditions each time for more comparable images.")}</p>
@@ -211,8 +232,9 @@ export default function CapturePage() {
             </ul>
             <div className="capture-local-note"><ShieldCheck size={20} aria-hidden="true" /><p>{t("ภาพตัวอย่างอยู่ในเบราว์เซอร์จนกว่าคุณจะกดวิเคราะห์", "Your preview stays in this browser until you choose to analyze.")}</p></div>
           </aside>
+          </div>
           <div className="capture-permissions">
-            <h2>{t("ความยินยอมและข้อมูลของคุณ", "Your consent, your data")}</h2>
+            <div className="capture-permissions-heading"><ShieldCheck size={24} aria-hidden="true" /><h2>{t("ความยินยอมและข้อมูลของคุณ", "Your consent, your data")}</h2></div>
             <p className="capture-consent-copy">{loadingConsents ? t("กำลังตรวจสอบความยินยอม…", "Checking saved consent…") : t("ความยินยอมที่บันทึกไว้จะใช้ในการวิเคราะห์ครั้งถัดไปโดยไม่ต้องเลือกซ้ำ เอาเครื่องหมายออกเพื่อถอนความยินยอม", "Saved consent applies to future analyses without selecting it again. Uncheck a choice to withdraw consent.")}</p>
             <label className="capture-consent-row"><input type="checkbox" checked={consent} disabled={busy || loadingConsents} onChange={(event) => { if (!event.target.checked && savedConsents.analysis) void revokeConsent("analysis"); else setConsent(event.target.checked); }} />
               <span><span className="capture-consent-heading"><strong>{t("ยินยอมให้วิเคราะห์ภาพ", "Consent to image analysis")}</strong><small>{t("จำเป็น", "Required")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมให้วิเคราะห์ภาพใบหน้าเพื่อแสดงคะแนนทดลองและภาพ mask โดยภาพผลจะถูกลบภายใน 24 ชั่วโมง ผลนี้ยังไม่ผ่านการตรวจสอบทางคลินิก", "I consent to face-image analysis for experimental scores and a mask preview. Result images are deleted within 24 hours. This system has not been clinically validated.")}</span></span>
@@ -235,6 +257,14 @@ export default function CapturePage() {
             </div>
           </div>
         </section>
+        {showResults && <div id="results" className="capture-results" ref={resultView} tabIndex={-1} aria-label={t("ผลวิเคราะห์ภาพ", "Image analysis results")}>
+          <AnalysisResult onNewAnalysis={() => {
+            window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+            setShowResults(false);
+            captureView.current?.focus({ preventScroll: true });
+            captureView.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+          }} />
+        </div>}
       </WorkspaceShell>
     </div>
   );

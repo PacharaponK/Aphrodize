@@ -233,3 +233,9 @@ components:
 - Use Montserrat 700 for action-card and metric labels; Montserrat 400 for descriptions, navigation and controls. Numeric values use Montserrat with tabular numerals for quick comparison. Do not set the entire data dashboard in serif.
 - Keep existing video, solid cards, layout, colors and motion. English display copy must not add diagnostic claims or fictional metrics.
 - Stored guidance remains in its original language, explicitly marked Thai when necessary; do not silently translate or alter recorded medical guidance as part of this typography update.
+
+## วิเคราะห์ภาพและผลลัพธ์ในหน้าเดียว (`/capture`)
+
+ใช้ความกว้างร่วมสูงสุด 1920px และ `--responsive-page-gutter` เช่นเดียวกับ workspace อื่น ไม่จำกัดหน้า capture ที่ 1280px จอใหญ่จัดภาพตัวอย่างและแนวทางถ่ายภาพทางซ้าย ความยินยอมและปุ่มวิเคราะห์ทางขวา จอเล็กกว่า 1000px เรียงเป็นคอลัมน์เดียว ใช้สีและฟอนต์จาก theme tokens เดิม
+
+ผลลัพธ์และคำแนะนำต่ออยู่ด้านล่างแบบฟอร์ม หลังส่งภาพสำเร็จให้เลื่อนไป `#results` และย้ายโฟกัสโดยไม่เลื่อนซ้ำ เคารพ `prefers-reduced-motion` และเว้นระยะเหนือส่วนผลลัพธ์สำหรับ navbar ภาพและคะแนนต้องมาจาก API เท่านั้น

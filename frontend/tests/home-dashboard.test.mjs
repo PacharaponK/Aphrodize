@@ -45,6 +45,27 @@ const render = (props = {}) => renderToStaticMarkup(withLanguage(React.createEle
   items: [], loading: false, failed: false, requiresLogin: false, onRetry() {}, ...props,
 })));
 
+test("overview omits product and UV guidance, with the old route redirecting to results", () => {
+  const { default: legacyPage } = loadTsx(path.resolve(testDirectory, "../src/app/recommendation/page.tsx"));
+  assert.throws(legacyPage, (error) => error.digest === "NEXT_REDIRECT;replace;/capture#results;307;");
+  const { default: oldResultsPage } = loadTsx(path.resolve(testDirectory, "../src/app/result-detail/page.tsx"));
+  assert.throws(oldResultsPage, (error) => error.digest === "NEXT_REDIRECT;replace;/capture#results;307;");
+  const { UvRecommendation } = loadTsx(path.resolve(testDirectory, "../src/app/recommendation/uv-recommendation.tsx"));
+  const html = renderToStaticMarkup(React.createElement(UvRecommendation));
+  assert.match(html, /id="uv"/);
+  assert.match(html, /aria-labelledby="uv-heading"/);
+  assert.match(html, /role="status"/);
+  const home = fs.readFileSync(path.resolve(testDirectory, "../src/app/page.tsx"), "utf8");
+  assert.doesNotMatch(home, /UvRecommendation|recommendation\/uv\.css/);
+  assert.doesNotMatch(render(), /dashboard-product-recommendations|Profile-based product recommendations/);
+  const dashboard = fs.readFileSync(path.resolve(testDirectory, "../src/app/clients/daily-health-history-panel.tsx"), "utf8");
+  assert.doesNotMatch(dashboard, /RecommendationPanel/);
+  const profile = fs.readFileSync(path.resolve(testDirectory, "../src/app/profile/page.tsx"), "utf8");
+  assert.doesNotMatch(profile, /#dashboard-product-recommendations/);
+  const onboarding = fs.readFileSync(path.resolve(testDirectory, "../src/app/onboarding/health/page.tsx"), "utf8");
+  assert.match(onboarding, /router\.push\(effectiveFullEdit \? "\/profile" : "\/"\)/);
+});
+
 test("the looping decorative video belongs to main, not an article", () => {
   const filename = path.resolve(testDirectory, "../src/app/page.tsx");
   const source = ts.createSourceFile(filename, fs.readFileSync(filename, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

@@ -9,9 +9,7 @@ const sections = {
   "/clients": "clients",
   "/trend": "trend",
   "/profile": "profile",
-  "/result-detail": "capture",
   "/quality-rejected": "capture",
-  "/recommendation": "none",
   "/showcase": "none",
 } as const;
 

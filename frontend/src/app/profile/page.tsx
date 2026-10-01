@@ -367,7 +367,6 @@ export default function ProfilePage() {
           <Link className="secondary-button" href="/onboarding/health?edit=full">{t("แก้ไขข้อมูลสุขภาพ →", "Edit wellness information →")}</Link>
           <p className="metadata">{t("คำตอบล่าสุดนี้ใช้เป็นข้อมูลประกอบการแนะนำผลิตภัณฑ์ตามกฎความปลอดภัย", "These answers are used as inputs for safety-checked product recommendations.")}</p>
           {shouldShowMenstrualCalendar && <MenstrualCycleCalendar />}
-          <Link className="text-button" href="/#dashboard-product-recommendations">{t("ดูคำแนะนำสินค้าในหน้าภาพรวม →", "View product recommendations in Overview →")}</Link>
         </> : <div className="empty-state"><p>{t("ยังไม่มีข้อมูลสุขภาพเบื้องต้น", "No wellness information yet.")}</p><Link className="primary-button" href="/onboarding/health">{t("เริ่มตอบคำถาม →", "Start questionnaire →")}</Link></div>}</>}
     </section>
   </WorkspaceShell>;

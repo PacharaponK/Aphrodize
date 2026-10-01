@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, LockKeyhole, Store, Globe } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, LockKeyhole, Store, Globe, Sparkles } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { useLanguage, type Language } from "@/components/language-provider";
@@ -26,6 +27,7 @@ type Recommendation = {
     id: string; brand: string; name: string; variant: string;
     price_satang: number | null; price_checked_at: string | null;
     market?: string | null; price_source_url?: string | null; application_regions?: string[];
+    purchase_url?: string | null; image_url?: string | null;
     ingredients_inci: string[]; warnings_label: string;
     source_url: string; reviewed_at: string;
     matched_skin_type: string; matched_claims: string[];
@@ -78,7 +80,7 @@ const COPY = {
     updateSafety: "อัปเดตข้อมูลความปลอดภัย →",
     editProfile: "แก้ไขข้อมูลผิวและการกันแดด →",
     category: "หมวดผลิตภัณฑ์",
-    source: "ที่มาของคำแนะนำ",
+    source: "ที่มาและหลักฐานของคำแนะนำ",
     dataUsed: "ข้อมูลที่ใช้:",
     imageScore: "คะแนนจากภาพ",
     dailyReported: "ข้อมูลสุขภาพรายวันที่คุณรายงาน",
@@ -89,7 +91,7 @@ const COPY = {
     noGuidance: "ยังไม่มีคำแนะนำ",
     startWithData: "เริ่มจากข้อมูลที่มี",
     updateProfile: "แก้ไขข้อมูลผิวและการกันแดด →",
-    supportingData: "ข้อมูลประกอบ",
+    supportingData: "ข้อมูลสุขภาพประกอบการวิเคราะห์",
     dailyHealth: "ข้อมูลสุขภาพรายวันที่คุณรายงาน",
     dryness: "ความแห้งผิว",
     sleep: "การนอน",
@@ -117,7 +119,7 @@ const COPY = {
     updateSafety: "Update safety information →",
     editProfile: "Edit skin and sun-care information →",
     category: "Product category",
-    source: "Why this is shown",
+    source: "Clinical rationale & evidence",
     dataUsed: "Information used:",
     imageScore: "Image score",
     dailyReported: "Self-reported daily health data",
@@ -128,7 +130,7 @@ const COPY = {
     noGuidance: "No guidance available",
     startWithData: "Start with your information",
     updateProfile: "Edit skin and sun-care information →",
-    supportingData: "Supporting data",
+    supportingData: "Supporting lifestyle data",
     dailyHealth: "Your self-reported daily health data",
     dryness: "Skin dryness",
     sleep: "Sleep",
@@ -189,8 +191,8 @@ const REASON_LABELS: Record<string, { th: string; en: string }> = {
 function formatDate(value: string | undefined, language: Language): string {
   const copy = COPY[language];
   if (!value) return copy.dateUnknown;
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.valueOf()) ? value : new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-GB", { day: "numeric", month: "short", year: "numeric" }).format(parsed);
+  const parsed = new Date(value.length === 10 ? `${value}T00:00:00+07:00` : value);
+  return Number.isNaN(parsed.valueOf()) ? value : new Intl.DateTimeFormat(language === "th" ? "th-TH" : "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" }).format(parsed);
 }
 
 export function RecommendationPanel({ compact = false, source = "analysis", language: requestedLanguage }: {
@@ -251,14 +253,13 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
     : fallback;
 
   return (
-    <div aria-live="polite">
+    <div aria-live="polite" className="recommendation-panel-root">
       <form className="recommendation-filters" onSubmit={(event) => {
         event.preventDefault();
         const values = new FormData(event.currentTarget);
         const price = String(values.get("budget") ?? "");
-        const [baht, satang = ""] = price.split(".");
         const nextMarket = String(values.get("market") ?? "TH");
-        const nextPrice = price === "" ? null : Number(baht) * 100 + Number(satang.padEnd(2, "0"));
+        const nextPrice = price === "" ? null : Math.round(Number(price) * 100);
         if (nextMarket !== market || nextPrice !== maxPrice) {
           setLoading(true);
           setError("");
@@ -271,12 +272,6 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
           <Select
             name="market"
             defaultValue={market}
-            value={market}
-            onChange={(val) => {
-              setMarket(val);
-              setLoading(true);
-              setError("");
-            }}
             options={[
               {
                 value: "TH",
@@ -301,35 +296,106 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
         {maxPrice !== null && <small>{language === "th" ? "ใช้เฉพาะราคาที่มีแหล่งอ้างอิงและตรวจสอบใน 30 วันล่าสุด งบนี้ต่อสินค้า ไม่ใช่ราคารวมทั้งชุด" : "Uses sourced prices checked within 30 days. This limit applies to each product, not the whole routine."}</small>}
       </form>
       {language === "th" && <p className="analysis-localization-note">{copy.sourceLanguage}</p>}
-      {data.profile_context && <p>{language === "th" ? "ข้อมูลผิวที่ใช้: " : "Skin profile used: "}{SKIN_LABELS[data.profile_context.skin_type]?.[language] ?? copy.notRecorded}{language === "th" ? " · ความไวต่อการระคายเคือง: " : " · Sensitivity: "}{data.profile_context.skin_sensitivity === "medium" ? (language === "th" ? "ปานกลาง" : "Moderate") : (language === "th" ? "ต่ำ" : "Low")} · <Link href="/profile">{language === "th" ? "ดูโปรไฟล์" : "View profile"}</Link></p>}
+      {data.profile_context && <p className="recommendation-profile-note">{language === "th" ? "ข้อมูลผิวที่ใช้: " : "Skin profile used: "}<strong>{SKIN_LABELS[data.profile_context.skin_type]?.[language] ?? copy.notRecorded}</strong>{language === "th" ? " · ความไวต่อการระคายเคือง: " : " · Sensitivity: "}<strong>{data.profile_context.skin_sensitivity === "medium" ? (language === "th" ? "ปานกลาง" : "Moderate") : (language === "th" ? "ต่ำ" : "Low")}</strong> · <Link href="/profile">{language === "th" ? "ดูโปรไฟล์" : "View profile"}</Link></p>}
       {data.status === "safety_blocked" ? (
         <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p>{data.blocked_reason !== "profile_consent_required" && <Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link>}</article>
       ) : data.recommendations.length ? (
-        <div className="recommendation-list">
+        <div className="recommendation-list recommendation-categories-stack">
           {data.recommendations.map((item) => (
-            <article className="recommendation-card" key={item.rule_id}>
-              <span className="status moderate">{copy.category}</span>
-              <h3>{item.category}</h3>
-              <p>{item.rationale}</p>
-              {item.products?.length ? <div className="recommendation-list" aria-label={language === "th" ? "ผลิตภัณฑ์จากแค็ตตาล็อกที่ตรวจทานแล้ว" : "Products from the reviewed catalog"}>
-                {item.products.map((product) => <div className="rule-box recommendation-product" key={product.id}>
-                  <h4>{product.brand} · {product.name}{product.variant ? ` · ${product.variant}` : ""}</h4>
-                  <p>{language === "th" ? "ประเภทผิวตามฉลาก: " : "Label skin type: "}{SKIN_LABELS[product.matched_skin_type]?.[language] ?? product.matched_skin_type}{product.matched_claims.length > 0 && ` · ${product.matched_claims.join(", ")}`}</p>
-                  {product.price_satang != null && <p>{new Intl.NumberFormat(language === "th" ? "th-TH" : "en-GB", { style: "currency", currency: "THB" }).format(product.price_satang / 100)} · {language === "th" ? "ราคาอ้างอิง ตรวจเมื่อ " : "Reference price checked "}{formatDate(product.price_checked_at?.split("T")[0], language)}</p>}
-                  {product.warnings_label && <p className="recommendation-warning">{product.warnings_label}</p>}
-                  <details><summary>{language === "th" ? "ดูส่วนผสม INCI ที่ตรวจทานแล้ว" : "View reviewed INCI ingredients"}</summary><p>{product.ingredients_inci.join(", ")}</p></details>
-                  <p>{product.price_source_url && <><a href={product.price_source_url} target="_blank" rel="noreferrer">{language === "th" ? "แหล่งราคาและขนาดสินค้า" : "Price and pack size source"} ↗</a> · </>}<a href={product.source_url} target="_blank" rel="noreferrer">{language === "th" ? "ข้อมูลผลิตภัณฑ์จากแหล่งอ้างอิง" : "Product source"} ↗</a></p>
-                  <p className="metadata">{language === "th" ? "ตรวจข้อมูลเมื่อ " : "Catalog reviewed "}{formatDate(product.reviewed_at.split("T")[0], language)} · {language === "th" ? "การจับคู่จากฉลากไม่รับประกันว่าจะไม่แพ้ โปรดตรวจสูตรปัจจุบันก่อนใช้" : "Label matching does not guarantee against allergy. Check the current formula before use."}</p>
-                </div>)}
-              </div> : data.product_context?.status !== "allergy_review_required" && <p className="metadata">{language === "th" ? "ยังไม่มีผลิตภัณฑ์ที่ตรวจทานแล้วตรงกับเงื่อนไขนี้" : "No reviewed product matches this guidance yet."}</p>}
-              {!compact && <div className="rule-box">
-                <h3>{copy.source}</h3>
-                <p>{copy.dataUsed} {item.signal_sources.map((source) => source === "image" ? copy.imageScore : source === "daily_health_reported" ? copy.dailyReported : copy.selfReported).join(" + ")}</p>
-                {item.wrinkle_regions?.length ? <p>{copy.regions} {item.wrinkle_regions.map((region) => REGION_LABELS[region]?.[language] ?? region).join(", ")}</p> : null}
-                {item.wrinkle_region_scores?.map((region) => <p key={region.region}>{REGION_LABELS[region.region]?.[language] ?? region.region}: wrinkle score {region.score.toFixed(1)} / 100</p>)}
-                <p className="metadata">{copy.rule} {item.rule_id} · v{item.rule_version} · {copy.knowledgeBase} {item.knowledge_source.id} v{item.knowledge_source.version}</p>
-                <p><a href={item.knowledge_source.reference.url} target="_blank" rel="noreferrer">{item.knowledge_source.reference.title} ↗</a></p>
-              </div>}
+            <article className="recommendation-card recommendation-group" key={item.rule_id}>
+              <div className="recommendation-category-header">
+                <span className="status moderate recommendation-category-badge">{copy.category}</span>
+                <h3>{item.category}</h3>
+                <p className="recommendation-rationale">{item.rationale}</p>
+              </div>
+
+              {item.products?.length ? (
+                <div className="recommendation-list recommendation-product-grid" aria-label={language === "th" ? "ผลิตภัณฑ์จากแค็ตตาล็อกที่ตรวจทานแล้ว" : "Products from the reviewed catalog"}>
+                  {item.products.map((product) => (
+                    <div className="rule-box recommendation-product recommendation-product-card" key={product.id}>
+                      {product.image_url && (
+                        <div className="recommendation-product-media">
+                          <Image
+                            className="recommendation-product-image"
+                            src={product.image_url}
+                            alt={`${product.brand} ${product.name} ${product.variant}`}
+                            width={220}
+                            height={220}
+                            unoptimized
+                            referrerPolicy="no-referrer"
+                            onError={(event) => { event.currentTarget.hidden = true; }}
+                          />
+                        </div>
+                      )}
+                      <div className="recommendation-product-body">
+                        <span className="product-brand">{product.brand}</span>
+                        <h4 className="product-title">{product.name}{product.variant ? ` · ${product.variant}` : ""}</h4>
+                        <p className="product-skin-match">
+                          {language === "th" ? "ประเภทผิวตามฉลาก: " : "Label skin type: "}
+                          {SKIN_LABELS[product.matched_skin_type]?.[language] ?? product.matched_skin_type}
+                          {product.matched_claims.length > 0 && ` · ${product.matched_claims.join(", ")}`}
+                        </p>
+                        {product.price_satang != null && (
+                          <div className="product-price-row">
+                            <span className="product-price-amount">
+                              {new Intl.NumberFormat(language === "th" ? "th-TH" : "en-GB", { style: "currency", currency: "THB" }).format(product.price_satang / 100)}
+                            </span>
+                            <span className="product-price-checked">
+                              {" · "}
+                              {language === "th" ? "ราคาอ้างอิง ตรวจเมื่อ " : "Reference price checked "}
+                              {formatDate(product.price_checked_at ?? undefined, language)}
+                            </span>
+                          </div>
+                        )}
+                        {product.purchase_url && (
+                          <p>
+                            <a className="primary-button recommendation-buy recommendation-buy-btn" href={product.purchase_url} target="_blank" rel="noopener noreferrer">
+                              {language === "th" ? "ดูสินค้า / สั่งซื้อ" : "View product / Buy"} <ArrowRight size={16} aria-hidden="true" />
+                            </a>
+                          </p>
+                        )}
+                        {product.warnings_label && <p className="recommendation-warning">{product.warnings_label}</p>}
+                        <details className="product-inci-details">
+                          <summary>{language === "th" ? "ดูส่วนผสม INCI ที่ตรวจทานแล้ว" : "View reviewed INCI ingredients"}</summary>
+                          <p className="product-inci-content">{product.ingredients_inci.join(", ")}</p>
+                        </details>
+                        <p className="product-sources-row">
+                          {product.price_source_url && (
+                            <><a href={product.price_source_url} target="_blank" rel="noreferrer">{language === "th" ? "แหล่งราคาและขนาดสินค้า" : "Price and pack size source"} ↗</a> · </>
+                          )}
+                          <a href={product.source_url} target="_blank" rel="noreferrer">{language === "th" ? "ข้อมูลผลิตภัณฑ์จากแหล่งอ้างอิง" : "Product source"} ↗</a>
+                        </p>
+                        <p className="metadata product-audit-meta">
+                          {language === "th" ? "ตรวจข้อมูลเมื่อ " : "Catalog reviewed "}
+                          {formatDate(product.reviewed_at, language)} · {language === "th" ? "การจับคู่จากฉลากไม่รับประกันว่าจะไม่แพ้ โปรดตรวจสูตรปัจจุบันก่อนใช้" : "Label matching does not guarantee against allergy. Check the current formula before use."}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : data.product_context?.status !== "allergy_review_required" && (
+                <p className="metadata">{language === "th" ? "ยังไม่มีผลิตภัณฑ์ที่ตรวจทานแล้วตรงกับเงื่อนไขนี้" : "No reviewed product matches this guidance yet."}</p>
+              )}
+
+              {!compact && (
+                <details className="recommendation-evidence-drawer">
+                  <summary>
+                    <Sparkles size={14} aria-hidden="true" />
+                    <span>{copy.source} · {copy.rule} {item.rule_id}</span>
+                  </summary>
+                  <div className="recommendation-evidence-body">
+                    <p><strong>{copy.dataUsed}</strong> {item.signal_sources.map((source) => source === "image" ? copy.imageScore : source === "daily_health_reported" ? copy.dailyReported : copy.selfReported).join(" + ")}</p>
+                    {item.wrinkle_regions?.length ? (
+                      <p><strong>{copy.regions}</strong> {item.wrinkle_regions.map((region) => REGION_LABELS[region]?.[language] ?? region).join(", ")}</p>
+                    ) : null}
+                    {item.wrinkle_region_scores?.map((region) => (
+                      <p key={region.region}>{REGION_LABELS[region.region]?.[language] ?? region.region}: wrinkle score {region.score.toFixed(1)} / 100</p>
+                    ))}
+                    <p className="metadata">{copy.rule} {item.rule_id} · v{item.rule_version} · {copy.knowledgeBase} {item.knowledge_source.id} v{item.knowledge_source.version}</p>
+                    <p><a href={item.knowledge_source.reference.url} target="_blank" rel="noreferrer">{item.knowledge_source.reference.title} ↗</a></p>
+                  </div>
+                </details>
+              )}
             </article>
           ))}
         </div>
