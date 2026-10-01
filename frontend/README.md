@@ -17,6 +17,16 @@ pnpm dev
 
 Open `http://localhost:3000`. The dashboard is at `/`; the other visible routes are `/login`, `/capture`, `/quality-rejected`, `/result-detail`, `/recommendation`, and `/showcase`. `/trend` and `/profile` redirect to the dashboard while those views are hidden.
 
+Every page has a dedicated title, description, Open Graph and Twitter summary.
+Metadata follows the default rendered language (English, or Thai for Thai-only pages).
+Personal wellness pages, admin tools and UI previews use `noindex`; sign-in,
+sign-up and the UV map are indexable. Metadata never includes personal records.
+Set the server-only `SITE_URL` to your deployed public origin (for example,
+`https://your-domain.example`) to enable canonical and Open Graph URLs.
+When it is unset, these URLs are omitted instead of pointing to localhost.
+After changing `SITE_URL`, rebuild the frontend. Check metadata with
+`node tests/page-metadata.test.mjs`.
+
 Start the root Compose stack first (`docker compose up -d --build`). Create
 `frontend/.env.local` with server-only values matching the root `.env`:
 

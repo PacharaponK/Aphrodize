@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { Camera, ArrowUpRight } from "lucide-react";
 import { LocalizedText } from "../components/language-provider";
@@ -9,7 +9,13 @@ import "./clients/clients.css";
 import "./clients/daily-health-history.css";
 import "./home.css";
 
-export const metadata: Metadata = { title: "Aphrodize — Skin tracking" };
+export const metadata = pageMetadata(
+  "Dashboard",
+  "Review your skin observations, sleep, hydration and daily health records in one place. Plan your next check-in with Aphrodize.",
+  "/",
+  false,
+  "en_US",
+);
 
 export default function Page() {
   return (

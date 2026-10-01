@@ -1,8 +1,14 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/page-metadata";
 import Link from "next/link";
 import { WorkspaceShell } from "@/components/workspace-shell";
 
-export const metadata: Metadata = { title: "Aphrodize — UI preview" };
+export const metadata = pageMetadata(
+  "ตัวอย่างหน้าจอ",
+  "สำรวจตัวอย่างหน้าจอและขั้นตอนการใช้งาน Aphrodize ตั้งแต่เข้าสู่ระบบ ถ่ายภาพ ตรวจคุณภาพภาพ ไปจนถึงผลการวิเคราะห์และคำแนะนำ",
+  "/showcase",
+  false,
+  "th_TH",
+);
 
 const pages = [
   ["Login", "/login"],

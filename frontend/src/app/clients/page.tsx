@@ -1,14 +1,17 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/page-metadata";
 import { connection } from "next/server";
 import DailyHealthTracker from "./daily-health-tracker";
 import { LocalizedText } from "@/components/language-provider";
 import "./clients.css";
 import { todayInBangkok } from "@/lib/daily-health-prediction";
 
-export const metadata: Metadata = {
-  title: "บันทึกสุขภาพรายวัน — Aphrodize",
-  description: "บันทึกการนอน น้ำดื่ม และเวลาอยู่นอกบ้าน",
-};
+export const metadata = pageMetadata(
+  "Health log",
+  "Record sleep, water intake and time outdoors to track daily wellness and receive experimental insights. These estimates are not a medical diagnosis.",
+  "/clients",
+  false,
+  "en_US",
+);
 
 export default async function ClientsPage() {
   await connection();

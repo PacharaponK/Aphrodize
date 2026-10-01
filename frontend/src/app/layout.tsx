@@ -3,6 +3,7 @@ import Script from "next/script";
 import localFont from "next/font/local";
 import { LanguageProvider } from "@/components/language-provider";
 import { SharedNavigation } from "@/components/shared-navigation";
+import { pageMetadata, siteUrl } from "@/lib/page-metadata";
 import "./globals.css";
 import "./prototype.css";
 import "./analysis.css";
@@ -33,8 +34,14 @@ const notoSansThai = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Aphrodize",
-  description: "Aphrodize skin tracking prototype.",
+  ...pageMetadata(
+    "Skin tracking",
+    "Track skin observations, sleep, hydration and daily habits with Aphrodize. Experimental insights support your wellness routine and are not a medical diagnosis.",
+    "/",
+  ),
+  metadataBase: siteUrl,
+  applicationName: "Aphrodize",
+  icons: { icon: { url: "/assets/aphrodize-logo.svg", type: "image/svg+xml" } },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
