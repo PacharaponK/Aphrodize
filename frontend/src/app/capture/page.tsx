@@ -27,23 +27,46 @@ export default function CapturePage() {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const previewRef = useRef<string | null>(null);
-  const [showResults, setShowResults] = useState(false);
+  const [requestedStage, setRequestedStage] = useState(1);
+  const [hasAnalysis, setHasAnalysis] = useState(false);
+  const [resultsReady, setResultsReady] = useState(false);
+  const [analysisVersion, setAnalysisVersion] = useState(0);
+  const stage = requestedStage === 3 && !resultsReady ? 2 : requestedStage;
   const resultView = useRef<HTMLDivElement>(null);
   const captureView = useRef<HTMLElement>(null);
+  const stepsView = useRef<HTMLOListElement>(null);
+  const previousStage = useRef(1);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const syncResults = () => startTransition(() => setShowResults(window.location.hash === "#results"));
+    const syncResults = () => startTransition(() => {
+      const next = window.location.hash === "#products" ? 3 : window.location.hash === "#results" ? 2 : 1;
+      setRequestedStage(next);
+      if (next > 1) setHasAnalysis(true);
+    });
     syncResults();
     window.addEventListener("hashchange", syncResults);
-    return () => window.removeEventListener("hashchange", syncResults);
+    window.addEventListener("popstate", syncResults);
+    return () => {
+      window.removeEventListener("hashchange", syncResults);
+      window.removeEventListener("popstate", syncResults);
+    };
   }, []);
 
   useEffect(() => {
-    if (!showResults) return;
-    resultView.current?.focus({ preventScroll: true });
-    resultView.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-  }, [showResults]);
+    if (previousStage.current === stage) return;
+    previousStage.current = stage;
+    const view = stage === 1 ? captureView.current : resultView.current;
+    view?.focus({ preventScroll: true });
+    stepsView.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+  }, [stage]);
+
+  function goToStage(next: number) {
+    stopCamera();
+    const hash = next === 3 ? "#products" : next === 2 ? "#results" : "";
+    window.history.pushState(window.history.state, "", window.location.pathname + window.location.search + hash);
+    setRequestedStage(next);
+  }
 
   useEffect(() => {
     let active = true;
@@ -135,7 +158,6 @@ export default function CapturePage() {
     if (!file || !consent) return setError(t("เลือกภาพและยอมรับการวิเคราะห์ก่อนดำเนินการ", "Choose an image and consent to analysis before continuing."));
     setBusy(true);
     setError("");
-    setShowResults(false);
     // FormData carries the image and the two consent decisions to the Next.js route.
     const form = new FormData();
     form.set("image", file);
@@ -152,8 +174,10 @@ export default function CapturePage() {
       stopCamera();
       setSavedConsents({ analysis: true, annotations: annotationConsent });
       setBusy(false);
-      window.history.replaceState(window.history.state, "", "#results");
-      setShowResults(true);
+      setResultsReady(false);
+      setAnalysisVersion((current) => current + 1);
+      setHasAnalysis(true);
+      goToStage(2);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("ส่งภาพไม่สำเร็จ", "Could not submit the image."));
       setBusy(false);
@@ -183,12 +207,17 @@ export default function CapturePage() {
   return (
     <div className="capture-page">
       <WorkspaceShell eyebrow="" title={t("วิเคราะห์ภาพใบหน้า", "Analyze your face image")}>
-        <p className="capture-intro">{t("เลือกภาพ ให้ความยินยอม แล้วดูผลวิเคราะห์และคำแนะนำได้ด้านล่าง", "Choose a photo, give consent, then explore your results and guidance below.")}</p>
-        <ol className="capture-steps" aria-label={t("ขั้นตอนการวิเคราะห์", "Analysis steps")}>
-          <li aria-current={!showResults ? "step" : undefined}><span>1</span>{t("เตรียมภาพ", "Prepare image")}</li>
-          <li aria-current={showResults ? "step" : undefined}><ArrowRight size={16} aria-hidden="true" /><span>2</span>{t("ดูผลวิเคราะห์", "View results")}</li>
+        <p className="capture-intro">{t("เตรียมภาพ ดูผลวิเคราะห์ แล้วเลือกดูผลิตภัณฑ์ที่แนะนำ", "Prepare your image, explore the analysis, then view recommended products.")}</p>
+        <ol ref={stepsView} className="capture-steps" aria-label={t("ขั้นตอนการวิเคราะห์", "Analysis steps")}>
+          {[t("เตรียมภาพ", "Prepare image"), t("ดูผลวิเคราะห์", "View results"), t("ผลิตภัณฑ์ที่แนะนำ", "Recommended products")].map((label, index) => (
+            <li key={index} aria-current={stage === index + 1 ? "step" : undefined}>
+              <button type="button" disabled={busy || (index === 1 && !hasAnalysis) || (index === 2 && !resultsReady)} onClick={() => goToStage(index + 1)}>
+                <span>{(index === 0 && (file || resultsReady)) || (index === 1 && resultsReady) ? <Check size={16} aria-hidden="true" /> : index + 1}</span>{label}
+              </button>
+            </li>
+          ))}
         </ol>
-        <section ref={captureView} tabIndex={-1} className="capture-studio" aria-labelledby="capture-title">
+        <section hidden={stage !== 1} ref={captureView} tabIndex={-1} className="capture-studio" aria-labelledby="capture-title">
           <div className="capture-image-area">
             <h2 id="capture-title">{t("เริ่มจากภาพที่ชัดเจน", "Start with a clear image")}</h2>
             <p className="capture-description">{t("เลือกภาพใบหน้าหรือถ่ายภาพใหม่ เพื่อเตรียมส่งวิเคราะห์", "Choose a face image or take a new photo to prepare your analysis.")}</p>
@@ -257,13 +286,12 @@ export default function CapturePage() {
             </div>
           </div>
         </section>
-        {showResults && <div id="results" className="capture-results" ref={resultView} tabIndex={-1} aria-label={t("ผลวิเคราะห์ภาพ", "Image analysis results")}>
-          <AnalysisResult onNewAnalysis={() => {
-            window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
-            setShowResults(false);
-            captureView.current?.focus({ preventScroll: true });
-            captureView.current?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-          }} />
+        {hasAnalysis && <div hidden={stage === 1} id={stage === 3 ? "products" : "results"} className="capture-results" ref={resultView} tabIndex={-1} aria-label={stage === 3 ? t("ผลิตภัณฑ์ที่แนะนำ", "Recommended products") : t("ผลวิเคราะห์ภาพ", "Image analysis results")}>
+          <AnalysisResult key={analysisVersion} view={stage === 3 ? "products" : "results"} onReady={setResultsReady} onNewAnalysis={() => goToStage(1)} />
+          <nav className="capture-stage-actions" aria-label={t("เปลี่ยนขั้นตอน", "Stage navigation")}>
+            <button type="button" className="secondary-button" onClick={() => goToStage(stage === 3 ? 2 : 1)}>{stage === 3 ? t("กลับดูผลวิเคราะห์", "Back to results") : t("กลับไปเตรียมภาพ", "Back to image preparation")}</button>
+            {stage === 2 && <button type="button" className="primary-button" disabled={!resultsReady} onClick={() => goToStage(3)}>{t("ดูผลิตภัณฑ์ที่แนะนำ", "View recommended products")}<ArrowRight size={18} aria-hidden="true" /></button>}
+          </nav>
         </div>}
       </WorkspaceShell>
     </div>

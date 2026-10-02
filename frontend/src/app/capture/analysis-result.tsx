@@ -13,7 +13,6 @@ import {
   Lock,
   Maximize2,
   ShieldCheck,
-  Sparkles,
   X,
   ZoomIn,
   ZoomOut,
@@ -369,7 +368,11 @@ function RegionCard({
   );
 }
 
-export default function AnalysisResult({ onNewAnalysis }: { onNewAnalysis: () => void }) {
+export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
+  onNewAnalysis: () => void;
+  onReady: (ready: boolean) => void;
+  view: "results" | "products";
+}) {
   const { language } = useLanguage();
   const copy = PAGE_COPY[language];
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -380,6 +383,10 @@ export default function AnalysisResult({ onNewAnalysis }: { onNewAnalysis: () =>
   const [expiryTick, setExpiryTick] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
+
+  useEffect(() => {
+    onReady(analysis?.status === "completed" && !error && !noAnalysis);
+  }, [analysis?.status, error, noAnalysis, onReady]);
 
   // Poll the analysis result; Label Studio task creation runs independently afterward.
   useEffect(() => {
@@ -463,11 +470,7 @@ export default function AnalysisResult({ onNewAnalysis }: { onNewAnalysis: () =>
     <section className="page-content workspace-panel analysis-page analysis-page--face">
       <div className="analysis-page-heading">
         <div className="analysis-heading-main">
-          <span className="analysis-heading-badge">
-            <Sparkles size={13} aria-hidden="true" />
-            <span>{copy.analysisEyebrow}</span>
-          </span>
-          <h2>{copy.resultTitle}</h2>
+          <h2>{view === "products" ? (language === "th" ? "ผลิตภัณฑ์ที่แนะนำ" : "Recommended products") : copy.resultTitle}</h2>
           <div className="analysis-heading-meta">
             {analysis && (
               <span className="analysis-chip">
@@ -557,7 +560,12 @@ export default function AnalysisResult({ onNewAnalysis }: { onNewAnalysis: () =>
         </div>
       )}
 
-      {analysis?.status === "completed" && (
+      {analysis?.status === "completed" && <section hidden={view !== "products"} className="analysis-recommendation-section" aria-label={copy.recommendations}>
+        <p className="recommendation-header-desc">{language === "th" ? "คำแนะนำจากข้อมูลโปรไฟล์และผลิตภัณฑ์ที่ตรวจทานแล้ว ผลจากภาพจะใช้ประกอบเฉพาะเมื่อผ่านเกณฑ์ของระบบ" : "Guidance uses your profile and reviewed products. Image findings are included only when eligible."}</p>
+        <RecommendationPanel language={language} />
+      </section>}
+
+      {analysis?.status === "completed" && view === "results" && (
         score && hasScorableOverall ? (
           <>
             <div className="analysis-result-grid">
@@ -772,21 +780,6 @@ export default function AnalysisResult({ onNewAnalysis }: { onNewAnalysis: () =>
               </div>
             </div>
 
-            {/* Dedicated Full-Width Guidance & Recommendations Section */}
-            <section className="analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
-              <div className="analysis-section-heading">
-                <div className="recommendation-header-content">
-                  <span className="recommendation-badge">
-                    <Sparkles size={13} aria-hidden="true" />
-                    <span>{copy.recommendationsEyebrow}</span>
-                  </span>
-                  <h3 id="analysis-recommendations-heading">{copy.recommendations}</h3>
-                  <p className="recommendation-header-desc">{copy.recommendationsDesc}</p>
-                </div>
-              </div>
-              <RecommendationPanel language={language} />
-            </section>
-
             {/* Medical / Clinical Disclaimer */}
             <div className="analysis-disclaimer">
               <ShieldCheck size={22} aria-hidden="true" className="disclaimer-icon" />
@@ -897,10 +890,6 @@ export default function AnalysisResult({ onNewAnalysis }: { onNewAnalysis: () =>
             <button className="primary-button" type="button" onClick={onNewAnalysis}>
               {copy.retryAnalysis} →
             </button>
-            <section className="analysis-recommendation-section" aria-labelledby="analysis-recommendations-heading">
-              <h3 id="analysis-recommendations-heading">{copy.recommendations}</h3>
-              <RecommendationPanel language={language} />
-            </section>
           </div>
         )
       )}

@@ -209,12 +209,47 @@ function pageHarness() {
 }
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
+test("analysis gates products on completion and separates product and result content", () => {
+  for (const status of ["queued", "running", "rejected", "failed", "completed"]) {
+    for (const view of ["results", "products"]) {
+      let cursor = 0;
+      let ready;
+      const onReady = (value) => { ready = value; };
+      const area = { score: 10, wrinkle_area_ratio: 0.01, wrinkle_pixels: 1, evaluated_pixels: 100 };
+      const states = [{ id: "test", status, quality_flags: [], error_category: null,
+        result: { derived_score: { overall: area, regions: {}, formula: "test", disclaimer: "Experimental" } } },
+        "", false, "overlay", false, 0, false, 1];
+      const Component = load("../src/app/capture/analysis-result.tsx", {
+        react: { useState: () => [states[cursor++], () => {}], useEffect(effect, dependencies) {
+          if (dependencies?.includes(onReady)) effect();
+        } },
+        "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },
+        "@/app/recommendation/recommendation-panel": { RecommendationPanel: "recommendation-panel" },
+        "../result-detail/result-detail.css": {}, "next/image": "img",
+      }).default;
+      const visible = [];
+      function visit(node, hidden = false) {
+        if (Array.isArray(node)) return node.forEach((child) => visit(child, hidden));
+        if (!node?.props) return;
+        hidden ||= node.props.hidden === true;
+        if (!hidden) visible.push(node);
+        visit(node.props.children, hidden);
+      }
+      visit(Component({ view, onReady, onNewAnalysis() {} }));
+      assert.equal(ready, status === "completed");
+      assert.equal(visible.some((node) => node.type === "recommendation-panel"), status === "completed" && view === "products");
+      assert.equal(visible.some((node) => node.props.className === "analysis-result-grid"), status === "completed" && view === "results");
+    }
+  }
+});
+
 test("capture keeps upload errors, results and another analysis on the same page", async (context) => {
   const originalWindow = globalThis.window;
   const paths = [];
+  const listeners = new Map();
   globalThis.window = { location: { hash: "", pathname: "/capture", search: "" },
-    addEventListener() {}, removeEventListener() {},
-    history: { state: {}, replaceState(_state, _title, path) { paths.push(path); } } };
+    addEventListener(name, callback) { listeners.set(name, callback); }, removeEventListener() {},
+    history: { state: {}, pushState(_state, _title, path) { paths.push(path); } } };
   context.after(() => { if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow; });
   context.mock.method(URL, "createObjectURL", () => "blob:test-image");
   let uploadFails = true;
@@ -236,16 +271,39 @@ test("capture keeps upload errors, results and another analysis on the same page
   await submit();
   const result = render().nodes.find((node) => node.type === "analysis-result");
   assert.ok(result);
-  assert.ok(render().nodes.some((node) => node.props.className === "capture-studio"), "the image form stays above the result");
+  assert.ok(render().nodes.some((node) => node.props.className === "capture-studio" && node.props.hidden), "image preparation is hidden in stage 2");
   assert.ok(render().nodes.some((node) => node.props.id === "results"), "results have a scroll target");
-  assert.deepEqual(paths, ["#results"]);
+  assert.deepEqual(paths, ["/capture#results"]);
+  const productsButton = () => render().nodes.find((node) => node.type === "button" && node.props.children?.[0] === "View recommended products");
+  assert.equal(productsButton().props.disabled, true, "products wait for completed analysis");
+  result.props.onReady(true);
+  assert.equal(productsButton().props.disabled, false);
+  productsButton().props.onClick();
+  assert.equal(paths.at(-1), "/capture#products");
+  assert.equal(render().nodes.find((node) => node.type === "analysis-result").props.view, "products");
+  globalThis.window.location.hash = "#results";
+  listeners.get("popstate")();
+  assert.equal(render().nodes.find((node) => node.type === "analysis-result").props.view, "results");
+  globalThis.window.location.hash = "#products";
+  listeners.get("popstate")();
+  assert.equal(render().nodes.find((node) => node.type === "analysis-result").props.view, "products");
+  render().nodes.find((node) => node.type === "button" && node.props.children === "Back to results").props.onClick();
+  assert.equal(render().nodes.find((node) => node.type === "analysis-result").props.view, "results");
   result.props.onNewAnalysis();
   assert.equal(paths.at(-1), "/capture");
   assert.ok(render().nodes.some((node) => node.props["aria-describedby"] === "capture-submit-hint" && !node.props.disabled));
+  assert.ok(render().nodes.some((node) => node.type === "img" && node.props.src === "blob:test-image"), "the selected photo survives stage changes");
   globalThis.window.location.hash = "#results";
   const deepLink = pageHarness();
   deepLink();
   assert.ok(deepLink().nodes.some((node) => node.type === "analysis-result"));
+  globalThis.window.location.hash = "#products";
+  const productLink = pageHarness();
+  productLink();
+  const linkedResult = productLink().nodes.find((node) => node.type === "analysis-result");
+  assert.equal(linkedResult.props.view, "results", "a product deep link checks analysis first");
+  linkedResult.props.onReady(true);
+  assert.equal(productLink().nodes.find((node) => node.type === "analysis-result").props.view, "products");
 });
 
 test("return visits restore both choices; failed withdrawal keeps consent checked", async (context) => {

@@ -10,5 +10,5 @@ export const metadata = pageMetadata(
 );
 
 export default function Page() {
-  redirect("/capture#results");
+  redirect("/capture#products");
 }

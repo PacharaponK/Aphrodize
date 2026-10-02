@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, LockKeyhole, Store, Globe, Sparkles } from "lucide-react";
+import { ArrowRight, LockKeyhole, Store, Globe, Sparkles, Package } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { useLanguage, type Language } from "@/components/language-provider";
@@ -271,6 +271,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
           <span className="filter-label">{language === "th" ? "ตลาดสินค้า" : "Product market"}</span>
           <Select
             name="market"
+            ariaLabel={language === "th" ? "ตลาดสินค้า" : "Product market"}
             defaultValue={market}
             options={[
               {
@@ -312,10 +313,9 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
               {item.products?.length ? (
                 <div className="recommendation-list recommendation-product-grid" aria-label={language === "th" ? "ผลิตภัณฑ์จากแค็ตตาล็อกที่ตรวจทานแล้ว" : "Products from the reviewed catalog"}>
                   {item.products.map((product) => (
-                    <div className="rule-box recommendation-product recommendation-product-card" key={product.id}>
-                      {product.image_url && (
-                        <div className="recommendation-product-media">
-                          <Image
+                    <div className="recommendation-product recommendation-product-card" key={product.id}>
+                      <div className="recommendation-product-media">
+                          {product.image_url && <Image
                             className="recommendation-product-image"
                             src={product.image_url}
                             alt={`${product.brand} ${product.name} ${product.variant}`}
@@ -324,9 +324,9 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                             unoptimized
                             referrerPolicy="no-referrer"
                             onError={(event) => { event.currentTarget.hidden = true; }}
-                          />
-                        </div>
-                      )}
+                          />}
+                          <div className="recommendation-product-placeholder"><Package size={36} strokeWidth={1.5} aria-hidden="true" /><span>{language === "th" ? "ไม่มีภาพสินค้า" : "No product image"}</span></div>
+                      </div>
                       <div className="recommendation-product-body">
                         <span className="product-brand">{product.brand}</span>
                         <h4 className="product-title">{product.name}{product.variant ? ` · ${product.variant}` : ""}</h4>
@@ -341,7 +341,6 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                               {new Intl.NumberFormat(language === "th" ? "th-TH" : "en-GB", { style: "currency", currency: "THB" }).format(product.price_satang / 100)}
                             </span>
                             <span className="product-price-checked">
-                              {" · "}
                               {language === "th" ? "ราคาอ้างอิง ตรวจเมื่อ " : "Reference price checked "}
                               {formatDate(product.price_checked_at ?? undefined, language)}
                             </span>
@@ -356,9 +355,8 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                         )}
                         {product.warnings_label && <p className="recommendation-warning">{product.warnings_label}</p>}
                         <details className="product-inci-details">
-                          <summary>{language === "th" ? "ดูส่วนผสม INCI ที่ตรวจทานแล้ว" : "View reviewed INCI ingredients"}</summary>
+                          <summary>{language === "th" ? "ส่วนผสมและแหล่งข้อมูล" : "Ingredients and sources"}</summary>
                           <p className="product-inci-content">{product.ingredients_inci.join(", ")}</p>
-                        </details>
                         <p className="product-sources-row">
                           {product.price_source_url && (
                             <><a href={product.price_source_url} target="_blank" rel="noreferrer">{language === "th" ? "แหล่งราคาและขนาดสินค้า" : "Price and pack size source"} ↗</a> · </>
@@ -369,6 +367,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                           {language === "th" ? "ตรวจข้อมูลเมื่อ " : "Catalog reviewed "}
                           {formatDate(product.reviewed_at, language)} · {language === "th" ? "การจับคู่จากฉลากไม่รับประกันว่าจะไม่แพ้ โปรดตรวจสูตรปัจจุบันก่อนใช้" : "Label matching does not guarantee against allergy. Check the current formula before use."}
                         </p>
+                        </details>
                       </div>
                     </div>
                   ))}
