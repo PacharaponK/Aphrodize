@@ -38,6 +38,11 @@ class ResearchModelOutput(StrictModel):
     face_pixels: int = Field(ge=0)
     confidence: ConfidenceResult
     artifacts_publicly_available: Literal[False] = False
+    regional_geometry_status: Literal["available", "unavailable", "legacy_fixed"] = "legacy_fixed"
+    personalized_outline_available: bool = False
+    regional_map_version: Literal[
+        "wrinkle-only-sketch-v1", "photo-doodle-wrinkle-v2", "head-region-area-v3"
+    ] | None = None
 
 
 class AreaScore(StrictModel):

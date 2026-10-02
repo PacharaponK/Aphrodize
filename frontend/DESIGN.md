@@ -119,7 +119,7 @@ components:
 ├────────────────────────────────┬──────────────────────────────┤
 │ Face image + overlay/mask       │ Marked-area percentage     │
 │ Switch image view               │ Experimental score (small) │
-│                                │ Eligible recommendations   │
+│                                │ All regions / pixel details │
 │                                │ Regional area bars          │
 │                                │ Method / pixel details      │
 └────────────────────────────────┴──────────────────────────────┘
@@ -144,23 +144,35 @@ components:
 
 - แสดง **สัดส่วนพื้นที่ที่โมเดลทำเครื่องหมาย** เป็นค่าหลักและมองเห็นก่อนคะแนน โดยคำนวณจากอัตราส่วนพิกเซลที่ทำเครื่องหมายต่อพื้นที่ใบหน้าที่ประเมินได้
 - แสดงคะแนนรวม 0–100 เป็นค่ารอง ชื่อ “คะแนนทดลอง / Experimental score”; ไม่เรียกว่า skin grade หรือสุขภาพผิว
-- ไม่ใช้วงแหวนคะแนนเป็นองค์ประกอบหลักของหน้านี้
+- หัวข้อสรุปใช้ “What the model marked” / “สิ่งที่โมเดลทำเครื่องหมาย”; ไม่แสดง badge Low/Moderate/Elevated หรือสีบอกระดับความรุนแรงจากเกณฑ์ที่ยังไม่ผ่านการตรวจสอบ คะแนนทดลองใช้ตัวเลขขนาดเล็กกว่าค่าเปอร์เซ็นต์และมีเส้นแบ่งเรียบง่าย
+- หัวข้อใช้ “Skin analysis overview” / “ภาพรวมการวิเคราะห์ผิว” พร้อมระบุว่าครอบคลุมการตรวจพื้นที่ริ้วรอยจากภาพเท่านั้น; ใช้วงแหวน 0–100% แสดงสัดส่วนพื้นที่จริงโดยมีตัวเลขชัดเจน ไม่ใช่วงแหวน skin-health score และไม่เติม metric ที่ API ไม่มี
 - ระบุชัดว่าคะแนน 0–100 เป็นคะแนนเชิงทดลองที่คำนวณจากพื้นที่ตรวจพบ ไม่ใช่คะแนนสุขภาพผิวหรือระดับความรุนแรงทางการแพทย์
 - แสดงความหมายของทิศทางคะแนน: คะแนนสูงหมายถึงมีสัดส่วนพิกเซลที่โมเดลทำเครื่องหมายมากขึ้นภายใต้วิธีวิเคราะห์นี้ ไม่ควรใช้คำว่า “ผิวดีขึ้น/แย่ลง” จากคะแนนภาพครั้งเดียว
 - ไม่เติม metric ให้ครบจำนวนเหมือนภาพอ้างอิง หากระบบมีเพียงคะแนนรวมและสัดส่วนพื้นที่ ให้แสดงเพียงสองค่านี้
 
 #### 4. คะแนนรายบริเวณ
 
+- ผลวิเคราะห์ใหม่ใช้ private `outline.svg`: กรอบหน้าและคิ้วตาม landmarks ของภาพอัปโหลดแต่ละคน ตา/จมูก/ปากใช้เส้นเรียบตามขอบเขตที่ตรวจจับ ไม่มีผมหรือวัตถุพื้นหลัง ถมแรเงา ROI ที่มี wrinkle mask จริงโดยใช้ขอบเขตเดียวกับคะแนนรายบริเวณ ไม่เปลี่ยนสูตรคะแนน ไม่เติม metric ที่ไม่มีผลจริง
+- ระบุชัดว่าสัดส่วน outline มาจาก landmarks แต่รายละเอียดเป็นภาพย่อ สีแสดงบริเวณที่พบ marks ไม่ใช่ severity หรือขอบเขต wrinkle pixels; overlay/mask คงเดิมสำหรับดูพิกเซลจริง SVG ใช้สิทธิ์เจ้าของบัญชีและหมดอายุพร้อมภาพอื่น ผลเก่าหรือโหลด SVG ไม่ได้ใช้แผนภาพมาตรฐานพร้อมป้ายอธิบายตามจริง ไม่เขียนผลเก่าหรือคะแนนใหม่ย้อนหลัง
+
+- `photo-doodle-wrinkle-v2` แปลงภาพอัปโหลดในกรอบ aligned ของการวิเคราะห์เป็น outline ด้วย bilateral smoothing, edge detection และ simplified contours ลดเส้น texture ขนาดเล็ก ไม่มีแรเงาดินสอ ไม่เติมหู/คอหรือรูปหน้าทั่วไป เก็บกรอบภาพทั้งหมดที่มีอยู่ใน aligned artifact แล้วซ้อนสีเฉพาะ wrinkle mask ภายใน ROI เส้นขอบไม่ถือเป็นผลตรวจริ้วรอย การแปลงไม่เปลี่ยนคะแนนและผลเก่าคงคำอธิบายตาม map version เดิม
+
+- การ์ดรายบริเวณใช้ layout แบบ reference: ข้อมูลและแถบกะทัดรัดซ้าย SVG ใบหน้ามาตรฐานขนาดใหญ่ขวา มีสถิติจริงสามค่า (เปอร์เซ็นต์รวม จำนวนบริเวณที่ประเมินได้ สัดส่วนสูงสุดรายบริเวณ); ไม่ใช้คำว่า Overall Health หรือ Low/Moderate/High แทนค่าจริง เส้นใบหน้าเป็นสีกลาง แรเงาชมพูหมายถึง region ที่มีผลตรวจ ไม่ใช่ขอบเขตพิกเซลจริง แถบ gradient ใช้ accent ของแบรนด์เหมือนกันทุกบริเวณ ไม่สื่อประเภทปัญหาหรือความรุนแรง
+
 - แสดงรายการบริเวณที่ API ส่งมา เช่น หน้าผาก รอบดวงตา แก้ม และร่องแก้ม
 - เรียงตามสัดส่วนพื้นที่ที่ทำเครื่องหมายจากมากไปน้อย; แสดงรายการหลักไม่เกิน 4 บริเวณก่อน และเก็บบริเวณที่เหลือ/จำนวนพิกเซลไว้ใน disclosure ที่ปิดเป็นค่าเริ่มต้น
-- แต่ละแถบแสดงชื่อบริเวณและสัดส่วนพื้นที่ที่ทำเครื่องหมายเป็นค่าหลัก พร้อมคะแนนเชิงทดลอง 0–100 เป็นข้อมูลรอง; ใช้แถบแนวนอนเป็นตัวช่วยอ่าน ไม่ใช่ตัวแทนคำวินิจฉัย
+- รายการหลักใช้แถบแนวนอนกะทัดรัด แสดงชื่อบริเวณเต็มและเปอร์เซ็นต์พื้นที่ตามมาตราส่วน 0–100% คะแนนเชิงทดลองรายบริเวณอยู่ใน disclosure ร่วมกับข้อมูลพิกเซล; ไม่ทำการ์ดย่อยหลายชั้นหรือใช้สีบอกว่าผิวดี/ไม่ดี
 - แสดงจำนวนพิกเซลที่ทำเครื่องหมายและจำนวนพิกเซลที่ประเมินได้ใน disclosure เมื่อ API ส่งค่ามา
 - ถ้าบริเวณใดประเมินไม่ได้ ให้แสดง “ประเมินไม่ได้” แทนศูนย์
-- ใช้รายการคะแนนจริงเป็นค่าเริ่มต้น; เพิ่มภาพแผนผังใบหน้าได้ภายหลังเฉพาะเมื่อมี mapping ตำแหน่งที่ตรงกับ output ของโมเดล
+- แสดงแผนภาพใบหน้าเชิงตำแหน่งคู่กับรายการหลัก โดย mapping เฉพาะ region identifier ที่รู้จัก (หน้าผาก ระหว่างคิ้ว รอบตาซ้าย/ขวาของภาพ แก้มซ้าย/ขวาของภาพ ร่องแก้ม รอบปาก); ไม่มี marker ตัวเลขทับใบหน้า เน้นเฉพาะบริเวณที่มีพื้นที่ทำเครื่องหมายมากกว่าศูนย์และประเมินได้ ไม่เติมตำแหน่งสำหรับ region ที่ไม่รู้จัก
+- ระบุว่าเป็นแผนภาพโดยประมาณ ไม่ใช่ขอบเขตพิกเซลจริงหรือระดับความรุนแรง; ผู้ใช้ดูตำแหน่งจริงจาก overlay/mask ส่วน unknown region ยังมีค่าข้อความตาม API; บนจอแคบเรียงแผนภาพใต้รายการโดยไม่ล้นแนวนอน
+- Backend ยังคง `mediapipe-landmark-skin-roi-v1` สำหรับคำนวณ ROI จริง และเก็บ private `outline.svg` สำหรับผลใหม่เมื่อ geometry พร้อม ไม่ส่ง landmarks ดิบไปเก็บในผล JSON แสดง metadata `personalized_outline_available` และลบ SVG ตามอายุ artifact ไม่แก้ผลเก่าย้อนหลัง
+- หากหา landmarks ไม่ได้ ให้ผลรายบริเวณว่างโดยไม่ใช้ ROI ตำแหน่งคงที่แทน; overall ยังคงตัวหาร parsed face mask เดิมและอธิบายว่าเป็นการวัดทั้งภาพ ผลเก่ายังคงเวอร์ชัน ROI และแผนภาพโดยประมาณเดิม ไม่คำนวณย้อนหลัง
+- ROI ใหม่ยังไม่ผ่าน calibration สำหรับเลือกผลิตภัณฑ์ จึงให้คะแนนทดลองและปิด recommendation gate ของคะแนนภาพจนกว่าจะมีการตรวจสอบรองรับ ภาพ regions ใช้สิทธิ์และวันหมดอายุเดียวกับ overlay/mask
 
 #### 5. คำแนะนำและวิธีคิด
 
-- หลังวิเคราะห์ภาพสำเร็จ วางคำแนะนำในคอลัมน์ผลลัพธ์ใกล้กับสรุป โดยใช้โปรไฟล์ล่าสุดและข้อมูลความปลอดภัยที่ผู้ใช้รายงาน เลือกสินค้าจริงเฉพาะรายการเผยแพร่ที่แอดมินตรวจส่วนผสมและแหล่งข้อมูลแล้ว ใช้บริเวณริ้วรอยประกอบเฉพาะเมื่อ `recommendation_gate.eligible` และการปรับเทียบผ่านเกณฑ์ของ endpoint; หากไม่ผ่านยังแนะนำจากโปรไฟล์ได้โดยระบุว่าคะแนนภาพไม่ได้ถูกใช้ อย่าสร้างคำแนะนำจากคะแนนทดลอง
+- หลังวิเคราะห์ภาพสำเร็จ เปิดคำแนะนำใน Stage 3 (`#products`) ผ่าน stepper และปุ่มต่อจากผลลัพธ์ โดยใช้โปรไฟล์ล่าสุดและข้อมูลความปลอดภัยที่ผู้ใช้รายงาน เลือกสินค้าจริงเฉพาะรายการเผยแพร่ที่แอดมินตรวจส่วนผสมและแหล่งข้อมูลแล้ว ใช้บริเวณริ้วรอยประกอบเฉพาะเมื่อ `recommendation_gate.eligible` และการปรับเทียบผ่านเกณฑ์ของ endpoint; หากไม่ผ่านยังแนะนำจากโปรไฟล์ได้โดยระบุว่าคะแนนภาพไม่ได้ถูกใช้ อย่าสร้างคำแนะนำจากคะแนนทดลอง
 - แสดงชื่อสินค้า เหตุผลที่ตรงกับประเภทผิว คำเตือน ส่วนผสม และแหล่งข้อมูลจริง หากมีประวัติแพ้ที่ยังตรวจชื่อส่วนผสมไม่ได้ ให้งดเลือกสินค้ารายชิ้นและอธิบายเหตุผล หากแค็ตตาล็อกไม่มีรายการที่ตรง ให้แสดงสถานะว่างโดยไม่ใส่สินค้าตัวอย่าง
 - ถ้ามีคำแนะนำ ให้สรุปเป็น action สั้น ๆ พร้อมเหตุผลและแหล่งที่มา/บริบทที่ระบบรองรับ ห้ามอ้างว่าผลวิเคราะห์พิสูจน์ว่าผลิตภัณฑ์หรือการรักษาจะได้ผล
 - ให้ส่วน “วิธีคิดคะแนน” เปิดอ่านได้ชัดเจนเป็น disclosure ใต้รายละเอียดผลในคอลัมน์ขวา เพื่อไม่ให้แย่งจุดสนใจจากภาพ แต่ต้องเข้าถึงได้ด้วยคีย์บอร์ดและไม่ซ่อนคำอธิบายความหมายคะแนนหลัก
@@ -177,10 +189,12 @@ components:
 | completed พร้อมคะแนน | ภาพ, คะแนนรวม, คะแนนรายบริเวณ, วิธีคิด และคำแนะนำที่ผ่าน gate เท่านั้น |
 | completed แต่ไม่มีคะแนน | แจ้งว่าไม่มีคะแนนสำหรับภาพนี้ ไม่แสดงวงแหวนเป็นศูนย์ |
 | artifact หมดอายุ | แสดง placeholder พร้อมแจ้งว่าภาพผลไม่พร้อมใช้งานและชวนวิเคราะห์ใหม่ |
+| โหลด artifact ไม่สำเร็จ | คงพื้นที่ภาพและข้อมูลผลไว้ พร้อมปุ่มลองโหลดภาพใหม่และวิเคราะห์ภาพใหม่ |
+| โหลดผลไม่สำเร็จ | ปุ่มลองโหลดผลอีกครั้งเรียก API ใหม่ในหน้าเดิมและไม่แสดงผลสำเร็จเก่าร่วมกับข้อผิดพลาด |
 
 ### Responsive behavior
 
-- Wide desktop (> 1100px): navbar เดิมด้านบน; พื้นที่ผลแบ่งภาพประมาณ 56% และสรุปประมาณ 44%; คอลัมน์ขวาวางสรุป, คำแนะนำ/ข้อความสถานะ, แล้วจึงคะแนนรายบริเวณ
+- Wide desktop (> 1100px): navbar เดิมด้านบน; พื้นที่ผลแบ่งภาพประมาณ 56% และสรุปประมาณ 44%; คอลัมน์ขวาวางเปอร์เซ็นต์พื้นที่ คะแนนทดลองขนาดเล็ก แล้วจึงรายการรายบริเวณและรายละเอียด; คำแนะนำอยู่ใน Stage 3
 - Compact desktop (961–1100px): ลดช่องว่างและปรับสัดส่วนคอลัมน์ให้ใกล้เคียงกัน โดยคงภาพไว้ซ้ายและผลไว้ขวา
 - Tablet และ mobile (≤ 960px): เรียงเป็นคอลัมน์เดียว โดยวางภาพก่อนสรุปผลและรายละเอียด; navbar ใช้ hamburger ตาม shared navigation
 - จอเล็ก (≤ 600px): ปุ่ม action ขยายให้กดง่าย; ที่แคบมาก (≤ 420px) ให้ action และสรุปคะแนนเรียงลง ไม่ทำให้เกิด horizontal overflow
@@ -193,6 +207,7 @@ components:
 - ใช้ heading ตามลำดับ, section label ที่สัมพันธ์กับเนื้อหา, alt text อธิบายภาพ overlay/mask และ `aria-pressed` กับตัวเลือก artifact
 - แถบพื้นที่และคะแนนทดลองต้องมีค่าตัวเลข/ข้อความประกอบ; อย่าสื่อสถานะด้วยสีอย่างเดียว
 - รักษา focus ที่มองเห็นได้, contrast ของข้อความ และลำดับ tab ที่ตรงกับลำดับเนื้อหา
+- เมื่อเปิดภาพขยาย ให้ focus อยู่ภายใน dialog, ปิดด้วย Escape ได้ และคืน focus ไปยังปุ่มที่เปิด; ปิด dialog เมื่อภาพหมดอายุหรือโหลดไม่ได้
 - อย่าแสดงภาพหรือผลของผู้ใช้อื่น; ใช้เฉพาะข้อมูลที่ session ปัจจุบันได้รับอนุญาตให้อ่าน
 - แจ้งการหมดอายุ/การเก็บภาพตามค่าที่ระบบส่งจริง ห้ามเขียนอายุการเก็บแบบคงที่หากนโยบายหรือ API เปลี่ยน
 
@@ -224,6 +239,17 @@ components:
 
 ## Home/Dashboard — เลย์เอาต์การ์ดภาพรวม
 
+### Approved Home motion revision — 3 October 2026
+
+This revision supersedes the background-video/three-lane Home layout below. Use the approved HTML preview as the visual reference, not as a data source.
+
+- Hero uses `/assets/aphrodize-hero-face.png` as a full-section decorative background, shifted right (12% desktop, 6% mobile). Theme-aware gradients keep the editorial heading and real navigation actions readable. Clearly label the image as a visual demo, not an analysis result.
+- English display text alternates between “Young & Beautiful” and “Day by day.” every 4.5 seconds with staggered character entry. Underlines fit individual words when wrapping. Reserve two lines to avoid content jumping; provide Pause/Resume, stop timers in hidden tabs, and show static text for reduced motion. Screen readers receive a stable heading rather than repeated announcements.
+- Mouse tracking responds across the hero only on fine pointers; use small bounded image movement and a decorative reticle, never inferred detections. Disable on touch/reduced motion and clean up event listeners and animation frames.
+- Shared navbar adopts the approved preview style: floating glass surface, compact brand, centered text-only links with coral active/hover underline, and borderless moon/sun and authenticated login/logout controls. Mobile keeps theme/auth/menu in the top row with 44px targets; language switching is in the expanded menu (desktop exposes it beside the links). Preserve real links, session behavior, themes and language preferences across all shared-navigation routes.
+- Below Hero, retain real account-backed seven-day records, Weekly overview, Thailand UV map, insights, recommendations and history states. Weekly overview has four metric cards with real seven-day bars, available-day counts and expandable daily values; responsive layout is 4/2/1 columns. Missing values remain missing, never substituted with preview fixtures.
+- Home can be expressive, while data reveals happen once and chart values never animate into fabricated counts. Other routes keep their existing data behavior and layout.
+
 ผู้ใช้ยืนยันขอบเขต Home/Dashboard ตามภาพอ้างอิง wellness และ skin dashboard เมื่อ 29 กันยายน 2026 โดยคงระบบสี ฟอนต์ โลโก้ navbar ด้านบน และ hamburger บนมือถือเดิม
 
 - วิดีโอที่ผู้ใช้เลือกเล่นวนเป็นพื้นหลังของ main อยู่กึ่งกลาง ไม่อยู่ภายใน article; บน desktop เว้นช่องกลางให้เห็นวิดีโอ และแสดง article สีทึบทางซ้าย–ขวา พร้อมข้อความกำกับว่าไม่ใช่ผลวิเคราะห์และปุ่มไปวิเคราะห์ภาพจริง ไม่แสดงคะแนนใบหน้าหรือชื่อผู้ใช้ตัวอย่าง
@@ -247,3 +273,19 @@ components:
 ใช้ความกว้างร่วมสูงสุด 1920px และ `--responsive-page-gutter` เช่นเดียวกับ workspace อื่น ไม่จำกัดหน้า capture ที่ 1280px จอใหญ่จัดภาพตัวอย่างและแนวทางถ่ายภาพทางซ้าย ความยินยอมและปุ่มวิเคราะห์ทางขวา จอเล็กกว่า 1000px เรียงเป็นคอลัมน์เดียว ใช้สีและฟอนต์จาก theme tokens เดิม
 
 ผลลัพธ์และคำแนะนำต่ออยู่ด้านล่างแบบฟอร์ม หลังส่งภาพสำเร็จให้เลื่อนไป `#results` และย้ายโฟกัสโดยไม่เลื่อนซ้ำ เคารพ `prefers-reduced-motion` และเว้นระยะเหนือส่วนผลลัพธ์สำหรับ navbar ภาพและคะแนนต้องมาจาก API เท่านั้น
+
+## ประวัติและแนวโน้มสุขภาพ (`/trend`)
+
+### Signup measurements and Skin profile
+
+- Height and weight are entered once in the signup questionnaire and stored through the existing consent-aware measurement APIs. Daily tracking reuses saved account values; it must not require daily re-entry.
+- Skin profile displays the current saved measurements under “Signup information”, without duplicate fields in the answer list. Measurement cards are read-only with no “Edit or manage consent” disclosure or repeated input form. Removing these controls does not change saved values or consent; keep the existing APIs and separate wellness-edit flow intact.
+- Use the consent-aware daily-health profile as the authoritative source. Do not restore revoked measurements from historical questionnaire answers. Unsaved edits must not replace the displayed saved value.
+
+- วางการ์ด “Your personal outlook” ก่อนรายการประวัติ เพื่อเปรียบเทียบค่าจริงใน 7 วันปฏิทินล่าสุดกับค่าประมาณหนึ่งวันถัดไปของเวลานอนและปริมาณน้ำดื่ม
+- ค่าจริงต้องมาจากรายการที่เจ้าของบัญชีบันทึกเอง (`user_reported`) ในบัญชีที่ยืนยันตัวตนเท่านั้น; ห้ามใช้ fixture, ข้อมูลนำเข้า/สังเคราะห์, prediction เก่า หรือข้อมูลจากบัญชีอื่น
+- การคำนวณเป็น linear trend เชิงสถิติแบบทดลอง ใช้ข้อมูลจริงอย่างน้อย 3 วันภายในหน้าต่าง 7 วัน; วันที่ขาดหายเป็นช่องว่าง ไม่ใช่ศูนย์ และค่าประมาณถูกจำกัดในช่วงที่ฟอร์มยอมรับได้
+- แสดงเส้นทึบ/จุดกลมเป็นค่าจริง และเส้นประ/จุดสี่เหลี่ยมเป็นค่าประมาณวันถัดไป มีตารางรายวันใน disclosure เพื่อให้ตรวจค่าได้โดยไม่พึ่งสีอย่างเดียว
+- เปิดใช้ได้เฉพาะเมื่อผู้ใช้ยินยอมแยกต่างหากสำหรับ “personal forecast” ซึ่งปิดเป็นค่าเริ่มต้น ความยินยอมนี้ใช้เฉพาะฟีเจอร์ในบัญชีและไม่ให้/เปลี่ยนความยินยอมฝึก shared candidate model ซึ่งแยกควบคุมต่างหาก; ผู้ใช้ปิดได้ทุกเมื่อโดยไม่ลบประวัติเดิม
+- ถ้ามีข้อมูลน้อยกว่า 3 วัน ไม่แสดงตัวเลข forecast; แสดงเหตุผลและเกณฑ์ขั้นต่ำ คะแนน thirst/dryness หรือผลด้านผิวไม่ใช่เป้าหมายของโมเดลนี้และห้ามสร้างจากเวลานอน/น้ำดื่ม
+- ระบุว่าเป็นค่าประมาณเชิงทดลอง ไม่ใช่คำแนะนำหรือการวินิจฉัยทางการแพทย์; รองรับไทย/อังกฤษ, light/dark, keyboard focus และจอเล็กโดยไม่เกิด horizontal overflow

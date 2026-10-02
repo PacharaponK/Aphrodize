@@ -8,9 +8,10 @@ from backend.core.config import settings
 
 def analysis_artifact_key(user_id: UUID, analysis_id: UUID, kind: str) -> str:
     # Only the two user-facing result images may use this derived key layout.
-    if kind not in {"overlay", "mask"}:
+    if kind not in {"overlay", "mask", "regions", "outline"}:
         raise ValueError("unsupported analysis artifact")
-    return f"users/{user_id}/derived/{analysis_id}/{kind}.png"
+    suffix = "svg" if kind == "outline" else "png"
+    return f"users/{user_id}/derived/{analysis_id}/{kind}.{suffix}"
 
 
 def annotation_image_key(user_id: UUID, analysis_id: UUID) -> str:

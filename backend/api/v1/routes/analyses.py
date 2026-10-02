@@ -221,7 +221,7 @@ async def get_analysis(
 @router.get("/{analysis_id}/artifacts/{kind}")
 async def get_analysis_artifact(
     analysis_id: UUID,
-    kind: Literal["overlay", "mask"],
+    kind: Literal["overlay", "mask", "regions", "outline"],
     caller_id: UUID = Depends(require_user_token),
     session: AsyncSession = Depends(get_session),
 ) -> Response:
@@ -247,7 +247,11 @@ async def get_analysis_artifact(
         content = await run_in_threadpool(get_bytes, key)
     except S3Error as error:
         raise HTTPException(status_code=404, detail="Artifact not found") from error
-    return Response(content, media_type="image/png", headers={"Cache-Control": "private, no-store"})
+    mime = "image/svg+xml" if kind == "outline" else "image/png"
+    return Response(content, media_type=mime, headers={
+        "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+    })
 
 
 @router.get("/{analysis_id}/recommendations")
