@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Eye,
   Info,
@@ -22,13 +23,14 @@ import "../result-detail/result-detail.css";
 import { useLanguage, type Language } from "@/components/language-provider";
 
 type AreaScore = { score: number; wrinkle_area_ratio: number; wrinkle_pixels: number; evaluated_pixels: number };
-type Score = { overall: AreaScore; regions: Record<string, AreaScore>; formula: string; disclaimer: string };
+type Score = { overall: AreaScore; regions: Record<string, AreaScore>; formula: string; disclaimer: string; roi_version?: string };
 type Result = {
   status: string;
   derived_score?: Score | null;
   experimental_score?: Score | null;
   artifacts_expires_at?: string;
   recommendation_gate?: { eligible: boolean; reasons: string[] };
+  model_output?: { personalized_outline_available?: boolean; regional_geometry_status?: "available" | "unavailable" | "legacy_fixed"; regional_map_version?: "wrinkle-only-sketch-v1" | "photo-doodle-wrinkle-v2" | "head-region-area-v3" | null };
 };
 type Analysis = {
   id: string;
@@ -62,7 +64,7 @@ const PAGE_COPY = {
     failedBody: "กรุณาลองอีกครั้งด้วยภาพใหม่",
     tryAgain: "ลองใหม่",
     imageHeading: "ภาพผลวิเคราะห์",
-    imageSubheading: "คลิกที่ภาพเพื่อขยายดูเส้นริ้วรอยที่ตรวจพบ",
+    imageSubheading: "เปิดดูบริเวณที่โมเดลทำเครื่องหมายในภาพนี้",
     artifactControls: "เลือกรูปแบบภาพผลวิเคราะห์",
     overlay: "ภาพซ้อนตำแหน่ง",
     mask: "เฉพาะพื้นที่ตรวจพบ",
@@ -71,18 +73,19 @@ const PAGE_COPY = {
     expired: "ภาพผลวิเคราะห์หมดอายุแล้ว กรุณาวิเคราะห์ภาพใหม่เพื่อดูภาพประกอบ",
     unavailable: "ไม่มีภาพผลวิเคราะห์ที่เปิดดูได้ กรุณาวิเคราะห์ภาพใหม่",
     imageLoadError: "โหลดภาพผลวิเคราะห์ไม่สำเร็จ กรุณาลองอีกครั้งหรือวิเคราะห์ภาพใหม่",
+    retryImage: "ลองโหลดภาพอีกครั้ง",
     overlayCaption: "สีบนภาพแสดงบริเวณที่โมเดลทำเครื่องหมาย",
     expiryPrefix: "ภาพส่วนตัวเปิดดูได้ถึง",
     thailandTime: "เวลาไทย",
     artifactExpired: "ภาพหมดอายุการเข้าถึงแล้ว",
-    markedArea: "พื้นที่ที่ตรวจพบ",
+    markedArea: "พื้นที่ที่โมเดลทำเครื่องหมาย",
     markedAreaExplanation: "เปอร์เซ็นต์คือสัดส่วนพิกเซลที่โมเดลทำเครื่องหมายจากพื้นที่ใบหน้าที่ประเมินได้ ไม่ใช่คะแนนผิวหรือการวินิจฉัยทางการแพทย์",
     experimentalScore: "คะแนนเชิงทดลอง",
     scoreExplanation: "คะแนน 0–100 คำนวณจากสัดส่วนพื้นที่ที่ทำเครื่องหมายและมีเพดานที่ 100 คะแนนสูงขึ้นหมายถึงสัดส่วนตามสูตรสูงขึ้น ไม่ได้บอกว่าผิวดีขึ้นหรือแย่ลง",
     scoreExplanationBrief: "คำนวณจากสัดส่วนพื้นที่พิกเซล (เพดาน 100)",
     regionsHeading: "การกระจายตัวตามบริเวณใบหน้า",
     regionsScored: "บริเวณที่มีคะแนน",
-    regionExplanation: "แสดงสัดส่วนพื้นที่และคะแนนที่ตรวจพบในแต่ละบริเวณสำคัญของใบหน้า",
+    regionExplanation: "แสดง 4 บริเวณที่มีสัดส่วนพื้นที่ทำเครื่องหมายมากที่สุด ดูทุกบริเวณได้ในรายละเอียด",
     unscorable: "ประเมินไม่ได้",
     noRegionPixels: "ไม่มีพิกเซลเพียงพอสำหรับคำนวณ",
     area: "พื้นที่ที่ทำเครื่องหมาย",
@@ -100,30 +103,41 @@ const PAGE_COPY = {
     decimalNote: "ใช้สัดส่วนแบบทศนิยม (1% = 0.01)",
     thisImage: "ภาพนี้:",
     scoreCapped: "คะแนนมีเพดานที่ 100 จึงควรดูเปอร์เซ็นต์พื้นที่จริงประกอบ คะแนนนี้ไม่ยืนยันว่ามีหรือไม่มีริ้วรอยจริง",
-    disclaimerTitle: "ข้อควรรู้และการปฏิเสธความรับผิดชอบ",
+    disclaimerTitle: "เกี่ยวกับการวัดจากภาพนี้",
     disclaimer: "ผลนี้เป็นการวัดเชิงทดลองจากภาพถ่าย ไม่ใช่การวินิจฉัยหรือการประเมินสุขภาพผิว และยังไม่ได้รับการรับรองทางคลินิก",
     noScore: "ไม่มีคะแนนสำหรับภาพนี้",
     queued: "รอประมวลผล",
     running: "กำลังประมวลผล",
     analyzed: "วิเคราะห์เมื่อ",
-    regionsSummary: (scored: number, total: number) => `${scored} จาก ${total} บริเวณมีคะแนน`,
+    regionsSummary: (scored: number, total: number) => `ประเมินได้ ${scored} / ${total} บริเวณ`,
     analysisEyebrow: "การวิเคราะห์ภาพถ่ายใบหน้าด้วย AI",
     qualityVerified: "ผ่านเกณฑ์คุณภาพภาพถ่าย",
-    privacyBadge: "ลบภาพอัตโนมัติภายใน 24 ชม.",
     zoom: "ขยายดูภาพ",
     zoomIn: "ขยาย",
     zoomOut: "ย่อ",
     zoomReset: "ขนาดปกติ",
     closeZoom: "ปิดภาพขยาย",
     clickToZoom: "คลิกเพื่อขยายดูภาพ",
-    legendWrinkles: "เส้นสี: บริเวณริ้วรอยที่ตรวจพบ",
+    legendWrinkles: "เส้นสี: บริเวณที่โมเดลทำเครื่องหมาย",
     legendEvaluated: "กรอบสว่าง: ขอบเขตใบหน้าที่ประเมิน",
     legendTitle: "คำอธิบายภาพ",
-    viewTechnicalData: "ดูข้อมูลพิกเซลและสูตรคำนวณ",
-    levelLow: "ตรวจพบน้อย",
-    levelModerate: "ตรวจพบปานกลาง",
-    levelElevated: "ตรวจพบชัดเจน",
-    summaryCardTitle: "สรุปผลการประเมินภาพรวม",
+    viewTechnicalData: "ดูทุกบริเวณ พิกเซล และวิธีคำนวณ",
+    summaryCardTitle: "สิ่งที่โมเดลทำเครื่องหมาย",
+    overviewTitle: "ภาพรวมการวิเคราะห์ผิว",
+    overviewScope: "ตรวจพื้นที่ริ้วรอยจากภาพนี้เท่านั้น",
+    mapTitle: "ตำแหน่งที่ควรเปิดดู",
+    mapNote: "แผนภาพใบหน้ามาตรฐาน ไม่ใช่รูปหน้าของคุณหรือขอบเขตพิกเซลจริง แรเงาเฉพาะบริเวณที่มีผลตรวจริ้วรอย ไม่ใช่ระดับความรุนแรง ดูตำแหน่งจริงในภาพ overlay/mask",
+    personalOutlineNote: "โครงหน้าและสัดส่วนอิง landmarks ของภาพที่อัปโหลด วาดส่วนใบหน้าแบบเรียบ แรเงาพื้นที่ประเมินที่มีผลตรวจริ้วรอย ไม่ใช่ระดับความรุนแรงหรือขอบเขตพิกเซลริ้วรอยจริง ดูพิกเซลจริงใน overlay/mask",
+    personalOutlineUnavailable: "โครงหน้ารายบุคคลไม่พร้อมแสดง ด้านล่างเป็นแผนภาพมาตรฐานแทน",
+    regionRank: "ลำดับตามสัดส่วนพื้นที่",
+    landmarkMapNote: "สเก็ตช์ใบหน้าจาก landmarks ของภาพนี้ สีชมพูแสดงเฉพาะพิกเซลริ้วรอยที่โมเดลทำเครื่องหมายในพื้นที่ประเมิน ไม่ใช่ระดับความรุนแรงหรือการวินิจฉัย",
+    photoSketchNote: "ภาพเส้นขอบแปลงจากภาพที่คุณอัปโหลดในกรอบเดียวกับการวิเคราะห์ ไม่มีแรเงาดินสอ เส้นขอบไม่ใช่ริ้วรอยที่ตรวจพบ สีชมพูแสดงเฉพาะ mask ริ้วรอยภายในพื้นที่ประเมิน ไม่ใช่การวินิจฉัย",
+    headRegionNote: "โครงใบหน้าจาก landmarks ของภาพคุณ ไม่มีผมหรือพื้นหลัง สีชมพูถมพื้นที่ประเมินที่ตรวจพบริ้วรอย ไม่ได้หมายความว่าทุกพิกเซลเป็นริ้วรอย ดูตำแหน่งพิกเซลจริงในภาพ overlay/mask ไม่ใช่การวินิจฉัย",
+    legacyLandmarkMapNote: "แผนภาพรุ่นเดิม: สีอ่อนแสดงพื้นที่ประเมิน ไม่ใช่พื้นที่ริ้วรอยทั้งหมด สีเข้มแสดงพิกเซลที่โมเดลทำเครื่องหมาย วิเคราะห์ภาพใหม่เพื่อดูสเก็ตช์ที่แสดงเฉพาะริ้วรอย",
+    mapUnavailable: "ยังเปิดแผนภาพ landmarks ไม่ได้ ค่ารายบริเวณยังดูได้ในรายการ",
+    noLandmarkRegions: "ตรวจตำแหน่งใบหน้าในภาพนี้ไม่ได้ จึงไม่คำนวณค่ารายบริเวณ ลองภาพใหม่ที่เห็นใบหน้าชัดเจน",
+    measuredRegions: "บริเวณที่ประเมินได้",
+    largestRegion: "สัดส่วนสูงสุดรายบริเวณ",
   },
   en: {
     pageTitle: "Face analysis results",
@@ -146,7 +160,7 @@ const PAGE_COPY = {
     failedBody: "Please try again with a new image.",
     tryAgain: "Try again",
     imageHeading: "Analysis image",
-    imageSubheading: "Click image to inspect detected wrinkle lines",
+    imageSubheading: "Inspect the areas marked by the model in this image.",
     artifactControls: "Choose an analysis image view",
     overlay: "Marked areas",
     mask: "Mask only",
@@ -155,18 +169,19 @@ const PAGE_COPY = {
     expired: "This analysis image has expired. Analyze a new image to view an artifact.",
     unavailable: "No analysis image is available to view. Analyze a new image.",
     imageLoadError: "Could not load this analysis image. Try again or analyze a new image.",
+    retryImage: "Retry image",
     overlayCaption: "Color shows the areas marked by the model.",
     expiryPrefix: "Private image available until",
     thailandTime: "Thailand time",
     artifactExpired: "Image access has expired.",
-    markedArea: "Detected Area",
+    markedArea: "Marked-area proportion",
     markedAreaExplanation: "This percentage is the share of evaluated face pixels marked by the model. It is not a skin grade or diagnosis.",
     experimentalScore: "Experimental score",
     scoreExplanation: "The 0–100 score is calculated from marked-area proportion and capped at 100. A higher score means a higher proportion under this formula, not better or worse skin.",
     scoreExplanationBrief: "Calculated from pixel area proportion (capped at 100)",
-    regionsHeading: "Facial Regions Breakdown",
+    regionsHeading: "Marked areas by region",
     regionsScored: "regions scored",
-    regionExplanation: "Shows the proportion of evaluated pixels and score across key facial zones.",
+    regionExplanation: "The four regions with the largest marked proportions. Expand details to review every region.",
     unscorable: "Not scored",
     noRegionPixels: "There are not enough evaluated pixels to calculate a value.",
     area: "Marked area",
@@ -184,30 +199,41 @@ const PAGE_COPY = {
     decimalNote: "The proportion uses decimal form (1% = 0.01).",
     thisImage: "This image:",
     scoreCapped: "The score is capped at 100, so refer to the area percentage as well. It does not confirm whether wrinkles are or are not present.",
-    disclaimerTitle: "Important note & disclaimer",
+    disclaimerTitle: "About these measurements",
     disclaimer: "This is an experimental image measurement, not a diagnosis or skin-health assessment. It has not been clinically validated.",
     noScore: "No score is available for this image.",
     queued: "Queued for processing",
     running: "Processing",
     analyzed: "Analyzed",
-    regionsSummary: (scored: number, total: number) => `${scored} of ${total} regions scored`,
+    regionsSummary: (scored: number, total: number) => `${scored} / ${total} regions measurable`,
     analysisEyebrow: "AI-Powered Vision Analysis",
     qualityVerified: "Image quality passed",
-    privacyBadge: "Auto-deleted within 24h",
     zoom: "Zoom image",
     zoomIn: "Zoom in",
     zoomOut: "Zoom out",
     zoomReset: "Reset",
     closeZoom: "Close zoom",
     clickToZoom: "Click to inspect in detail",
-    legendWrinkles: "Colored lines: Detected wrinkle areas",
+    legendWrinkles: "Colored lines: Areas marked by the model",
     legendEvaluated: "Bright area: Evaluated face region",
     legendTitle: "Image legend",
-    viewTechnicalData: "View pixel counts & formula",
-    levelLow: "Low detection",
-    levelModerate: "Moderate detection",
-    levelElevated: "Prominent detection",
-    summaryCardTitle: "Overall Assessment Summary",
+    viewTechnicalData: "All regions, pixels & calculation details",
+    summaryCardTitle: "What the model marked",
+    overviewTitle: "Skin analysis overview",
+    overviewScope: "Wrinkle-area measurements from this image only",
+    mapTitle: "Areas to inspect",
+    mapNote: "Standard face diagram, not your face shape or exact pixel boundaries. Hatching shows regions with wrinkle detections, not severity. Inspect overlay/mask for exact marks.",
+    personalOutlineNote: "Face shape and proportions follow landmarks from your uploaded image, with simplified facial features. Hatching shows evaluated regions containing detections, not severity or exact wrinkle pixels. Inspect overlay/mask for exact pixels.",
+    personalOutlineUnavailable: "Your personalized outline is unavailable. A standard face diagram is shown below instead.",
+    regionRank: "Ranked by marked proportion",
+    landmarkMapNote: "Head sketch from this image's landmarks. Pink shows only model-marked wrinkle pixels within evaluated regions, not severity or a diagnosis.",
+    photoSketchNote: "Outline converted from your uploaded image in the analysis frame, without pencil shading. Outlines are not wrinkle detections. Pink shows only the wrinkle mask within evaluated regions, not a diagnosis.",
+    headRegionNote: "Head-only outline from your image's landmarks, without hair or background. Pink fills evaluated regions containing wrinkle detections, not every wrinkle pixel. See overlay/mask for exact pixel locations. Not a diagnosis.",
+    legacyLandmarkMapNote: "Earlier map: pale shading shows evaluated regions, not wrinkle coverage. Dark pixels show model marks. Analyze a new image for a wrinkle-only sketch.",
+    mapUnavailable: "The landmark map is unavailable. Regional measurements remain in the list.",
+    noLandmarkRegions: "Facial landmarks could not be measured in this image, so regional values are withheld. Try a clearer face image.",
+    measuredRegions: "Regions measured",
+    largestRegion: "Largest regional proportion",
   },
 } as const;
 
@@ -295,31 +321,58 @@ function qualityFlagLabel(flag: string, language: Language): string {
     : "The image did not meet the quality requirements for assessment.");
 }
 
-function getScoreLevel(score: number, language: Language): string {
-  const copy = PAGE_COPY[language];
-  if (score < 25) return copy.levelLow;
-  if (score < 55) return copy.levelModerate;
-  return copy.levelElevated;
-}
+// Only known model region identifiers have schematic locations. Image-left/right
+// refer to the displayed image, not the person's anatomical left/right.
+const REGION_SHAPES: Record<string, string> = {
+  forehead: "M68 91 Q120 53 172 91 L168 121 Q120 105 72 121 Z",
+  glabella: "M110 124 Q120 117 130 124 L131 145 L109 145 Z",
+  image_left_periocular: "M62 142 Q83 124 105 142 L105 159 Q82 170 62 156 Z",
+  image_right_periocular: "M135 142 Q157 124 178 142 L178 156 Q158 170 135 159 Z",
+  image_left_cheek: "M62 173 Q82 163 100 177 L98 207 Q76 213 64 197 Z",
+  image_right_cheek: "M140 177 Q158 163 178 173 L176 197 Q164 213 142 207 Z",
+  nasolabial: "M105 181 L110 187 L98 222 L91 218 Z M130 187 L135 181 L149 218 L142 222 Z",
+  perioral: "M97 225 Q120 212 143 225 L145 243 Q120 258 95 243 Z",
+};
 
-function getScoreLevelClass(score: number): string {
-  if (score < 25) return "level-low";
-  if (score < 55) return "level-moderate";
-  return "level-elevated";
+function FaceRegionMap({ regions, language }: { regions: [string, AreaScore][]; language: Language }) {
+  const copy = PAGE_COPY[language];
+  const mapped = regions.filter(([name, value]) => REGION_SHAPES[name] && value.evaluated_pixels > 0 && value.wrinkle_pixels > 0 && value.wrinkle_area_ratio > 0);
+  return (
+    <figure className="analysis-face-map">
+      <svg viewBox="0 0 240 310" role="img" aria-label={copy.mapTitle}>
+        <title>{copy.mapTitle}</title>
+        <defs><pattern id="face-roi-hatching" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="4" height="4" fill="var(--primary-soft)" /><path d="M0 0 V4" stroke="var(--primary)" strokeWidth=".6" /></pattern></defs>
+        <desc>{copy.mapNote} {mapped.map(([name, value]) => `${regionLabel(name, language)}: ${(value.wrinkle_area_ratio * 100).toFixed(2)}%`).join("; ")}</desc>
+        {mapped.map(([name, value]) => {
+          return <path key={name} d={REGION_SHAPES[name]} data-face-region={name} style={{ fill: "url(#face-roi-hatching)" }} className="face-map-zone is-marked">
+            <title>{regionLabel(name, language)}: {(value.wrinkle_area_ratio * 100).toFixed(2)}%</title>
+          </path>;
+        })}
+        <path className="face-map-outline" d="M120 27 C78 27 55 52 53 98 C51 125 54 158 59 185 C64 222 91 261 120 269 C149 261 176 222 181 185 C186 158 189 125 187 98 C185 52 162 27 120 27 Z M53 145 C43 131 37 142 42 161 C43 173 48 184 59 191 M187 145 C197 131 203 142 198 161 C197 173 192 184 181 191 M87 248 C89 264 89 278 84 288 L65 300 M153 248 C151 264 151 278 156 288 L175 300" />
+        <path className="face-map-features" d="M65 128 C75 120 90 120 102 126 M138 126 C150 120 165 120 175 128 M65 146 C76 135 91 135 102 146 C91 155 76 156 65 146 Z M138 146 C149 135 164 135 175 146 C164 156 149 155 138 146 Z M65 150 Q80 160 97 152 M143 152 Q160 160 175 150 M114 153 C112 168 107 180 107 189 Q110 193 114 190 M126 153 C128 168 133 180 133 189 Q130 193 126 190 M114 195 Q120 199 126 195 M98 222 C107 221 114 215 120 218 C126 215 133 221 142 222 Q132 224 120 223 Q108 224 98 222 M101 225 Q120 238 139 225 M108 248 Q120 252 132 248" />
+        <g className="face-map-features" aria-hidden="true">
+          <circle cx="83" cy="145" r="6" /><circle cx="157" cy="145" r="6" />
+          <circle cx="83" cy="145" r="2" fill="var(--muted)" /><circle cx="157" cy="145" r="2" fill="var(--muted)" />
+        </g>
+      </svg>
+      <figcaption><strong>{copy.mapTitle}</strong><span>{copy.mapNote}</span></figcaption>
+    </figure>
+  );
 }
 
 function RegionCard({
   name,
   value,
   language,
+  rank,
 }: {
   name: string;
   value: AreaScore;
   language: Language;
+  rank?: number;
 }) {
   const copy = PAGE_COPY[language];
   const label = regionLabel(name, language);
-  const tag = regionTag(name, language);
 
   if (value.evaluated_pixels <= 0) {
     return (
@@ -327,7 +380,6 @@ function RegionCard({
         <div className="analysis-region-header">
           <div className="analysis-region-title">
             <strong>{label}</strong>
-            {tag && <span className="analysis-region-tag">{tag}</span>}
           </div>
           <span className="analysis-region-status">{copy.unscorable}</span>
         </div>
@@ -338,20 +390,19 @@ function RegionCard({
 
   const areaPercent = value.wrinkle_area_ratio * 100;
   const clampedPercent = Math.min(100, Math.max(0, areaPercent));
-  const intensityClass = areaPercent > 5 ? "is-prominent" : areaPercent > 0 ? "is-detected" : "is-clean";
 
   return (
-    <div className={`analysis-region analysis-region-card ${intensityClass}`}>
+    <div className="analysis-region analysis-region-card">
       <div className="analysis-region-header">
         <div className="analysis-region-title">
+          {rank && <span className="analysis-region-rank" aria-label={`${copy.regionRank}: ${rank}`}>{rank}</span>}
           <strong>{label}</strong>
-          {tag && <span className="analysis-region-tag">{tag}</span>}
         </div>
         <span className="analysis-region-area">{areaPercent.toFixed(2)}%</span>
       </div>
       <div
         className="analysis-region-track"
-        role="progressbar"
+        role="meter"
         aria-label={`${copy.area}: ${label}`}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -359,10 +410,6 @@ function RegionCard({
         aria-valuetext={`${areaPercent.toFixed(2)}% ${copy.percentageOfEvaluatedArea}`}
       >
         <span style={{ width: `${clampedPercent}%` }} />
-      </div>
-      <div className="analysis-region-footer">
-        <span className="analysis-region-score-label">{copy.experimentalScore}</span>
-        <strong className="analysis-region-score-val">{value.score.toFixed(1)} <small>/ 100</small></strong>
       </div>
     </div>
   );
@@ -383,6 +430,10 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
   const [expiryTick, setExpiryTick] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [artifactAttempt, setArtifactAttempt] = useState(0);
+  const [outlineError, setOutlineError] = useState("");
+  const zoomDialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     onReady(analysis?.status === "completed" && !error && !noAnalysis);
@@ -398,7 +449,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
         const response = await fetch("/api/analysis", { cache: "no-store" });
         if (!response.ok) {
           if (response.status === 401) {
-            if (!stopped) setNoAnalysis(true);
+            if (!stopped) { setNoAnalysis(true); setAnalysis(null); }
             return;
           }
           throw new Error("analysis-load-error");
@@ -419,7 +470,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
     }
     poll();
     return () => { stopped = true; clearTimeout(timer); };
-  }, []);
+  }, [loadAttempt]);
 
   const score = analysis?.result?.derived_score ?? analysis?.result?.experimental_score;
   const expiresAt = analysis?.result?.artifacts_expires_at;
@@ -429,6 +480,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
     .sort(([, left], [, right]) => right.wrinkle_area_ratio - left.wrinkle_area_ratio);
   const unevaluableRegions = allRegions.filter(([, value]) => value.evaluated_pixels <= 0);
   const displayedRegions = [...evaluableRegions, ...unevaluableRegions];
+  const primaryRegions = evaluableRegions.slice(0, 4);
   const hasScorableOverall = Boolean(score && score.overall.evaluated_pixels > 0);
   const expiryLabel = expiresAt ? formatArtifactExpiry(expiresAt, language) : null;
 
@@ -443,6 +495,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
       const remaining = expiration - Date.now();
       if (remaining <= 0) {
         setExpiryTick(Date.now());
+        setZoomOpen(false);
         return;
       }
       expiryTimer = setTimeout(checkExpiry, Math.min(remaining, 2_147_483_647));
@@ -451,43 +504,60 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
     return () => clearTimeout(expiryTimer);
   }, [analysis?.status, expiresAt]);
 
-  // Handle escape key to close zoom modal
-  useEffect(() => {
-    if (!zoomOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setZoomOpen(false);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [zoomOpen]);
-
   const currentArtifactAvailability = getArtifactAvailability(expiresAt, expiryTick);
   const artifactAvailability: ArtifactAvailability = currentArtifactAvailability === "available" && artifactLoadError
     ? "load-error"
     : currentArtifactAvailability;
+  const artifactSource = `/api/analysis?artifact=${artifact}${artifactAttempt ? `&retry=${artifactAttempt}` : ""}`;
+  const zoomVisible = zoomOpen && artifactAvailability === "available";
+
+  // Keep keyboard focus inside the image viewer and restore it when closing.
+  useEffect(() => {
+    if (!zoomVisible) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = zoomDialogRef.current;
+    dialog?.querySelector<HTMLButtonElement>("[data-zoom-close]")?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZoomOpen(false);
+      if (e.key !== "Tab" || !dialog) return;
+      const controls = [...dialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")];
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [zoomVisible]);
 
   return (
     <section className="page-content workspace-panel analysis-page analysis-page--face">
       <div className="analysis-page-heading">
         <div className="analysis-heading-main">
           <h2>{view === "products" ? (language === "th" ? "ผลิตภัณฑ์ที่แนะนำ" : "Recommended products") : copy.resultTitle}</h2>
+          {view === "results" && <p className="analysis-heading-intro">{copy.resultIntro}</p>}
           <div className="analysis-heading-meta">
-            {analysis && (
+            {!error && !noAnalysis && analysisDetail(analysis, language) && (
               <span className="analysis-chip">
                 <Clock size={13} aria-hidden="true" />
                 <span>{analysisDetail(analysis, language)}</span>
               </span>
             )}
-            {analysis?.status === "completed" && (
+            {!error && !noAnalysis && analysis?.status === "completed" && (
               <span className="analysis-chip chip-success">
                 <CheckCircle2 size={13} aria-hidden="true" />
                 <span>{copy.qualityVerified}</span>
               </span>
             )}
-            <span className="analysis-chip chip-privacy">
-              <Lock size={13} aria-hidden="true" />
-              <span>{copy.privacyBadge}</span>
-            </span>
           </div>
         </div>
         <nav className="analysis-page-actions" aria-label={copy.actions}>
@@ -520,7 +590,9 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
         <div className="analysis-state-message" role="alert">
           <h3>{copy.loadErrorTitle}</h3>
           <p>{copy.loadError}</p>
-          <button className="secondary-button" type="button" onClick={() => window.location.reload()}>
+          <button className="secondary-button" type="button" onClick={() => {
+            setError(""); setNoAnalysis(false); setAnalysis(null); setLoadAttempt((attempt) => attempt + 1);
+          }}>
             {copy.retryLoad}
           </button>
         </div>
@@ -528,11 +600,11 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
 
       {!analysis && !error && !noAnalysis && <div className="analysis-state-message" role="status">{copy.loading}</div>}
 
-      {analysis && (analysis.status === "queued" || analysis.status === "running") && (
+      {!error && !noAnalysis && analysis && (analysis.status === "queued" || analysis.status === "running") && (
         <div className="result-wait" role="status">{copy.processing}</div>
       )}
 
-      {analysis?.status === "rejected" && (
+      {!error && !noAnalysis && analysis?.status === "rejected" && (
         <div className="result-wait" role="alert">
           <h2>{copy.rejectedTitle}</h2>
           {analysis.quality_flags.length ? (
@@ -550,7 +622,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
         </div>
       )}
 
-      {analysis?.status === "failed" && (
+      {!error && !noAnalysis && analysis?.status === "failed" && (
         <div className="result-wait" role="alert">
           <h2>{copy.failedTitle}</h2>
           <p>{copy.failedBody}</p>
@@ -560,12 +632,12 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
         </div>
       )}
 
-      {analysis?.status === "completed" && <section hidden={view !== "products"} className="analysis-recommendation-section" aria-label={copy.recommendations}>
+      {!error && !noAnalysis && analysis?.status === "completed" && <section hidden={view !== "products"} className="analysis-recommendation-section" aria-label={copy.recommendations}>
         <p className="recommendation-header-desc">{language === "th" ? "คำแนะนำจากข้อมูลโปรไฟล์และผลิตภัณฑ์ที่ตรวจทานแล้ว ผลจากภาพจะใช้ประกอบเฉพาะเมื่อผ่านเกณฑ์ของระบบ" : "Guidance uses your profile and reviewed products. Image findings are included only when eligible."}</p>
         <RecommendationPanel language={language} />
       </section>}
 
-      {analysis?.status === "completed" && view === "results" && (
+      {!error && !noAnalysis && analysis?.status === "completed" && view === "results" && (
         score && hasScorableOverall ? (
           <>
             <div className="analysis-result-grid">
@@ -629,14 +701,14 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                   {artifactAvailability === "available" ? (
                     <>
                       <Image
-                        key={artifact}
+                        key={`${artifact}-${artifactAttempt}`}
                         className="analysis-result-image"
                         unoptimized
                         width={512}
                         height={512}
-                        src={`/api/analysis?artifact=${artifact}`}
+                        src={artifactSource}
                         alt={artifact === "overlay" ? copy.overlayAlt : copy.maskAlt}
-                        onError={() => setArtifactLoadError(true)}
+                        onError={() => { setArtifactLoadError(true); setZoomOpen(false); }}
                       />
                       <span className="artifact-click-hint" aria-hidden="true">
                         <ZoomIn size={14} />
@@ -644,11 +716,19 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                       </span>
                     </>
                   ) : (
-                    <p role={artifactAvailability === "load-error" || artifactAvailability === "expired" ? "alert" : "status"}>
-                      {artifactAvailability === "expired" && copy.expired}
-                      {artifactAvailability === "unavailable" && copy.unavailable}
-                      {artifactAvailability === "load-error" && copy.imageLoadError}
-                    </p>
+                    <div className="analysis-artifact-state">
+                      <p role={artifactAvailability === "load-error" || artifactAvailability === "expired" ? "alert" : "status"}>
+                        {artifactAvailability === "expired" && copy.expired}
+                        {artifactAvailability === "unavailable" && copy.unavailable}
+                        {artifactAvailability === "load-error" && copy.imageLoadError}
+                      </p>
+                      {artifactAvailability === "load-error" && (
+                        <button className="secondary-button" type="button" onClick={() => {
+                          setArtifactAttempt((attempt) => attempt + 1); setArtifactLoadError(false);
+                        }}>{copy.retryImage}</button>
+                      )}
+                      <button className="secondary-button" type="button" onClick={onNewAnalysis}>{copy.retryAnalysis}</button>
+                    </div>
                   )}
                 </figure>
 
@@ -664,14 +744,16 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                     </span>
                   </div>
 
-                  <figcaption className="analysis-caption">
-                    <Clock size={13} aria-hidden="true" className="caption-clock" />
+                  <p className="analysis-caption">
+                    <Info size={13} aria-hidden="true" className="caption-clock" />
                     <span>
                       {copy.overlayCaption}
-                      {artifactAvailability === "available" && expiryLabel && ` · ${copy.expiryPrefix} ${expiryLabel} (${copy.thailandTime})`}
-                      {artifactAvailability === "expired" && ` · ${copy.artifactExpired}`}
                     </span>
-                  </figcaption>
+                  </p>
+                  {expiryLabel && <p className="analysis-caption">
+                    <Lock size={13} aria-hidden="true" className="caption-clock" />
+                    <span>{artifactAvailability === "expired" ? copy.artifactExpired : `${copy.expiryPrefix} ${expiryLabel} (${copy.thailandTime})`}</span>
+                  </p>}
                 </div>
               </section>
 
@@ -681,7 +763,8 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                 <section className="analysis-summary" aria-labelledby="analysis-score-heading">
                   <div className="analysis-summary-header">
                     <div className="analysis-summary-title-wrap">
-                      <h3 id="analysis-score-heading">{copy.summaryCardTitle}</h3>
+                      <h3 id="analysis-score-heading">{copy.overviewTitle}</h3>
+                      <p className="analysis-overview-scope">{copy.overviewScope}</p>
                       <p className="analysis-summary-sub">{copy.markedAreaExplanation}</p>
                     </div>
                   </div>
@@ -692,7 +775,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                         <span className="kpi-label">{copy.markedArea}</span>
                         <span className="kpi-tag">{copy.percentageOfEvaluatedArea}</span>
                       </div>
-                      <div className="kpi-number-wrap">
+                      <div className="kpi-number-wrap analysis-area-ring" style={{ background: `conic-gradient(var(--primary) ${Math.min(100, Math.max(0, score.overall.wrinkle_area_ratio * 100))}%, var(--primary-soft) 0)` }}>
                         <strong>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}%</strong>
                       </div>
                       <div className="kpi-mini-track" aria-hidden="true">
@@ -703,9 +786,6 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                     <div className="analysis-kpi-tile analysis-total">
                       <div className="kpi-label-wrap">
                         <span className="kpi-label">{copy.experimentalScore}</span>
-                        <span className={`kpi-level-badge ${getScoreLevelClass(score.overall.score)}`}>
-                          {getScoreLevel(score.overall.score, language)}
-                        </span>
                       </div>
                       <div className="kpi-number-wrap">
                         <strong>{score.overall.score.toFixed(1)} <small>/ 100</small></strong>
@@ -727,23 +807,40 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                       <h3 id="analysis-regions-heading">{copy.regionsHeading}</h3>
                       <p className="analysis-section-intro">{copy.regionExplanation}</p>
                     </div>
-                    <span className="regions-count-badge">
-                      {copy.regionsSummary(evaluableRegions.length, allRegions.length)}
-                    </span>
                   </div>
 
                   {evaluableRegions.length > 0 ? (
-                    <div className="analysis-regions analysis-regions-grid">
-                      {displayedRegions.map(([name, value]) => (
-                        <RegionCard key={name} name={name} value={value} language={language} />
-                      ))}
+                    <div className="analysis-regional-overview">
+                      <div className="analysis-region-data">
+                        <dl className="analysis-region-facts">
+                          <div><dt>{copy.markedArea}</dt><dd>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}<small>%</small></dd></div>
+                          <div><dt>{copy.measuredRegions}</dt><dd>{evaluableRegions.length}<small> / {allRegions.length}</small></dd></div>
+                          <div><dt>{copy.largestRegion}</dt><dd>{(primaryRegions[0][1].wrinkle_area_ratio * 100).toFixed(2)}<small>%</small></dd></div>
+                        </dl>
+                        <div className="analysis-regions analysis-regions-grid">
+                        {primaryRegions.map(([name, value], index) => (
+                          <RegionCard key={name} name={name} value={value} language={language} rank={index + 1} />
+                        ))}
+                        </div>
+                      </div>
+                      {analysis.result?.model_output?.personalized_outline_available && artifactAvailability === "available" && outlineError !== analysis.id ? (
+                        <figure className="analysis-face-map">
+                          {/* Authenticated generated SVG; never inline untrusted SVG markup. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/api/analysis?artifact=outline" alt={copy.personalOutlineNote} onError={() => setOutlineError(analysis.id)} />
+                          <figcaption><strong>{copy.mapTitle}</strong><span>{copy.personalOutlineNote}</span></figcaption>
+                        </figure>
+                      ) : <div>
+                        {analysis.result?.model_output?.personalized_outline_available && <p className="analysis-section-intro">{copy.personalOutlineUnavailable}</p>}
+                        <FaceRegionMap regions={evaluableRegions} language={language} />
+                      </div>}
                     </div>
                   ) : (
-                    <p className="analysis-section-intro">{copy.noRegionPixels}</p>
+                    <p className="analysis-section-intro">{analysis.result?.model_output?.regional_geometry_status === "unavailable" ? copy.noLandmarkRegions : copy.noRegionPixels}</p>
                   )}
 
                   <details className="analysis-extra-regions">
-                    <summary>{copy.viewTechnicalData}</summary>
+                    <summary><span>{copy.viewTechnicalData}</span><ChevronDown size={16} aria-hidden="true" /></summary>
                     <div className="analysis-technical-body">
                       <p className="analysis-pixel-count-label">{copy.pixelCounts}</p>
                       <dl className="analysis-region-detail-list">
@@ -759,7 +856,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                               {value.evaluated_pixels > 0 ? (
                                 <>
                                   {value.wrinkle_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} / {value.evaluated_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} {copy.pixels}
-                                  <small>{(value.wrinkle_area_ratio * 100).toFixed(2)}% · {value.score.toFixed(1)} / 100</small>
+                                  <small>{(value.wrinkle_area_ratio * 100).toFixed(2)}% · {copy.experimentalScore}: {value.score.toFixed(1)} / 100</small>
                                 </>
                               ) : copy.noRegionPixels}
                             </dd>
@@ -769,6 +866,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
 
                       <div className="analysis-method-content">
                         <h4>{copy.method}</h4>
+                        {score.roi_version && <p>ROI: <code>{score.roi_version}</code></p>}
                         <p>{copy.ratioFormula}</p>
                         <p>{copy.scoreFormula} <code>{score.formula}</code>. {copy.decimalNote}</p>
                         <p>{copy.thisImage} {score.overall.wrinkle_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} ÷ {score.overall.evaluated_pixels.toLocaleString(language === "th" ? "th-TH" : "en-GB")} {copy.pixels} = {(score.overall.wrinkle_area_ratio * 100).toFixed(2)}% · {copy.experimentalScore.toLowerCase()} {score.overall.score.toFixed(1)} / 100.</p>
@@ -790,7 +888,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
             </div>
 
             {/* Lightbox / Zoom Modal for Desktop Inspection */}
-            {zoomOpen && (
+            {zoomVisible && (
               <div
                 className="analysis-zoom-modal"
                 role="dialog"
@@ -800,11 +898,12 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                   if (e.target === e.currentTarget) setZoomOpen(false);
                 }}
               >
-                <div className="analysis-zoom-dialog">
+                <div className="analysis-zoom-dialog" ref={zoomDialogRef}>
                   <div className="analysis-zoom-header">
                     <div className="analysis-zoom-tabs" role="group" aria-label={copy.artifactControls}>
                       <button
                         type="button"
+                        aria-pressed={artifact === "overlay"}
                         className={artifact === "overlay" ? "active" : ""}
                         onClick={() => { setArtifact("overlay"); setArtifactLoadError(false); }}
                       >
@@ -813,6 +912,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                       </button>
                       <button
                         type="button"
+                        aria-pressed={artifact === "mask"}
                         className={artifact === "mask" ? "active" : ""}
                         onClick={() => { setArtifact("mask"); setArtifactLoadError(false); }}
                       >
@@ -852,6 +952,7 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                       <button
                         type="button"
                         className="zoom-tool-btn zoom-tool-close"
+                        data-zoom-close
                         onClick={() => setZoomOpen(false)}
                         aria-label={copy.closeZoom}
                         title={copy.closeZoom}
@@ -869,7 +970,8 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                         unoptimized
                         width={1024}
                         height={1024}
-                        src={`/api/analysis?artifact=${artifact}`}
+                        src={artifactSource}
+                        onError={() => { setArtifactLoadError(true); setZoomOpen(false); }}
                         alt={artifact === "overlay" ? copy.overlayAlt : copy.maskAlt}
                         style={{ transform: `scale(${zoomScale})` }}
                       />
