@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useLanguage } from "@/components/language-provider";
@@ -192,11 +191,8 @@ function ProfileMeasurements() {
   const { language } = useLanguage();
   const t = (th: string, en: string) => language === "en" ? en : th;
   const [values, setValues] = useState({ height: "", weight: "" });
-  const [active, setActive] = useState({ height: false, weight: false });
-  const [consented, setConsented] = useState({ height: false, weight: false });
-  const [messages, setMessages] = useState({ height: "", weight: "", load: "" });
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<"height" | "weight" | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -206,117 +202,30 @@ function ProfileMeasurements() {
         if (!response.ok) throw new Error("profile_load_failed");
         if (!current) return;
         const profile = result as DailyHealthProfile;
-        const heightActive = profile.height_profile_consent_active === true;
-        const weightActive = profile.weight_profile_consent_active === true;
-        setActive({ height: heightActive, weight: weightActive });
-        setConsented({ height: heightActive, weight: weightActive });
         setValues({
-          height: heightActive && profile.height_cm != null ? String(profile.height_cm) : "",
-          weight: weightActive && profile.weight_kg != null ? String(profile.weight_kg) : "",
+          height: profile.height_profile_consent_active === true && profile.height_cm != null ? String(profile.height_cm) : "",
+          weight: profile.weight_profile_consent_active === true && profile.weight_kg != null ? String(profile.weight_kg) : "",
         });
+        setMessage("");
       })
       .catch(() => {
-        if (current) setMessages((state) => ({
-          ...state,
-          load: language === "en" ? "Could not load height and weight" : "โหลดข้อมูลส่วนสูงและน้ำหนักไม่สำเร็จ",
-        }));
+        if (current) setMessage(language === "en" ? "Could not load height and weight" : "โหลดข้อมูลส่วนสูงและน้ำหนักไม่สำเร็จ");
       })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
   }, [language]);
 
-  async function saveMeasurement(event: FormEvent<HTMLFormElement>, kind: "height" | "weight") {
-    event.preventDefault();
-    const allowStorage = consented[kind];
-    if (!allowStorage && !active[kind]) return;
-    setSaving(kind);
-    setMessages((state) => ({ ...state, [kind]: "" }));
-    const endpoint = `/api/daily-health/profile/${kind}`;
-    try {
-      const response = await fetch(endpoint, {
-        method: allowStorage ? "POST" : "DELETE",
-        headers: allowStorage ? { "Content-Type": "application/json" } : undefined,
-        body: allowStorage
-          ? JSON.stringify({
-              consent_given: true,
-              [kind === "height" ? "height_cm" : "weight_kg"]: Number(values[kind]),
-            })
-          : undefined,
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("profile_save_failed");
-      setActive((state) => ({ ...state, [kind]: allowStorage }));
-      if (!allowStorage) {
-        setValues((state) => ({ ...state, [kind]: "" }));
-        setConsented((state) => ({ ...state, [kind]: false }));
-      }
-      setMessages((state) => ({
-        ...state,
-        [kind]: allowStorage
-          ? t("บันทึกข้อมูลแล้ว", "Saved to your profile")
-          : t("ถอนความยินยอมและลบข้อมูลแล้ว", "Consent withdrawn and data removed"),
-      }));
-    } catch {
-      setMessages((state) => ({
-        ...state,
-        [kind]: allowStorage
-          ? t("บันทึกข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not save. Please try again.")
-          : t("ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not remove the data. Please try again."),
-      }));
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  const fields = [
-    { kind: "height" as const, label: t("ส่วนสูง", "Height"), unit: "cm", min: 30, max: 300, step: 0.1,
-      consent: t("ยินยอมให้จัดเก็บส่วนสูงในโปรไฟล์ส่วนตัว", "I consent to storing my height in my profile."),
-      note: t("ใช้แสดงในโปรไฟล์เท่านั้น ไม่ได้นำไปคำนวณคะแนนสุขภาพ", "For your profile only; it is not used to calculate health scores.") },
-    { kind: "weight" as const, label: t("น้ำหนัก", "Weight"), unit: "kg", min: 1, max: 500, step: 0.1,
-      consent: t("ยินยอมให้จัดเก็บน้ำหนักและใช้คำนวณเกณฑ์น้ำดื่มอ้างอิง", "I consent to storing my weight and using it for my hydration reference."),
-      note: t("เมื่อถอนความยินยอม ระบบจะลบน้ำหนักและคะแนนกระหายน้ำตามสูตรที่เคยคำนวณจากค่านี้", "Withdrawing consent also removes saved weight snapshots and formula-based thirst scores derived from it.") },
-  ];
-
   return (
-    <section className="profile-measurements" aria-labelledby="profile-measurements-title">
-      <h2 id="profile-measurements-title">{t("ส่วนสูงและน้ำหนัก", "Height and weight")}</h2>
-      <p>{t("ข้อมูลนี้บันทึกแยกจากแบบฟอร์มรายวัน และคุณเลือกยินยอมแยกสำหรับแต่ละรายการได้", "These are profile details, separate from your daily form. Consent is managed independently for each measurement.")}</p>
-      {messages.load && <p className="form-message" role="status">{messages.load}</p>}
+    <section className="profile-measurements" aria-label={t("ส่วนสูงและน้ำหนักจากข้อมูลสมัครสมาชิก", "Height and weight from signup information")}>
+      {message && <p className="form-message" role="status">{message}</p>}
       <div className="profile-measurement-grid">
-        {fields.map(({ kind, label, unit, min, max, step, consent, note }) => (
-          <form className="profile-measurement-card" key={kind} onSubmit={(event) => void saveMeasurement(event, kind)}>
-            <h3>{label}</h3>
-            <label htmlFor={`profile-${kind}`}>{t("ค่าปัจจุบัน", "Current value")} ({unit})</label>
-            <input
-              id={`profile-${kind}`}
-              type="number"
-              min={min}
-              max={max}
-              step={step}
-              required={consented[kind]}
-              value={values[kind]}
-              onChange={(event) => setValues((state) => ({ ...state, [kind]: event.target.value }))}
-              disabled={loading || saving !== null}
-            />
-            <label className="profile-measurement-consent">
-              <input
-                type="checkbox"
-                checked={consented[kind]}
-                onChange={(event) => setConsented((state) => ({ ...state, [kind]: event.target.checked }))}
-                disabled={loading || saving !== null}
-              />
-              <span>{consent}</span>
-            </label>
-            <small>{note}</small>
-            <button
-              className="secondary-button"
-              type="submit"
-              disabled={loading || saving !== null || (consented[kind] && !values[kind]) || (!consented[kind] && !active[kind])}
-            >
-              {saving === kind ? t("กำลังบันทึก…", "Saving…") : consented[kind] ? t("บันทึก", "Save") : t("ถอนความยินยอมและลบ", "Withdraw consent and remove")}
-            </button>
-            <p className="form-message" role="status" aria-live="polite">{messages[kind]}</p>
-          </form>
+        {[
+          { kind: "height" as const, label: t("ส่วนสูง", "Height"), unit: "cm" },
+          { kind: "weight" as const, label: t("น้ำหนัก", "Weight"), unit: "kg" },
+        ].map(({ kind, label, unit }) => (
+          <article className="profile-saved-measurement" key={kind}>
+            <dl><dt>{label}</dt><dd>{loading ? t("กำลังโหลด…", "Loading…") : values[kind] ? `${values[kind]} ${unit}` : message ? t("โหลดไม่ได้", "Unavailable") : t("ยังไม่ได้บันทึก", "Not saved")}</dd></dl>
+          </article>
         ))}
       </div>
     </section>
@@ -360,10 +269,10 @@ export default function ProfilePage() {
         <div className="profile-auth-actions"><Link className="primary-button" href="/login">{t("เข้าสู่ระบบ", "Sign in")} <span aria-hidden="true">→</span></Link><Link className="secondary-button" href="/signup">{t("สร้างบัญชีใหม่", "Create an account")}</Link></div>
       </div>}
       {profile && <><article className="profile-account"><h2>{profile.display_name}</h2><p>{profile.email}</p></article>
+        <h2>{t("ข้อมูลที่ตอบในขั้นตอนสมัครสมาชิก", "Signup information")}</h2>
         <ProfileMeasurements />
         {profile.answers || profile.profile ? <>
-          <h2>{t("ข้อมูลที่ตอบในขั้นตอนสมัครสมาชิก", "Signup information")}</h2>
-          <dl className="profile-answers">{Object.entries(profile.answers ?? profile.profile ?? {}).filter(([key]) => key !== "guardian_consent" && !(key === "age_group" && profile.answers?.age_years != null)).map(([key, value]) => <div key={key}><dt>{labels[key]?.[language === "en" ? 1 : 0] ?? key}</dt><dd>{displayValue(value, key, language)}</dd></div>)}</dl>
+          <dl className="profile-answers">{Object.entries(profile.answers ?? profile.profile ?? {}).filter(([key]) => key !== "guardian_consent" && key !== "height_cm" && key !== "weight_kg" && !(key === "age_group" && profile.answers?.age_years != null)).map(([key, value]) => <div key={key}><dt>{labels[key]?.[language === "en" ? 1 : 0] ?? key}</dt><dd>{displayValue(value, key, language)}</dd></div>)}</dl>
           <Link className="secondary-button" href="/onboarding/health?edit=full">{t("แก้ไขข้อมูลสุขภาพ →", "Edit wellness information →")}</Link>
           <p className="metadata">{t("คำตอบล่าสุดนี้ใช้เป็นข้อมูลประกอบการแนะนำผลิตภัณฑ์ตามกฎความปลอดภัย", "These answers are used as inputs for safety-checked product recommendations.")}</p>
           {shouldShowMenstrualCalendar && <MenstrualCycleCalendar />}

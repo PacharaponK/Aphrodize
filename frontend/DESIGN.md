@@ -276,6 +276,12 @@ This revision supersedes the background-video/three-lane Home layout below. Use 
 
 ## ประวัติและแนวโน้มสุขภาพ (`/trend`)
 
+### Signup measurements and Skin profile
+
+- Height and weight are entered once in the signup questionnaire and stored through the existing consent-aware measurement APIs. Daily tracking reuses saved account values; it must not require daily re-entry.
+- Skin profile displays the current saved measurements under “Signup information”, without duplicate fields in the answer list. Measurement cards are read-only with no “Edit or manage consent” disclosure or repeated input form. Removing these controls does not change saved values or consent; keep the existing APIs and separate wellness-edit flow intact.
+- Use the consent-aware daily-health profile as the authoritative source. Do not restore revoked measurements from historical questionnaire answers. Unsaved edits must not replace the displayed saved value.
+
 - วางการ์ด “Your personal outlook” ก่อนรายการประวัติ เพื่อเปรียบเทียบค่าจริงใน 7 วันปฏิทินล่าสุดกับค่าประมาณหนึ่งวันถัดไปของเวลานอนและปริมาณน้ำดื่ม
 - ค่าจริงต้องมาจากรายการที่เจ้าของบัญชีบันทึกเอง (`user_reported`) ในบัญชีที่ยืนยันตัวตนเท่านั้น; ห้ามใช้ fixture, ข้อมูลนำเข้า/สังเคราะห์, prediction เก่า หรือข้อมูลจากบัญชีอื่น
 - การคำนวณเป็น linear trend เชิงสถิติแบบทดลอง ใช้ข้อมูลจริงอย่างน้อย 3 วันภายในหน้าต่าง 7 วัน; วันที่ขาดหายเป็นช่องว่าง ไม่ใช่ศูนย์ และค่าประมาณถูกจำกัดในช่วงที่ฟอร์มยอมรับได้

@@ -389,10 +389,10 @@ select:focus-visible, .admin-select:focus-visible { outline: 2px solid var(--rin
 .profile-account h2 { margin: 0 0 4px; }
 .profile-account p { margin: 0; color: var(--muted); }
 .profile-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
-.profile-answers div { padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.profile-answers div { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:baseline;gap:16px;padding:16px;border:1px solid var(--line);border-radius:8px; }
 .profile-answers dt { color: var(--muted); font-size: 12px; }
-.profile-answers dd { margin: 6px 0 0; color: var(--ink); font-weight: 600; text-transform: capitalize; }
-.profile-measurements { display: grid; gap: 10px; margin: 28px 0; }
+.profile-answers dd { margin:0;color:var(--ink);font-weight:600;text-transform:capitalize;text-align:right;overflow-wrap:anywhere; }
+.profile-measurements { display: grid; gap: 10px; margin: 16px 0; }
 .profile-measurements > h2, .profile-measurement-card h3 { margin: 0; }
 .profile-measurements > p { margin: 0; color: var(--muted); font-size: 14px; }
 .profile-menstrual { display: grid; gap: 10px; margin: 28px 0; }
@@ -429,6 +429,13 @@ select:focus-visible, .admin-select:focus-visible { outline: 2px solid var(--rin
 .cycle-legend i.is-estimated { border: 2px dashed #ad7093; background: transparent; }
 @media (max-width: 600px) { .cycle-summary-grid { grid-template-columns: 1fr; } .cycle-calendar { padding: 12px; } .cycle-calendar-grid { gap: 3px; } .cycle-day, .cycle-calendar-empty { min-width: 32px; min-height: 35px; } }
 .profile-measurement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.profile-saved-measurement{min-width:0;padding:16px;border:1px solid var(--line);border-radius:8px;background:transparent}
+.profile-saved-measurement dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:baseline;gap:16px;margin:0}
+.profile-saved-measurement dt{color:var(--muted);font-size:12px}
+.profile-saved-measurement dd{margin:0;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;text-align:right;overflow-wrap:anywhere}
+.profile-saved-measurement summary{display:flex;align-items:center;min-height:44px;color:var(--primary-deep);cursor:pointer;font-size:12px;text-decoration:underline;text-underline-offset:3px}
+.profile-saved-measurement .profile-measurement-card{padding:16px 0 0;border:0;border-radius:0;background:transparent}
+.profile-measurements>h3{margin:0;font-size:16px}
 .profile-measurement-card { display: grid; align-content: start; gap: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .profile-measurement-card > label:not(.profile-measurement-consent) { color: var(--muted); font-size: 13px; }
 .profile-measurement-card > input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--input); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
