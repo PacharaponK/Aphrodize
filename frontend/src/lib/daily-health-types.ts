@@ -102,6 +102,44 @@ export type DailyHealthHistoryResponse = {
   items: DailyHealthHistoryItem[];
 };
 
+export type PersonalForecastMetric = {
+  value: number | null;
+  status: "predicted" | "insufficient_history";
+};
+
+export type PersonalForecastDay = {
+  local_date: string;
+  sleep_duration_minutes: number | null;
+  water_intake_ml: number | null;
+};
+
+export type DailyHealthPersonalForecast = {
+  enabled: boolean;
+  status:
+    | "daily_health_consent_required"
+    | "consent_required"
+    | "forecasted"
+    | "insufficient_history";
+  prediction_target_date?: string;
+  history_start_date?: string;
+  history_end_date?: string;
+  actual?: PersonalForecastDay[];
+  predictions?: {
+    sleep_duration_minutes: PersonalForecastMetric;
+    water_intake_ml: PersonalForecastMetric;
+  };
+  model?: {
+    model_id: string;
+    family: string;
+    scope: "account_only";
+    prediction_horizon_days: 1;
+    history_window_days: number;
+    observations_used: number;
+    minimum_observations: number;
+    method: string;
+  };
+};
+
 export type SmokingStatus = "current" | "former" | "never" | "prefer_not_to_say";
 export type AgeBand = "13_17" | "18_60" | "61_64" | "65_plus";
 export type SkinType =
