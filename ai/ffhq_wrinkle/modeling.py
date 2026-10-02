@@ -1,4 +1,8 @@
-"""Strict Stage-2 model loading and device selection for wrinkle inference."""
+"""Build the Stage-2 segmentation network from a verified checkpoint.
+
+UNet and SwinUNETR both accept four input channels and output two class logits.
+The application service caches the returned ``ModelBundle`` across images.
+"""
 
 from __future__ import annotations
 
@@ -43,6 +47,7 @@ class DeviceSelection:
 
 @dataclass(frozen=True)
 class ModelBundle:
+    """Loaded model, selected device, and provenance used in public metadata."""
     model: torch.nn.Module
     architecture: str
     checkpoint: Path
@@ -74,6 +79,7 @@ def sha256_file(path: Path) -> str:
 
 
 def resolve_device(requested: str = "auto") -> DeviceSelection:
+    """Use CUDA when available; record when an explicit CUDA request falls back."""
     requested = requested.lower()
     if requested not in ("auto", "cpu", "cuda"):
         raise ValueError("device must be auto, cpu, or cuda")
@@ -112,6 +118,7 @@ def device_metadata(selection: DeviceSelection) -> dict[str, object]:
 
 
 def create_model(architecture: str) -> torch.nn.Module:
+    """Construct the four-input, two-output architecture named by checkpoint."""
     architecture = canonical_architecture(architecture)
     if architecture == "UNet":
         return UNet(n_channels=4, n_classes=2, bilinear=True)
@@ -124,6 +131,7 @@ def load_checkpoint_strict(
     device: torch.device,
     architecture: str,
 ) -> torch.nn.Module:
+    """Load weights only if every checkpoint key fits the chosen network."""
     checkpoint_path = Path(checkpoint_path)
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     state = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
@@ -148,13 +156,21 @@ def load_wrinkle_model(
     requested_device: str = "auto",
     verify_official: bool = True,
 ) -> ModelBundle:
-    """Create a model, verify its official Stage-2 artifact, and load strictly."""
+    """Verify bytes/hash, select a device, and return an eval-mode model.
 
+    The hash check protects model lineage before the checkpoint is executed.
+    ``verify_official=False`` is for explicit non-official evaluation runs.
+    """
+
+    # Loading can dominate the first request, so record its duration.
     started = perf_counter()
+    # Normalize aliases such as `swin` to a known architecture name.
     architecture = canonical_architecture(architecture)
+    # Default points to the repository's official Stage-2 checkpoint.
     checkpoint = Path(checkpoint_path) if checkpoint_path else default_checkpoint(architecture)
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Stage-2 checkpoint not found: {checkpoint}")
+    # Verify the checkpoint before deserializing its weights.
     actual_size = checkpoint.stat().st_size
     actual_sha256 = sha256_file(checkpoint)
     if verify_official:
@@ -163,10 +179,15 @@ def load_wrinkle_model(
             raise CheckpointArchitectureError(
                 f"checkpoint does not match official Stage-2 {architecture} artifact"
             )
+    # Choose CUDA when available (or CPU) and record any fallback.
     selection = resolve_device(requested_device)
+    # The network receives four input channels and emits two logits per pixel.
     model = create_model(architecture).to(selection.device)
+    # Require every saved parameter to match the selected network exactly.
     load_checkpoint_strict(model, checkpoint, selection.device, architecture)
+    # Inference runs with training-specific behavior disabled.
     model.eval()
+    # The service caches this bundle and passes it into predict_image().
     return ModelBundle(
         model=model,
         architecture=architecture,

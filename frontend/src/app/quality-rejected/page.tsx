@@ -1,17 +1,23 @@
-/* Full page navigation reinitializes the prototype scripts. */
-/* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
-import Image from "next/image";
+"use client";
 
-export const metadata: Metadata = { title: "ภาพยังไม่ผ่าน — Aphrodize" };
+import Link from "next/link";
+import { WorkspaceShell } from "@/components/workspace-shell";
+import { useLanguage } from "@/components/language-provider";
 
 export default function Page() {
+  const { language } = useLanguage();
+  const t = (th: string, en: string) => language === "en" ? en : th;
   return (
-    <>
-      <div className="simple-page"><main className="page-frame"><header className="page-header"><a className="page-brand" href="/"><Image width={40} height={40} src="/assets/aphrodize-contour-a.svg" alt="" />Aphrodize</a><nav className="page-nav"><a href="/">ภาพรวม</a><a className="active" href="/capture">วิเคราะห์ภาพ</a><a href="/trend">แนวโน้ม</a></nav></header><section className="page-content quality-panel"><div className="quality-symbol">!</div><p className="eyebrow">QUALITY GATE</p><h1>ภาพนี้ยังใช้เปรียบเทียบไม่ได้</h1><p>จึงไม่นำไปคำนวณผลหรือแนวโน้ม เพื่อไม่ให้ความต่างของภาพถูกตีความว่าเป็นความเปลี่ยนแปลงของผิว</p><ul className="quality-list"><li>แสงน้อยเกินไป</li><li>ภาพอาจเบลอ</li></ul><p className="metadata">ลองหันหน้าเข้าหาแสงนุ่มที่สม่ำเสมอ และวางกล้องให้นิ่ง</p><div className="page-actions"><a className="primary-button" href="/capture">ถ่ายภาพใหม่ →</a><a className="secondary-button" href="/">กลับหน้าภาพรวม</a></div></section></main></div>
-    </>
+    <WorkspaceShell eyebrow="QUALITY GATE" title="ตรวจคุณภาพภาพ">
+      <section className="page-content workspace-panel quality-panel">
+        <div className="quality-symbol">!</div>
+        <p className="eyebrow">QUALITY GATE</p>
+        <h2>{t("ภาพนี้ยังใช้เปรียบเทียบไม่ได้", "This image cannot be compared")}</h2>
+        <p>{t("จึงไม่นำไปคำนวณผลหรือแนวโน้ม เพื่อไม่ให้ความต่างของภาพถูกตีความว่าเป็นความเปลี่ยนแปลงของผิว", "It will not be used to calculate a result or trend, so image differences are not mistaken for skin changes.")}</p>
+        <ul className="quality-list"><li>{t("แสงน้อยเกินไป", "Lighting is too low")}</li><li>{t("ภาพอาจเบลอ", "The image may be blurry")}</li></ul>
+        <p className="metadata">{t("ลองหันหน้าเข้าหาแสงนุ่มที่สม่ำเสมอ และวางกล้องให้นิ่ง", "Face soft, even lighting and hold the camera steady.")}</p>
+        <div className="page-actions"><Link className="primary-button" href="/capture">{t("ถ่ายภาพใหม่ →", "Take a new photo →")}</Link><Link className="secondary-button" href="/">{t("กลับหน้าภาพรวม", "Back to overview")}</Link></div>
+      </section>
+    </WorkspaceShell>
   );
 }
-
-
-

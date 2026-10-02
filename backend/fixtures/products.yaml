@@ -1,0 +1,851 @@
+# Reviewed real product snapshot. Sources: docs/research/thai-product-catalog-2026-10-01.md
+reviewed_at: '2026-10-01T00:00:00+07:00'
+products:
+- brand: CeraVe
+  name: Moisturizing Cream
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: moisturizer
+  target_skin_types:
+  - normal
+  - dry
+  concerns:
+  - fragrance-free
+  - non-comedogenic
+  - gentle
+  source_url: https://www.cerave.com/skincare/moisturizers/moisturizing-cream/
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - AQUA / WATER / EAU
+  - GLYCERIN
+  - CETEARYL ALCOHOL
+  - CAPRYLIC/CAPRIC TRIGLYCERIDE
+  - CETYL ALCOHOL
+  - CETEARETH-20
+  - PETROLATUM
+  - POTASSIUM PHOSPHATE
+  - CERAMIDE NP
+  - CERAMIDE AP
+  - CERAMIDE EOP
+  - CARBOMER
+  - DIMETHICONE
+  - BEHENTRIMONIUM METHOSULFATE
+  - SODIUM LAUROYL LACTYLATE
+  - SODIUM HYALURONATE
+  - CHOLESTEROL
+  - PHENOXYETHANOL
+  - DISODIUM EDTA
+  - DIPOTASSIUM PHOSPHATE
+  - TOCOPHEROL
+  - PHYTOSPHINGOSINE
+  - XANTHAN GUM
+  - ETHYLHEXYLGLYCERIN
+  market: US
+- brand: CeraVe
+  name: Daily Moisturizing Lotion
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: moisturizer
+  target_skin_types:
+  - normal
+  - dry
+  concerns:
+  - fragrance-free
+  - lightweight
+  - oil-free
+  - non-comedogenic
+  - gentle
+  source_url: https://www.cerave.com/skincare/moisturizers/daily-moisturizing-lotion
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - AQUA / WATER / EAU
+  - GLYCERIN
+  - CAPRYLIC/CAPRIC TRIGLYCERIDE
+  - CETEARYL ALCOHOL
+  - CETYL ALCOHOL
+  - DIMETHICONE
+  - PHENOXYETHANOL
+  - POLYSORBATE 20
+  - CETEARETH-20
+  - BEHENTRIMONIUM METHOSULFATE
+  - POLYGLYCERYL-3 DIISOSTEARATE
+  - SODIUM LAUROYL LACTYLATE
+  - ETHYLHEXYLGLYCERIN
+  - POTASSIUM PHOSPHATE
+  - DISODIUM EDTA
+  - DIPOTASSIUM PHOSPHATE
+  - CERAMIDE NP
+  - CERAMIDE AP
+  - PHYTOSPHINGOSINE
+  - CHOLESTEROL
+  - XANTHAN GUM
+  - CARBOMER
+  - SODIUM HYALURONATE
+  - TOCOPHEROL
+  - CERAMIDE EOP
+  market: US
+- brand: CeraVe
+  name: Ultra-Light Moisturizing Gel
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: moisturizer
+  target_skin_types:
+  - all
+  concerns:
+  - fragrance-free
+  - lightweight
+  - oil-free
+  - non-comedogenic
+  source_url: https://www.cerave.com/skincare/moisturizers/facial-moisturizers/ultra-light-moisturizing-gel
+  warnings_label: 'หลีกเลี่ยงการสัมผัสดวงตาโดยตรง หากสัมผัสให้ล้างด้วยน้ำ หมายเหตุข้อมูล fixture: สูตรเว็บไซต์สหรัฐฯ
+    ตรวจฉลากบรรจุภัณฑ์จริงก่อนใช้ ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - AQUA / WATER / EAU
+  - GLYCERIN
+  - NIACINAMIDE
+  - PROPANEDIOL
+  - DIMETHICONE
+  - ISONONYL ISONONANOATE
+  - CERAMIDE NP
+  - CERAMIDE AP
+  - CERAMIDE EOP
+  - CARBOMER
+  - DIMETHICONE CROSSPOLYMER
+  - CETEARYL ALCOHOL
+  - BEHENTRIMONIUM METHOSULFATE
+  - TRIETHYL CITRATE
+  - SILICA
+  - SODIUM HYDROXIDE
+  - SODIUM HYALURONATE
+  - SODIUM LAUROYL LACTYLATE
+  - CHOLESTEROL
+  - PHENOXYETHANOL
+  - TOCOPHEROL
+  - CHLORPHENESIN
+  - CAPRYLYL GLYCOL
+  - TRISODIUM ETHYLENEDIAMINE DISUCCINATE
+  - BIOSACCHARIDE GUM-1
+  - XANTHAN GUM
+  - PHYTOSPHINGOSINE
+  - BENZOIC ACID
+  market: US
+- brand: Vanicream
+  name: Daily Facial Moisturizer
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: moisturizer
+  target_skin_types:
+  - all
+  concerns:
+  - lightweight
+  - gentle
+  - non-comedogenic
+  source_url: https://www.vanicream.com/product/vanicream-daily-facial-moisturizer
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - water
+  - squalane
+  - glycerin
+  - pentylene glycol
+  - polyglyceryl-2 stearate
+  - glyceryl stearate
+  - stearyl alcohol
+  - hyaluronic acid
+  - ceramide EOP
+  - ceramide NG
+  - ceramide NP
+  - ceramide AS
+  - ceramide AP
+  - carnosine
+  - hydrogenated lecithin
+  - phytosterols
+  - caprylyl glycol
+  - polyacrylate crosspolymer-11
+  - 1,2-hexanediol
+  market: US
+- brand: Cetaphil
+  name: Daily Hydrating Lotion
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: moisturizer
+  target_skin_types:
+  - all
+  concerns:
+  - fragrance-free
+  - lightweight
+  - oil-free
+  - non-comedogenic
+  - gentle
+  source_url: https://www.cetaphil.com/us/products/product-categories/all-moisturizers/daily-hydrating-lotion/302993889038.html
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - Water
+  - Dicaprylyl Carbonate
+  - Hydroxyethyl Urea
+  - Cyclopentasiloxane
+  - Glycerin
+  - Glyceryl Stearate
+  - PEG-100 Stearate
+  - Hydrolyzed Hyaluronic Acid
+  - Sodium Hydroxide
+  - Homarine HCI
+  - Sodium PCA
+  - Cetyl Alcohol
+  - Caprylyl Glycol
+  - Phenoxyethanol
+  - Acrylates/C10-30 Alkyl Acrylate Crosspolymer
+  - Erythritol
+  market: US
+- brand: La Roche-Posay
+  name: Toleriane Purifying Foaming Facial Wash
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: cleanser
+  target_skin_types:
+  - normal
+  - oily
+  concerns:
+  - gentle
+  - fragrance-free
+  - oil-free
+  - non-comedogenic
+  source_url: https://www.laroche-posay.us/our-products/face/face-wash/toleriane-purifying-foaming-face-wash-3337875888042.html
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - AQUA/WATER/EAU
+  - GLYCERIN
+  - COCO-BETAINE
+  - PROPANEDIOL
+  - PEG-120 METHYL GLUCOSE DIOLEATE
+  - SODIUM HYDROXIDE
+  - SODIUM CHLORIDE
+  - CITRIC ACID
+  - DISODIUM EDTA
+  - HYDROXYACETOPHENONE
+  - CAPRYLOYL GLYCINE
+  - CAPRYLYL GLYCOL
+  - DISODIUM COCOYL GLYCINATE
+  - CERAMIDE NP
+  - NIACINAMIDE
+  - TRISODIUM ETHYLENEDIAMINE DISUCCINATE
+  - PENTYLENE GLYCOL
+  - ACRYLATES COPOLYMER
+  - TOCOPHEROL
+  market: US
+- brand: Cetaphil
+  name: Hydrating Foaming Cream Cleanser
+  variant: สูตรเว็บไซต์ผู้ผลิตสิงคโปร์ (SG)
+  category: cleanser
+  target_skin_types:
+  - all
+  concerns:
+  - gentle
+  - fragrance-free
+  - non-comedogenic
+  source_url: https://www.cetaphil.com.sg/moisturizers/cetaphil-hydrating-foaming-cream-cleanser/SG131052931.html
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_label: Aqua, Sodium Cocoyl isethionate, Glycerin, Glycol Distearate, Sodium Cocoyl Glutamate, Cocamidopropyl
+    Betaine, Sodium Lauroyl Sarcosinate, Cetearyl alcohol, Niacinamide, Panthenol, Aloe Barbadensis Leaf Juice Powder,
+    Pantolactone, Acrylates/C10-30, Alkyl Acrylate Crosspolymer, Arginine, Propylene Glycol, Sodium Chloride, Xantham
+    Gum, Ethylhexylglycerin, Phenoxyethanol, Citric Acid, FIL.1813.V00
+  ingredients_inci:
+  - Aqua
+  - Sodium Cocoyl Isethionate
+  - Glycerin
+  - Glycol Distearate
+  - Sodium Cocoyl Glutamate
+  - Cocamidopropyl Betaine
+  - Sodium Lauroyl Sarcosinate
+  - Cetearyl Alcohol
+  - Niacinamide
+  - Panthenol
+  - Aloe Barbadensis Leaf Juice Powder
+  - Pantolactone
+  - Acrylates/C10-30 Alkyl Acrylate Crosspolymer
+  - Arginine
+  - Propylene Glycol
+  - Sodium Chloride
+  - Xanthan Gum
+  - Ethylhexylglycerin
+  - Phenoxyethanol
+  - Citric Acid
+  market: SG
+- brand: Cetaphil
+  name: Gentle Skin Cleanser
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: cleanser
+  target_skin_types:
+  - normal
+  - dry
+  concerns:
+  - gentle
+  - fragrance-free
+  - oil-free
+  - non-comedogenic
+  source_url: https://www.cetaphil.com/us/products/product-categories/all-cleansers/cetaphil-gentle-skin-cleanser/302990110227.html
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_inci:
+  - Water
+  - Glycerin
+  - Cetearyl Alcohol
+  - Panthenol
+  - Niacinamide
+  - Pantolactone
+  - Xanthan Gum
+  - Sodium Cocoyl Isethionate
+  - Sodium Benzoate
+  - Citric Acid
+  market: US
+- brand: Cetaphil
+  name: Daily Facial Moisturizer SPF 35
+  variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
+  category: sunscreen
+  spf: 35
+  broad_spectrum: true
+  target_skin_types:
+  - all
+  concerns:
+  - fragrance-free
+  - oil-free
+  - lightweight
+  - non-comedogenic
+  - gentle
+  source_url: https://www.cetaphil.com/us/products/product-categories/all-moisturizers/daily-facial-moisturizer-spf-35/302994113002.html
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_label: 'Active Ingredients: Avobenzone 2.8%, Homosalate 9.5%, Octisalate 4.8%, Octocrylene 7%. Inactive
+    Ingredients: Water, Glycerin, Dipropylene Glycol, Panthenol (Vitamin B5), Ethylhexyl Methoxycrylene, Isopropyl
+    Palmitate, Silica, Niacinamide, Cetearyl Olivate, Cetearyl Alcohol, Glyceryl Stearate, Potassium Cetyl Phosphate,
+    Sorbitan Olivate, Tocopheryl Acetate (Vitamin E Acetate), Caprylyl Glycol, Acrylates/C10-30 Alkyl Acrylate Crosspolymer,
+    Palmitic Acid, Ethylhexylglycerin, Leontopodium (Edelweiss) Extract, Stearic Acid, 1,2-Hexanediol, Oryza Sativa
+    (Rice) Lees Extract, Propanediol, Sodium Hydroxide, Adenosine, Potassium Sorbate, Sodium Benzoate, Citric Acid,
+    Myristic Acid, Buddleja Davidii (Summer Lilac) Leaf Extract, Thymus Vulgaris (Thyme) Leaf Extract, Tocopherol
+    (Vitamin E).'
+  ingredients_inci:
+  - Avobenzone
+  - Homosalate
+  - Octisalate
+  - Octocrylene
+  - Water
+  - Glycerin
+  - Dipropylene Glycol
+  - Panthenol
+  - Ethylhexyl Methoxycrylene
+  - Isopropyl Palmitate
+  - Silica
+  - Niacinamide
+  - Cetearyl Olivate
+  - Cetearyl Alcohol
+  - Glyceryl Stearate
+  - Potassium Cetyl Phosphate
+  - Sorbitan Olivate
+  - Tocopheryl Acetate
+  - Caprylyl Glycol
+  - Acrylates/C10-30 Alkyl Acrylate Crosspolymer
+  - Palmitic Acid
+  - Ethylhexylglycerin
+  - Leontopodium (Edelweiss) Extract
+  - Stearic Acid
+  - 1,2-Hexanediol
+  - Oryza Sativa (Rice) Lees Extract
+  - Propanediol
+  - Sodium Hydroxide
+  - Adenosine
+  - Potassium Sorbate
+  - Sodium Benzoate
+  - Citric Acid
+  - Myristic Acid
+  - Buddleja Davidii (Summer Lilac) Leaf Extract
+  - Thymus Vulgaris (Thyme) Leaf Extract
+  - Tocopherol
+  market: US
+- brand: CeraVe
+  name: AM Facial Moisturising Lotion SPF 50
+  variant: 52 ml สูตรเว็บไซต์ไทย (TH)
+  category: sunscreen
+  market: TH
+  target_skin_types:
+  - normal
+  - dry
+  concerns:
+  - fragrance-free
+  - oil-free
+  - lightweight
+  - non-comedogenic
+  source_url: https://www.cerave.co.th/skincare/facial-moisturising-lotion-spf-50
+  price_source_url: https://www.watsons.co.th/en/cerave-cerave-facial-moisturising-lotion-spf50-am-52-ml.-normal-to-dry-skin/p/BP_313221
+  price_satang: 49900
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions: []
+  ingredients_inci:
+  - AQUA/WATER
+  - GLYCERIN
+  - ISOPROPYL PALMITATE
+  - BIS-ETHYLHEXYLOXYPHENOL METHOXYPHENYL TRIAZINE
+  - ETHYLHEXYL SALICYLATE
+  - NIACINAMIDE
+  - PENTYLENE GLYCOL
+  - BUTYL METHOXYDIBENZOYLMETHANE
+  - ETHYLHEXYL TRIAZONE
+  - PROPANEDIOL
+  - ZEA MAYS STARCH/CORN STARCH
+  - POTASSIUM CETYL PHOSPHATE
+  - DIISOPROPYL SEBACATE
+  - ORYZA SATIVA CERA/RICE BRAN WAX
+  - STEARIC ACID
+  - CERAMIDE NP
+  - CERAMIDE AP
+  - CERAMIDE EOP
+  - CARBOMER
+  - GLYCERYL STEARATE
+  - CETEARYL ALCOHOL
+  - TRIETHANOLAMINE
+  - BEHENTRIMONIUM METHOSULFATE
+  - TRIETHYL CITRATE
+  - SODIUM HYALURONATE
+  - SODIUM POLYACRYLATE
+  - SODIUM LAUROYL LACTYLATE
+  - MYRISTIC ACID
+  - CHOLESTEROL
+  - PALMITIC ACID
+  - TOCOPHEROL
+  - CAPRYLYL GLYCOL
+  - TRISODIUM ETHYLENEDIAMINE DISUCCINATE
+  - XANTHAN GUM
+  - PHYTOSPHINGOSINE
+  - ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER
+  - BUTYROSPERMUM PARKII BUTTER/SHEA BUTTER
+  - BENZOIC ACID
+  - PEG-100 STEARATE
+  ingredients_label: AQUA/WATER, GLYCERIN, ISOPROPYL PALMITATE, BIS-ETHYLHEXYLOXYPHENOL METHOXYPHENYL TRIAZINE,
+    ETHYLHEXYL SALICYLATE, NIACINAMIDE, PENTYLENE GLYCOL, BUTYL METHOXYDIBENZOYLMETHANE, ETHYLHEXYL TRIAZONE, PROPANEDIOL,
+    ZEA MAYS STARCH/CORN STARCH, POTASSIUM CETYL PHOSPHATE, DIISOPROPYL SEBACATE, ORYZA SATIVA CERA/RICE BRAN WAX,
+    STEARIC ACID, CERAMIDE NP, CERAMIDE AP, CERAMIDE EOP, CARBOMER, GLYCERYL STEARATE, CETEARYL ALCOHOL, TRIETHANOLAMINE,
+    BEHENTRIMONIUM METHOSULFATE, TRIETHYL CITRATE, SODIUM HYALURONATE, SODIUM POLYACRYLATE, SODIUM LAUROYL LACTYLATE,
+    MYRISTIC ACID, CHOLESTEROL, PALMITIC ACID, TOCOPHEROL, CAPRYLYL GLYCOL, TRISODIUM ETHYLENEDIAMINE DISUCCINATE,
+    XANTHAN GUM, PHYTOSPHINGOSINE, ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER, BUTYROSPERMUM PARKII BUTTER/SHEA
+    BUTTER, BENZOIC ACID, PEG-100 STEARATE
+  warnings_label: ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  spf: 50
+  broad_spectrum: true
+  purchase_url: https://www.watsons.co.th/en/cerave-cerave-facial-moisturising-lotion-spf50-am-52-ml.-normal-to-dry-skin/p/BP_313221
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-313221-front-zoom.jpg?version=1733877181
+- brand: CeraVe
+  name: AM Facial Moisturising Lotion SPF 30
+  variant: สูตรเว็บไซต์ผู้ผลิตไทย (TH)
+  category: sunscreen
+  spf: 30
+  broad_spectrum: true
+  target_skin_types:
+  - all
+  concerns:
+  - fragrance-free
+  - oil-free
+  - non-comedogenic
+  source_url: https://www.cerave.co.th/skincare/facial-moisturising-lotion-spf-30
+  warnings_label: 'หมายเหตุข้อมูล fixture: สูตรอ้างอิงตามประเทศที่ระบุ ตรวจส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ คุณสมบัติปราศจากน้ำหอมไม่ได้รับรองว่าจะไม่แพ้
+    ราคาไทยยังไม่ได้ตรวจสอบ'
+  ingredients_label: 'Active Ingredients: Homosalate (10%), Meradimate (5%), Octinoxate (5%), Octocrylene (2%),
+    Zinc Oxide (6.3%). Inactive Ingredients: Water, Niacinamide, Glycerin, Cetearyl Alcohol, Behentrimonium Methosulfate,
+    Dimethicone, BHT, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Triethoxycaprylylsilane, Methylparaben,
+    Sodium Lauroyl Lactylate, Cholesterol, Aluminum Starch Octenylsuccinate, Disodium EDTA, Propylparaben, Hydroxyethylcellulose,
+    Hydrolyzed Hyaluronic Acid, Phytosphingosine, Xanthan Gum.'
+  ingredients_inci:
+  - Homosalate
+  - Meradimate
+  - Octinoxate
+  - Octocrylene
+  - Zinc Oxide
+  - Water
+  - Niacinamide
+  - Glycerin
+  - Cetearyl Alcohol
+  - Behentrimonium Methosulfate
+  - Dimethicone
+  - BHT
+  - Ceramide NP
+  - Ceramide AP
+  - Ceramide EOP
+  - Carbomer
+  - Triethoxycaprylylsilane
+  - Methylparaben
+  - Sodium Lauroyl Lactylate
+  - Cholesterol
+  - Aluminum Starch Octenylsuccinate
+  - Disodium EDTA
+  - Propylparaben
+  - Hydroxyethylcellulose
+  - Hydrolyzed Hyaluronic Acid
+  - Phytosphingosine
+  - Xanthan Gum
+  market: TH
+- brand: CeraVe
+  name: Moisturising Cream
+  variant: 50 g สูตรเว็บไซต์ไทย (TH)
+  category: moisturizer
+  market: TH
+  target_skin_types:
+  - dry
+  concerns:
+  - fragrance-free
+  - non-comedogenic
+  - gentle
+  source_url: https://www.cerave.co.th/skincare/moisturising-cream
+  price_source_url: https://www.watsons.co.th/en/cerave-cerave-moisturizing-cream-50-g./p/BP_275377
+  price_satang: 17900
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions: []
+  ingredients_inci:
+  - Aqua / Water / Eau
+  - Glycerin
+  - Cetearyl Alcohol
+  - Caprylic/Capric Triglyceride
+  - Cetyl Alcohol
+  - Ceteareth-20
+  - Petrolatum
+  - Potassium Phosphate
+  - Ceramide NP
+  - Ceramide AP
+  - Ceramide EOP
+  - Carbomer
+  - Dimethicone
+  - Behentrimonium Methosulfate
+  - Sodium Lauroyl Lactylate
+  - Sodium Hyaluronate
+  - Cholesterol
+  - Phenoxyethanol
+  - Disodium EDTA
+  - Dipotassium Phosphate
+  - Tocopherol
+  - Phytosphingosine
+  - Xanthan Gum
+  - Ethylhexylglycerin
+  ingredients_label: Aqua / Water / Eau, Glycerin, Cetearyl Alcohol, Caprylic/Capric Triglyceride, Cetyl Alcohol,
+    Ceteareth-20, Petrolatum, Potassium Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Dimethicone,
+    Behentrimonium Methosulfate, Sodium Lauroyl Lactylate, Sodium Hyaluronate, Cholesterol, Phenoxyethanol, Disodium
+    EDTA, Dipotassium Phosphate, Tocopherol, Phytosphingosine, Xanthan Gum, Ethylhexylglycerin
+  warnings_label: ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  purchase_url: https://www.watsons.co.th/en/cerave-cerave-moisturizing-cream-50-g./p/BP_275377
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-275377-front-zoom.jpg?version=1733499772
+- brand: CeraVe
+  name: PM Facial Moisturising Lotion
+  variant: 52 ml สูตรเว็บไซต์ไทย (TH)
+  category: moisturizer
+  market: TH
+  target_skin_types:
+  - normal
+  concerns:
+  - fragrance-free
+  - lightweight
+  - oil-free
+  - non-comedogenic
+  source_url: https://www.cerave.co.th/skincare/facial-moisturising-lotion
+  price_source_url: https://www.watsons.co.th/en/cerave-cerave-facial-lotion-52ml/p/BP_275384
+  price_satang: 49900
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions: []
+  ingredients_inci:
+  - Aqua / Water / Eau
+  - Glycerin
+  - Caprylic/Capric Triglyceride
+  - Niacinamide
+  - Cetearyl Alcohol
+  - Potassium Phosphate
+  - Ceramide NP
+  - Ceramide AP
+  - Ceramide EOP
+  - Carbomer
+  - Dimethicone
+  - Ceteareth-20
+  - Behentrimonium Methosulfate
+  - Sodium Lauroyl Lactylate
+  - Sodium Hyaluronate
+  - Cholesterol
+  - Phenoxyethanol
+  - Disodium EDTA
+  - Dipotassium Phosphate
+  - Caprylyl Glycol
+  - Phytosphingosine
+  - Xanthan Gum
+  - Polyglyceryl-3 Diisostearate
+  - Ethylhexylglycerin
+  ingredients_label: Aqua / Water / Eau, Glycerin, Caprylic/Capric Triglyceride, Niacinamide, Cetearyl Alcohol,
+    Potassium Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Dimethicone, Ceteareth-20, Behentrimonium
+    Methosulfate, Sodium Lauroyl Lactylate, Sodium Hyaluronate, Cholesterol, Phenoxyethanol, Disodium EDTA, Dipotassium
+    Phosphate, Caprylyl Glycol, Phytosphingosine, Xanthan Gum, Polyglyceryl-3 Diisostearate, Ethylhexylglycerin
+  warnings_label: ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  purchase_url: https://www.watsons.co.th/en/cerave-cerave-facial-lotion-52ml/p/BP_275384
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-275384-front-zoom.jpg?version=1733502004
+- brand: CeraVe
+  name: Oil Control Moisturising Gel-Cream
+  variant: 52 ml สูตรเว็บไซต์ไทย (TH)
+  category: moisturizer
+  market: TH
+  target_skin_types:
+  - combination
+  - oily
+  concerns:
+  - lightweight
+  source_url: https://www.cerave.co.th/skincare/oil-control-moisturising-gel-cream
+  price_source_url: https://www.watsons.co.th/th/cerave-เซราวี-ออยล์-คอนโทรล-มอยซ์เจอไรซิ่ง-เจล-ครีม-52-มล.-ผิวผสม-ผิวมัน/p/BP_313220
+  price_satang: 65500
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions: []
+  ingredients_inci:
+  - AQUA/WATER
+  - NIACINAMIDE
+  - GLYCERIN
+  - CETEARYL ISONONANOATE
+  - C14-22 ALCOHOLS
+  - ISOPROPYL MYRISTATE
+  - ZEA MAYS STARCH/CORN STARCH
+  - CERAMIDE NP
+  - CERAMIDE AP
+  - CERAMIDE EOP
+  - CARBOMER
+  - CETEARYL ALCOHOL
+  - BEHENTRIMONIUM METHOSULFATE
+  - TRIETHYL CITRATE
+  - SILICA
+  - SODIUM HYDROXIDE
+  - SODIUM HYALURONATE
+  - SODIUM LAUROYL LACTYLATE
+  - CHOLESTEROL
+  - PHENOXYETHANOL
+  - CITRIC ACID
+  - CAPRYLYL GLYCOL
+  - TRISODIUM ETHYLENEDIAMINE DISUCCINATE
+  - XANTHAN GUM
+  - PHYTOSPHINGOSINE
+  - POLYACRYLATE CROSSPOLYMER-6
+  - BENZOIC ACID
+  - C12-20 ALKYL GLUCOSIDE
+  ingredients_label: AQUA/WATER, NIACINAMIDE, GLYCERIN, CETEARYL ISONONANOATE, C14-22 ALCOHOLS, ISOPROPYL MYRISTATE,
+    ZEA MAYS STARCH/CORN STARCH, CERAMIDE NP, CERAMIDE AP, CERAMIDE EOP, CARBOMER, CETEARYL ALCOHOL, BEHENTRIMONIUM
+    METHOSULFATE, TRIETHYL CITRATE, SILICA, SODIUM HYDROXIDE, SODIUM HYALURONATE, SODIUM LAUROYL LACTYLATE, CHOLESTEROL,
+    PHENOXYETHANOL, CITRIC ACID, CAPRYLYL GLYCOL, TRISODIUM ETHYLENEDIAMINE DISUCCINATE, XANTHAN GUM, PHYTOSPHINGOSINE,
+    POLYACRYLATE CROSSPOLYMER-6, BENZOIC ACID, C12-20 ALKYL GLUCOSIDE
+  warnings_label: เว้นบริเวณรอบดวงตา หากเข้าตาให้รีบล้างออกทันที ใช้ร่วมกับผลิตภัณฑ์กันแดด ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้
+    เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่ 1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  purchase_url: https://www.watsons.co.th/th/cerave-เซราวี-ออยล์-คอนโทรล-มอยซ์เจอไรซิ่ง-เจล-ครีม-52-มล.-ผิวผสม-ผิวมัน/p/BP_313220
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-313220-front-zoom.jpg?version=1733877176
+- brand: CeraVe
+  name: Hydrating Facial Cleanser
+  variant: 473 ml สูตรเว็บไซต์ไทย (TH)
+  category: cleanser
+  market: TH
+  target_skin_types:
+  - normal
+  - dry
+  concerns:
+  - gentle
+  - fragrance-free
+  - non-comedogenic
+  source_url: https://www.cerave.co.th/skincare/hydrating-facial-cleanser
+  price_source_url: https://www.watsons.co.th/en/cerave-cerave-hydrating-facial-cleanser-473ml/p/BP_275380
+  price_satang: 49900
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions: []
+  ingredients_inci:
+  - Aqua / Water / Eau
+  - Glycerin
+  - Cetearyl Alcohol
+  - Peg-40 Stearate
+  - Stearyl Alcohol
+  - Potassium Phosphate
+  - Ceramide NP
+  - Ceramide AP
+  - Ceramide EOP
+  - Carbomer
+  - Glyceryl Stearate
+  - Behentrimonium Methosulfate
+  - Sodium Lauroyl Lactylate
+  - Sodium Hyaluronate
+  - Cholesterol
+  - Phenoxyethanol
+  - Disodium EDTA
+  - Dipotassium Phosphate
+  - Tocopherol
+  - Phytosphingosine
+  - Xanthan Gum
+  - Cetyl Alcohol
+  - Polysorbate 20
+  - Ethylhexylglycerin
+  ingredients_label: Aqua / Water / Eau, Glycerin, Cetearyl Alcohol, Peg-40 Stearate, Stearyl Alcohol, Potassium
+    Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Glyceryl Stearate, Behentrimonium Methosulfate,
+    Sodium Lauroyl Lactylate, Sodium Hyaluronate, Cholesterol, Phenoxyethanol, Disodium EDTA, Dipotassium Phosphate,
+    Tocopherol, Phytosphingosine, Xanthan Gum, Cetyl Alcohol, Polysorbate 20, Ethylhexylglycerin
+  warnings_label: ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  purchase_url: https://www.watsons.co.th/en/cerave-cerave-hydrating-facial-cleanser-473ml/p/BP_275380
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-275380-front-zoom.jpg?version=1733499880
+- brand: CeraVe
+  name: Foaming Facial Cleanser
+  variant: 473 ml สูตรเว็บไซต์ไทย (TH)
+  category: cleanser
+  market: TH
+  target_skin_types:
+  - normal
+  - oily
+  concerns:
+  - gentle
+  - fragrance-free
+  - non-comedogenic
+  source_url: https://www.cerave.co.th/skincare/foaming-cleanser
+  price_source_url: https://www.watsons.co.th/en/cerave-cerave-foaming-facial-cleanser-473ml/p/BP_275385
+  price_satang: 49900
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions: []
+  ingredients_inci:
+  - Aqua / Water / Eau
+  - Cocamidopropyl Hydroxysultaine
+  - Glycerin
+  - Sodium Lauroyl Sarcosinate
+  - Peg-150 Pentaerythrityl Tetrastearate
+  - Niacinamide
+  - Peg-6 Caprylic/Capric Glycerides
+  - Sodium Methyl Cocoyl Taurate
+  - Propylene Glycol
+  - Ceramide NP
+  - Ceramide AP
+  - Ceramide EOP
+  - Carbomer
+  - Methylparaben
+  - Sodium Chloride
+  - Sodium Lauroyl Lactylate
+  - Cholesterol
+  - Disodium EDTA
+  - Propylparaben
+  - Citric Acid
+  - Tetrasodium EDTA
+  - Hydrolyzed Hyaluronic Acid
+  - Phytosphingosine
+  - Xanthan Gum
+  ingredients_label: Aqua / Water / Eau, Cocamidopropyl Hydroxysultaine, Glycerin, Sodium Lauroyl Sarcosinate, Peg-150
+    Pentaerythrityl Tetrastearate, Niacinamide, Peg-6 Caprylic/Capric Glycerides, Sodium Methyl Cocoyl Taurate,
+    Propylene Glycol, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Methylparaben, Sodium Chloride, Sodium Lauroyl
+    Lactylate, Cholesterol, Disodium EDTA, Propylparaben, Citric Acid, Tetrasodium EDTA, Hydrolyzed Hyaluronic Acid,
+    Phytosphingosine, Xanthan Gum
+  warnings_label: ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  purchase_url: https://www.watsons.co.th/en/cerave-cerave-foaming-facial-cleanser-473ml/p/BP_275385
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-275385-front-zoom.jpg?version=1733513586
+- brand: Eucerin
+  name: HYALURON (3X)+ FILLER EYE CARE SPF 15
+  variant: 15 ml สูตรเว็บไซต์ไทย (TH)
+  category: treatment
+  market: TH
+  target_skin_types:
+  - all
+  concerns:
+  - wrinkle-care
+  - fragrance-free
+  - lightweight
+  - gentle
+  source_url: https://www.eucerin.co.th/products/hyaluron-filler/hya-3x-eye-cream-spf15
+  price_source_url: https://www.watsons.co.th/th/eucerin-ยูเซอริน-ไฮยาลูรอน-3x-ฟิลเลอร์-อาย-แคร์-spf15-15-มล./p/BP_322349
+  price_satang: 148500
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions:
+  - eye_contour
+  ingredients_inci:
+  - Aqua
+  - Glycerin
+  - Ethylhexyl Salicylate
+  - Butylene Glycol Dicaprylate/ Dicaprate
+  - Synthetic Beeswax
+  - Methylpropanediol
+  - Behenyl Alcohol
+  - Butyl Methoxydibenzoylmethane
+  - Ethylhexyl Triazone
+  - Hydrogenated Coco-Glycerides
+  - Octyldodecanol
+  - Stearyl Alcohol
+  - Hydroxypropyl Starch Phosphate
+  - Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine
+  - Cetyl Palmitate
+  - Distarch Phosphate
+  - Glyceryl Stearate Citrate
+  - Phenylbenzimidazole Sulfonic Acid
+  - Sodium Hyaluronate
+  - Glycine Soja Germ Extract
+  - Glycyrrhetinic Acid
+  - Xanthan Gum
+  - Sodium Hydroxide
+  - Trisodium EDTA
+  - 1,2-Hexanediol
+  - Caprylyl Glycol
+  - Ethylhexylglycerin
+  - Phenoxyethanol
+  ingredients_label: Aqua, Glycerin, Ethylhexyl Salicylate, Butylene Glycol Dicaprylate/ Dicaprate, Synthetic Beeswax,
+    Methylpropanediol, Behenyl Alcohol, Butyl Methoxydibenzoylmethane, Ethylhexyl Triazone, Hydrogenated Coco-Glycerides,
+    Octyldodecanol, Stearyl Alcohol, Hydroxypropyl Starch Phosphate, Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine,
+    Cetyl Palmitate, Distarch Phosphate, Glyceryl Stearate Citrate, Phenylbenzimidazole Sulfonic Acid, Sodium Hyaluronate,
+    Glycine Soja Germ Extract, Glycyrrhetinic Acid, Xanthan Gum, Sodium Hydroxide, Trisodium EDTA, 1,2-Hexanediol,
+    Caprylyl Glycol, Ethylhexylglycerin, Phenoxyethanol
+  warnings_label: ทาเบา ๆ บนผิวรอบดวงตา หากใช้แล้วมีความผิดปกติให้หยุดใช้และปรึกษาแพทย์หรือเภสัชกร SPF15 ไม่ทดแทนผลิตภัณฑ์กันแดด
+    SPF30 ขึ้นไป ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  spf: 15
+  broad_spectrum: true
+  purchase_url: https://www.watsons.co.th/th/eucerin-ยูเซอริน-ไฮยาลูรอน-3x-ฟิลเลอร์-อาย-แคร์-spf15-15-มล./p/BP_322349
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-322349-front-zoom.jpg?version=1763061016
+- brand: La Roche-Posay
+  name: HYALU B5 SERUM
+  variant: 30 ml สูตรดั้งเดิม สูตรเว็บไซต์ไทย (TH)
+  category: treatment
+  market: TH
+  target_skin_types:
+  - all
+  concerns:
+  - wrinkle-care
+  source_url: https://www.larocheposay-th.com/hyalu-b5/hyalu-b5-serum
+  price_source_url: https://www.watsons.co.th/th/laroche-posay-เซรั่ม-laroche-posay-hyalu-b5-serum-ลาโรช-โพเซย์-ไฮยาลู-บี-5-เซรั่ม-30-มล./p/BP_279157
+  price_satang: 161500
+  price_checked_at: '2026-10-01T00:00:00+07:00'
+  reviewed_at: '2026-10-01T00:00:00+07:00'
+  application_regions:
+  - face
+  ingredients_inci:
+  - AQUA / WATER
+  - GLYCERIN
+  - ALCOHOL DENAT.
+  - PROPYLENE GLYCOL
+  - PANTHENOL
+  - PENTYLENE GLYCOL
+  - DIMETHICONE
+  - PEG-6 CAPRYLIC/CAPRIC GLYCERIDES
+  - PPG-6-DECYLTETRADECETH-30
+  - GLYCERYL ISOSTEARATE
+  - MADECASSOSIDE
+  - SODIUM HYALURONATE
+  - AMMONIUM POLYACRYLOYLDIMETHYL TAURATE
+  - DISODIUM EDTA
+  - HYDROLYZED HYALURONIC ACID
+  - CAPRYLYL GLYCOL
+  - CITRIC ACID
+  - XANTHAN GUM
+  - BUTYLENE GLYCOL
+  - TOCOPHEROL
+  - PHENOXYETHANOL
+  - PARFUM / FRAGRANCE
+  ingredients_label: AQUA / WATER, GLYCERIN, ALCOHOL DENAT., PROPYLENE GLYCOL, PANTHENOL, PENTYLENE GLYCOL, DIMETHICONE,
+    PEG-6 CAPRYLIC/CAPRIC GLYCERIDES, PPG-6-DECYLTETRADECETH-30, GLYCERYL ISOSTEARATE, MADECASSOSIDE, SODIUM HYALURONATE,
+    AMMONIUM POLYACRYLOYLDIMETHYL TAURATE, DISODIUM EDTA, HYDROLYZED HYALURONIC ACID, CAPRYLYL GLYCOL, CITRIC ACID,
+    XANTHAN GUM, BUTYLENE GLYCOL, TOCOPHEROL, PHENOXYETHANOL, PARFUM / FRAGRANCE
+  warnings_label: มีแอลกอฮอล์และน้ำหอม ใช้บนผิวหน้าและลำคอตามฉลาก ไม่ใช้แทนอายครีม และหลีกเลี่ยงการสัมผัสดวงตาโดยตรง
+    ข้อมูลสูตรตลาดไทย ตรวจรายการส่วนผสมบนบรรจุภัณฑ์จริงก่อนใช้ เนื่องจากผู้ผลิตอาจปรับสูตร ราคาเป็นภาพรวมจากหน้าร้านออนไลน์ที่ตรวจวันที่
+    1 ตุลาคม 2569 และอาจเปลี่ยนแปลง ไม่รวมค่าจัดส่ง
+  purchase_url: https://www.watsons.co.th/th/laroche-posay-เซรั่ม-laroche-posay-hyalu-b5-serum-ลาโรช-โพเซย์-ไฮยาลู-บี-5-เซรั่ม-30-มล./p/BP_279157
+  image_url: https://medias.watsons.co.th/publishing/WTCTH-279157-front-zoom.jpg?version=1774379582

@@ -1,4 +1,8 @@
-"""Fail-closed confidence policy for wrinkle analysis responses."""
+"""Gate public scores using model evidence and calibration provenance.
+
+The decision margin describes certainty of the segmentation output; it is
+not a clinical confidence or a calibrated probability of a diagnosis.
+"""
 
 from __future__ import annotations
 
@@ -26,21 +30,30 @@ class ConfidencePolicy:
     prediction_version: str | None = None
     preprocessing_version: str | None = None
     threshold_version: str | None = None
+    approval_reference: str | None = None
 
     @classmethod
-    def from_dict(cls, value: dict[str, object]) -> "ConfidencePolicy":
+    def from_dict(cls, value: dict[str, object]) -> ConfidencePolicy:
         policy = cls(**value)
         policy.validate()
         return policy
 
     def validate(self) -> None:
-        if self.status not in {"calibrated", "not_calibrated"}:
-            raise ValueError("confidence policy status must be calibrated or not_calibrated")
+        if self.status not in {"calibrated", "not_calibrated", "manually_approved"}:
+            raise ValueError("unsupported confidence policy status")
         if self.status == "calibrated":
             if self.minimum_confidence is None or not 0 <= self.minimum_confidence <= 1:
                 raise ValueError("calibrated policy requires a threshold within [0, 1]")
             if not self.calibration_version or not self.validation_dataset or self.sample_count < 1:
                 raise ValueError("calibrated policy requires validation provenance")
+        if self.status == "manually_approved":
+            if not isinstance(self.approval_reference, str) or not self.approval_reference.strip():
+                raise ValueError("manual release requires an approval reference")
+            if any(value is not None for value in (
+                self.minimum_confidence, self.calibration_version, self.validation_dataset,
+            )) or self.sample_count != 0:
+                raise ValueError("manual release must not claim statistical calibration")
+        if self.status in {"calibrated", "manually_approved"}:
             lineage = (
                 self.model_architecture,
                 self.checkpoint_sha256,
@@ -49,10 +62,11 @@ class ConfidencePolicy:
                 self.threshold_version,
             )
             if not all(lineage):
-                raise ValueError("calibrated policy requires complete model lineage")
+                raise ValueError("released policy requires complete model lineage")
 
     def compatibility_reasons(self, metadata: dict[str, object]) -> list[str]:
-        if self.status != "calibrated":
+        """Require a released policy to match this exact model and pipeline."""
+        if self.status not in {"calibrated", "manually_approved"}:
             return []
         model = metadata.get("model", {})
         threshold = metadata.get("threshold", {})
@@ -76,33 +90,55 @@ def load_confidence_policy(path: str | Path = DEFAULT_POLICY_PATH) -> Confidence
 
 
 def decision_margin_confidence(probability: np.ndarray, face_mask: np.ndarray) -> float:
-    """Mean binary decision margin; this is evidence, not a calibrated probability."""
+    """Average distance from 0.5 over face pixels, scaled to ``[0, 1]``.
+
+    A map near 0.5 has little binary decision margin. Values near 0 or 1
+    have more margin; neither case measures clinical correctness.
+    """
 
     if probability.shape != face_mask.shape or probability.ndim != 2:
         raise ValueError("probability and face_mask must be matching 2-D arrays")
+    # Ignore background; inspect only class-1 probabilities on parsed face pixels.
     selected = probability[face_mask.astype(bool)]
+    # No eligible pixels means there is no confidence evidence to average.
     if selected.size == 0:
         return 0.0
     if not np.isfinite(selected).all() or np.any((selected < 0) | (selected > 1)):
         raise ValueError("probability values must be finite and within [0, 1]")
+    # 0.5 -> margin 0; 0 or 1 -> margin 1. Average across the face.
+    # This measures decisiveness of pixel predictions, not clinical accuracy.
     return float(np.mean(np.abs(2.0 * selected.astype(np.float64) - 1.0)))
 
 
 def evaluate_confidence(
     probability: np.ndarray, face_mask: np.ndarray, policy: ConfidencePolicy
 ) -> dict[str, object]:
+    """Return gate status and reasons for the public AI response.
+
+    The repository's default policy is ``not_calibrated`` and therefore
+    withholds approved scores even if the segmentation ran successfully.
+    """
+    # A calibrated policy needs a valid threshold and validation provenance.
     policy.validate()
+    # Compute one image-wide summary from the probability map.
     value = decision_margin_confidence(probability, face_mask)
     reasons: list[str] = []
-    if policy.status != "calibrated":
+    if not np.any(face_mask):
+        reasons.append("no_evaluated_face_pixels")
+    # Manual release is explicit model approval, not a calibrated confidence threshold.
+    if policy.status == "not_calibrated":
         reasons.append("confidence_not_calibrated")
-    elif value < float(policy.minimum_confidence):
+    # A calibrated policy can still reject an indecisive image.
+    elif policy.status == "calibrated" and value < float(policy.minimum_confidence):
         reasons.append("low_confidence")
+    # `passed` controls whether service returns derived or experimental scores.
     return {
         "value": value,
         "method": policy.method,
         "policy_version": policy.policy_version,
-        "calibration_status": policy.status,
+        "calibration_status": "calibrated" if policy.status == "calibrated" else "not_calibrated",
+        "release_basis": "manual_review" if policy.status == "manually_approved" else "calibration",
+        "approval_reference": policy.approval_reference,
         "calibration_version": policy.calibration_version,
         "minimum_confidence": policy.minimum_confidence,
         "validation_dataset": policy.validation_dataset,

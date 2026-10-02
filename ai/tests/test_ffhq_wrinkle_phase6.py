@@ -118,6 +118,41 @@ class ConfidenceTests(unittest.TestCase):
 
 
 class ServiceTests(unittest.TestCase):
+    def test_owner_review_releases_only_the_approved_model_without_calibration_claims(self):
+        policy = load_confidence_policy(
+            Path(__file__).resolve().parents[1] / "ffhq_wrinkle" / "reviewed_policy.json"
+        )
+        result = prediction(np.full((4, 4), 0.95))
+        result.metadata.update({
+            "prediction_version": policy.prediction_version,
+            "preprocessing_version": policy.preprocessing_version,
+            "model": {"architecture": policy.model_architecture,
+                      "checkpoint_sha256": policy.checkpoint_sha256},
+            "threshold": {"version": policy.threshold_version, "probability": 0.5},
+        })
+        service = WrinkleAnalysisService(confidence_policy=policy)
+        payload = service.build_response(result, np.ones((4, 4))).model_dump()
+        self.assertTrue(payload["recommendation_gate"]["eligible"])
+        self.assertIsNotNone(payload["derived_score"])
+        confidence = payload["model_output"]["confidence"]
+        self.assertEqual(confidence["release_basis"], "manual_review")
+        self.assertEqual(confidence["calibration_status"], "not_calibrated")
+        self.assertIsNone(confidence["calibration_version"])
+        self.assertIsNone(confidence["minimum_confidence"])
+        self.assertEqual(confidence["validation_sample_count"], 0)
+        with self.assertRaises(ValueError):
+            replace(policy, approval_reference=None).validate()
+        with self.assertRaises(ValueError):
+            replace(policy, sample_count=10).validate()
+        empty_face = service.build_response(result, np.zeros((4, 4))).model_dump()
+        self.assertFalse(empty_face["recommendation_gate"]["eligible"])
+        result.metadata["model"]["checkpoint_sha256"] = "b" * 64
+        mismatched = service.build_response(result, np.ones((4, 4))).model_dump()
+        self.assertFalse(mismatched["recommendation_gate"]["eligible"])
+        self.assertIn(
+            "policy_checkpoint_sha256_mismatch", mismatched["recommendation_gate"]["reasons"]
+        )
+
     def test_uncalibrated_response_abstains_before_recommendation(self):
         calls = []
         service = WrinkleAnalysisService(recommendation_provider=lambda score: calls.append(score))
@@ -125,6 +160,7 @@ class ServiceTests(unittest.TestCase):
         payload = response.model_dump()
         self.assertEqual(payload["status"], "abstained")
         self.assertIsNone(payload["derived_score"])
+        self.assertGreaterEqual(payload["experimental_score"]["overall"]["score"], 0)
         self.assertEqual(payload["recommendations"], [])
         self.assertEqual(calls, [])
         encoded = json.dumps(payload)

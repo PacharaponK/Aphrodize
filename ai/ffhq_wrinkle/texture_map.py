@@ -1,4 +1,8 @@
-"""Research-faithful FFHQ-Wrinkle texture-map generation."""
+"""Create the fourth Stage-2 input channel from facial image texture.
+
+The production path calls ``generate_texture_map`` with the aligned RGB face
+and its skin/nose mask. The file-based helper exists for research/CLI runs.
+"""
 
 from __future__ import annotations
 
@@ -101,6 +105,7 @@ def rgb_to_intensity(image: np.ndarray, method: IntensityMethod = "opencv_gray")
 def gaussian_intensity(intensity: np.ndarray, config: TextureMapConfig) -> np.ndarray:
     """Return ``I_G(sigma)`` using an explicit finite OpenCV kernel."""
 
+    # The blur represents slowly varying local brightness around each pixel.
     config.validate()
     blur_input = intensity.astype(config.blur_dtype, copy=False)
     return cv2.GaussianBlur(
@@ -117,13 +122,21 @@ def texture_response(
     blurred: np.ndarray,
     config: TextureMapConfig,
 ) -> np.ndarray:
-    """Apply the paper equation and quantize the continuous response to uint8."""
+    """Compare intensity with its Gaussian blur and quantize to uint8.
+
+The default dark-only mode highlights locally darker detail, then clips the
+response to the image range before it becomes the model's fourth channel.
+    """
 
     if intensity.shape != blurred.shape:
         raise ValueError("intensity and blurred images must have identical shapes")
+    # Float arithmetic preserves small differences between image and blur.
     formula_intensity = intensity.astype(np.float32)
     if config.response_mode == "dark_only_floor":
+        # Suppress positive differences so only pixels darker than their blur respond.
         formula_intensity = np.minimum(formula_intensity, blurred.astype(np.float32))
+    # Texture = (1 - local intensity / (offset + blurred intensity)) * 255.
+    # A dark line against a brighter neighborhood gives a larger value.
     response = (
         1.0
         - formula_intensity
@@ -148,6 +161,7 @@ def texture_response(
         response = np.rint(response)
     elif config.rounding != "truncate":
         raise ValueError(f"unsupported rounding method: {config.rounding}")
+    # Quantized 0..255 grayscale becomes the model's fourth input channel.
     return response.astype(np.uint8)
 
 
@@ -156,10 +170,17 @@ def generate_texture_map(
     face_mask: np.ndarray | None = None,
     config: TextureMapConfig = TextureMapConfig(),
 ) -> np.ndarray:
-    """Generate a continuous grayscale texture map and optionally mask non-face pixels."""
+    """Return grayscale uint8 ``[H, W]`` texture for the aligned face.
 
+Intensity and blur stay in memory; only face pixels survive the final mask.
+``preprocess_image`` saves the returned array as ``texture_map.png``.
+    """
+
+    # Collapse aligned RGB to brightness using the configured conversion.
     intensity = rgb_to_intensity(image, config.intensity_method)
+    # Gaussian blur provides a local brightness baseline at each pixel.
     blurred = gaussian_intensity(intensity, config)
+    # Compare each pixel with that baseline to emphasize local dark detail.
     texture = texture_response(intensity, blurred, config)
     if texture.ndim == 3:
         if config.channel_reduction == "max_after_quantize":
@@ -168,12 +189,14 @@ def generate_texture_map(
             texture = np.rint(texture.astype(np.float32).mean(axis=2)).astype(np.uint8)
         else:
             texture = cv2.cvtColor(texture, cv2.COLOR_RGB2GRAY)
+    # The production caller supplies the skin/nose mask from BiSeNet.
     if face_mask is not None:
         if face_mask.shape != texture.shape:
             raise ValueError(
                 f"mask shape {face_mask.shape} does not match texture shape {texture.shape}"
             )
         texture = texture.copy()
+        # Exclude background and other face parts from this input channel.
         texture[~face_mask.astype(bool)] = 0
     return texture
 

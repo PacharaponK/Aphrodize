@@ -1,17 +1,32 @@
-/* Full page navigation reinitializes the prototype scripts. */
-/* eslint-disable @next/next/no-html-link-for-pages */
-import type { Metadata } from "next";
-import Image from "next/image";
+import { pageMetadata } from "@/lib/page-metadata";
+import DailyHealthHistoryPanel from "../clients/daily-health-history-panel";
+import { LocalizedText } from "@/components/language-provider";
+import "../clients/clients.css";
+import "../clients/daily-health-history.css";
 
-export const metadata: Metadata = { title: "แนวโน้ม — Aphrodize" };
+export const metadata = pageMetadata(
+  "Trends",
+  "Explore your daily health history, recorded habits and experimental wellness signals over time. Review contributing factors and guidance without treating estimates as a diagnosis.",
+  "/trend",
+  false,
+  "en_US",
+);
 
 export default function Page() {
   return (
     <>
-      <div className="simple-page"><main className="page-frame"><header className="page-header"><a className="page-brand" href="/"><Image width={40} height={40} src="/assets/aphrodize-contour-a.svg" alt="" />Aphrodize</a><nav className="page-nav"><a href="/">ภาพรวม</a><a href="/capture">วิเคราะห์ภาพ</a><a className="active" href="/trend">แนวโน้ม</a></nav></header><section className="page-content"><p className="eyebrow">HISTORY</p><h1>แนวโน้มของคุณ</h1><p>แสดงเฉพาะ observations จากภาพที่ผ่าน capture protocol และ quality gate</p><div className="trend-empty"><div className="trend-icon">⌁</div><h2>เริ่มติดตามแนวโน้มได้แล้ว</h2><p>มีภาพที่ผ่าน quality gate 1 ครั้ง อีก 1 ครั้งจะแสดงแนวโน้มเปรียบเทียบให้</p><div className="trend-line"></div><a className="primary-button" href="/capture">ถ่ายภาพครั้งถัดไป →</a></div></section></main></div>
+      <div className="simple-page clients-page trend-page">
+      <main className="page-frame">
+        <section className="page-content clients-content">
+          <p className="eyebrow">DAILY HEALTH TRENDS</p>
+          <h1><LocalizedText th="แนวโน้มความเสี่ยงสุขภาพ" en="Daily health trends" /></h1>
+          <p className="clients-intro">
+            <LocalizedText th="ดูระดับสัญญาณสุขภาพ คำแนะนำ และปัจจัยรายวันจากข้อมูลที่บันทึกไว้ โดยไม่ใช้ผลประเมินแทนการวินิจฉัย" en="Review daily signals, guidance and contributing factors from your records. These estimates are not a diagnosis." />
+          </p>
+          <DailyHealthHistoryPanel view="trend" />
+        </section>
+      </main>
+    </div>
     </>
   );
 }
-
-
-

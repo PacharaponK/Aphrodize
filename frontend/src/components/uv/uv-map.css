@@ -1,0 +1,56 @@
+.uv-map-page { max-width: 1280px; margin: 0 auto; padding: clamp(24px, 4vw, 56px); color: var(--ink); }
+.uv-map-header { margin-bottom: 28px; max-width: 72ch; }
+.uv-map-header h1 { margin: 18px 0 12px; font-size: clamp(28px, 3vw, 42px); line-height: 1.3; }
+.uv-map-header p { color: var(--muted); margin: 0; }
+.uv-map-explorer { --uv-map-missing: #e1dadd; color: var(--ink); }
+.uv-map-toolbar { display: flex; align-items: end; gap: 20px; flex-wrap: wrap; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.uv-map-source { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.uv-map-source button[aria-pressed="true"] { background: var(--primary-deep); color: #fff; border-color: var(--primary-deep); }
+.thailand-uv-map .uv-map-context path { fill: var(--surface-muted); stroke: none; pointer-events: none; cursor: default; }
+.uv-map-days { display: flex; gap: 8px; }
+.uv-map-explorer button, .uv-map-explorer select { min-height: 44px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); padding: 10px 16px; font: inherit; }
+.uv-map-explorer button { cursor: pointer; }
+.uv-map-explorer button:hover { border-color: var(--primary-deep); }
+.uv-map-explorer button:disabled { opacity: .65; cursor: wait; }
+.uv-map-days button[aria-pressed="true"] { background: var(--primary-deep); color: #fff; border-color: var(--primary-deep); }
+.uv-map-select { display: grid; gap: 6px; flex: 1; min-width: 220px; max-width: 320px; }
+.uv-map-select label { font-size: 13px; font-weight: 700; }
+.uv-map-notice { padding: 16px; background: var(--surface-soft); border-radius: 8px; }
+.uv-map-availability { font-size: 13px; color: var(--muted); margin: 18px 0 0; }
+.uv-map-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, 1fr); gap: clamp(24px, 4vw, 56px); margin-block: 24px; }
+.uv-map-canvas { min-width: 0; border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: var(--surface); }
+.uv-map-preview { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; min-height: 26px; margin: 0 0 8px; font-size: 13px; font-weight: 700; }
+.uv-map-preview span { font-weight: 400; }
+.thailand-uv-map svg { display: block; width: 100%; max-height: 630px; }
+.thailand-uv-map path { stroke: var(--surface); stroke-width: 1; vector-effect: non-scaling-stroke; cursor: pointer; }
+.thailand-uv-map path[data-model="true"] { stroke: var(--ink); stroke-width: 1.3; stroke-dasharray: 3 2; }
+.thailand-uv-map path:hover, .thailand-uv-map path:focus-visible, .thailand-uv-map path[aria-pressed="true"] { stroke: var(--ink); stroke-width: 2.5; stroke-dasharray: none; outline: none; }
+.uv-model-point { fill: var(--surface); stroke: var(--ink); stroke-width: 2; pointer-events: none; }
+.uv-map-caption { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
+.uv-map-detail { align-self: start; min-width: 0; }
+.uv-map-detail h2 { margin: 8px 0 18px; font-size: 28px; }
+.uv-map-value { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin: 0; }
+.uv-map-value strong { font-size: 56px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.uv-map-value span { color: var(--muted); }
+.uv-map-advice { padding: 16px 0; border-block: 1px solid var(--line); line-height: 1.7; }
+.uv-map-detail dl { display: grid; gap: 14px; margin-block: 24px; }
+.uv-map-detail dl div { display: grid; grid-template-columns: minmax(120px, .85fr) minmax(0, 1.15fr); gap: 14px; font-size: 13px; }
+.uv-map-detail dt { color: var(--muted); }
+.uv-map-detail dd { margin: 0; overflow-wrap: anywhere; }
+.uv-map-caveat, .uv-map-empty { color: var(--muted); font-size: 14px; line-height: 1.75; }
+.uv-map-caveat { margin-top: 24px; }
+.uv-map-legend { list-style: none; margin: 0; padding: 20px 0; display: flex; flex-wrap: wrap; gap: 12px 22px; border-block: 1px solid var(--line); }
+.uv-map-legend li { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.uv-map-legend li > span { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+.uv-map-legend small { color: var(--muted); }
+.uv-map-no-data { background: var(--uv-map-missing); }
+.uv-map-method { color: var(--muted); font-size: 13px; line-height: 1.8; max-width: 85ch; margin-top: 20px; }
+.uv-map-explorer a { text-underline-offset: 4px; }
+@media (max-width: 720px) {
+  .uv-map-layout { grid-template-columns: 1fr; gap: 24px; }
+  .uv-map-toolbar { gap: 14px; }
+  .uv-map-select { max-width: none; flex-basis: 100%; }
+  .uv-map-refresh { margin-left: auto; }
+  .thailand-uv-map svg { max-height: 540px; }
+  .uv-map-detail h2 { font-size: 24px; }
+}

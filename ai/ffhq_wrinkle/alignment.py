@@ -1,4 +1,8 @@
-"""Deterministic single-face detection and FFHQ-style alignment."""
+"""Find one source-image face and map it to a fixed FFHQ coordinate system.
+
+YuNet supplies a bounding box and five landmarks. The landmarks define the
+oriented square that ``align_face`` warps to 1024 x 1024 pixels.
+"""
 
 from __future__ import annotations
 
@@ -54,9 +58,12 @@ class YuNetFaceDetector:
         )
 
     def detect(self, image: np.ndarray) -> list[FaceDetection]:
+        """Return source-coordinate detections, highest confidence first."""
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
             raise ValueError("YuNet expects an HxWx3 uint8 RGB image")
+        # Detection sees the upload's original width/height before alignment.
         height, width = image.shape[:2]
+        # Bound detector cost while mapping boxes and landmarks back to source pixels.
         scale = min(1.0, self.maximum_input_side / max(height, width))
         if scale < 1.0:
             detector_image = cv2.resize(
@@ -66,16 +73,20 @@ class YuNetFaceDetector:
             )
         else:
             detector_image = image
+        # YuNet must be told the actual pixel size supplied on this call.
         detector_height, detector_width = detector_image.shape[:2]
         self._detector.setInputSize((detector_width, detector_height))
+        # OpenCV expects BGR even though the rest of this pipeline uses RGB.
         _, faces = self._detector.detect(
             cv2.cvtColor(detector_image, cv2.COLOR_RGB2BGR)
         )
         if faces is None:
             return []
         results: list[FaceDetection] = []
+        # Convert detection coordinates back to the original upload pixels.
         inverse_scale = 1.0 / scale
         for row in faces:
+            # YuNet row: box (4), five landmark pairs (10), confidence (1).
             bbox = tuple(float(value * inverse_scale) for value in row[:4])
             landmarks = row[4:14].reshape(5, 2).astype(np.float32) * inverse_scale
             results.append(FaceDetection(bbox, landmarks, float(row[14])))
@@ -85,29 +96,36 @@ class YuNetFaceDetector:
 def ffhq_alignment_quad(
     detection: FaceDetection, scale: float = 1.0
 ) -> np.ndarray:
-    """Construct the oriented eye/mouth quad used by FFHQ-style alignment."""
+    """Use the eye and mouth landmarks to locate an oriented face square."""
 
+    # YuNet landmarks: eyes, nose, and mouth corners in source coordinates.
     points = detection.landmarks
+    # Sort left-to-right in the image so the crop orientation is stable.
     eyes = points[:2][np.argsort(points[:2, 0])]
     mouth = points[3:5][np.argsort(points[3:5, 0])]
     eye_left, eye_right = eyes
     mouth_left, mouth_right = mouth
     eye_average = (eye_left + eye_right) * 0.5
     mouth_average = (mouth_left + mouth_right) * 0.5
+    # These two vectors determine face angle and approximate crop size.
     eye_to_eye = eye_right - eye_left
     eye_to_mouth = mouth_average - eye_average
+    # Mix horizontal eye spacing with a perpendicular mouth direction.
     axis_x = eye_to_eye + np.array(
         [eye_to_mouth[1], -eye_to_mouth[0]], dtype=np.float32
     )
     norm = float(np.linalg.norm(axis_x))
     if norm < 1e-6:
         raise ValueError("degenerate facial landmarks cannot be aligned")
+    # Normalize direction, then scale to include the whole face.
     axis_x /= norm
     axis_x *= max(
         float(np.linalg.norm(eye_to_eye)) * 2.0,
         float(np.linalg.norm(eye_to_mouth)) * 1.8,
     ) * float(scale)
+    # A perpendicular axis completes the rotated source square.
     axis_y = np.array([-axis_x[1], axis_x[0]], dtype=np.float32)
+    # Position the square slightly below the eyes toward the mouth.
     center = eye_average + eye_to_mouth * 0.1
     return np.stack(
         (
@@ -124,19 +142,26 @@ def align_face(
     detection: FaceDetection,
     output_size: int = ALIGNMENT_SIZE,
 ) -> np.ndarray:
-    """Warp one detected face into a deterministic square FFHQ coordinate system."""
+    """Return aligned RGB uint8 ``[output_size, output_size, 3]``.
+
+    The same face coordinates are used later for parsing, texture, wrinkle
+    segmentation, region scores, and the displayed overlay.
+    """
 
     if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
         raise ValueError("alignment expects an HxWx3 uint8 RGB image")
     if output_size < 64:
         raise ValueError("output_size must be at least 64")
+    # Four source points define the rotated face square in the upload.
     source = ffhq_alignment_quad(detection)
     edge = float(output_size - 1)
     destination = np.array(
         [[0.0, 0.0], [0.0, edge], [edge, edge], [edge, 0.0]],
         dtype=np.float32,
     )
+    # Map that square to the four corners of a fixed output image.
     transform = cv2.getPerspectiveTransform(source, destination)
+    # Every later map uses these aligned pixel coordinates.
     return cv2.warpPerspective(
         image,
         transform,

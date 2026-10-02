@@ -1,0 +1,46 @@
+users:
+  - display_name: PacharaponK
+    email: ball@gmail.com
+    password: "123456789"
+    consent_accepted: true
+    profile:
+      sex: female
+      age_group: "25_34"
+      guardian_consent: false
+      sunscreen_frequency: every_day
+      skin_type: combination
+      menstrual_tracking: "yes"
+      wellness_goal: skin_tracking
+    daily_entries:
+      - local_date: 2026-09-26
+        timezone: Asia/Bangkok
+        sleep_duration_minutes: 450
+        water_intake_ml: 2000
+        weight_kg: null
+        calculated_thirst_score_0_10: null
+        thirst_score_method: null
+        outdoor_exposure_choice: 2
+        sleep_score_0_100: 83.3
+        sleep_score_method: "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        predicted_thirst_score_0_10: 3.4
+        predicted_dryness_score_0_10: 2.6
+        prediction_target_date: 2026-09-27
+        prediction_status: predicted
+        prediction_model_id: fixture-demo-v1
+        data_source: fixture
+      - local_date: 2026-09-27
+        timezone: Asia/Bangkok
+        sleep_duration_minutes: 390
+        water_intake_ml: 1500
+        weight_kg: null
+        calculated_thirst_score_0_10: null
+        thirst_score_method: null
+        outdoor_exposure_choice: 3
+        sleep_score_0_100: 72.2
+        sleep_score_method: "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        predicted_thirst_score_0_10: null
+        predicted_dryness_score_0_10: null
+        prediction_target_date: null
+        prediction_status: not_run
+        prediction_model_id: null
+        data_source: fixture

@@ -1,4 +1,8 @@
-"""Versioned, non-clinical scores derived from wrinkle segmentation masks."""
+"""Measure segmented wrinkle area, not clinical wrinkle severity.
+
+The face mask defines the denominator. Eight fixed regions in aligned image
+coordinates provide comparable per-region measurements across photos.
+"""
 
 from __future__ import annotations
 
@@ -9,8 +13,8 @@ import numpy as np
 ROI_VERSION = "ffhq-aligned-roi-v1"
 SCORE_VERSION = "aphrodize-wrinkle-area-v1"
 SCORE_DISCLAIMER = (
-    "A model-derived image measurement for research use; it is not a diagnosis, "
-    "a clinical severity rating, or evidence that any treatment will work."
+    "An experimental, unvalidated image measurement for research use; it is not a "
+    "diagnosis, a clinical severity rating, or evidence that any treatment will work."
 )
 
 
@@ -34,10 +38,14 @@ class ScoreConfig:
 
 
 def _box(shape: tuple[int, int], x0: float, y0: float, x1: float, y1: float) -> np.ndarray:
+    # `shape` is [height, width] of the aligned face mask.
     height, width = shape
+    # Start with no pixels selected in this rectangular region.
     mask = np.zeros(shape, dtype=bool)
+    # Fractions (0..1) become integer image coordinates.
     xa, xb = int(round(x0 * width)), int(round(x1 * width))
     ya, yb = int(round(y0 * height)), int(round(y1 * height))
+    # Clamp to image bounds and mark all pixels inside the rectangle.
     mask[max(0, ya) : min(height, yb), max(0, xa) : min(width, xb)] = True
     return mask
 
@@ -45,10 +53,14 @@ def _box(shape: tuple[int, int], x0: float, y0: float, x1: float, y1: float) -> 
 def _ellipse(
     shape: tuple[int, int], center_x: float, center_y: float, radius_x: float, radius_y: float
 ) -> np.ndarray:
+    # Build a Boolean oval on the same pixel grid as the aligned face.
     height, width = shape
+    # Broadcasting creates row and column coordinate grids without full copies.
     yy, xx = np.ogrid[:height, :width]
+    # Centers and radii are configured as fractions of the image dimensions.
     cx, cy = center_x * width, center_y * height
     rx, ry = max(radius_x * width, 1.0), max(radius_y * height, 1.0)
+    # Pixels whose normalized squared distance is at most one lie in the oval.
     return ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1.0
 
 
@@ -61,25 +73,33 @@ def build_regional_rois(face_mask: np.ndarray) -> dict[str, np.ndarray]:
 
     if face_mask.ndim != 2:
         raise ValueError("face_mask must be a two-dimensional array")
+    # Convert the parser's face/skin selection to a Boolean pixel grid.
     face = face_mask.astype(bool)
     shape = face.shape
+    # These are fixed locations on the aligned image, not separately detected
+    # anatomical landmarks; their boundaries can overlap.
     rois = {
+        # x/y values are fractions of image width/height, not pixel coordinates.
         "forehead": _box(shape, 0.25, 0.12, 0.75, 0.38),
         "glabella": _box(shape, 0.42, 0.32, 0.58, 0.50),
+        # Left/right are directions in the saved image, not patient anatomy.
         "image_left_periocular": _ellipse(shape, 0.34, 0.46, 0.16, 0.12),
         "image_right_periocular": _ellipse(shape, 0.66, 0.46, 0.16, 0.12),
         "image_left_cheek": _ellipse(shape, 0.34, 0.66, 0.17, 0.17),
         "image_right_cheek": _ellipse(shape, 0.66, 0.66, 0.17, 0.17),
+        # Two narrow ovals approximate the folds beside the nose/mouth.
         "nasolabial": (
             _ellipse(shape, 0.43, 0.66, 0.075, 0.18)
             | _ellipse(shape, 0.57, 0.66, 0.075, 0.18)
         ),
         "perioral": _ellipse(shape, 0.50, 0.77, 0.20, 0.12),
     }
+    # Exclude background, hair, and other pixels omitted by face parsing.
     return {name: roi & face for name, roi in rois.items()}
 
 
 def _severity_label(score: float, config: ScoreConfig) -> str:
+    # Labels are bins of this experimental area score, not clinical grades.
     if score == 0:
         return "no_segmented_area"
     if score < config.low_boundary:
@@ -90,10 +110,17 @@ def _severity_label(score: float, config: ScoreConfig) -> str:
 
 
 def _score(mask: np.ndarray, evaluation_mask: np.ndarray, config: ScoreConfig) -> dict[str, object]:
+    """Turn wrinkle pixels / evaluated face pixels into a capped 0-100 score."""
+    # Denominator: all face pixels eligible in the whole face or chosen ROI.
     evaluated_pixels = int(np.count_nonzero(evaluation_mask))
+    # Numerator: eligible pixels marked as wrinkles by the thresholded model.
     wrinkle_pixels = int(np.count_nonzero(mask & evaluation_mask))
+    # Empty regions have no measurable area, so this implementation reports zero.
     ratio = wrinkle_pixels / evaluated_pixels if evaluated_pixels else 0.0
+    # With default scale 2000, 1% area -> 20; 5% or more -> capped 100.
+    # Thus 5% and 10% both score 100; the raw ratio remains available below.
     value = min(100.0, ratio * config.scale)
+    # Preserve both the mapped score and its source pixel counts in the API.
     return {
         "score": round(value, 4),
         "severity_label": _severity_label(value, config),
@@ -110,22 +137,35 @@ def derive_scores(
     face_mask: np.ndarray,
     *,
     gate_passed: bool,
+    allow_experimental: bool = False,
     config: ScoreConfig = ScoreConfig(),
 ) -> dict[str, object]:
-    """Derive versioned scores only after quality and confidence gates pass."""
+    """Return overall and eight region scores from the final binary mask.
 
+    The service stores this result as ``derived_score`` after a passed gate.
+    It may explicitly allow the same arithmetic as ``experimental_score``
+    when calibration fails; that path withholds recommendations.
+    """
+
+    # Check scaling and label boundaries before measuring any region.
     config.validate()
-    if not gate_passed:
+    # Only a passed confidence gate may expose an approved derived score.
+    if not gate_passed and not allow_experimental:
         raise PermissionError("derived scores require passed quality and confidence gates")
+    # Both masks must refer to exactly the same aligned pixels.
     if wrinkle_mask.shape != face_mask.shape or wrinkle_mask.ndim != 2:
         raise ValueError("wrinkle_mask and face_mask must be matching 2-D arrays")
+    # Boolean masks make intersection/count operations unambiguous.
     wrinkle = wrinkle_mask.astype(bool)
     face = face_mask.astype(bool)
+    # Reuse the same formula for the full face and each of eight fixed regions.
     return {
         "score_version": config.score_version,
         "roi_version": config.roi_version,
         "formula": f"min(100, wrinkle_area_ratio * {config.scale:g})",
+        # Overall uses all parsed face pixels as its denominator.
         "overall": _score(wrinkle, face, config),
+        # Each named region uses only face pixels within its own geometry.
         "regions": {
             name: _score(wrinkle, roi, config)
             for name, roi in build_regional_rois(face).items()

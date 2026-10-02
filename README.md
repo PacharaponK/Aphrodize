@@ -15,7 +15,7 @@ Aphrodize is a Docker Compose–based modular monolith for managing private data
 | Redis | Internal Compose network | Authenticated ARQ job queues |
 | MinIO API | [http://localhost:9000](http://localhost:9000) | Private application and MLflow object storage |
 | MinIO Console | [http://localhost:9001](http://localhost:9001) | Local object-storage administration |
-| Label Studio | [http://localhost:8080](http://localhost:8080) | Human-operated annotation UI; local registration is enabled |
+| Label Studio | [http://localhost:8080](http://localhost:8080) | Human-operated annotation UI; the local account comes from `.env` |
 | MLflow | [http://localhost:5000](http://localhost:5000) | Training-run and artifact tracking |
 | Inference worker | Internal Compose network | ARQ worker for inference jobs |
 | Trainer worker | Internal Compose network | ARQ worker for model-training jobs |
@@ -35,7 +35,7 @@ Client
      -> Label Studio SDK -> Label Studio
 ```
 
-For design decisions and data-flow detail, see [docs/architecture.md](docs/architecture.md).
+For data-flow detail, see the [architecture diagram](docs/architecture/diagrams/diagram.md).
 
 ## Requirements
 
@@ -69,11 +69,25 @@ You may also change the matching usernames, plus `MINIO_ACCESS_KEY`, `LABEL_STUD
 
 The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ffhq-wrinkle/`; see [ai/README.md](ai/README.md) for the required layout and checksums. Compose mounts this directory read-only.
 
+The project owner approved the deployed UNet checkpoint on 2026-10-01. To activate that reviewed release, set `APHRODIZE_WRINKLE_REVIEWED_POLICY=/app/ai/ffhq_wrinkle/reviewed_policy.json` in the local `.env`, then run `docker compose --profile ai up -d --no-deps inference-worker`. The [reviewed policy](ai/ffhq_wrinkle/reviewed_policy.json) pins the checkpoint hash and pipeline versions; a mismatch withholds scores. Manual release records `release_basis=manual_review`, an approval reference, and `calibration_status=not_calibrated` without inventing a validation dataset, sample count, or threshold. Image quality, consent, and product-allergy screening still apply. A statistically calibrated release instead uses `APHRODIZE_WRINKLE_POLICY_BUNDLE`; only one release source can be configured. New analyses use the active policy; saved results retain their original release metadata. In this local development stack, the inference worker mounts backend and AI source read-only; restart it after changing worker code.
+
 ### 2. Build and start services
 
 ```powershell
-docker compose up -d --build
+docker compose --profile ai up -d --build
 ```
+
+For local demos, run `docker compose run --rm fixture` to load the account, profile, daily-health consent, and two dated tracker entries in [`backend/fixtures/users.yaml`](backend/fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; repeated runs do not duplicate the profile or daily entries. Fixture entries use `data_source=fixture` and are excluded from user-model training.
+
+Load only the real product catalog with `docker compose exec -T api python -m backend.scripts.load_fixtures --products /app/backend/fixtures/products.yaml` (running API required), or locally with `python -m backend.scripts.load_fixtures --products backend/fixtures/products.yaml`. The [product fixture](backend/fixtures/products.yaml) contains 18 reviewed products, including eight Thai variants with verified THB prices, exact Watsons purchase pages, and actual product photos. Manufacturer claims, INCI, application areas, pack sizes and retailer sources are documented in the [research notes](docs/research/thai-product-catalog-2026-10-01.md), reviewed on 2026-10-01. Prices are snapshots, exclude shipping, and may change at checkout. Unknown prices and shopping media remain unset. Import validates the complete batch and identifies products by source URL **and variant**; it preserves archived products and admin edits, filling missing shopping metadata only for an identical reviewed variant/formula. This command does not load users or change profiles.
+
+Recommendation endpoints default to `market=TH`; `market=all` includes other reviewed markets. Named products require both a verified HTTPS purchase link and product photo; older catalog entries without shopping metadata remain stored but are excluded from named recommendations. Optional `max_price_satang` limits each product using only sourced prices checked within 30 days. The frontend sends these filters to the API and renders the returned product photo and purchase link without sample-data fallbacks. Adult wrinkle guidance requires released image regions and explicit label support for face or eye-contour application; users under 18 receive a three-step basic routine. Standardized `allergy_ingredients` supplement free-text history, but any reported allergy still withholds named products. Some basic-routine profile/category combinations, including oily or unsure skin and moderately sensitive combination skin, have no verified shopping-ready match in this snapshot; the UI shows this honestly rather than substituting an unsupported formula. Foreign-market formulas are explicitly marked; check the purchased package's ingredients.
+
+Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
+
+Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
+
+The `ai` profile starts MinIO and the inference worker required by `/capture`. Without it, account and health APIs can run, but image analysis cannot.
 
 Check the startup state:
 
@@ -81,7 +95,7 @@ Check the startup state:
 docker compose ps
 ```
 
-`minio-init` is expected to finish with exit code `0`; it creates the `aphrodize-private` and `mlflow` buckets. The remaining services should continue running.
+`minio-init` is expected to finish with exit code `0`; it creates the `aphrodize-private`, `aphrodize-annotation`, and `mlflow` buckets. The remaining services should continue running.
 
 ### 3. Verify the stack
 
@@ -101,7 +115,7 @@ It checks all expected containers, FastAPI, Label Studio, MinIO, MLflow, Postgre
 - MinIO Console: [http://localhost:9001](http://localhost:9001)
 - MLflow: [http://localhost:5000](http://localhost:5000)
 
-All FastAPI routes except `/api/v1/health` require HTTP Basic authentication. Use the `API_USERNAME` and `API_PASSWORD` values from `.env`; the **Authorize** button in FastAPI Docs accepts these credentials. Label Studio also permits a local user to register at [http://localhost:8080/user/signup/](http://localhost:8080/user/signup/).
+All FastAPI routes except `/api/v1/health` require HTTP Basic authentication. Use the `API_USERNAME` and `API_PASSWORD` values from `.env`; the **Authorize** button in FastAPI Docs accepts these credentials. Sign in to Label Studio with `LABEL_STUDIO_USERNAME` and `LABEL_STUDIO_PASSWORD` from `.env`.
 
 ## Run the web client
 
@@ -115,7 +129,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The Next.js pages are a UI prototype and do not yet connect to the API. See [frontend/README.md](frontend/README.md) for the available routes and commands.
+Open [http://localhost:3000](http://localhost:3000). The capture and result pages connect to the local API; other pages remain a UI prototype. See [frontend/README.md](frontend/README.md) for the required environment variables and available routes.
 
 ## Typical workflow
 
@@ -124,6 +138,10 @@ Open [http://localhost:3000](http://localhost:3000). The Next.js pages are a UI 
 3. Create generic training jobs at `POST /api/v1/training/runs` or inference jobs at `POST /api/v1/inference/runs`.
 4. Poll the corresponding run endpoint for its state.
 5. Use Label Studio for human-managed annotation. Add `LABEL_STUDIO_API_KEY` to `.env` only when the backend needs SDK access.
+
+To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/ai/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
+
+For an approved external dataset, use the [controlled wrinkle training workflow](docs/ai/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
 
 The OpenAPI page documents request and response schemas for each API route.
 
@@ -134,7 +152,8 @@ The repository reserves model-package directories without placing implementation
 ```text
 models/
 ├── time-series/
-│   └── modelx/
+│   ├── linear-model/
+│   └── non-linear-model/
 └── non-time-series/
     └── u-net/
 ```
@@ -174,7 +193,7 @@ docker compose logs --tail 200 trainer-worker
 docker compose down
 
 # Restart after a configuration or Compose change.
-docker compose up -d --build
+docker compose --profile ai up -d --build
 
 # Follow one service's output.
 docker compose logs -f api
@@ -191,16 +210,11 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 ## Safety and scope
 
 - Aphrodize is an orchestration and MLOps foundation, not a medical device or diagnostic system.
-- It does not implement face recognition, age prediction, diagnosis, causal claims, treatment recommendations, or automatic use of user inference data for training.
+- It does not implement face recognition, age prediction, diagnosis, causal claims, or medical prescriptions. Product guidance matches reviewed cosmetic labels and application areas; it does not predict treatment effects. Face-inference data is not training data; the daily-health workflow can train review-only candidates only from separately consented, user-reported outcomes.
 - User data and artifacts are intended for private MinIO storage and must not be included in logs or committed to Git.
 - A reviewed, validated model artifact is required before inference can produce a result.
 - The current Compose stack deliberately excludes external observability and monitoring systems.
 
 ## Further documentation
 
-- [Implementation architecture](docs/architecture.md)
-- [Project overview](docs/Aphrodize.md)
-- [Product and scope](docs/Product%20and%20Scope.md)
-- [AI and data](docs/AI%20and%20Data.md)
-- [System and MLOps](docs/System%20and%20MLOps.md)
-- [Safety and governance](docs/Safety%20and%20Governance.md)
+- [Documentation guide](docs/README.md)

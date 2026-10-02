@@ -16,6 +16,8 @@ class ConfidenceResult(StrictModel):
     method: str
     policy_version: str
     calibration_status: Literal["calibrated", "not_calibrated"]
+    release_basis: Literal["calibration", "manual_review"] = "calibration"
+    approval_reference: str | None = None
     calibration_version: str | None
     minimum_confidence: float | None
     validation_dataset: str | None
@@ -73,6 +75,7 @@ class AnalysisResponse(StrictModel):
     status: Literal["completed", "abstained"]
     model_output: ResearchModelOutput
     derived_score: DerivedScore | None
+    experimental_score: DerivedScore | None = None
     recommendation_gate: RecommendationGate
     recommendations: list[dict[str, Any]]
     limitations: list[str]
