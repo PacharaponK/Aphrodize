@@ -129,7 +129,7 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
   }, [mobileOpen]);
 
   return (
-    <header className={`app-navigation${mobileOpen ? " is-open" : ""}`}>
+    <header className={`app-navigation${active === "dashboard" ? " is-home" : ""}${mobileOpen ? " is-open" : ""}`}>
       <div className="app-navigation-inner">
         <Link className="brand" href={dashboardHref} aria-label="Aphrodize home" onClick={() => setMobileOpen(false)}>
           <Image width={50} height={50} className="brand-mark" src="/assets/aphrodize-logo.svg" alt="" unoptimized />

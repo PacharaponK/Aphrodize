@@ -571,6 +571,17 @@ html[data-theme="black"] select, html[data-theme="black"] .admin-select { backgr
   -webkit-backdrop-filter: blur(18px) saturate(1.08);
   backdrop-filter: blur(18px) saturate(1.08);
 }
+.app-navigation.is-home { top:12px; width:calc(100% - 32px); max-width:1504px; margin:14px auto 0; border:1px solid var(--line); border-radius:18px; box-shadow:0 8px 30px color-mix(in srgb,var(--ink) 4%,transparent); }
+.app-navigation.is-home .app-navigation-inner { padding-inline:20px; }
+@media(max-width:1200px) {
+  .app-navigation.is-home .app-navigation-inner { grid-template-columns:minmax(0,1fr) auto auto; gap:8px; }
+  .app-navigation.is-home .app-nav-toggle { grid-column:3;grid-row:1; }
+  .app-navigation.is-home .app-navigation-controls { display:flex;grid-column:2;grid-row:1;margin:0;padding:0;border:0;gap:4px;flex-wrap:nowrap; }
+  .app-navigation.is-home .app-navigation-auth-action { min-width:44px;min-height:44px;padding:8px; }
+  .app-navigation.is-home .app-navigation-auth-action > span { display:none; }
+  .app-navigation.is-home .app-navigation-auth-error { position:absolute;top:100%;right:0;background:var(--surface);padding:8px; }
+}
+@media(max-width:600px) { .app-navigation.is-home{top:8px;width:calc(100% - 24px);border-radius:14px}.app-navigation.is-home .app-navigation-inner{padding:8px 12px;gap:2px}.app-navigation.is-home .brand{font-size:18px;gap:8px}.app-navigation.is-home .brand-mark{width:26px;height:36px} }
 .app-navigation-inner {
   display: flex;
   align-items: center;

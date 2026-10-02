@@ -239,6 +239,17 @@ components:
 
 ## Home/Dashboard — เลย์เอาต์การ์ดภาพรวม
 
+### Approved Home motion revision — 3 October 2026
+
+This revision supersedes the background-video/three-lane Home layout below. Use the approved HTML preview as the visual reference, not as a data source.
+
+- Hero uses `/assets/aphrodize-hero-face.png` as a full-section decorative background, shifted right (12% desktop, 6% mobile). Theme-aware gradients keep the editorial heading and real navigation actions readable. Clearly label the image as a visual demo, not an analysis result.
+- English display text alternates between “Young & Beautiful” and “Day by day.” every 4.5 seconds with staggered character entry. Underlines fit individual words when wrapping. Reserve two lines to avoid content jumping; provide Pause/Resume, stop timers in hidden tabs, and show static text for reduced motion. Screen readers receive a stable heading rather than repeated announcements.
+- Mouse tracking responds across the hero only on fine pointers; use small bounded image movement and a decorative reticle, never inferred detections. Disable on touch/reduced motion and clean up event listeners and animation frames.
+- Retain the shared navbar, language/theme settings and authenticated login/logout actions. Home uses a floating glass navbar; mobile settings/auth/menu remain accessible in the top row with 44px targets.
+- Below Hero, retain real account-backed seven-day records, Weekly overview, Thailand UV map, insights, recommendations and history states. Weekly overview has four metric cards with real seven-day bars, available-day counts and expandable daily values; responsive layout is 4/2/1 columns. Missing values remain missing, never substituted with preview fixtures.
+- Home can be expressive, while data reveals happen once and chart values never animate into fabricated counts. Other routes keep their existing data behavior and layout.
+
 ผู้ใช้ยืนยันขอบเขต Home/Dashboard ตามภาพอ้างอิง wellness และ skin dashboard เมื่อ 29 กันยายน 2026 โดยคงระบบสี ฟอนต์ โลโก้ navbar ด้านบน และ hamburger บนมือถือเดิม
 
 - วิดีโอที่ผู้ใช้เลือกเล่นวนเป็นพื้นหลังของ main อยู่กึ่งกลาง ไม่อยู่ภายใน article; บน desktop เว้นช่องกลางให้เห็นวิดีโอ และแสดง article สีทึบทางซ้าย–ขวา พร้อมข้อความกำกับว่าไม่ใช่ผลวิเคราะห์และปุ่มไปวิเคราะห์ภาพจริง ไม่แสดงคะแนนใบหน้าหรือชื่อผู้ใช้ตัวอย่าง

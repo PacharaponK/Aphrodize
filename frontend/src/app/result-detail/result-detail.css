@@ -465,9 +465,15 @@
 
 .analysis-page--face .analysis-kpi-tile.analysis-coverage {
   display: flex;
+  align-items: center;
+  text-align: center;
   padding: 0;
   border: 0;
   white-space: normal;
+}
+
+.analysis-page--face .analysis-coverage .kpi-label-wrap {
+  justify-content: center;
 }
 
 .analysis-page--face .analysis-kpi-tile.analysis-coverage strong {

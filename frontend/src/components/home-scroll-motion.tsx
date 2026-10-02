@@ -59,7 +59,7 @@ export function HomeScrollMotion() {
             scrollTrigger: {
               trigger: card,
               start: "top 92%",
-              toggleActions: "restart none restart reverse",
+              toggleActions: "play none none none",
               fastScrollEnd: true,
               preventOverlaps: true,
             },
