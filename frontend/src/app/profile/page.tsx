@@ -276,14 +276,14 @@ export default function ProfilePage() {
           {profile.answers || profile.profile ? <Link className="secondary-button" href="/onboarding/health?edit=full">{t("แก้ไขข้อมูลสุขภาพ", "Edit wellness information")}</Link> : null}
         </div>
         <div className="profile-layout">
-          <aside className="profile-identity" aria-label={t("ข้อมูลบัญชี", "Account information")}>
+          <aside className="profile-identity" aria-labelledby="profile-account-name">
             <article className="profile-account">
-              <span className="profile-monogram" aria-hidden="true">{profile.display_name.trim().slice(0, 1).toLocaleUpperCase()}</span>
-              <h2>{profile.display_name}</h2><p>{profile.email}</p>
+              <span className="profile-monogram" aria-hidden="true">{Array.from(profile.display_name.trim())[0]?.toLocaleUpperCase() || "?"}</span>
+              <h2 id="profile-account-name">{profile.display_name || t("บัญชีของคุณ", "Your account")}</h2><p>{profile.email}</p>
             </article>
             <div className="profile-goal">
               <h3>{t("เป้าหมายการติดตาม", "Tracking goal")}</h3>
-              <p>{displayValue((profile.answers ?? profile.profile)?.wellness_goal, "wellness_goal", language)}</p>
+              <p><span className="profile-goal-tag">{displayValue((profile.answers ?? profile.profile)?.wellness_goal, "wellness_goal", language)}</span></p>
             </div>
             <p className="profile-context-note">{t("ข้อมูลผิวเป็นสิ่งที่คุณรายงาน ไม่ใช่ผลวินิจฉัย", "Skin information is self-reported, not a diagnosis.")}</p>
           </aside>

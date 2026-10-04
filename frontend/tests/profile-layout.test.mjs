@@ -64,3 +64,24 @@ test("saved measurements still require active consent and private uncached APIs"
   assert.match(source, /fetch\("\/api\/daily-health\/profile", \{ cache: "no-store" \}\)/);
   assert.match(source, /fetch\("\/api\/profile", \{ cache: "no-store" \}\)/);
 });
+
+test("account card uses actual identity and tracking goal, not reference portrait or invented metrics", () => {
+  const html = renderProfile({ ...account, display_name: "Tester", email: "tester@example.test" });
+  const card = html.match(/<aside class="profile-identity"[\s\S]*?<\/aside>/)?.[0] ?? "";
+  assert.match(card, /aria-labelledby="profile-account-name"/);
+  assert.match(card, /profile-monogram" aria-hidden="true">T<\/span>/);
+  assert.match(card, /id="profile-account-name">Tester/);
+  assert.match(card, /tester@example.test/);
+  assert.match(card, /profile-goal-tag">Hydration/);
+  assert.doesNotMatch(card, /<img|Followers|Sessions|Angela|Videos/);
+});
+
+test("account card preserves long strings and localizes missing goal without invented data", () => {
+  const name = "ชื่อผู้ใช้ที่มีความยาวมากสำหรับตรวจการแสดงผล";
+  const email = "very-long-email-address-for-profile-layout@example.test";
+  const html = renderProfile({ ...account, display_name: name, email, answers: {} }, "th");
+  assert.ok(html.includes(name));
+  assert.ok(html.includes(email));
+  assert.match(html, /profile-goal-tag">ยังไม่ได้บันทึก/);
+  assert.match(html, /profile-monogram" aria-hidden="true">ช<\/span>/);
+});

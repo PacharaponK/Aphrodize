@@ -287,6 +287,7 @@ This revision supersedes the background-video/three-lane Home layout below. Use 
 ### Signup measurements and Skin profile
 
 - Profile uses a quiet two-column layout: real account identity and saved tracking goal on the left, grouped information on the right. Skin information and precautions appear first, followed by signup information, questionnaire habits, additional answers and the eligible cycle calendar. Collapse to one column below 800px.
+- The left account card follows the approved profile reference: a vertical, 24px-rounded blush-to-coral surface, circular name initial, prominent account name, email and saved tracking-goal tag. Use theme tokens and readable dark text in light mode, theme-aware foregrounds in dark mode. Keep the right-side information unchanged; mobile places the card before details. Do not add a portrait, avatar upload, followers, fabricated statistics or looping animation. Long names, email addresses and missing goals must remain readable.
 - Keep labels left and values right, without an individual card border for each answer. Long values wrap; missing values remain explicit, and zero is valid. Use the existing brand tokens and avoid looping motion or invented skin-health scores.
 - Label questionnaire habits as saved baseline answers, not today's readings. Keep the single wellness-edit link and existing calendar conditions; grouping must not discard unknown answer fields or expose guardian consent.
 
