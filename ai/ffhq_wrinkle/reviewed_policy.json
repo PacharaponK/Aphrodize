@@ -1,16 +1,16 @@
 {
-  "policy_version": "wrinkle-manual-release-2026-10-01.1",
+  "policy_version": "wrinkle-manual-release-2026-10-02.1",
   "method": "mean-binary-decision-margin",
   "status": "manually_approved",
   "minimum_confidence": null,
   "calibration_version": null,
   "validation_dataset": null,
   "sample_count": 0,
-  "notes": "The project owner confirmed that the deployed model had been checked and was sufficiently accurate for use, and explicitly authorized activation. This is manual review, not statistical confidence calibration or clinical validation.",
-  "approval_reference": "project-owner-approval:2026-10-01T06:41:34Z",
+  "notes": "Owner reported accurate model results and authorized all remaining prototype work on 2026-10-02. Detector input now uses max640, verified on seven owner photos, a two-face composition, and a blank image. This is owner-reviewed prototype release, not statistical calibration or clinical validation.",
+  "approval_reference": "project-owner-authorization:2026-10-02:complete-remaining-prototype",
   "model_architecture": "UNet",
   "checkpoint_sha256": "883034b3e0726dcdae946c312106dfde1d354ea5455fa21cba045a73058f4a25",
   "prediction_version": "ffhq-wrinkle-inference-v1",
-  "preprocessing_version": "ffhq-user-image-v1+ffhq-wrinkle-texture-v1-bt709-dark-floor",
+  "preprocessing_version": "ffhq-user-image-v1+ffhq-wrinkle-texture-v1-bt709-dark-floor+yunet-max640-v2",
   "threshold_version": "softmax-class1-face-mask-v1"
 }

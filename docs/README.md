@@ -11,6 +11,7 @@
 | กรอก Daily Health และดูผล | [Daily Health Input Flow](lifestyle/Daily-Health-Input-Flow.md) |
 | เข้าใจโมเดลและเส้นทางข้อมูล UV | [การทำงานของโมเดลทำนาย UV](uv-model-workflow.md) |
 | ใช้และดูแลฟีเจอร์ UV | [UV delivery and operation](uv-implementation.md) |
+| UV MLOps, quality gate และคู่มือเปลี่ยนรุ่น | [รายงาน UV MLOps 2 ตุลาคม 2026](uv-mlops-report.md) |
 | แผนที่ UV 77 พื้นที่และ component ที่ใช้ซ้ำได้ | [Thailand UV map](uv-thailand-map.md) |
 
 ## รายละเอียดเมื่อทำงานในส่วนนั้น

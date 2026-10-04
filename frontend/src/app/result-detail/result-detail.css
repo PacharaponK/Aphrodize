@@ -895,7 +895,7 @@
   background: transparent;
   box-shadow: none;
   max-width: none;
-  margin-bottom: 32px;
+  margin-bottom: 12px;
 }
 
 .recommendation-panel-root .recommendation-category-header {
@@ -928,41 +928,40 @@
 /* Product Cards Grid: Products are the real Cards! */
 .recommendation-panel-root .recommendation-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 18px;
-  margin: 16px 0;
+  margin: 12px 0 0;
+  align-items: start;
 }
 
 .recommendation-panel-root .recommendation-product-card {
   display: flex;
   flex-direction: column;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--surface);
   min-width: 0;
   margin: 0;
   color: var(--ink);
   font-size: 14px;
   overflow-wrap: anywhere;
-  box-shadow: 0 4px 16px rgb(88 42 53 / 0.04);
-  transition: border-color .2s ease, box-shadow .2s ease;
+  box-shadow: none;
+  transition: border-color .2s ease;
 }
 
 .recommendation-panel-root .recommendation-product-card:hover {
   border-color: var(--primary);
-  box-shadow: 0 10px 26px rgb(88 42 53 / 0.09);
 }
 
 .recommendation-panel-root .recommendation-product-media {
   width: 100%;
-  height: 220px;
+  height: 144px;
   display: grid;
   place-items: center;
-  margin-bottom: 14px;
-  padding: 16px;
-  position: relative;
-  border-radius: 12px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 8px;
   background: #fff;
   overflow: hidden;
 }
@@ -990,7 +989,6 @@
 .recommendation-panel-root .recommendation-product-body {
   display: flex;
   flex-direction: column;
-  flex: 1;
   min-width: 0;
 }
 
@@ -1024,9 +1022,8 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px;
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
+  margin-top: 2px;
+  padding-top: 0;
 }
 
 .recommendation-panel-root .product-price-amount {
@@ -1049,7 +1046,7 @@
   gap: 7px;
   width: 100%;
   min-height: 44px;
-  margin-top: 12px;
+  margin-top: 10px;
   padding: 10px 16px;
   border-radius: 10px;
   font-size: 13px;
@@ -1058,9 +1055,9 @@
 }
 
 .recommendation-panel-root .product-inci-details {
-  margin-top: 10px;
-  padding: 6px 0;
-  border-top: 1px dashed var(--line);
+  margin-top: 12px;
+  padding: 0;
+  border-top: 1px solid var(--line);
   font-size: 12px;
   color: var(--muted);
 }
@@ -1146,14 +1143,24 @@
   color: var(--link);
 }
 
-.recommendation-panel-root { min-width: 0; }
-.recommendation-panel-root .recommendation-filters { margin-top: 0; }
+.recommendation-panel-root { min-width: 0; container-type: inline-size; }
+.recommendation-panel-root .recommendation-product-grid:has(> .recommendation-product-card:only-child) { grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 640px) {
+  .recommendation-panel-root .recommendation-product-card:only-child { display: grid; grid-template-columns: 192px minmax(0, 1fr); gap: 24px; align-items: start; padding: 24px; }
+  .recommendation-panel-root .recommendation-product-card:only-child .recommendation-product-media { height: 192px; margin: 0; }
+  .recommendation-panel-root .recommendation-product-card:only-child .recommendation-buy-btn { width: fit-content; min-width: 180px; }
+  .recommendation-panel-root .recommendation-product-card:only-child .recommendation-warning { max-width: 75ch; }
+}
+.recommendation-panel-root .recommendation-filters { margin: 0; padding: 12px 14px; border-radius: 8px; }
 .recommendation-panel-root .recommendation-filters label { min-width: 0; }
 .recommendation-panel-root .recommendation-filters input[name="budget"] { font-size: 16px; }
-.recommendation-panel-root .recommendation-profile-note { padding-block: 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 14px; line-height: 1.7; }
-.recommendation-panel-root .recommendation-profile-note a { display: inline-block; padding-block: 8px; }
+.recommendation-panel-root .recommendation-profile-note { margin: 0; padding-block: 4px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.recommendation-panel-root .recommendation-profile-note a { display: inline-flex; align-items: center; min-height: 44px; }
 .recommendation-panel-root .recommendation-evidence-drawer summary { min-height: 44px; }
 .recommendation-panel-root .recommendation-warning { width: 100%; }
+.recommendation-panel-root .recommendation-product-card .recommendation-warning { margin: 12px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
+.recommendation-panel-root .recommendation-product-card .recommendation-warning strong { color: var(--ink); }
+.recommendation-panel-root .analysis-localization-note { margin: 0; color: var(--muted); font-size: 12px; font-weight: 400; }
 @media (max-width: 600px) {
   .recommendation-panel-root .recommendation-filters { padding: 16px; }
   .recommendation-panel-root .recommendation-filters label, .recommendation-panel-root .recommendation-filters button[type="submit"] { flex-basis: 100%; width: 100%; }

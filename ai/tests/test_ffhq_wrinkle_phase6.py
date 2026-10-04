@@ -2,6 +2,7 @@ import json
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from fastapi.testclient import TestClient
@@ -69,6 +70,10 @@ def prediction(probability):
 
 
 class ScoringTests(unittest.TestCase):
+    def test_empty_policy_environment_uses_unreleased_default(self):
+        with patch.dict("os.environ", {"APHRODIZE_WRINKLE_POLICY_BUNDLE": ""}):
+            self.assertEqual(TestClient(create_app()).get("/health").status_code, 200)
+
     def test_all_scores_are_versioned_and_bounded(self):
         face = np.ones((100, 100), dtype=bool)
         wrinkle = np.zeros_like(face)
