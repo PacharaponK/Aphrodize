@@ -280,6 +280,10 @@ This revision supersedes the background-video/three-lane Home layout below. Use 
 
 ## ประวัติและแนวโน้มสุขภาพ (`/trend`)
 
+- History shows only the three latest recorded days within the last 30 Bangkok calendar days (today through today minus 29 days), newest first. Missing days are not filled or counted as zero. The existing personal-outlook charts and Home/Daily Health behavior remain unchanged.
+- Provide a labeled date search constrained to that window and “Back to latest” to clear the search. Searching an unrecorded day shows a specific empty state, not a substitute record. Date controls and actions wrap on mobile and retain 44px targets, keyboard focus, theme and language support.
+- Each history date starts collapsed: date, overall level when assessed, recorded sleep/water/outdoor values, and a quiet count of unassessed signals. A native details disclosure preserves full recorded guidance, unavailable reasons and references. Retain forecast target dates; do not imply missing signals are low risk or change saved interpretations.
+
 ### Signup measurements and Skin profile
 
 - Profile uses a quiet two-column layout: real account identity and saved tracking goal on the left, grouped information on the right. Skin information and precautions appear first, followed by signup information, questionnaire habits, additional answers and the eligible cycle calendar. Collapse to one column below 800px.

@@ -56,5 +56,21 @@ html[data-theme="black"] .daily-history-empty,html[data-theme="black"] .daily-hi
 html[data-theme="black"] .daily-weekly-summary-card,html[data-theme="black"] .daily-history-entry{background:var(--surface);border-color:var(--line);color:var(--ink)}
 html[data-theme="black"] .daily-history-input-summary span{border-color:var(--line);color:var(--muted)}
 html[data-theme="black"] .daily-history-input-summary strong{color:var(--ink)}
+
+.daily-history-search{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.daily-history-date-field{display:grid;gap:8px;min-width:200px}
+.daily-history-date-field label{font-size:13px;font-weight:700;color:var(--ink)}
+.daily-history-date-field input{min-height:44px;width:100%;padding:10px 12px;border:1px solid var(--border-strong,var(--line));border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;color-scheme:light;box-sizing:border-box}
+html[data-theme="black"] .daily-history-date-field input{color-scheme:dark}
+.daily-history-search button{min-height:44px;cursor:pointer}
+.daily-history-search button:disabled{opacity:.55;cursor:default}
+.daily-history-search-range{flex-basis:100%;margin:0;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+.daily-history-results-label,.daily-history-availability{margin:0;color:var(--muted);font-size:13px}
+.daily-history-trend .daily-history-input-summary span{padding:0;border:0;background:none;font-size:13px}
+.daily-history-trend .daily-history-input-summary{gap:8px 20px}
+.daily-history-details>summary{display:list-item;min-height:44px;padding:12px 0;box-sizing:border-box;cursor:pointer;color:var(--primary-deep);font-size:14px;font-weight:700}
+.daily-history-details[open]>summary{margin-bottom:12px}
+.daily-history-search input:focus-visible,.daily-history-search button:focus-visible,.daily-history-details>summary:focus-visible{outline:2px solid var(--primary-deep);outline-offset:4px}
+@media(max-width:600px){.daily-history-date-field{flex-basis:100%;min-width:0}.daily-history-search .secondary-button{flex:1}.daily-history-search .text-button{flex:1}.daily-history-trend .daily-history-input-summary{display:flex}}
 html[data-theme="black"] .daily-weekly-summary-card p,html[data-theme="black"] .daily-weekly-summary-card small,html[data-theme="black"] .daily-weekly-summary-card strong span{color:var(--muted)}
 html[data-theme="black"] .daily-weekly-summary-heading>span{background:var(--primary-soft);color:var(--primary-deep)}
