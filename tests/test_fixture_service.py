@@ -6,6 +6,9 @@ import pytest
 import yaml
 from sqlalchemy.sql.dml import Insert
 
+from backend.api.schemas.auth import SignupRequest
+from backend.api.schemas.consent import WellnessProfileUpsert
+from backend.api.schemas.daily_health import DailyHealthEntryUpsert
 from backend.core.db.models import (
     Consent,
     DailyHealthDatasetRecord,
@@ -15,6 +18,15 @@ from backend.core.db.models import (
 from backend.services import fixture_service
 
 FIXTURE = Path(__file__).resolve().parents[1] / "backend" / "fixtures" / "users.yaml"
+
+
+@pytest.fixture(params=["ball@gmail.com", "male@gmail.com", "female@gmail.com"])
+def user_fixture(request, tmp_path):
+    rows = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))["users"]
+    row, = [row for row in rows if row["email"] == request.param]
+    path = tmp_path / "users.yaml"
+    path.write_text(yaml.safe_dump({"users": [row]}), encoding="utf-8")
+    return path, row
 
 
 class FakeSession:
@@ -62,8 +74,11 @@ class FakeSession:
         self.commits += 1
 
 
-def test_fixture_covers_profile_and_daily_entry_fields() -> None:
-    row = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))["users"][0]
+def test_fixture_covers_profile_and_daily_entry_fields(user_fixture) -> None:
+    _, row = user_fixture
+    assert set(row) - {"profile", "daily_entries"} == set(SignupRequest.model_fields)
+    SignupRequest.model_validate(row)
+    WellnessProfileUpsert.model_validate(row["profile"])
     profile_fields = set(UserProfile.__table__.columns.keys()) - {"user_id", "updated_at"}
     entry_fields = set(DailyHealthEntry.__table__.columns.keys()) - {
         "id", "user_id", "created_at", "updated_at"
@@ -71,10 +86,21 @@ def test_fixture_covers_profile_and_daily_entry_fields() -> None:
     assert set(row["profile"]) - {"guardian_consent"} == profile_fields
     assert len(row["daily_entries"]) == 2
     assert all(set(entry) == entry_fields for entry in row["daily_entries"])
+    assert len({entry["local_date"] for entry in row["daily_entries"]}) == 2
+    for entry in row["daily_entries"]:
+        DailyHealthEntryUpsert.model_validate(entry)
+        assert entry["sleep_score_0_100"] == round(
+            min(100, entry["sleep_duration_minutes"] / 540 * 100), 1
+        )
+        if entry["weight_kg"] is not None:
+            assert entry["calculated_thirst_score_0_10"] == round(
+                10 * max(0, 1 - entry["water_intake_ml"] / (entry["weight_kg"] * 30)), 1
+            )
 
 
 @pytest.mark.asyncio
-async def test_fixture_populates_profile_and_two_days_once(monkeypatch) -> None:
+async def test_fixture_populates_profile_and_two_days_once(monkeypatch, user_fixture) -> None:
+    path, row = user_fixture
     user_id = uuid4()
 
     async def unexpected_signup(*_args):
@@ -82,12 +108,12 @@ async def test_fixture_populates_profile_and_two_days_once(monkeypatch) -> None:
 
     monkeypatch.setattr(fixture_service, "signup", unexpected_signup)
     session = FakeSession(user_id)
-    await fixture_service.load_users(FIXTURE, session)
-    await fixture_service.load_users(FIXTURE, session)
+    await fixture_service.load_users(path, session)
+    await fixture_service.load_users(path, session)
 
     assert session.profile.user_id == user_id
-    assert session.profile.skin_type == "combination"
-    assert session.profile.menstrual_tracking == "yes"
+    assert session.profile.skin_type == row["profile"]["skin_type"]
+    assert session.profile.menstrual_tracking == row["profile"]["menstrual_tracking"]
     assert session.consent.version == "daily-health-v1"
     assert len(session.entries) == 2
     assert all(key[0] == user_id for key in session.entries)
@@ -96,7 +122,8 @@ async def test_fixture_populates_profile_and_two_days_once(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_fixture_creates_account_profile_and_daily_entries(monkeypatch) -> None:
+async def test_fixture_creates_account_profile_and_daily_entries(monkeypatch, user_fixture) -> None:
+    path, row = user_fixture
     user_id = uuid4()
     created = []
 
@@ -106,9 +133,8 @@ async def test_fixture_creates_account_profile_and_daily_entries(monkeypatch) ->
 
     monkeypatch.setattr(fixture_service, "signup", fake_signup)
     session = FakeSession(user_id, account_exists=False)
-    await fixture_service.load_users(FIXTURE, session)
+    await fixture_service.load_users(path, session)
 
-    row = yaml.safe_load(FIXTURE.read_text(encoding="utf-8"))["users"][0]
     assert created[0].email == row["email"].strip().lower()
     assert session.profile.user_id == user_id
     assert len(session.entries) == 2
