@@ -10,7 +10,7 @@ APPROVED_DATA_ROOT = Path("/app/storage/data/approved")
 DATASET_URI = re.compile(r"^approved://([a-z0-9][a-z0-9_-]{0,63})@([0-9a-f]{64})$")
 SPLITS = {"train", "validation", "test"}
 PREPROCESSING_VERSION = (
-    "ffhq-user-image-v1+ffhq-wrinkle-texture-v1-bt709-dark-floor"
+    "ffhq-user-image-v1+ffhq-wrinkle-texture-v1-bt709-dark-floor+yunet-max640-v2"
 )
 
 
