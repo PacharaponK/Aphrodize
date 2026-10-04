@@ -411,8 +411,10 @@ def test_wrinkle_products_require_adult_age_and_the_matching_label_application_a
                 "score_version": "v1",
                 "roi_version": "v1",
                 "regions": {
-                    "forehead": {"score": 12},
-                    "image_left_periocular": {"score": 9},
+                    "forehead": {"score": 40, "wrinkle_pixels": 200, "evaluated_pixels": 10000},
+                    "image_left_periocular": {
+                        "score": 50, "wrinkle_pixels": 250, "evaluated_pixels": 10000,
+                    },
                 },
             },
         }
