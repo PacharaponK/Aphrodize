@@ -282,7 +282,12 @@ test("result prioritizes four measurable region areas and keeps all measurements
   assert.equal(nodes.filter(node => node.props.className === "analysis-region-detail").length, 7);
   assert.equal(nodes.find(node => node.type === "details").props.open, undefined);
   assert.ok(text.includes("Skin analysis overview"));
-  assert.ok(text.includes("Standard face diagram, not your face shape or exact pixel boundaries"));
+  assert.ok(text.includes("Standard face diagram, not your face shape"));
+  assert.ok(text.includes("not severity or exact pixels"));
+  assert.ok(text.includes("overlay/mask for exact marks"));
+  assert.ok(text.includes("not a skin grade or diagnosis"));
+  assert.ok(text.includes("not better or worse skin"));
+  assert.ok(text.includes("Not clinically validated"));
   assert.equal(nodes.filter(node => node.props.className === "face-map-zone is-marked").length, 5);
   assert.ok(text.includes("Not scored") || text.includes("not enough evaluated pixels"));
   assert.equal(/Low detection|Moderate detection|Prominent detection|Overall Assessment/.test(text), false);

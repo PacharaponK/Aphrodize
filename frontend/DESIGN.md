@@ -278,6 +278,10 @@ This revision supersedes the background-video/three-lane Home layout below. Use 
 
 ### Signup measurements and Skin profile
 
+- Profile uses a quiet two-column layout: real account identity and saved tracking goal on the left, grouped information on the right. Skin information and precautions appear first, followed by signup information, questionnaire habits, additional answers and the eligible cycle calendar. Collapse to one column below 800px.
+- Keep labels left and values right, without an individual card border for each answer. Long values wrap; missing values remain explicit, and zero is valid. Use the existing brand tokens and avoid looping motion or invented skin-health scores.
+- Label questionnaire habits as saved baseline answers, not today's readings. Keep the single wellness-edit link and existing calendar conditions; grouping must not discard unknown answer fields or expose guardian consent.
+
 - Height and weight are entered once in the signup questionnaire and stored through the existing consent-aware measurement APIs. Daily tracking reuses saved account values; it must not require daily re-entry.
 - Skin profile displays the current saved measurements under “Signup information”, without duplicate fields in the answer list. Measurement cards are read-only with no “Edit or manage consent” disclosure or repeated input form. Removing these controls does not change saved values or consent; keep the existing APIs and separate wellness-edit flow intact.
 - Use the consent-aware daily-health profile as the authoritative source. Do not restore revoked measurements from historical questionnaire answers. Unsaved edits must not replace the displayed saved value.

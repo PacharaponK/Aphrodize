@@ -29,9 +29,9 @@ function unavailableMessage(signal: HealthSignal, language: "th" | "en"): string
     case "out_of_training_domain":
       return signal.headline ?? (language === "en" ? "A risk level is not shown for this input." : "ยังไม่แสดงระดับความเสี่ยงสำหรับข้อมูลชุดนี้");
     case "insufficient_data":
-      return language === "en" ? "There is not enough self-reported data for this signal yet." : "ยังไม่มีข้อมูลที่สังเกตจริงเพียงพอสำหรับสัญญาณนี้";
+      return language === "en" ? "Not enough self-reported data yet." : "ข้อมูลที่ผู้ใช้รายงานยังไม่พอ";
     case "insufficient_history":
-      return language === "en" ? "There is not enough history of self-reported outcomes to assess this signal." : "ยังไม่มีประวัติผลที่ผู้ใช้รายงานจริงเพียงพอสำหรับการประเมิน";
+      return language === "en" ? "Not enough self-reported outcome history yet." : "ประวัติผลที่ผู้ใช้รายงานยังไม่พอ";
     default:
       return language === "en" ? "No assessment is available for this item." : "ไม่มีผลประเมินสำหรับรายการนี้";
   }
@@ -93,7 +93,7 @@ export default function DailyHealthRiskResults({
           </ul>
         </section>
       ) : null}
-      <p className="daily-risk-disclaimer">{language === "en" ? "These are signals based on your recorded health data, not a medical diagnosis." : "ผลเหล่านี้เป็นสัญญาณจากข้อมูลสุขภาพที่บันทึก ไม่ใช่การวินิจฉัยโรค"}</p>
+      <p className="daily-risk-disclaimer">{language === "en" ? "Signals from your health records—not a diagnosis." : "สัญญาณจากบันทึกสุขภาพ ไม่ใช่การวินิจฉัย"}</p>
     </div>
   );
 }

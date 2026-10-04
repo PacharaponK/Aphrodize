@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import { useLanguage } from "@/components/language-provider";
 import type { DailyHealthProfile } from "@/lib/daily-health-types";
+import "./profile.css";
 
 type ProfileValues = {
   age_years?: number;
@@ -37,6 +38,7 @@ const answerLabels: Record<string, Record<string, readonly [string, string]>> = 
 };
 
 function displayValue(value: unknown, key: string, language: "th" | "en"): string {
+  if (value == null || value === "") return language === "en" ? "Not recorded" : "ยังไม่ได้บันทึก";
   const raw = String(value ?? "-");
   const labelled = answerLabels[key]?.[raw];
   if (labelled) return labelled[language === "en" ? 1 : 0];
@@ -268,15 +270,73 @@ export default function ProfilePage() {
         <div className="profile-auth-copy"><p className="eyebrow">{t("พื้นที่สมาชิก", "MEMBER PROFILE")}</p><h2>{t("เข้าสู่ระบบเพื่อดูโปรไฟล์", "Sign in to view your profile")}</h2><p>{t("ข้อมูลสุขภาพ คำตอบที่บันทึกไว้ และคำแนะนำส่วนบุคคลของคุณจะแสดงที่นี่หลังเข้าสู่ระบบ", "Your saved wellness information, profile answers, and personalized guidance will appear here after you sign in.")}</p></div>
         <div className="profile-auth-actions"><Link className="primary-button" href="/login">{t("เข้าสู่ระบบ", "Sign in")} <span aria-hidden="true">→</span></Link><Link className="secondary-button" href="/signup">{t("สร้างบัญชีใหม่", "Create an account")}</Link></div>
       </div>}
-      {profile && <><article className="profile-account"><h2>{profile.display_name}</h2><p>{profile.email}</p></article>
-        <h2>{t("ข้อมูลที่ตอบในขั้นตอนสมัครสมาชิก", "Signup information")}</h2>
-        <ProfileMeasurements />
-        {profile.answers || profile.profile ? <>
-          <dl className="profile-answers">{Object.entries(profile.answers ?? profile.profile ?? {}).filter(([key]) => key !== "guardian_consent" && key !== "height_cm" && key !== "weight_kg" && !(key === "age_group" && profile.answers?.age_years != null)).map(([key, value]) => <div key={key}><dt>{labels[key]?.[language === "en" ? 1 : 0] ?? key}</dt><dd>{displayValue(value, key, language)}</dd></div>)}</dl>
-          <Link className="secondary-button" href="/onboarding/health?edit=full">{t("แก้ไขข้อมูลสุขภาพ →", "Edit wellness information →")}</Link>
-          <p className="metadata">{t("คำตอบล่าสุดนี้ใช้เป็นข้อมูลประกอบการแนะนำผลิตภัณฑ์ตามกฎความปลอดภัย", "These answers are used as inputs for safety-checked product recommendations.")}</p>
-          {shouldShowMenstrualCalendar && <MenstrualCycleCalendar />}
-        </> : <div className="empty-state"><p>{t("ยังไม่มีข้อมูลสุขภาพเบื้องต้น", "No wellness information yet.")}</p><Link className="primary-button" href="/onboarding/health">{t("เริ่มตอบคำถาม →", "Start questionnaire →")}</Link></div>}</>}
+      {profile && <>
+        <div className="profile-toolbar">
+          <p>{t("ข้อมูลที่คุณบันทึกไว้สำหรับการดูแลผิว", "Your saved information for skin care")}</p>
+          {profile.answers || profile.profile ? <Link className="secondary-button" href="/onboarding/health?edit=full">{t("แก้ไขข้อมูลสุขภาพ", "Edit wellness information")}</Link> : null}
+        </div>
+        <div className="profile-layout">
+          <aside className="profile-identity" aria-label={t("ข้อมูลบัญชี", "Account information")}>
+            <article className="profile-account">
+              <span className="profile-monogram" aria-hidden="true">{profile.display_name.trim().slice(0, 1).toLocaleUpperCase()}</span>
+              <h2>{profile.display_name}</h2><p>{profile.email}</p>
+            </article>
+            <div className="profile-goal">
+              <h3>{t("เป้าหมายการติดตาม", "Tracking goal")}</h3>
+              <p>{displayValue((profile.answers ?? profile.profile)?.wellness_goal, "wellness_goal", language)}</p>
+            </div>
+            <p className="profile-context-note">{t("ข้อมูลผิวเป็นสิ่งที่คุณรายงาน ไม่ใช่ผลวินิจฉัย", "Skin information is self-reported, not a diagnosis.")}</p>
+          </aside>
+          <div className="profile-details">
+            {profile.answers || profile.profile ? <ProfileInformation profile={profile} language={language} section="skin" /> :
+              <div className="empty-state"><h2>{t("เริ่มสร้างโปรไฟล์ผิว", "Start your skin profile")}</h2><p>{t("ยังไม่มีข้อมูลสุขภาพเบื้องต้น", "No wellness information yet.")}</p><Link className="primary-button" href="/onboarding/health">{t("เริ่มตอบคำถาม", "Start questionnaire")}</Link></div>}
+            <section className="profile-info-section" aria-labelledby="profile-signup-title">
+              <h2 id="profile-signup-title">{t("ข้อมูลสมัครสมาชิก", "Signup information")}</h2>
+              <ProfileMeasurements />
+              <ProfileAnswerRows profile={profile} keys={SIGNUP_KEYS} language={language} />
+            </section>
+            {profile.answers || profile.profile ? <ProfileInformation profile={profile} language={language} section="habits" /> : null}
+            {shouldShowMenstrualCalendar && <MenstrualCycleCalendar />}
+          </div>
+        </div>
+      </>}
     </section>
   </WorkspaceShell>;
+}
+
+const SKIN_KEYS = ["skin_type", "skin_sensitivity", "sunscreen_frequency", "known_product_allergy", "allergy_details", "severe_irritation"];
+const HABIT_KEYS = ["sleep_hours", "sleep_quality", "water_liters", "outdoor_minutes", "stress_level"];
+const SIGNUP_KEYS = ["age_years", "age_group", "sex"];
+const OMITTED_KEYS = ["height_cm", "weight_kg", "guardian_consent", "wellness_goal"];
+
+function ProfileAnswerRows({ profile, keys, language }: { profile: Profile; keys: string[]; language: "th" | "en" }) {
+  const answers = profile.answers ?? profile.profile ?? {};
+  const rows = keys.filter(key => Object.hasOwn(answers, key) && !(key === "age_group" && profile.answers?.age_years != null));
+  if (!rows.length) return null;
+  return <dl className="profile-answers">{rows.map(key => <div key={key}>
+    <dt>{labels[key]?.[language === "en" ? 1 : 0] ?? key.replaceAll("_", " ")}</dt>
+    <dd>{displayValue(answers[key as keyof typeof answers], key, language)}</dd>
+  </div>)}</dl>;
+}
+
+function ProfileInformation({ profile, language, section }: { profile: Profile; language: "th" | "en"; section: "skin" | "habits" }) {
+  const t = (th: string, en: string) => language === "en" ? en : th;
+  const answers = profile.answers ?? profile.profile ?? {};
+  const otherKeys = Object.keys(answers).filter(key => ![...SKIN_KEYS, ...HABIT_KEYS, ...SIGNUP_KEYS, ...OMITTED_KEYS].includes(key));
+  return <>
+    {section === "skin" && <section className="profile-info-section profile-skin-section" aria-labelledby="profile-skin-title">
+      <h2 id="profile-skin-title">{t("ข้อมูลผิวและข้อควรระวัง", "Skin information & precautions")}</h2>
+      <p className="profile-section-note">{t("ใช้ประกอบการแนะนำผลิตภัณฑ์ตามกฎความปลอดภัย", "Used for safety-checked product recommendations.")}</p>
+      {SKIN_KEYS.some(key => Object.hasOwn(answers, key)) ? <ProfileAnswerRows profile={profile} keys={SKIN_KEYS} language={language} /> : <p className="profile-section-note">{t("ยังไม่ได้บันทึกข้อมูลผิว", "Skin information is not recorded yet.")}</p>}
+    </section>}
+    {section === "habits" && HABIT_KEYS.some(key => Object.hasOwn(answers, key)) && <section className="profile-info-section" aria-labelledby="profile-habits-title">
+      <h2 id="profile-habits-title">{t("พฤติกรรมจากแบบสอบถาม", "Questionnaire habits")}</h2>
+      <p className="profile-section-note">{t("ข้อมูลตั้งต้นที่คุณตอบไว้ ไม่ใช่บันทึกของวันนี้", "Saved baseline answers, not today's readings.")}</p>
+      <ProfileAnswerRows profile={profile} keys={HABIT_KEYS} language={language} />
+    </section>}
+    {section === "habits" && otherKeys.length > 0 && <section className="profile-info-section" aria-labelledby="profile-other-title">
+      <h2 id="profile-other-title">{t("ข้อมูลเพิ่มเติม", "Additional information")}</h2>
+      <ProfileAnswerRows profile={profile} keys={otherKeys} language={language} />
+    </section>}
+  </>;
 }
