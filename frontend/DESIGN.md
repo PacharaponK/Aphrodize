@@ -95,6 +95,8 @@ components:
 
 ### Flow วิเคราะห์ปัจจุบัน (`/capture`)
 
+- ระหว่างโหลดผลและสถานะ queued/running ใช้ loader วาดเส้นโลโก้ Aphrodize จาก path เดิมด้วย dash motion ตาม HTML preview ที่อนุมัติ สีตาม theme tokens; ไม่มีเปอร์เซ็นต์หรือผลจำลอง มี Pause/Resume, หยุดเมื่อแท็บถูกซ่อน และแสดงโลโก้นิ่งเมื่อ reduced motion ส่วน rejected/failed/no-analysis และผลสำเร็จคงสถานะจริงเดิม
+
 - แสดงทีละ Stage: 1. เตรียมภาพ → 2. ดูผลวิเคราะห์ (`#results`) → 3. ผลิตภัณฑ์ที่แนะนำ (`#products`) โดยใช้ Stepper ที่ย้อนขั้นได้และรองรับ Back/Forward
 - ระหว่างรอประมวลผลหรือเมื่อภาพไม่ผ่าน ให้แสดงสถานะใน Stage 2; เปิด Stage 3 หลังวิเคราะห์สำเร็จเท่านั้น คงภาพที่เลือก ผลวิเคราะห์ และตัวกรองสินค้าเมื่อย้อนขั้น
 - ส่วนผลิตภัณฑ์อยู่ใน Stage 3 แทนการแสดงร่วมกับผลตามเลย์เอาต์เดิมด้านล่าง ใช้โปรไฟล์และเกณฑ์ความปลอดภัยเดิม ไม่อนุมานสินค้าจากคะแนนทดลอง
@@ -277,6 +279,18 @@ This revision supersedes the background-video/three-lane Home layout below. Use 
 ใช้ความกว้างร่วมสูงสุด 1920px และ `--responsive-page-gutter` เช่นเดียวกับ workspace อื่น ไม่จำกัดหน้า capture ที่ 1280px จอใหญ่จัดภาพตัวอย่างและแนวทางถ่ายภาพทางซ้าย ความยินยอมและปุ่มวิเคราะห์ทางขวา จอเล็กกว่า 1000px เรียงเป็นคอลัมน์เดียว ใช้สีและฟอนต์จาก theme tokens เดิม
 
 ผลลัพธ์และคำแนะนำต่ออยู่ด้านล่างแบบฟอร์ม หลังส่งภาพสำเร็จให้เลื่อนไป `#results` และย้ายโฟกัสโดยไม่เลื่อนซ้ำ เคารพ `prefers-reduced-motion` และเว้นระยะเหนือส่วนผลลัพธ์สำหรับ navbar ภาพและคะแนนต้องมาจาก API เท่านั้น
+
+## UV province explorer (`/uv-map`)
+
+Approved 5 October 2026 as a route-specific extension of the incumbent Aphrodize world. Inherit shared navigation, Libre Baskerville headings, Montserrat UI, blush/coral actions, theme-aware surfaces, borders and focus tokens. This addition does not change Home's existing map or require a global token/document rewrite.
+
+- Place source/day/province controls and data availability before the map. Desktop pairs the larger map on the left with an opaque selected-province panel on the right; at 720px and below stack map then details and wrap controls. Keep the legend beside the map content.
+- Use the existing SVG province boundaries with a restrained cartographic grid, tilted 2.5D plane and offset depth. Height is a decorative view effect, never terrain or UV magnitude. Selected provinces lift slightly and retain a visible outline; flat view removes tilt, depth and lift.
+- Offer zoom at 1×, 1.5× and 2× centered on the selected province's representative coordinate, plus a whole-country reset. Map selection works by pointer, Enter or Space and has the native province dropdown as an equivalent control. Keep visible focus and 44px control targets.
+- Reduce tilt on mobile. Under `prefers-reduced-motion`, render a static flat map with no depth, lift or transform transitions; province selection and zoom remain usable.
+- Preserve the five established semantic UV colors and their labeled numeric ranges; gray denotes unavailable data. Retain source distinctions, including model coverage markers, rather than applying the brand accent to UV categories.
+- Show only returned values, dates, availability, representative coordinates and provenance. Preserve API daily-maximum versus experimental model solar-noon semantics, clear-sky caveats, stale/loading/error states and the three-province model scope. Missing values remain unavailable, never zero or interpolated.
+- Use existing geometry and attribution; this extension introduces no raster, imagery dependency or new rendering library. Its approved composition and interactions remain local to `/uv-map`.
 
 ## ประวัติและแนวโน้มสุขภาพ (`/trend`)
 

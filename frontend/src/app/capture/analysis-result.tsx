@@ -21,6 +21,7 @@ import {
 import { RecommendationPanel } from "@/app/recommendation/recommendation-panel";
 import "../result-detail/result-detail.css";
 import { useLanguage, type Language } from "@/components/language-provider";
+import { AnalysisLoader } from "@/components/analysis/analysis-loader";
 
 type AreaScore = { score: number; wrinkle_area_ratio: number; wrinkle_pixels: number; evaluated_pixels: number };
 type Score = { overall: AreaScore; regions: Record<string, AreaScore>; formula: string; disclaimer: string; roi_version?: string };
@@ -598,10 +599,10 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
         </div>
       )}
 
-      {!analysis && !error && !noAnalysis && <div className="analysis-state-message" role="status">{copy.loading}</div>}
+      {!analysis && !error && !noAnalysis && <AnalysisLoader message={copy.loading} language={language} />}
 
       {!error && !noAnalysis && analysis && (analysis.status === "queued" || analysis.status === "running") && (
-        <div className="result-wait" role="status">{copy.processing}</div>
+        <AnalysisLoader message={copy.processing} language={language} />
       )}
 
       {!error && !noAnalysis && analysis?.status === "rejected" && (

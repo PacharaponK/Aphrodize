@@ -115,6 +115,9 @@ select:focus-visible, .admin-select:focus-visible { outline: 2px solid var(--rin
 .sidebar-close { display: none; }
 .brand, .page-brand, .auth-brand { color: var(--ink); font-weight: 700; }
 .brand-mark { background: transparent; box-shadow: none; }
+.brand-mark-dark { display: none; }
+html[data-theme="black"] .brand-mark-light { display: none; }
+html[data-theme="black"] .brand-mark-dark { display: block; }
 .nav-link { color: var(--muted); border-radius: 8px; }
 .nav-link:hover, .nav-link.active { background: var(--primary-soft); color: var(--ink); box-shadow: none; }
 .nav-link.active { box-shadow: inset 3px 0 var(--primary); }

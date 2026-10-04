@@ -77,8 +77,12 @@ export function UvMapExplorer() {
       {availableCount < options.length && " · พื้นที่ไม่มีข้อมูลแสดงเป็นสีเทา"}
     </p>}
     <div className="uv-map-layout" aria-busy={loading}>
-      <div className="uv-map-canvas">
-        <ThailandUvMap provinces={result?.provinces ?? []} selectedProvinceId={selected} onSelectProvince={setSelected} provinceIds={source === "model" ? modelIds : undefined} />
+      <div className="uv-map-canvas uv-mission-canvas">
+        <ThailandUvMap missionView provinces={result?.provinces ?? []} selectedProvinceId={selected} onSelectProvince={setSelected} provinceIds={source === "model" ? modelIds : undefined} />
+        <ul className="uv-map-legend" aria-label="ระดับ UV">
+          {UV_LEVELS.map((entry) => <li key={entry.id}><span style={{ background: entry.color }} aria-hidden="true" />{entry.name} <small>{entry.range}</small></li>)}
+          <li><span className="uv-map-no-data" aria-hidden="true" />ไม่มีข้อมูล</li>
+        </ul>
       </div>
       <aside className="uv-map-detail" aria-live="polite" aria-atomic="true">
         <h2>{name}</h2>
@@ -99,10 +103,6 @@ export function UvMapExplorer() {
         {available && <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-protecting-against-skin-cancer" target="_blank" rel="noopener noreferrer">แนวทางป้องกันแดดจาก WHO ↗</a>}
       </aside>
     </div>
-    <ul className="uv-map-legend" aria-label="ระดับ UV">
-      {UV_LEVELS.map((entry) => <li key={entry.id}><span style={{ background: entry.color }} aria-hidden="true" />{entry.name} <small>{entry.range}</small></li>)}
-      <li><span className="uv-map-no-data" aria-hidden="true" />ไม่มีข้อมูล</li>
-    </ul>
     <div className="uv-map-method">
       <p><strong>{source === "model" ? "ผลทดลองจากโมเดลของเรา" : "ค่าพยากรณ์จาก Open-Meteo API"}</strong> {source === "model" ? "แสดงเฉพาะกรุงเทพฯ สงขลา และเชียงใหม่ เป็น UV ท้องฟ้าโปร่ง ณ เที่ยงสุริยะ โมเดลประเมินเทียบกับ TEMIS ยังไม่ได้ยืนยันกับ UV ที่วัดจริง" : "แสดงครบ 77 พื้นที่ เป็นค่าสูงสุดรายวันแบบท้องฟ้าโปร่งจากแหล่งเดียวกัน รวมทั้งกรุงเทพฯ สงขลา และเชียงใหม่"} เลือกแหล่งข้อมูลได้จากปุ่มด้านบน ค่าระหว่างสองแหล่งยังไม่ผ่านการตรวจเทียบเพื่อใช้แทนกัน</p>
       <p>ข้อมูล UV: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo (CC BY 4.0)</a> และ TEMIS/โมเดลของโครงการ · ขอบเขต: <a href="https://www.geoboundaries.org/api/current/gbOpen/THA/ADM1/" target="_blank" rel="noopener noreferrer">geoBoundaries / © OpenStreetMap contributors (ODbL)</a> · <a href="/assets/uv-map-provinces.json">ดาวน์โหลดข้อมูลแผนที่ที่ดัดแปลง</a> · <a href="/assets/uv-map-data-license.txt">ที่มาและสิทธิ์ข้อมูล</a></p>

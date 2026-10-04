@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aphrodize | Logo drawing loader preview</title>
+  <style>
+    @font-face{font-family:Montserrat;src:url('/frontend/src/app/fonts/Montserrat-Variable.ttf');font-weight:400 700;font-display:swap}
+    @font-face{font-family:Libre;src:url('/frontend/src/app/fonts/LibreBaskerville-Variable.ttf');font-display:swap}
+    :root{color-scheme:light;--canvas:#fff;--surface:#fff;--soft:#fdf7f8;--blush:#fbe1e3;--accent:#ef626c;--deep:#b63240;--ink:#22181c;--muted:#5b454b;--line:#ead4d7}
+    [data-theme=dark]{color-scheme:dark;--canvas:#171215;--surface:#241b20;--soft:#2b2026;--blush:#42232d;--deep:#ff9aa4;--ink:#fff1f3;--muted:#d4bac3;--line:#513940}
+    *{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.65 Montserrat,Arial,sans-serif}button,select,input{font:inherit}button,select,.image-picker{min-height:44px;padding:10px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}button,.image-picker{cursor:pointer}button:hover,.image-picker:hover{border-color:var(--deep)}button:active{transform:translateY(1px)}button:focus-visible,select:focus-visible,.image-picker:focus-within{outline:2px solid var(--deep);outline-offset:4px}::selection{background:var(--blush);color:var(--ink)}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:1120px;margin:24px auto;padding:0 24px}.brand{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:700;letter-spacing:-.6px}.brand img{width:28px;height:40px}.brand .dark-logo{display:none}[data-theme=dark] .light-logo{display:none}[data-theme=dark] .dark-logo{display:block}.preview-label{color:var(--muted);font-size:12px}
+    main{max-width:1024px;margin:64px auto;padding:0 24px}h1{font:400 clamp(26px,3vw,36px)/1.35 Libre,Georgia,serif;margin:0 0 12px}.intro{color:var(--muted);margin:0 0 32px;max-width:64ch}
+    .loader{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;gap:56px;padding:44px;border:1px solid var(--line);border-radius:24px;background:var(--surface);box-shadow:0 18px 50px rgb(91 69 75 / 7%)}
+    figure{margin:0;min-width:0}.scan-stage{position:relative;isolation:isolate;max-width:320px;margin:auto;aspect-ratio:4/5;border-radius:20px;overflow:hidden;background:var(--soft)}.portrait{width:100%;height:100%;object-fit:cover;object-position:52% 35%;display:block;filter:grayscale(1);opacity:.8}.scan-stage::after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 0 1px var(--line);border-radius:inherit;pointer-events:none}.scan-window{position:absolute;inset:12% 10%;border:1px solid rgb(239 98 108 / 28%);border-radius:42% 42% 38% 38%;pointer-events:none}.scan-beam{position:absolute;left:5%;right:5%;top:12%;height:56px;background:linear-gradient(transparent,rgb(239 98 108 / 18%));border-bottom:2px solid var(--accent);opacity:.85;pointer-events:none}.corner{position:absolute;width:24px;height:24px;border-color:var(--accent);border-style:solid;border-width:0}.tl{top:20px;left:20px;border-top-width:2px;border-left-width:2px}.tr{top:20px;right:20px;border-top-width:2px;border-right-width:2px}.bl{bottom:20px;left:20px;border-bottom-width:2px;border-left-width:2px}.br{bottom:20px;right:20px;border-bottom-width:2px;border-right-width:2px}
+    figcaption{max-width:320px;margin:14px auto 0;color:var(--muted);font-size:11px;line-height:1.6;text-align:center}.copy{min-width:0}.activity{width:40px;height:4px;background:var(--blush);overflow:hidden;border-radius:4px;margin-bottom:24px}.activity::after{content:'';display:block;width:20px;height:4px;background:var(--deep);border-radius:4px}h2{font-size:23px;line-height:1.4;letter-spacing:-.6px;margin:0 0 14px}.message{color:var(--muted);margin:0 0 24px;max-width:35ch}.privacy{font-size:12px;color:var(--muted);padding-top:20px;border-top:1px solid var(--line);margin:0 0 20px}.motion-button{border-color:var(--line);background:var(--soft);font-size:12px}.result-note{font-size:11px;color:var(--muted);margin:16px 0 0}
+    #theme{white-space:nowrap;flex-shrink:0}.preview-tools{display:flex;align-items:end;gap:16px;flex-wrap:wrap;margin-top:28px;padding-top:24px;border-top:1px solid var(--line)}.field{display:grid;gap:6px;min-width:180px}.field label{font-size:12px;color:var(--muted)}.image-picker{display:inline-flex;align-items:center;position:relative;overflow:hidden}.image-picker input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}.tools-note{width:100%;font-size:12px;color:var(--muted);margin:0}
+    .loader{grid-template-columns:1fr;gap:20px;max-width:680px;margin:auto;padding:40px;text-align:center}.copy{text-align:center}.message{margin:0 auto 24px;max-width:40ch}.activity{display:none}.privacy{max-width:45ch;margin:24px auto 20px}.logo-stage{display:grid;place-items:center;min-height:230px}.draw-logo,.logo-fallback{width:220px;height:220px}.draw-logo{display:none;overflow:visible}.logo-stage[data-ready=true] .draw-logo{display:block}.logo-stage[data-ready=true] .logo-fallback{display:none}.draw-logo path{fill:none;stroke-linecap:round;stroke-linejoin:round}.logo-track path{stroke:var(--line);stroke-width:.35}.logo-ink path{stroke:var(--deep);stroke-width:.6;stroke-dasharray:360 0;stroke-dashoffset:0}body[data-paused=true] .logo-ink path{animation-play-state:paused}body[data-state=error] .logo-ink path,body[data-state=complete] .logo-ink path{animation:none;stroke-dasharray:360 0;stroke-dashoffset:0}body[data-state=complete] .logo-ink path{fill:var(--accent);stroke:none}.reference{font-size:11px;color:var(--muted);margin:18px 0 0}.reference a{color:var(--deep);text-underline-offset:3px}.reference a:focus-visible{outline:2px solid var(--deep);outline-offset:3px}
+    body[data-paused=true] .scan-beam,body[data-paused=true] .activity::after{animation-play-state:paused}body[data-state=error] .scan-beam,body[data-state=complete] .scan-beam{display:none}body[data-state=error] .activity,body[data-state=complete] .activity{display:none}
+    @media(prefers-reduced-motion:no-preference){.logo-ink path{animation:dashArray 4s ease-in-out infinite,dashOffset 4s linear infinite}}
+    @keyframes dashArray{0%{stroke-dasharray:0 1 359 0}50%{stroke-dasharray:0 359 1 0}100%{stroke-dasharray:359 1 0 0}}@keyframes dashOffset{0%{stroke-dashoffset:365}100%{stroke-dashoffset:5}}
+    @keyframes scan{0%{transform:translateY(0);opacity:.45}15%{opacity:.85}85%{opacity:.85}100%{transform:translateY(240px);opacity:.45}}@keyframes activity{to{transform:translateX(20px)}}
+    @media(prefers-reduced-motion:reduce){.logo-ink path{animation:none;fill:var(--accent);stroke:none}.motion-button{display:none}}
+    @media(max-width:680px){header{margin:16px auto;padding:0 20px}.brand{font-size:19px}.preview-label{display:none}main{margin:32px auto;padding:0 20px}.loader{grid-template-columns:1fr;gap:28px;padding:28px 24px}.scan-stage{max-width:220px}.copy{text-align:center}.activity{margin:0 auto 18px}.message{margin:0 auto 20px}.privacy{text-align:left}.preview-tools{gap:12px}.field{width:100%}.field select{width:100%}@keyframes scan{to{transform:translateY(150px);opacity:.5}}}
+  </style>
+</head>
+<body data-state="waiting" data-paused="false">
+  <header>
+    <div class="brand"><img class="light-logo" src="/frontend/public/assets/aphrodize-logo.svg" alt=""><img class="dark-logo" src="/frontend/public/assets/aphrodize-logo-dark.svg" alt="">Aphrodize</div>
+    <span class="preview-label">Loading motion preview</span>
+    <button id="theme" type="button" aria-pressed="false">Dark mode</button>
+  </header>
+  <main>
+    <h1>Face analysis</h1>
+    <p class="intro">Your logo, drawn in motion while the analysis result is pending.</p>
+    <section class="loader" aria-labelledby="status-title">
+      <figure>
+        <div class="logo-stage" id="logo-stage" aria-hidden="true">
+          <img class="logo-fallback" src="/frontend/public/assets/aphrodize-logo.svg" alt="">
+          <svg class="draw-logo" id="draw-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g class="logo-track"></g><g class="logo-ink"></g></svg>
+        </div>
+        <figcaption>Aphrodize logo animation. Not an analysis finding or a completion indicator.</figcaption>
+      </figure>
+      <div class="copy">
+        <div class="activity" aria-hidden="true"></div>
+        <div role="status" aria-live="polite" aria-atomic="true">
+          <h2 id="status-title">Analyzing your image</h2>
+          <p class="message" id="message">Your image is being processed. Your results will appear when the analysis is ready.</p>
+        </div>
+        <p class="privacy" id="privacy">This preview does not upload images or contact the analysis service.</p>
+        <button class="motion-button" id="pause" type="button" aria-pressed="false">Pause animation</button>
+        <p class="result-note">No estimated percentage. No simulated findings.</p>
+      </div>
+    </section>
+    <div class="preview-tools" aria-label="Preview controls">
+      <div class="field"><label for="state">Preview state</label><select id="state"><option value="waiting">Waiting</option><option value="slow">Taking longer</option><option value="error">Service error</option><option value="complete">Result ready</option></select></div>
+      <p class="tools-note">These controls test the design only. Selecting a state does not run an analysis.</p>
+    </div>
+    <p class="reference">Motion adapted from <a href="https://uiverse.io/SelfMadeSystem/giant-bird-69" target="_blank" rel="noopener noreferrer">SelfMadeSystem on Uiverse</a>. Uses your existing Aphrodize logo.</p>
+  </main>
+  <script>
+    const root=document.documentElement, body=document.body, pause=document.querySelector('#pause'), theme=document.querySelector('#theme');
+    const systemTheme=matchMedia('(prefers-color-scheme: dark)');
+    function setTheme(dark){root.dataset.theme=dark?'dark':'light';theme.textContent=dark?'Light mode':'Dark mode';theme.setAttribute('aria-pressed',String(dark))}
+    setTheme(systemTheme.matches);
+    theme.addEventListener('click',()=>setTheme(root.dataset.theme!=='dark'));
+    let manuallyPaused=false;
+    function syncMotion(){body.dataset.paused=String(manuallyPaused||document.hidden);pause.textContent=manuallyPaused?'Resume animation':'Pause animation';pause.setAttribute('aria-pressed',String(manuallyPaused))}
+    pause.addEventListener('click',()=>{manuallyPaused=!manuallyPaused;syncMotion()});
+    document.addEventListener('visibilitychange',syncMotion);
+    const states={waiting:['Analyzing your image','Your image is being processed. Your results will appear when the analysis is ready.'],slow:['Still processing your image','This is taking longer than usual. We are still waiting for the analysis service to return a result.'],error:['Analysis could not finish','The analysis service did not return a result. In the real flow, this state will offer a retry action.'],complete:['Your result is ready','Preview only. In the real flow, the loader will be replaced by the actual analysis result.']};
+    document.querySelector('#state').addEventListener('change',event=>{const value=event.target.value;body.dataset.state=value;document.querySelector('#status-title').textContent=states[value][0];document.querySelector('#message').textContent=states[value][1]});
+    // Use only path geometry from our local brand asset, never remote SVG markup.
+    fetch('/frontend/public/assets/aphrodize-logo.svg').then(response=>{if(!response.ok)throw new Error('Logo unavailable');return response.text()}).then(source=>{
+      const parsed=new DOMParser().parseFromString(source,'image/svg+xml');
+      const paths=[...parsed.querySelectorAll('path')];if(!paths.length)throw new Error('Logo paths unavailable');
+      const svg=document.querySelector('#draw-logo');
+      paths.forEach(original=>{const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',original.getAttribute('d'));path.setAttribute('pathLength','360');svg.querySelector('.logo-track').append(path.cloneNode());svg.querySelector('.logo-ink').append(path)});
+      document.querySelector('#logo-stage').dataset.ready='true';
+    }).catch(()=>{document.querySelector('figcaption').textContent='Static Aphrodize logo. Animated logo could not load.'});
+  </script>
+  <!--
+  Dash animation adapted from SelfMadeSystem, https://uiverse.io/SelfMadeSystem/giant-bird-69
+  MIT License. Copyright - 2026 SelfMadeSystem (SelfMadeSystem)
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  -->
+</body>
+</html>
