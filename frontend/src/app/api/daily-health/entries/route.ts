@@ -18,6 +18,7 @@ type DailyHealthRequest = {
     prediction_status: "predicted" | "not_available" | "prediction_failed";
     model_id: string | null;
     target_date?: string | null;
+    forecast_receipt?: string | null;
   } | null;
   personalization_consent?: boolean;
   age_guidance_consent?: boolean;
@@ -70,6 +71,8 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (value.prediction === null) return true;
   if (!isRecord(value.prediction)) return false;
   const status = value.prediction.prediction_status;
+  const receipt = value.prediction.forecast_receipt;
+  if (receipt != null && (typeof receipt !== "string" || receipt.length > 8192)) return false;
   const targetDate = value.prediction.target_date;
   if (targetDate !== undefined && targetDate !== null) {
     const parsedTarget = typeof targetDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(targetDate)

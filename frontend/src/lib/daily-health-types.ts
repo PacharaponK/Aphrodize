@@ -21,7 +21,12 @@ export type HydrationCalculation = {
 
 export type HealthSignal = {
   level: AttentionLevel;
-  status: "available" | "not_available" | "out_of_training_domain" | "insufficient_data" | "insufficient_history";
+  status: "available" | "not_available" | "out_of_training_domain" | "insufficient_data" | "insufficient_history" | "not_supported" | "model_not_ready" | "predicted";
+  value_0_10?: number;
+  target_date?: string;
+  model_id?: string;
+  method?: string;
+  target?: "perceived_energy" | "perceived_thirst";
   reason_codes?: string[];
   headline?: string;
   drivers?: string[];
@@ -54,6 +59,7 @@ export type DailyHealthScores = {
 };
 
 export type PredictionResponse = {
+  forecast_receipt?: string | null;
   local_date: string;
   prediction_target_date: string;
   model_status: string;

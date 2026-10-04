@@ -13,7 +13,12 @@ from backend.services.daily_health_model_registry import (
     load_approved_candidate_bundle,
     purge_generated_candidate_artifacts,
 )
-from backend.services.daily_health_training import FEATURE_NAMES, MODEL_FAMILY, TARGET_NAMES
+from backend.services.daily_health_training import (
+    ENERGY_TARGET_NAMES,
+    FEATURE_NAMES,
+    MODEL_FAMILY,
+    TARGET_NAMES,
+)
 
 
 def make_candidate(tmp_path: Path) -> tuple[SimpleNamespace, Path]:
@@ -91,6 +96,37 @@ def test_candidate_bundle_refuses_stale_versions(tmp_path: Path) -> None:
     version.status = "stale"
 
     with pytest.raises(DailyHealthCandidateUnavailable, match="approved candidate"):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+
+def test_energy_candidate_requires_both_holdouts_to_beat_baseline(tmp_path: Path) -> None:
+    version, model_path = make_candidate(tmp_path)
+    model = RandomForestRegressor(n_estimators=2, random_state=1).fit(
+        np.asarray([[360, 1000, 1], [420, 1600, 2], [480, 1300, 3]], dtype=float),
+        np.asarray([[4, 6, 3], [2, 2, 8], [3, 4, 7]], dtype=float),
+    )
+    joblib.dump(model, model_path)
+    manifest_path = model_path.parent / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["targets"] = ENERGY_TARGET_NAMES
+    manifest["artifact_sha256"] = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    for split in ("test", "temporal_test"):
+        version.metrics[split] = {"reported_energy_level_0_10": {"mae": 1.0}}
+    for split in ("test_mean_baseline", "temporal_mean_baseline"):
+        version.metrics[split] = {"reported_energy_level_0_10": {"mae": 2.0}}
+    manifest["metrics"] = version.metrics
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    bundle = load_approved_candidate_bundle(version, artifact_root=tmp_path)
+    assert bundle["metadata"]["targets"] == ENERGY_TARGET_NAMES
+
+    version.metrics["temporal_test"]["reported_energy_level_0_10"]["mae"] = 2.0
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(DailyHealthCandidateUnavailable, match="outperform"):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+    version.metrics.pop("temporal_test")
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(DailyHealthCandidateUnavailable, match="baseline metrics"):
         load_approved_candidate_bundle(version, artifact_root=tmp_path)
 
 

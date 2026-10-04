@@ -298,6 +298,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                       prediction_status: hasScores ? "predicted" : "not_available",
                       model_id: predictionResult.model?.model_id ?? null,
                       target_date: predictionResult.prediction_target_date,
+                      forecast_receipt: predictionResult.forecast_receipt ?? null,
                     }
             : null,
           personalization_consent: dailyEntry.personalizationConsent,
