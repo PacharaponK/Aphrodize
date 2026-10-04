@@ -47,6 +47,9 @@ from backend.services.daily_health_model_registry import (
     load_approved_candidate_bundle,
     purge_generated_candidate_artifacts,
 )
+from backend.services.daily_health_personal_forecast import (
+    build_personal_daily_health_forecast,
+)
 
 router = APIRouter()
 user_router = APIRouter(dependencies=[Depends(require_matching_user)])
@@ -54,6 +57,7 @@ logger = logging.getLogger(__name__)
 SLEEP_SCORE_METHOD = "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
 DAILY_HEALTH_CONSENT_VERSION = "daily-health-v1"
 PERSONALIZATION_CONSENT_VERSION = "daily-health-personalization-v1"
+PERSONAL_FORECAST_CONSENT_VERSION = "daily-health-personal-forecast-v1"
 AGE_GUIDANCE_CONSENT_VERSION = "daily-health-age-guidance-v1"
 SKIN_TYPE_GUIDANCE_CONSENT_VERSION = "daily-health-skin-type-guidance-v1"
 WEIGHT_PROFILE_CONSENT_VERSION = "daily-health-weight-profile-v1"
@@ -561,6 +565,104 @@ async def list_daily_health_entries(
         )
 
     return {"items": items}
+
+
+@user_router.get("/users/{user_id}/personal-forecast")
+async def get_personal_daily_health_forecast(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Forecast the next day's sleep and water values from this account's own diary."""
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    active_daily_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == DAILY_HEALTH_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active_daily_consent is None:
+        return {"enabled": False, "status": "daily_health_consent_required"}
+
+    active_forecast_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == PERSONAL_FORECAST_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active_forecast_consent is None:
+        return {"enabled": False, "status": "consent_required"}
+
+    today = _current_bangkok_date()
+    history_start = today - timedelta(days=6)
+    entries_result = await session.scalars(
+        select(DailyHealthEntry)
+        .where(
+            DailyHealthEntry.user_id == user_id,
+            DailyHealthEntry.data_source == "user_reported",
+            DailyHealthEntry.local_date >= history_start,
+            DailyHealthEntry.local_date <= today,
+        )
+        .order_by(DailyHealthEntry.local_date.asc())
+    )
+    forecast = build_personal_daily_health_forecast(
+        entries_result.all(),
+        user_id=user_id,
+        as_of_date=today,
+    )
+    return {"enabled": True, **forecast}
+
+
+@user_router.put("/users/{user_id}/personal-forecast-consent")
+async def grant_personal_daily_health_forecast_consent(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    await require_active_consent(session, user_id)
+    active_forecast_consent = await session.scalar(
+        select(Consent.id)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == PERSONAL_FORECAST_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .limit(1)
+    )
+    if active_forecast_consent is None:
+        session.add(Consent(user_id=user_id, version=PERSONAL_FORECAST_CONSENT_VERSION))
+    await session.commit()
+    return {"enabled": True, "scope": "account_only"}
+
+
+@user_router.delete("/users/{user_id}/personal-forecast-consent", status_code=204)
+async def revoke_personal_daily_health_forecast_consent(
+    user_id: UUID,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    if await session.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await session.execute(
+        update(Consent)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == PERSONAL_FORECAST_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
+    await session.commit()
+
+
+def _current_bangkok_date() -> date:
+    bangkok_timezone = timezone(timedelta(hours=7))
+    return datetime.now(UTC).astimezone(bangkok_timezone).date()
 
 
 @user_router.get("/users/{user_id}/profile")

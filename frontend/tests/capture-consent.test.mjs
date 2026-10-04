@@ -209,6 +209,164 @@ function pageHarness() {
 }
 const settle = () => new Promise((resolve) => setImmediate(resolve));
 
+function resultHarness(analysis) {
+  const states = [analysis, "", false, "overlay", false, 0, false, 1, 0, 0];
+  let cursor = 0;
+  let pollEffect;
+  const Component = load("../src/app/capture/analysis-result.tsx", {
+    react: {
+      useState(initial) {
+        const index = cursor++;
+        if (!(index in states)) states[index] = initial;
+        return [states[index], (value) => {
+          states[index] = typeof value === "function" ? value(states[index]) : value;
+        }];
+      },
+      useRef: () => ({ current: null }),
+      useEffect(effect, dependencies) {
+        if (dependencies?.length === 1 && typeof dependencies[0] === "number") pollEffect = effect;
+      },
+    },
+    "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },
+    "@/app/recommendation/recommendation-panel": { RecommendationPanel: "recommendation-panel" },
+    "../result-detail/result-detail.css": {}, "next/image": "img",
+  }).default;
+  return {
+    render() {
+      cursor = 0;
+      const nodes = [], texts = [];
+      function visit(node) {
+        if (Array.isArray(node)) return node.forEach(visit);
+        if (typeof node === "string" || typeof node === "number") { texts.push(String(node)); return; }
+        if (!node?.props) return;
+        if (typeof node.type === "function") return visit(node.type(node.props));
+        nodes.push(node);
+        visit(node.props.children);
+      }
+      visit(Component({ view: "results", onReady() {}, onNewAnalysis() {} }));
+      return { nodes, text: texts.join(" ") };
+    },
+    poll: () => pollEffect(),
+  };
+}
+
+function completedResult(regions = {}) {
+  return { id: "result-ui-test", status: "completed", quality_flags: [], error_category: null,
+    result: { artifacts_expires_at: new Date(Date.now() + 3_600_000).toISOString(),
+      derived_score: { overall: { score: 10, wrinkle_area_ratio: 0.005, wrinkle_pixels: 5, evaluated_pixels: 1000 },
+        regions, formula: "min(100, proportion * 2000)", disclaimer: "Experimental" } } };
+}
+
+test("personal outline uses a private artifact and falls back honestly on image failure", () => {
+  const result = completedResult({ forehead: { score: 2, wrinkle_area_ratio: .01, wrinkle_pixels: 1, evaluated_pixels: 100 } });
+  result.result.model_output = { personalized_outline_available: true };
+  const harness = resultHarness(result);
+  const image = harness.render().nodes.find(node => node.type === "img" && node.props.src === "/api/analysis?artifact=outline");
+  assert.ok(image);
+  image.props.onError();
+  const fallback = harness.render();
+  assert.ok(fallback.text.includes("Standard face diagram"));
+  assert.equal(fallback.nodes.some(node => node.type === "img" && node.props.src === "/api/analysis?artifact=outline"), false);
+  result.result.artifacts_expires_at = new Date(Date.now() - 60_000).toISOString();
+  assert.equal(resultHarness(result).render().nodes.some(node => node.type === "img" && node.props.src === "/api/analysis?artifact=outline"), false);
+});
+
+test("result prioritizes four measurable region areas and keeps all measurements in collapsed details", () => {
+  const regions = Object.fromEntries(["forehead", "glabella", "nasolabial", "perioral", "image_left_cheek", "image_right_cheek"]
+    .map((name, index) => [name, { score: index * 10, wrinkle_area_ratio: index / 100, wrinkle_pixels: index, evaluated_pixels: 100 }]));
+  regions.image_left_periocular = { score: 0, wrinkle_area_ratio: 0, wrinkle_pixels: 0, evaluated_pixels: 0 };
+  const { nodes, text } = resultHarness(completedResult(regions)).render();
+  const bars = nodes.filter(node => node.props.role === "meter");
+  assert.equal(bars.length, 4);
+  assert.deepEqual(bars.map(node => node.props["aria-valuenow"]), [5, 4, 3, 2]);
+  assert.equal(nodes.filter(node => node.props.className === "analysis-region-detail").length, 7);
+  assert.equal(nodes.find(node => node.type === "details").props.open, undefined);
+  assert.ok(text.includes("Skin analysis overview"));
+  assert.ok(text.includes("Standard face diagram, not your face shape or exact pixel boundaries"));
+  assert.equal(nodes.filter(node => node.props.className === "face-map-zone is-marked").length, 5);
+  assert.ok(text.includes("Not scored") || text.includes("not enough evaluated pixels"));
+  assert.equal(/Low detection|Moderate detection|Prominent detection|Overall Assessment/.test(text), false);
+  assert.equal(text.includes("Auto-deleted within 24h"), false);
+});
+
+test("face schematic never highlights zero, unmeasurable or unknown region locations", () => {
+  const area = (ratio, pixels = 100) => ({ score: 5, wrinkle_area_ratio: ratio, wrinkle_pixels: 5, evaluated_pixels: pixels });
+  const { nodes, text } = resultHarness(completedResult({ forehead: area(.01), glabella: area(0), unknown_region: area(.02), perioral: area(.03, 0) })).render();
+  const highlighted = nodes.filter(node => node.props.className === "face-map-zone is-marked");
+  assert.deepEqual(highlighted.map(node => node.props["data-face-region"]), ["forehead"]);
+  assert.ok(text.includes("unknown_region"), "unmapped measurements remain available as text");
+  assert.equal(text.includes("Texture"), false);
+  assert.equal(text.includes("Redness"), false);
+});
+
+test("landmark results use a labelled SVG summary without fetching the private regions image", () => {
+  const result = completedResult({ forehead: { score: 2, wrinkle_area_ratio: .001, wrinkle_pixels: 1, evaluated_pixels: 1000 } });
+  result.result.derived_score.roi_version = "mediapipe-landmark-skin-roi-v1";
+  result.result.model_output = { regional_geometry_status: "available" };
+  const view = resultHarness(result).render();
+  assert.equal(view.nodes.some(node => node.type === "img" && node.props.src === "/api/analysis?artifact=regions"), false);
+  assert.deepEqual(view.nodes.filter(node => node.props["data-face-region"]).map(node => node.props["data-face-region"]), ["forehead"]);
+  assert.ok(view.text.includes("Standard face diagram"));
+  result.result.model_output.regional_geometry_status = "unavailable";
+  result.result.derived_score.regions = {};
+  const absent = resultHarness(result).render();
+  assert.ok(absent.text.includes("Facial landmarks could not be measured"));
+  assert.equal(absent.nodes.some(node => node.props["data-face-region"]), false);
+});
+
+test("zero-detection regional summary shows an unshaded face rather than disappearing", () => {
+  const result = completedResult({ forehead: { score: 0, wrinkle_area_ratio: 0, wrinkle_pixels: 0, evaluated_pixels: 1000 } });
+  const { nodes } = resultHarness(result).render();
+  assert.ok(nodes.some(node => node.type === "svg" && node.props.role === "img"));
+  assert.equal(nodes.filter(node => node.props["data-face-region"]).length, 0);
+});
+
+test("artifact failure offers an image retry without losing measurements; expired images offer a new analysis", () => {
+  const harness = resultHarness(completedResult());
+  const first = harness.render().nodes.find(node => node.type === "img");
+  first.props.onError();
+  const failed = harness.render();
+  const retry = failed.nodes.find(node => node.type === "button" && node.props.children === "Retry image");
+  assert.ok(retry);
+  assert.ok(failed.text.includes("0.50"));
+  retry.props.onClick();
+  const reloaded = harness.render().nodes.find(node => node.type === "img");
+  assert.notEqual(reloaded.props.src, first.props.src);
+  const expired = completedResult();
+  expired.result.artifacts_expires_at = new Date(Date.now() - 60_000).toISOString();
+  const expiredView = resultHarness(expired).render();
+  assert.equal(expiredView.nodes.some(node => node.type === "img"), false);
+  assert.ok(expiredView.text.includes("has expired"));
+  assert.ok(expiredView.nodes.some(node => node.type === "button" && node.props.children === "Analyze a new image"));
+  assert.ok(expiredView.text.includes("0.50"));
+});
+
+test("result load retry fetches again in place and replaces the error with the current result", async (context) => {
+  let calls = 0;
+  context.mock.method(globalThis, "fetch", async () => {
+    calls += 1;
+    if (calls === 1) throw new Error("temporarily unavailable");
+    return Response.json(completedResult());
+  });
+  const harness = resultHarness(null);
+  harness.render();
+  let stop = harness.poll();
+  await settle();
+  const failure = harness.render();
+  const retry = failure.nodes.find(node => node.type === "button" && node.props.children === "Try loading again");
+  assert.ok(retry);
+  stop();
+  retry.props.onClick();
+  assert.ok(harness.render().text.includes("Loading analysis"));
+  stop = harness.poll();
+  await settle();
+  const restored = harness.render();
+  stop();
+  assert.equal(calls, 2);
+  assert.ok(restored.text.includes("Skin analysis overview"));
+  assert.equal(restored.text.includes("Could not load analysis"), false);
+});
+
 test("analysis gates products on completion and separates product and result content", () => {
   for (const status of ["queued", "running", "rejected", "failed", "completed"]) {
     for (const view of ["results", "products"]) {
@@ -220,7 +378,7 @@ test("analysis gates products on completion and separates product and result con
         result: { derived_score: { overall: area, regions: {}, formula: "test", disclaimer: "Experimental" } } },
         "", false, "overlay", false, 0, false, 1];
       const Component = load("../src/app/capture/analysis-result.tsx", {
-        react: { useState: () => [states[cursor++], () => {}], useEffect(effect, dependencies) {
+        react: { useState: () => [states[cursor++], () => {}], useRef: () => ({ current: null }), useEffect(effect, dependencies) {
           if (dependencies?.includes(onReady)) effect();
         } },
         "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },

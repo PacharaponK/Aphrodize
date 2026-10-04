@@ -1,0 +1,1 @@
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/pacharaponk/aphrodize?utm_source=readme&utm_medium=badge)

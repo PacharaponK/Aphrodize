@@ -17,7 +17,8 @@ class FakeSession:
 
 
 @pytest.mark.asyncio
-async def test_artifact_is_private_and_expires(monkeypatch) -> None:
+@pytest.mark.parametrize("kind", ["mask", "overlay", "regions", "outline"])
+async def test_artifact_is_private_and_expires(monkeypatch, kind) -> None:
     item = SimpleNamespace(
         id=uuid4(),
         user_id=uuid4(),
@@ -26,12 +27,16 @@ async def test_artifact_is_private_and_expires(monkeypatch) -> None:
     monkeypatch.setattr(analyses, "get_bytes", lambda _key: b"private-png")
 
     response = await analyses.get_analysis_artifact(
-        item.id, "mask", item.user_id, FakeSession(item)
+        item.id, kind, item.user_id, FakeSession(item)
     )
     assert response.body == b"private-png"
     assert response.headers["cache-control"] == "private, no-store"
+    assert response.media_type == ("image/svg+xml" if kind == "outline" else "image/png")
+    with pytest.raises(HTTPException) as unauthorized:
+        await analyses.get_analysis_artifact(item.id, kind, uuid4(), FakeSession(item))
+    assert unauthorized.value.status_code == 404
 
     item.result["artifacts_expires_at"] = (datetime.now(UTC) - timedelta(seconds=1)).isoformat()
     with pytest.raises(HTTPException) as error:
-        await analyses.get_analysis_artifact(item.id, "mask", item.user_id, FakeSession(item))
+        await analyses.get_analysis_artifact(item.id, kind, item.user_id, FakeSession(item))
     assert error.value.status_code == 410

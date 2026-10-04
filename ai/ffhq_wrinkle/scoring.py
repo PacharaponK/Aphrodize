@@ -139,6 +139,7 @@ def derive_scores(
     gate_passed: bool,
     allow_experimental: bool = False,
     config: ScoreConfig = ScoreConfig(),
+    regional_rois: dict[str, np.ndarray] | None = None,
 ) -> dict[str, object]:
     """Return overall and eight region scores from the final binary mask.
 
@@ -158,6 +159,9 @@ def derive_scores(
     # Boolean masks make intersection/count operations unambiguous.
     wrinkle = wrinkle_mask.astype(bool)
     face = face_mask.astype(bool)
+    rois = build_regional_rois(face) if regional_rois is None else regional_rois
+    if any(roi.shape != face.shape or np.any(roi.astype(bool) & ~face) for roi in rois.values()):
+        raise ValueError("regional ROI must match and remain inside evaluated face")
     # Reuse the same formula for the full face and each of eight fixed regions.
     return {
         "score_version": config.score_version,
@@ -168,7 +172,7 @@ def derive_scores(
         # Each named region uses only face pixels within its own geometry.
         "regions": {
             name: _score(wrinkle, roi, config)
-            for name, roi in build_regional_rois(face).items()
+            for name, roi in rois.items()
         },
         "disclaimer": SCORE_DISCLAIMER,
     }

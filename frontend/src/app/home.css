@@ -1,10 +1,51 @@
-/* Home-only bento layout; shared navigation and health pages retain their styles. */
+/* Home-only layout; shared navigation and health pages retain their styles. */
 /* Taste: serif for orientation and narrative; sans-serif for actions and data. */
 .home-dashboard-shell .home-topbar h1,
 .home-dashboard-shell .home-overview-score h2,
 .home-dashboard-shell .home-card-heading h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: -.025em; }
 .home-dashboard-shell { --dashboard-glass-surface: color-mix(in srgb, var(--surface) 86%, transparent); }
 .home-dashboard-shell, .home-dashboard-shell *, .home-dashboard-shell *::before, .home-dashboard-shell *::after { box-sizing: border-box; }
+.home-dashboard-shell #dashboard { max-width:1600px; }
+.home-hero { position:relative; isolation:isolate; overflow:hidden; display:grid; align-items:center; min-height:700px; margin-bottom:52px; padding:80px clamp(20px,3vw,48px) 90px; border-radius:24px; background:var(--surface-soft); }
+.home-hero-background { position:absolute; inset:-18px; z-index:-1; pointer-events:none; background:var(--surface-soft); }
+.home-hero-background img { object-fit:cover; object-position:center 35%; transform:translateX(12%) scale(1.04); translate:var(--face-x,0px) var(--face-y,0px); }
+.home-hero::after { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(90deg,var(--canvas),color-mix(in srgb,var(--canvas) 94%,transparent) 22%,color-mix(in srgb,var(--canvas) 65%,transparent) 43%,transparent 72%),linear-gradient(0deg,var(--canvas),transparent 25%); }
+.home-hero-copy { max-width:54%; min-width:0; }
+.home-hero-eyebrow { display:flex; align-items:center; gap:10px; margin:0 0 24px; color:var(--muted); font-size:10px; letter-spacing:2px; text-transform:uppercase; }
+.home-hero-eyebrow::before { content:""; width:24px; height:1px; background:var(--primary); }
+.home-hero h1 { margin:0; font:400 clamp(48px,5.4vw,84px)/1.17 var(--font-display); letter-spacing:-.035em; text-wrap:balance; }
+.home-hero-phrase { display:block; min-height:2.34em; color:var(--primary-deep); }
+.home-hero-words { display:inline-flex; flex-wrap:wrap; column-gap:.2em; max-width:100%; }
+.home-hero-word { position:relative; display:inline-flex; white-space:nowrap; isolation:isolate; }
+.home-hero-word::after { content:""; position:absolute; left:0; right:0; bottom:.02em; height:.14em; z-index:-1; background:color-mix(in srgb,var(--primary-deep) 10%,transparent); }
+.home-hero-character { display:inline-block; }
+.home-hero-description { max-width:440px; margin:28px 0 0; color:var(--muted); font-size:15px; line-height:1.85; }
+.home-hero-actions { display:flex; align-items:center; flex-wrap:wrap; gap:18px; margin-top:30px; }
+.home-hero-actions .primary-button { display:inline-flex; align-items:center; justify-content:center; gap:20px; min-height:52px; padding:12px 22px; border-radius:10px; text-decoration:none; }
+.home-hero-secondary { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--muted); font-size:12px; text-decoration:none; }
+.home-hero-footnote { margin:22px 0 0; color:var(--muted); font-size:11px; }
+.home-hero-pause { min-height:44px; margin-top:8px; padding:8px 0; border:0; background:none; color:var(--muted); font:11px var(--font-ui); text-decoration:underline; text-underline-offset:4px; cursor:pointer; }
+.home-hero-media-label { position:absolute; bottom:16px; right:20px; max-width:320px; margin:0; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--dashboard-glass-surface); color:var(--muted); font-size:10px; backdrop-filter:blur(12px); }
+.home-hero-sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.home-hero-reticle { position:absolute; left:var(--scan-x,50%); top:var(--scan-y,50%); width:82px; height:82px; transform:translate(-50%,-50%); opacity:0; border:1px solid var(--primary); box-shadow:0 0 35px color-mix(in srgb,var(--primary) 25%,transparent); }
+.home-hero.is-tracking .home-hero-reticle { opacity:.7; }
+.home-dashboard-shell .home-dashboard-grid { grid-template-columns:minmax(0,1fr); gap:24px; scroll-margin-top:110px; }
+.home-dashboard-shell .home-wellness-card { grid-column:1; grid-row:auto; }
+.home-dashboard-shell .home-quick-actions { grid-column:1; grid-row:auto; }
+.home-daily-heading { border-top:1px solid var(--line); padding-top:34px; }
+.home-daily-heading h2 { margin:0; font:400 clamp(28px,3vw,42px)/1.3 var(--font-display); letter-spacing:-.025em; }
+.home-daily-heading p { margin:8px 0 0; font-size:12px; color:var(--muted); }
+.home-dashboard-shell .home-metric-card { border-radius:24px; padding:28px; }
+.home-dashboard-shell .home-metric-note { min-height:64px; }
+.home-dashboard-shell .home-metric-chart { height:84px; }
+.home-dashboard-shell .home-metric-section > .home-card-heading { padding:0; border:0; background:none; backdrop-filter:none; }
+@keyframes home-char-in { from { opacity:0; transform:translateY(.35em); filter:blur(5px); } to { opacity:1; transform:none; filter:none; } }
+@media(prefers-reduced-motion:no-preference) { .home-hero-character { animation:home-char-in 500ms cubic-bezier(.16,1,.3,1) both; } .home-hero-reticle { transition:opacity .25s; } }
+.home-hero-phrase.is-paused .home-hero-character { animation:none; }
+@media(max-width:900px) { .home-hero{min-height:620px}.home-hero-copy{max-width:65%}.home-hero h1{font-size:54px} }
+@media(max-width:600px) { .home-hero{min-height:660px;align-items:end;padding:180px 20px 78px;margin-bottom:32px;border-radius:18px}.home-hero-copy{max-width:100%}.home-hero h1{font-size:clamp(38px,10.5vw,60px)}.home-hero-background img{object-position:60% top;transform:translateX(6%) scale(1.04)}.home-hero::after{background:linear-gradient(0deg,var(--canvas),color-mix(in srgb,var(--canvas) 97%,transparent) 30%,color-mix(in srgb,var(--canvas) 70%,transparent) 62%,transparent)}.home-hero-description{font-size:13px;margin-top:22px}.home-hero-actions{gap:12px;margin-top:22px}.home-hero-actions .primary-button{font-size:12px;gap:16px;min-height:48px}.home-hero-media-label{left:16px;right:16px;max-width:none;text-align:center}.home-dashboard-shell .home-metric-card{padding:22px}.home-hero-eyebrow{font-size:9px;letter-spacing:1px} }
+@media(max-width:480px) { .home-dashboard-shell .home-metric-grid{grid-template-columns:minmax(0,1fr)}.home-dashboard-shell .home-metric-note{min-height:0} }
+@media(pointer:coarse),(prefers-reduced-motion:reduce) { .home-hero-reticle{display:none}.home-hero-background img{translate:none} }
 .home-dashboard-shell .home-action-card h2,
 .home-dashboard-shell .home-metric-card h3,
 .home-dashboard-shell .home-metric-value,

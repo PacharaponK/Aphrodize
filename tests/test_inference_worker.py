@@ -175,7 +175,7 @@ async def test_worker_rejects_image_failing_quality_gate(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_expiry_job_removes_both_private_artifacts(monkeypatch) -> None:
+async def test_expiry_job_removes_all_private_artifacts(monkeypatch) -> None:
     user_id, analysis_id = uuid4(), uuid4()
     removed = []
     monkeypatch.setattr(inference_worker, "remove_objects", lambda keys: removed.extend(keys))
@@ -185,4 +185,6 @@ async def test_expiry_job_removes_both_private_artifacts(monkeypatch) -> None:
     assert removed == [
         f"users/{user_id}/derived/{analysis_id}/overlay.png",
         f"users/{user_id}/derived/{analysis_id}/mask.png",
+        f"users/{user_id}/derived/{analysis_id}/regions.png",
+        f"users/{user_id}/derived/{analysis_id}/outline.svg",
     ]
