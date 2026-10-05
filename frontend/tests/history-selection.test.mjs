@@ -6,14 +6,22 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createRequire } from "node:module";
 
-const require = createRequire(import.meta.url);
 function compile(path, overrides = {}) {
-  const source = fs.readFileSync(new URL(path, import.meta.url), "utf8");
+  const filename = new URL(path, import.meta.url);
+  const nativeRequire = createRequire(filename);
+  const source = fs.readFileSync(filename, "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: {
     module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
   } }).outputText;
   const evaluated = { exports: {} };
-  new Function("require", "module", "exports", compiled)(name => overrides[name] ?? require(name), evaluated, evaluated.exports);
+  new Function("require", "module", "exports", compiled)(name => {
+    if (name in overrides) return overrides[name];
+    if (name.startsWith(".")) {
+      const dependency = new URL(`${name}.tsx`, filename);
+      if (fs.existsSync(dependency)) return compile(dependency, overrides);
+    }
+    return nativeRequire(name);
+  }, evaluated, evaluated.exports);
   return evaluated.exports;
 }
 const { selectHistoryDays } = compile("../src/lib/history-selection.ts");

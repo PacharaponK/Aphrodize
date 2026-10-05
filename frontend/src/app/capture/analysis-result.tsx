@@ -86,7 +86,7 @@ const PAGE_COPY = {
     scoreExplanationBrief: "คำนวณจากสัดส่วนพื้นที่พิกเซล (เพดาน 100)",
     regionsHeading: "การกระจายตัวตามบริเวณใบหน้า",
     regionsScored: "บริเวณที่มีคะแนน",
-    regionExplanation: "4 บริเวณที่มีสัดส่วนสูงสุด ดูทั้งหมดในรายละเอียด",
+    regionExplanation: "สัดส่วนพื้นที่ริ้วรอยที่ตรวจพบในแต่ละบริเวณ เทียบกับพื้นที่ที่ประเมินได้ของบริเวณนั้น",
     unscorable: "ประเมินไม่ได้",
     noRegionPixels: "ไม่มีพิกเซลเพียงพอสำหรับคำนวณ",
     area: "พื้นที่ที่ทำเครื่องหมาย",
@@ -136,7 +136,7 @@ const PAGE_COPY = {
     headRegionNote: "โครงหน้าจาก landmarks ของภาพคุณ ไม่มีผมหรือพื้นหลัง สีชมพูแสดงบริเวณที่มีผลตรวจ ไม่ใช่พิกเซลริ้วรอยทั้งหมด ดูพิกเซลจริงใน overlay/mask ไม่ใช่การวินิจฉัย",
     legacyLandmarkMapNote: "แผนภาพรุ่นเดิม: สีอ่อนแสดงพื้นที่ประเมิน ไม่ใช่พื้นที่ริ้วรอยทั้งหมด สีเข้มแสดงพิกเซลที่โมเดลทำเครื่องหมาย วิเคราะห์ภาพใหม่เพื่อดูสเก็ตช์ที่แสดงเฉพาะริ้วรอย",
     mapUnavailable: "ยังเปิดแผนภาพ landmarks ไม่ได้ ค่ารายบริเวณยังดูได้ในรายการ",
-    noLandmarkRegions: "ตรวจตำแหน่งใบหน้าในภาพนี้ไม่ได้ จึงไม่คำนวณค่ารายบริเวณ ลองภาพใหม่ที่เห็นใบหน้าชัดเจน",
+    noLandmarkRegions: "ผลนี้ยังไม่มีข้อมูลตำแหน่งใบหน้าสำหรับคำนวณรายบริเวณ กรุณาวิเคราะห์ภาพใหม่เพื่อรับผลรายบริเวณ",
     measuredRegions: "บริเวณที่ประเมินได้",
     largestRegion: "สัดส่วนสูงสุดรายบริเวณ",
   },
@@ -182,7 +182,7 @@ const PAGE_COPY = {
     scoreExplanationBrief: "Calculated from pixel area proportion (capped at 100)",
     regionsHeading: "Marked areas by region",
     regionsScored: "regions scored",
-    regionExplanation: "Top four regions by marked proportion. Expand details for all regions.",
+    regionExplanation: "Detected wrinkle area in each region, as a proportion of its evaluated area.",
     unscorable: "Not scored",
     noRegionPixels: "There are not enough evaluated pixels to calculate a value.",
     area: "Marked area",
@@ -232,7 +232,7 @@ const PAGE_COPY = {
     headRegionNote: "Head outline from your image's landmarks, without hair or background. Pink shows regions with detections, not exact wrinkle pixels. See overlay/mask for exact pixels. Not a diagnosis.",
     legacyLandmarkMapNote: "Earlier map: pale shading shows evaluated regions, not wrinkle coverage. Dark pixels show model marks. Analyze a new image for a wrinkle-only sketch.",
     mapUnavailable: "The landmark map is unavailable. Regional measurements remain in the list.",
-    noLandmarkRegions: "Facial landmarks could not be measured in this image, so regional values are withheld. Try a clearer face image.",
+    noLandmarkRegions: "This result has no facial landmark data for regional measurements. Analyze a new image to obtain regional results.",
     measuredRegions: "Regions measured",
     largestRegion: "Largest regional proportion",
   },
@@ -475,13 +475,14 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
 
   const score = analysis?.result?.derived_score ?? analysis?.result?.experimental_score;
   const expiresAt = analysis?.result?.artifacts_expires_at;
-  const allRegions = Object.entries(score?.regions ?? {});
+  const regionScores = score?.regions ?? {};
+  const allRegions: [string, AreaScore][] = [...new Set([...Object.keys(REGIONS), ...Object.keys(regionScores)])]
+    .map((name) => [name, regionScores[name] ?? { score: 0, wrinkle_area_ratio: 0, wrinkle_pixels: 0, evaluated_pixels: 0 }]);
   const evaluableRegions = allRegions
     .filter(([, value]) => value.evaluated_pixels > 0)
     .sort(([, left], [, right]) => right.wrinkle_area_ratio - left.wrinkle_area_ratio);
   const unevaluableRegions = allRegions.filter(([, value]) => value.evaluated_pixels <= 0);
   const displayedRegions = [...evaluableRegions, ...unevaluableRegions];
-  const primaryRegions = evaluableRegions.slice(0, 4);
   const hasScorableOverall = Boolean(score && score.overall.evaluated_pixels > 0);
   const expiryLabel = expiresAt ? formatArtifactExpiry(expiresAt, language) : null;
 
@@ -816,11 +817,11 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                         <dl className="analysis-region-facts">
                           <div><dt>{copy.markedArea}</dt><dd>{(score.overall.wrinkle_area_ratio * 100).toFixed(2)}<small>%</small></dd></div>
                           <div><dt>{copy.measuredRegions}</dt><dd>{evaluableRegions.length}<small> / {allRegions.length}</small></dd></div>
-                          <div><dt>{copy.largestRegion}</dt><dd>{(primaryRegions[0][1].wrinkle_area_ratio * 100).toFixed(2)}<small>%</small></dd></div>
+                          <div><dt>{copy.largestRegion}</dt><dd>{(evaluableRegions[0][1].wrinkle_area_ratio * 100).toFixed(2)}<small>%</small></dd></div>
                         </dl>
                         <div className="analysis-regions analysis-regions-grid">
-                        {primaryRegions.map(([name, value], index) => (
-                          <RegionCard key={name} name={name} value={value} language={language} rank={index + 1} />
+                        {displayedRegions.map(([name, value]) => (
+                          <RegionCard key={name} name={name} value={value} language={language} />
                         ))}
                         </div>
                       </div>
@@ -837,7 +838,14 @@ export default function AnalysisResult({ onNewAnalysis, onReady, view }: {
                       </div>}
                     </div>
                   ) : (
-                    <p className="analysis-section-intro">{analysis.result?.model_output?.regional_geometry_status === "unavailable" ? copy.noLandmarkRegions : copy.noRegionPixels}</p>
+                    <div className="analysis-region-data">
+                      <p className="analysis-section-intro">{analysis.result?.model_output?.regional_geometry_status === "unavailable" ? copy.noLandmarkRegions : copy.noRegionPixels}</p>
+                      <div className="analysis-regions analysis-regions-grid">
+                        {displayedRegions.map(([name, value]) => (
+                          <RegionCard key={name} name={name} value={value} language={language} />
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   <details className="analysis-extra-regions">

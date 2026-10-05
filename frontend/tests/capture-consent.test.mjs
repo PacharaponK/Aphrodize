@@ -230,6 +230,7 @@ function resultHarness(analysis) {
     "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },
     "@/app/recommendation/recommendation-panel": { RecommendationPanel: "recommendation-panel" },
     "../result-detail/result-detail.css": {}, "next/image": "img",
+    "@/components/analysis/analysis-loader": { AnalysisLoader: ({ message }) => message },
   }).default;
   return {
     render() {
@@ -271,15 +272,15 @@ test("personal outline uses a private artifact and falls back honestly on image 
   assert.equal(resultHarness(result).render().nodes.some(node => node.type === "img" && node.props.src === "/api/analysis?artifact=outline"), false);
 });
 
-test("result prioritizes four measurable region areas and keeps all measurements in collapsed details", () => {
+test("result shows every region outside collapsed technical details and distinguishes missing measurements", () => {
   const regions = Object.fromEntries(["forehead", "glabella", "nasolabial", "perioral", "image_left_cheek", "image_right_cheek"]
     .map((name, index) => [name, { score: index * 10, wrinkle_area_ratio: index / 100, wrinkle_pixels: index, evaluated_pixels: 100 }]));
   regions.image_left_periocular = { score: 0, wrinkle_area_ratio: 0, wrinkle_pixels: 0, evaluated_pixels: 0 };
   const { nodes, text } = resultHarness(completedResult(regions)).render();
   const bars = nodes.filter(node => node.props.role === "meter");
-  assert.equal(bars.length, 4);
-  assert.deepEqual(bars.map(node => node.props["aria-valuenow"]), [5, 4, 3, 2]);
-  assert.equal(nodes.filter(node => node.props.className === "analysis-region-detail").length, 7);
+  assert.equal(bars.length, 6);
+  assert.deepEqual(bars.map(node => node.props["aria-valuenow"]), [5, 4, 3, 2, 1, 0]);
+  assert.equal(nodes.filter(node => node.props.className === "analysis-region-detail").length, 8);
   assert.equal(nodes.find(node => node.type === "details").props.open, undefined);
   assert.ok(text.includes("Skin analysis overview"));
   assert.ok(text.includes("Standard face diagram, not your face shape"));
@@ -315,8 +316,11 @@ test("landmark results use a labelled SVG summary without fetching the private r
   result.result.model_output.regional_geometry_status = "unavailable";
   result.result.derived_score.regions = {};
   const absent = resultHarness(result).render();
-  assert.ok(absent.text.includes("Facial landmarks could not be measured"));
+  assert.ok(absent.text.includes("This result has no facial landmark data"));
   assert.equal(absent.nodes.some(node => node.props["data-face-region"]), false);
+  assert.equal(absent.nodes.filter(node => node.props.className === "analysis-region analysis-region-card is-unscorable").length, 8);
+  assert.equal(absent.nodes.filter(node => node.props.role === "meter").length, 0);
+  assert.ok(absent.text.includes("Forehead") && absent.text.includes("Perioral area"));
 });
 
 test("zero-detection regional summary shows an unshaded face rather than disappearing", () => {
@@ -389,6 +393,7 @@ test("analysis gates products on completion and separates product and result con
         "@/components/language-provider": { useLanguage: () => ({ language: "en" }) },
         "@/app/recommendation/recommendation-panel": { RecommendationPanel: "recommendation-panel" },
         "../result-detail/result-detail.css": {}, "next/image": "img",
+    "@/components/analysis/analysis-loader": { AnalysisLoader: ({ message }) => message },
       }).default;
       const visible = [];
       function visit(node, hidden = false) {

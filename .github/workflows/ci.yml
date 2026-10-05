@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      UV_PYTHON: '3.11'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: '0.12.23'
+          enable-cache: true
+      # label-studio-sdk brings GUI OpenCV; CI uses the headless cv2 provider.
+      - name: Install locked Python dependencies
+        run: uv sync --locked --no-default-groups --group ci --no-install-package opencv-python
+      - name: Lint backend and tests
+        run: uv run --no-sync ruff check backend tests
+      - name: Run backend tests
+        run: uv run --no-sync python -m pytest
+
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@11.19.0 --ignore-scripts
+      - name: Install locked frontend dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Lint frontend
+        run: pnpm lint
+      - name: Run frontend tests and recommendation fixture
+        run: node --test tests/*.mjs
+      - name: Check TypeScript
+        run: pnpm exec tsc --noEmit
+      - name: Build frontend
+        run: pnpm build

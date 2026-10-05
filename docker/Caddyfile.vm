@@ -1,0 +1,9 @@
+{
+    default_sni {$VM_HOST}
+}
+
+{$VM_HOST} {
+    tls internal
+    encode zstd gzip
+    reverse_proxy frontend:3000
+}
