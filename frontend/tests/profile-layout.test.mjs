@@ -28,28 +28,32 @@ function renderProfile(profile, language = "en", requiresLogin = false) {
 
 const account = { display_name: "Test Account", email: "profile@example.test", profile: null,
   answers: { skin_type: "oily", skin_sensitivity: "medium", allergy_details: "Long ingredient name", age_years: 25,
-    age_group: "18_29", sleep_hours: 0, wellness_goal: "hydration", height_cm: 9999, weight_kg: 9999,
+    age_group: "18_29", sleep_hours: 0, sleep_quality: "legacy-quality", water_liters: 2,
+    outdoor_minutes: 45, stress_level: 2, menstrual_status: "legacy-period",
+    wellness_goal: "hydration", height_cm: 9999, weight_kg: 9999,
     guardian_consent: "private", custom_answer: "Preserved answer" } };
 
-test("profile groups real answers in skin, signup and baseline order without losing unknown fields", () => {
+test("profile groups real answers and directs daily habits to the tracker", () => {
   const html = renderProfile(account);
   assert.ok(html.indexOf("profile-skin-title") < html.indexOf("profile-signup-title"));
-  assert.ok(html.indexOf("profile-signup-title") < html.indexOf("profile-habits-title"));
+  assert.ok(html.indexOf("profile-signup-title") < html.indexOf("profile-daily-title"));
   assert.match(html, /Oily/);
   assert.match(html, /Moderate/);
   assert.match(html, /Long ingredient name/);
-  assert.match(html, /0 hours/);
-  assert.match(html, /not today&#x27;s readings/);
+  assert.doesNotMatch(html, /0 hours|2 litres|45 minutes|legacy-quality|legacy-period|Stress level|Questionnaire habits|profile-habits-title/);
+  assert.match(html, /href="\/clients"/);
+  assert.match(html, /Daily health records/);
   assert.match(html, /Preserved answer/);
   assert.doesNotMatch(html, /9999|guardian_consent|18_29/);
   assert.equal((html.match(/Edit wellness information/g) ?? []).length, 1);
 });
 
-test("profile keeps Thai labels and separates missing values from zero", () => {
+test("profile keeps Thai labels without showing legacy daily answers", () => {
   const html = renderProfile({ ...account, answers: { skin_type: null, sleep_hours: 0 } }, "th");
   assert.match(html, /ข้อมูลผิวและข้อควรระวัง/);
   assert.match(html, /ยังไม่ได้บันทึก/);
-  assert.match(html, /0 ชั่วโมง/);
+  assert.doesNotMatch(html, /0 ชั่วโมง/);
+  assert.match(html, /บันทึกสุขภาพรายวัน/);
 });
 
 test("signed-out profile shows the login gate without private account sections", () => {

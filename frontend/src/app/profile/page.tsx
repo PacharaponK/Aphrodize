@@ -305,7 +305,7 @@ export default function ProfilePage() {
 }
 
 const SKIN_KEYS = ["skin_type", "skin_sensitivity", "sunscreen_frequency", "known_product_allergy", "allergy_details", "severe_irritation"];
-const HABIT_KEYS = ["sleep_hours", "sleep_quality", "water_liters", "outdoor_minutes", "stress_level"];
+const LEGACY_DAILY_KEYS = ["sleep_hours", "sleep_quality", "water_liters", "outdoor_minutes", "stress_level", "menstrual_status"];
 const SIGNUP_KEYS = ["age_years", "age_group", "sex"];
 const OMITTED_KEYS = ["height_cm", "weight_kg", "guardian_consent", "wellness_goal"];
 
@@ -322,17 +322,17 @@ function ProfileAnswerRows({ profile, keys, language }: { profile: Profile; keys
 function ProfileInformation({ profile, language, section }: { profile: Profile; language: "th" | "en"; section: "skin" | "habits" }) {
   const t = (th: string, en: string) => language === "en" ? en : th;
   const answers = profile.answers ?? profile.profile ?? {};
-  const otherKeys = Object.keys(answers).filter(key => ![...SKIN_KEYS, ...HABIT_KEYS, ...SIGNUP_KEYS, ...OMITTED_KEYS].includes(key));
+  const otherKeys = Object.keys(answers).filter(key => ![...SKIN_KEYS, ...LEGACY_DAILY_KEYS, ...SIGNUP_KEYS, ...OMITTED_KEYS].includes(key));
   return <>
     {section === "skin" && <section className="profile-info-section profile-skin-section" aria-labelledby="profile-skin-title">
       <h2 id="profile-skin-title">{t("ข้อมูลผิวและข้อควรระวัง", "Skin information & precautions")}</h2>
       <p className="profile-section-note">{t("ใช้ประกอบการแนะนำผลิตภัณฑ์ตามกฎความปลอดภัย", "Used for safety-checked product recommendations.")}</p>
       {SKIN_KEYS.some(key => Object.hasOwn(answers, key)) ? <ProfileAnswerRows profile={profile} keys={SKIN_KEYS} language={language} /> : <p className="profile-section-note">{t("ยังไม่ได้บันทึกข้อมูลผิว", "Skin information is not recorded yet.")}</p>}
     </section>}
-    {section === "habits" && HABIT_KEYS.some(key => Object.hasOwn(answers, key)) && <section className="profile-info-section" aria-labelledby="profile-habits-title">
-      <h2 id="profile-habits-title">{t("พฤติกรรมจากแบบสอบถาม", "Questionnaire habits")}</h2>
-      <p className="profile-section-note">{t("ข้อมูลตั้งต้นที่คุณตอบไว้ ไม่ใช่บันทึกของวันนี้", "Saved baseline answers, not today's readings.")}</p>
-      <ProfileAnswerRows profile={profile} keys={HABIT_KEYS} language={language} />
+    {section === "habits" && <section className="profile-info-section" aria-labelledby="profile-daily-title">
+      <h2 id="profile-daily-title">{t("บันทึกสุขภาพรายวัน", "Daily health records")}</h2>
+      <p className="profile-section-note">{t("บันทึกเวลานอน น้ำดื่ม และเวลาอยู่กลางแจ้งตามวันที่ในหน้าติดตามสุขภาพ", "Record sleep duration, water intake, and time outdoors by date in the health tracker.")}</p>
+      <Link className="secondary-button" href="/clients">{t("ไปบันทึกสุขภาพรายวัน", "Open daily health tracker")}</Link>
     </section>}
     {section === "habits" && otherKeys.length > 0 && <section className="profile-info-section" aria-labelledby="profile-other-title">
       <h2 id="profile-other-title">{t("ข้อมูลเพิ่มเติม", "Additional information")}</h2>
