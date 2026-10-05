@@ -87,6 +87,8 @@ components:
 
 ## สถานะปัจจุบัน
 
+- Login/Signup intro uses the supplied `/assets/aphrodize-auth-intro.mp4` as decorative cover video behind the existing content, with a dark readability scrim. Playback is muted, looping and inline without a visible Pause/Play control; hidden tabs pause, and reduced motion keeps a static frame/background. Keep authentication forms and consent behavior unchanged.
+
 หน้า Home/Dashboard (`/#dashboard`) เป็นภาพอ้างอิงล่าสุดของผลิตภัณฑ์: navbar ด้านบน, hamburger บนมือถือ, วิดีโอพื้นหลังกลางหน้า, การ์ดสีทึบ, พื้นขาวที่มี ambient blush เบา ๆ, ปุ่มชมพูสีทึบ และ typography แบบ serif เฉพาะหัวข้อหลัก/หัวข้อ section ส่วนข้อมูลและ action ใช้ sans-serif ดูรายละเอียดและสถานะข้อมูลในหัวข้อ [Home/Dashboard](#homedashboard--เลย์เอาต์การ์ดภาพรวม) ด้านล่าง
 
 หน้า `/result-detail` ปรับตามแนวทางด้านล่างแล้ว โดยใช้ shared navigation, สี, typography และสถานะข้อมูลชุดเดียวกับผลิตภัณฑ์ ข้อกำหนดในหัวข้อนี้เป็นสเปกปัจจุบันสำหรับดูแลและตรวจงานหน้านั้นต่อไป หากรูปแบบเก่าขัดกับ Home/Dashboard ให้ยึด Home/Dashboard และ shared navigation เป็นหลัก
@@ -281,6 +283,8 @@ This revision supersedes the background-video/three-lane Home layout below. Use 
 ผลลัพธ์และคำแนะนำต่ออยู่ด้านล่างแบบฟอร์ม หลังส่งภาพสำเร็จให้เลื่อนไป `#results` และย้ายโฟกัสโดยไม่เลื่อนซ้ำ เคารพ `prefers-reduced-motion` และเว้นระยะเหนือส่วนผลลัพธ์สำหรับ navbar ภาพและคะแนนต้องมาจาก API เท่านั้น
 
 ## UV province explorer (`/uv-map`)
+
+- Right-mouse hold and drag on the map changes bounded rotation/tilt, with pointer capture and cancellation cleanup; left-click/tap remains province selection. Suppress context menu only on the mission map stage. Provide rotate/tilt buttons and Reset view for keyboard/mobile; reset restores default angle, 1x zoom and tilted mode without changing the selected province. Reduced motion has no animated transitions or automatic rotation; explicit angle changes remain available.
 
 Approved 5 October 2026 as a route-specific extension of the incumbent Aphrodize world. Inherit shared navigation, Libre Baskerville headings, Montserrat UI, blush/coral actions, theme-aware surfaces, borders and focus tokens. This addition does not change Home's existing map or require a global token/document rewrite.
 

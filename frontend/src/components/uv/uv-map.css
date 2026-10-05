@@ -55,7 +55,10 @@ html[data-theme="black"] .uv-map-select select { color-scheme: dark; }
 .uv-map-view-controls button:first-child { margin-right: auto; }
 .uv-mission-map .uv-map-preview { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .uv-mission-map .uv-map-stage { perspective: 1200px; padding: 24px 12px 36px; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 48px 48px; border-radius: 16px; overflow: hidden; }
-.uv-mission-map svg { transform: rotateX(22deg) rotateZ(-8deg); transform-origin: 50% 50%; filter: drop-shadow(8px 22px 14px rgb(91 69 75 / 18%)); transition: transform 400ms cubic-bezier(.16, 1, .3, 1); overflow: hidden; }
+.uv-mission-map svg { transform: rotateX(calc(22deg + var(--uv-tilt-offset, 0deg))) rotateZ(calc(-8deg + var(--uv-rotation-offset, 0deg))); transform-origin: 50% 50%; filter: drop-shadow(8px 22px 14px rgb(91 69 75 / 18%)); transition: transform 400ms cubic-bezier(.16, 1, .3, 1); overflow: hidden; }
+.uv-mission-map .uv-map-stage[data-dragging="true"] { cursor: grabbing; user-select: none; }
+.uv-mission-map .uv-map-stage[data-dragging="true"] svg { transition: none; }
+.uv-mission-map .uv-map-stage[data-dragging="true"] path { cursor: grabbing; }
 .uv-mission-map .uv-map-depth path { fill: var(--border-strong); stroke: var(--border-strong); pointer-events: none; cursor: default; }
 .uv-mission-map path[role="button"] { transition: transform 240ms cubic-bezier(.16, 1, .3, 1); }
 .uv-mission-map path[aria-pressed="true"] { transform: translateY(-7px); stroke: var(--primary-deep); stroke-width: 3; }
@@ -74,11 +77,12 @@ html[data-theme="black"] .uv-map-select select { color-scheme: dark; }
   .thailand-uv-map svg { max-height: 540px; }
   .uv-map-detail h2 { font-size: 24px; }
   .uv-mission-canvas, .uv-map-detail { padding: 18px; }
-  .uv-mission-map svg { transform: rotateX(12deg) rotateZ(-4deg); max-height: 440px; }
+  .uv-mission-map svg { transform: rotateX(calc(12deg + var(--uv-tilt-offset, 0deg))) rotateZ(calc(-4deg + var(--uv-rotation-offset, 0deg))); max-height: 440px; }
   .uv-mission-map .uv-map-stage { padding: 12px 8px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .uv-mission-map svg { transform: none; filter: none; transition: none; }
+  .uv-mission-map svg { filter: none; transition: none; }
+  .uv-mission-map .uv-map-stage:not([data-oriented="true"]) svg { transform: none; }
   .uv-mission-map .uv-map-depth { display: none; }
   .uv-mission-map path[role="button"] { transition: none; transform: none; }
 }
