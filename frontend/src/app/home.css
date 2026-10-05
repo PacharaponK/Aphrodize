@@ -118,6 +118,33 @@ html[data-theme="black"] .home-topbar .home-button img { filter: invert(1); }
 .home-chart-data ul { list-style: none; margin: 4px 0 0; padding: 0; }
 .home-chart-data li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; padding: 6px 0; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .home-insights-card { padding: 24px; }
+.home-insights-state { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-top: 16px; }
+.home-insights-state p { margin: 0; color: var(--muted); font-size: 14px; }
+.home-insights-state .text-button, .home-insights-footer .text-button { display: inline-flex; align-items: center; min-height: 44px; }
+.home-insights-content { display: grid; gap: 20px; margin-top: 20px; }
+.home-insights-content h3 { margin: 0; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1.5; }
+.home-insights-lead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; }
+.home-insights-lead > p { grid-column: 1 / -1; margin: 0; max-width: 72ch; font-size: 16px; line-height: 1.65; color: var(--ink); }
+.home-insights-actions ul { display: grid; gap: 8px; max-width: 72ch; margin: 8px 0 0; padding-left: 20px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
+.home-insights-actions small, .home-insights-forecasts small { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.home-insights-forecasts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+.home-insights-forecasts p { margin: 6px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.6; }
+.home-insights-forecasts strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.home-insights-availability { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.home-insights-details { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.home-insights-details > summary { display: list-item; min-height: 44px; padding: 12px 0; color: var(--link); font-size: 14px; font-weight: 600; cursor: pointer; }
+.home-insights-details > summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; border-radius: 4px; }
+.home-insights-details .daily-risk-grid { grid-template-columns: 1fr; gap: 0; }
+.home-insights-details .health-signal-card, html[data-theme="black"] .home-insights-details .daily-risk-grid .health-signal-card { min-width: 0; padding: 16px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); }
+.home-insights-details .health-signal-heading { flex-wrap: wrap; }
+.home-insights-details .health-signal-note, .home-insights-details .health-signal-possibilities, .home-insights-details .health-signal-recommendations { color: var(--muted); }
+.home-insights-details .profile-guidance { padding: 16px 0; border: 0; border-radius: 0; background: transparent; }
+.home-insights-details .daily-risk-profile-guidance ul, html[data-theme="black"] .home-insights-details .daily-risk-profile-guidance ul { color: var(--muted); }
+.home-insights-details .health-signal-unrated .health-signal-level, html[data-theme="black"] .home-insights-details .health-signal-unrated .health-signal-level { background: var(--surface-soft); border-color: var(--line); color: var(--muted); }
+.home-insights-details .daily-risk-disclaimer { margin-bottom: 16px; }
+.home-insights-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 20px; }
+.home-insights-footer p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+@media (max-width: 600px) { .home-insights-lead, .home-insights-forecasts { grid-template-columns: 1fr; } .home-insights-lead > .health-signal-level { justify-self: start; } .home-insights-state { align-items: flex-start; flex-direction: column; } }
 .home-product-recommendations { scroll-margin-top: 96px; }
 .home-product-recommendations > div[aria-live="polite"] { min-width: 0; }
 .home-product-recommendations .recommendation-list { display: grid; gap: 10px; margin-top: 14px; }
