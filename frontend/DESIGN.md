@@ -254,6 +254,8 @@ components:
 
 ### Approved Home motion revision — 3 October 2026
 
+- Home/Dashboard alone has a sticky reveal footer behind an opaque foreground content layer. Reveal follows native scrolling with CSS sticky, no fixed bottom overlay, scroll interception, parallax or automatic animation. Footer contains theme-aware existing logos, Aphrodize, real navigation shortcuts and the bilingual personal-tracking disclaimer. Default/SSR/no-JS is normal flow. Enable only above 960px with a fine pointer, no reduced motion and footer height below viewport height minus 120px; resize/content/preference changes recheck eligibility. Mobile, tall content and reduced motion retain normal flow. Keyboard focus inside the footer returns it to normal flow so links cannot remain obscured. Other routes/forms remain unchanged.
+
 This revision supersedes the background-video/three-lane Home layout below. Use the approved HTML preview as the visual reference, not as a data source.
 
 - Hero uses `/assets/aphrodize-hero-face.png` as a full-section decorative background, shifted right (12% desktop, 6% mobile). Theme-aware gradients keep the editorial heading and real navigation actions readable. Clearly label the image as a visual demo, not an analysis result.

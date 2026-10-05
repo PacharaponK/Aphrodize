@@ -2,6 +2,7 @@ import { pageMetadata } from "@/lib/page-metadata";
 import { LocalizedText } from "../components/language-provider";
 import { HomeHero } from "../components/home-hero";
 import { HomeScrollMotion } from "../components/home-scroll-motion";
+import { HomeRevealFooter } from "../components/home-reveal-footer";
 import DailyHealthHistoryPanel from "./clients/daily-health-history-panel";
 import "./clients/clients.css";
 import "./clients/daily-health-history.css";
@@ -17,7 +18,7 @@ export const metadata = pageMetadata(
 
 export default function Page() {
   return (
-    <div className="app-shell home-dashboard-shell">
+    <HomeRevealFooter><div className="app-shell home-dashboard-shell">
       <HomeScrollMotion />
       <main id="dashboard">
         <HomeHero />
@@ -27,7 +28,7 @@ export default function Page() {
         </section>
         <p className="home-safety-note"><LocalizedText th="คะแนนและสัญญาณมีไว้เพื่อการติดตามส่วนบุคคล ไม่ใช่การวินิจฉัยทางการแพทย์" en="Scores and signals support personal tracking; they are not a medical diagnosis." /></p>
       </main>
-    </div>
+    </div></HomeRevealFooter>
   );
 }
 
