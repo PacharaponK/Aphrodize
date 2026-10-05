@@ -201,7 +201,6 @@ function HealthOnboardingForm() {
 
   return (
     <main className="onboarding-page">
-      <ThemeToggle className="onboarding-theme-toggle" />
       <section className="onboarding-card" aria-labelledby="health-title">
         <div className="onboarding-controls"><LanguageToggle /><ThemeToggle className="onboarding-theme-toggle" /></div>
         <p className="eyebrow">{t("เริ่มต้นใช้งาน · ดูแลสุขภาพส่วนบุคคล", "FIRST-TIME SETUP · PERSONAL WELLNESS")}</p>

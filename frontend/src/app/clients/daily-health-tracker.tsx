@@ -483,8 +483,13 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           <label className="tracker-field" htmlFor="water-intake">
             <span>{t("ปริมาณน้ำดื่ม (มล.)", "Water intake (mL)")}</span>
             <input id="water-intake" type="number" min="0" max="20000" step="1" inputMode="numeric" placeholder={t("เช่น 1500", "e.g. 1500")} required value={form.waterIntakeMl} onChange={(event) => updateForm("waterIntakeMl", event.target.value)} />
-            <small>{t("กรอกยอดสะสมทั้งวัน; โมเดลฝึกด้วยช่วง 900–1,800 มล. ถ้ากรอกยอดระหว่างวันอาจอยู่นอกช่วงฝึก", "Enter your full-day total. The model was trained on 900–1,800 mL, so an in-progress value may be outside its training range.")}</small>
+            <small>{t("กรอกยอดน้ำดื่มสะสมทั้งวัน", "Enter your full-day drinking-water total.")}</small>
           </label>
+
+          <details className="daily-input-method">
+            <summary>{t("ข้อจำกัดของโมเดลน้ำดื่ม", "Water-model limitations")}</summary>
+            <p>{t("โมเดลพื้นฐานฝึกด้วยช่วง 900–1,800 มล. ค่าที่อยู่นอกช่วงนี้หรือยอดระหว่างวันอาจให้ผลคลาดเคลื่อน ช่วงฝึกนี้ไม่ใช่ปริมาณน้ำดื่มที่แนะนำ", "The baseline model was trained on 900–1,800 mL. Values outside that range or in-progress totals may produce unreliable estimates. This training range is not a drinking-water recommendation.")}</p>
+          </details>
 
           <fieldset className="tracker-field outdoor-field">
             <legend>{t("เวลาอยู่นอกบ้าน", "Time outdoors")}</legend>
@@ -688,8 +693,10 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         ) : (
           <div className="tracker-empty-state">
             <span className="tracker-empty-icon" aria-hidden="true">＋</span>
-            <h3>{t("เริ่มจากบันทึกข้อมูลของวันนี้", "Start by recording today's information")}</h3>
-            <p>{t("บันทึกการนอน น้ำดื่ม และเวลาอยู่นอกบ้านเพื่อดูคะแนนและคำแนะนำสำหรับวันนี้", "Log sleep, water intake and time outdoors to see today's estimates and guidance.")}</p>
+            <div>
+              <h3>{t("ยังไม่มีบันทึกวันนี้", "No entry for today")}</h3>
+              <p>{t("เริ่มจากปุ่มบันทึกด้านบน: การนอน น้ำดื่ม และเวลาอยู่นอกบ้าน", "Use the record button above to log sleep, water and time outdoors.")}</p>
+            </div>
           </div>
         )}
 

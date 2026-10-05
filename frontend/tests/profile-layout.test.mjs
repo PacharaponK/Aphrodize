@@ -33,6 +33,19 @@ const account = { display_name: "Test Account", email: "profile@example.test", p
     wellness_goal: "hydration", height_cm: 9999, weight_kg: 9999,
     guardian_consent: "private", custom_answer: "Preserved answer" } };
 
+test("profile labels allergies, formats arrays and distinguishes missing answers", () => {
+  const html = renderProfile({ ...account, answers: { allergy_ingredients: ["Fragrance", "", null, "Lanolin"], custom_answer: false } });
+  assert.match(html, /Allergy ingredients/);
+  assert.match(html, /Fragrance, Lanolin/);
+  assert.match(html, /Other saved answer 1/);
+  assert.match(html, />No</);
+  assert.doesNotMatch(html, /allergy ingredients|custom answer|allergy_ingredients/);
+  const empty = renderProfile({ ...account, answers: { allergy_ingredients: [] } });
+  assert.match(empty, /Allergy ingredients/);
+  assert.match(empty, /Not recorded/);
+  assert.doesNotMatch(empty, /None known/);
+});
+
 test("profile groups real answers and directs daily habits to the tracker", () => {
   const html = renderProfile(account);
   assert.ok(html.indexOf("profile-skin-title") < html.indexOf("profile-signup-title"));

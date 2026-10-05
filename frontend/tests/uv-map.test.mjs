@@ -25,6 +25,17 @@ const render = (provinces, props = {}) => renderToStaticMarkup(React.createEleme
   provinces, selectedProvinceId: "bangkok", onSelectProvince() {}, ...props,
 }));
 
+test("English map localizes controls and province labels without changing UV values", () => {
+  const html = render(shapes.map(p => ({ ...p, source: "open_meteo", uv_index: 7.2, status: "available", level: "high" })), { language: "en", missionView: true });
+  assert.match(html, /Bangkok: UV 7\.2/);
+  assert.match(html, /View controls/);
+  assert.match(html, /Reset view/);
+  assert.doesNotMatch(html, /กรุงเทพมหานคร|ปรับมุมมองแผนที่/);
+  assert.match(html, /<details class="uv-map-view-options">/);
+  assert.doesNotMatch(html, /<details[^>]*open=/);
+  assert.equal((html.match(/role="button"/g) ?? []).length, 77);
+});
+
 test("reusable map renders all provinces without fetching and keeps missing values explicit", () => {
   const html = render([]);
   assert.equal((html.match(/role="button"/g) ?? []).length, 77);

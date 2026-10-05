@@ -58,11 +58,15 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
       <div>
         <p className="eyebrow">OPTIONAL SELF-REPORT</p>
         <h2 id="daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</h2>
-        <p>{t("ใช้เป็นผลที่คุณสังเกตเอง แยกจาก prediction; ระบบจะฝึกได้เมื่อมีคะแนน thirst และ dryness ที่รายงานจริงครบทั้งคู่ พร้อมข้อมูลไลฟ์สไตล์ของวันก่อนหน้าและ consent ฝึกโมเดล", "These are your observations, separate from predictions. Model training requires both self-reported thirst and dryness scores, the previous day's lifestyle data, and training consent.")}</p>
+        <p>{t("บันทึกสิ่งที่คุณรู้สึกจริง ไม่ใช่คะแนนทำนาย การนำไปฝึกโมเดลต้องได้รับความยินยอมแยกต่างหาก", "Record what you actually felt, not predicted scores. Model training requires separate consent.")}</p>
+        <details className="daily-input-method">
+          <summary>{t("ข้อมูลนี้ใช้ฝึกโมเดลอย่างไร", "How these observations support training")}</summary>
+          <p>{t("ระบบจะฝึกได้เมื่อมีคะแนน thirst และ dryness ที่รายงานจริงครบทั้งคู่ พร้อมข้อมูลไลฟ์สไตล์ของวันก่อนหน้าและ consent ฝึกโมเดล", "Model training requires both self-reported thirst and dryness scores, the previous day's lifestyle data, and training consent.")}</p>
         <p className="training-threshold-note">{t("การสร้าง candidate ต้องมีข้อมูลที่จับคู่ครบอย่างน้อย 100 วันจากผู้ใช้ที่ยินยอมอย่างน้อย 5 คน; รุ่นถัดไปจะพิจารณาเมื่อมีข้อมูลใหม่เพิ่มอีกอย่างน้อย 25 วัน การบันทึกข้อมูลรายวันหรือคะแนน prediction เพียงอย่างเดียวไม่ใช่ label และไม่ทำให้เกิดการฝึก", "A candidate requires at least 100 complete paired days from 5 consenting users. A new version is considered after at least 25 additional days. Daily entries or predicted scores alone are not labels and do not trigger training.")}</p>
+        <p className="training-threshold-note">{t("รุ่นที่มี energy ต้องมีพลังงาน ความกระหาย และผิวแห้งที่รายงานจริงครบทั้งสามค่าเพียงพอตามเกณฑ์ และผ่านการตรวจความแม่นยำกับการอนุมัติก่อนเปิดใช้", "Energy candidates need enough paired days with all three observed scores: energy, thirst and dryness. Accuracy review and explicit model approval are required before use.")}</p>
+        </details>
       </div>
       <form className="daily-outcome-form" onSubmit={submitOutcome}>
-        <p className="training-threshold-note">{t("รุ่นที่มี energy ต้องมีพลังงาน ความกระหาย และผิวแห้งที่รายงานจริงครบทั้งสามค่าเพียงพอตามเกณฑ์ และผ่านการตรวจความแม่นยำกับการอนุมัติก่อนเปิดใช้", "Energy candidates need enough paired days with all three observed scores: energy, thirst and dryness. Accuracy review and explicit model approval are required before use.")}</p>
         <label className="tracker-field" htmlFor="outcome-date">
           <span>{t("วันที่สังเกตผล", "Date observed")}</span>
           <input

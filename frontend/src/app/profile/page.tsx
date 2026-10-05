@@ -19,6 +19,7 @@ type ProfileValues = {
 type Profile = { display_name: string; email: string; profile: ProfileValues | null; answers: Record<string, unknown> | null };
 
 const labels: Record<string, readonly [string, string]> = {
+  allergy_ingredients: ["ส่วนผสมที่แพ้", "Allergy ingredients"],
   age_years: ["อายุ", "Age"], sex: ["เพศ", "Gender"], age_group: ["ช่วงอายุ", "Age group"], height_cm: ["ส่วนสูง", "Height"], weight_kg: ["น้ำหนัก", "Weight"],
   sleep_hours: ["เวลานอน", "Sleep duration"], sleep_quality: ["คุณภาพการนอน", "Sleep quality"], water_liters: ["น้ำดื่ม", "Water intake"], outdoor_minutes: ["กิจกรรมกลางแจ้ง", "Outdoor activity"], sunscreen_frequency: ["การทาครีมกันแดด", "Sunscreen use"],
   skin_type: ["สภาพผิว", "Skin type"], skin_sensitivity: ["ความไวต่อการระคายเคือง", "Skin sensitivity"], known_product_allergy: ["ประวัติแพ้ผลิตภัณฑ์", "Product allergy"], allergy_details: ["ส่วนผสม/ผลิตภัณฑ์ที่แพ้", "Allergy details"], severe_irritation: ["การระคายเคืองรุนแรง", "Severe irritation"], stress_level: ["ระดับความเครียด", "Stress level"], menstrual_tracking: ["การติดตามรอบเดือน", "Menstrual tracking"], menstrual_status: ["สถานะรอบเดือน", "Menstrual status"], wellness_goal: ["เป้าหมายการติดตาม", "Tracking goal"],
@@ -38,7 +39,13 @@ const answerLabels: Record<string, Record<string, readonly [string, string]>> = 
 };
 
 function displayValue(value: unknown, key: string, language: "th" | "en"): string {
+  if (Array.isArray(value)) {
+    const items = value.filter(item => item != null && String(item).trim() !== "");
+    return items.length ? items.map(item => displayValue(item, key, language)).join(", ") : language === "en" ? "Not recorded" : "ยังไม่ได้บันทึก";
+  }
   if (value == null || value === "") return language === "en" ? "Not recorded" : "ยังไม่ได้บันทึก";
+  if (typeof value === "boolean") return value ? language === "en" ? "Yes" : "ใช่" : language === "en" ? "No" : "ไม่ใช่";
+  if (typeof value === "object") return language === "en" ? "Saved structured answer. View it in Edit wellness information." : "บันทึกคำตอบแล้ว ดูได้ในแก้ไขข้อมูลสุขภาพ";
   const raw = String(value ?? "-");
   const labelled = answerLabels[key]?.[raw];
   if (labelled) return labelled[language === "en" ? 1 : 0];
@@ -304,7 +311,7 @@ export default function ProfilePage() {
   </WorkspaceShell>;
 }
 
-const SKIN_KEYS = ["skin_type", "skin_sensitivity", "sunscreen_frequency", "known_product_allergy", "allergy_details", "severe_irritation"];
+const SKIN_KEYS = ["skin_type", "skin_sensitivity", "sunscreen_frequency", "known_product_allergy", "allergy_details", "allergy_ingredients", "severe_irritation"];
 const LEGACY_DAILY_KEYS = ["sleep_hours", "sleep_quality", "water_liters", "outdoor_minutes", "stress_level", "menstrual_status"];
 const SIGNUP_KEYS = ["age_years", "age_group", "sex"];
 const OMITTED_KEYS = ["height_cm", "weight_kg", "guardian_consent", "wellness_goal"];
@@ -313,8 +320,8 @@ function ProfileAnswerRows({ profile, keys, language }: { profile: Profile; keys
   const answers = profile.answers ?? profile.profile ?? {};
   const rows = keys.filter(key => Object.hasOwn(answers, key) && !(key === "age_group" && profile.answers?.age_years != null));
   if (!rows.length) return null;
-  return <dl className="profile-answers">{rows.map(key => <div key={key}>
-    <dt>{labels[key]?.[language === "en" ? 1 : 0] ?? key.replaceAll("_", " ")}</dt>
+  return <dl className="profile-answers">{rows.map((key, index) => <div key={key}>
+    <dt>{labels[key]?.[language === "en" ? 1 : 0] ?? (language === "en" ? `Other saved answer ${index + 1}` : `คำตอบอื่นที่บันทึกไว้ ${index + 1}`)}</dt>
     <dd>{displayValue(answers[key as keyof typeof answers], key, language)}</dd>
   </div>)}</dl>;
 }

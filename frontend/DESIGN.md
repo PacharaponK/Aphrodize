@@ -90,6 +90,8 @@ components:
 
 ## สถานะปัจจุบัน
 
+- Shared page transitions are entry-only opacity settling after a pathname change: Home 240ms (0.90 to 1), information/auth routes 160ms (0.96 to 1). The shared navbar stays stable. Use a persistent, layout-neutral client boundary, not a keyed template; do not reset child forms/data for animation. Initial loads, hashes (including capture stages), query-only changes and data refreshes do not replay it. No exit delays, overlays, transforms on route ancestors, fabricated metric counting, focus/scroll overrides or new animation dependency. Reduced motion disables it; a changed preference, hidden tab or interrupted navigation cancels it immediately. Keep the existing brand, states and route-specific motion unchanged.
+
 - Login/Signup intro uses the supplied `/assets/aphrodize-auth-intro.mp4` as decorative cover video behind the existing content, with a dark readability scrim. Playback is muted, looping and inline without a visible Pause/Play control; hidden tabs pause, and reduced motion keeps a static frame/background. Keep authentication forms and consent behavior unchanged.
 
 หน้า Home/Dashboard (`/#dashboard`) เป็นภาพอ้างอิงล่าสุดของผลิตภัณฑ์: navbar ด้านบน, hamburger บนมือถือ, วิดีโอพื้นหลังกลางหน้า, การ์ดสีทึบ, พื้นขาวที่มี ambient blush เบา ๆ, ปุ่มชมพูสีทึบ และ typography แบบ serif เฉพาะหัวข้อหลัก/หัวข้อ section ส่วนข้อมูลและ action ใช้ sans-serif ดูรายละเอียดและสถานะข้อมูลในหัวข้อ [Home/Dashboard](#homedashboard--เลย์เอาต์การ์ดภาพรวม) ด้านล่าง
@@ -317,6 +319,11 @@ Approved 5 October 2026 as a route-specific extension of the incumbent Aphrodize
 - Each history date starts collapsed: date, overall level when assessed, recorded sleep/water/outdoor values, and a quiet count of unassessed signals. A native details disclosure preserves full recorded guidance, unavailable reasons and references. Retain forecast target dates; do not imply missing signals are low risk or change saved interpretations.
 
 ### Signup measurements and Skin profile
+
+- UV uses the shared Thai/English language provider for its heading, source/day/province selectors, map labels, levels, status, provenance and limitations. Preserve source-specific values, color meanings and missing-data states; do not re-fetch solely for a language change. Source, forecast day and province are primary; rotation, tilt, zoom and reset live in a closed-by-default native View controls disclosure with 44px targets and keyboard/mobile access. Right-drag behavior remains scoped to the map.
+- Onboarding has one language/theme control group in the card, not an additional standalone theme toggle.
+- Profile allergy ingredients have an explicit localized label. Arrays display readable comma-separated values, empty arrays and blank answers display Not recorded, and unknown answer keys never appear as raw internal identifiers. Preserve stored answers and distinguish missing data from None known.
+- Daily health empty states use a compact icon-and-copy row. The water field leads with the full-day input instruction; model training ranges and limitations are available in a closed technical disclosure, not in the main input helper. Storage and optional training consent scope remain visible and unchanged; never hide opt-in choices or withdrawal consequences to shorten the form.
 
 - Profile header and body share the same centered 1240px maximum width via the route-specific `profile-workspace` header rule. Preserve responsive gutters, the existing identity/details columns and mobile stacking. Do not narrow shared workspace headers on other routes.
 
