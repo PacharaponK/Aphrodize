@@ -17,7 +17,7 @@ from backend.libs.wrinkle_area import AREA_BAND_VERSION, assess_visible_area
 
 ANALYSIS_CONSENT_VERSION = "1.0"
 
-RECOMMENDATION_RULE_VERSION = "2026-10-02.1"
+RECOMMENDATION_RULE_VERSION = "2026-10-05.1"
 RECOMMENDATION_KNOWLEDGE_ID = "aphrodize-category-baseline"
 RECOMMENDATION_KNOWLEDGE_VERSION = "1.0.0"
 KNOWLEDGE_SOURCES = {
@@ -207,7 +207,6 @@ def recommendations_for(
     age_years = answers.get("age_years")
     age_group = answers.get("age_group")
     sunscreen = answers.get("sunscreen_frequency")
-    outdoor_minutes = answers.get("outdoor_minutes")
     reported_dryness_context = daily_context.get("reported_dryness")
     reported_dryness = (
         reported_dryness_context.get("value")
@@ -316,18 +315,10 @@ def recommendations_for(
         "under_13",
         "13_17",
     }
-    initial_outdoor_high = isinstance(outdoor_minutes, int | float) and outdoor_minutes >= 60
     daily_outdoor_high = type(daily_outdoor) is int and 2 <= daily_outdoor <= 4
-    if sunscreen in {"never", "sometimes"} and (initial_outdoor_high or daily_outdoor_high):
-        sunscreen_fields = ["sunscreen_frequency"]
-        sunscreen_sources = ["self_reported"]
-        if initial_outdoor_high:
-            sunscreen_fields.insert(0, "outdoor_minutes")
-        if daily_outdoor_high:
-            sunscreen_fields.append("daily_outdoor_exposure_choice")
-            # Sunscreen frequency is always the questionnaire prerequisite. Daily
-            # outdoor exposure adds a second source; it never replaces that source.
-            sunscreen_sources = ["self_reported", "daily_health_reported"]
+    if sunscreen in {"never", "sometimes"} and daily_outdoor_high:
+        sunscreen_fields = ["sunscreen_frequency", "daily_outdoor_exposure_choice"]
+        sunscreen_sources = ["self_reported", "daily_health_reported"]
         add(
             "broad-spectrum sunscreen SPF 30+",
             "R-SUN-OUTDOOR-001",
