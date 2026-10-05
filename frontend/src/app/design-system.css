@@ -349,6 +349,14 @@ html[data-theme="black"] .brand-mark-dark { display: block; }
 .auth-shell { width: 100%; max-width: none; min-height: calc(100vh - 56px); margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 48px -8px #0f0f0f33; backdrop-filter: none; }
 .auth-card > * { width: min(100%, 520px); margin-inline: auto; }
 .auth-intro { background: var(--ink); color: #fff; }
+.auth-intro { position: relative; isolation: isolate; overflow: hidden; }
+.auth-intro-media { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #22181c; }
+.auth-intro-media video { width: 100%; height: 100%; object-fit: cover; object-position: center; transform: translateX(6%) scale(1.16); filter: blur(3px); }
+.auth-intro-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(20 14 17 / 90%), rgb(20 14 17 / 78%) 55%, rgb(20 14 17 / 64%)); box-shadow: inset 0 -64px 88px rgb(12 8 10 / 48%); }
+.auth-intro > :not(.auth-intro-media) { position: relative; z-index: 1; }
+@media (max-width: 720px) {
+  .auth-intro-media video { transform: translateX(4%) scale(1.12); filter: blur(2px); }
+}
 .auth-brand, .auth-intro h1, .auth-intro .eyebrow { color: #fff; }
 .intro-copy h1 { font-size: clamp(36px, 4vw, 56px); line-height: 1.1; }
 .intro-copy h1 span { background: none; color: var(--primary-on-dark); }

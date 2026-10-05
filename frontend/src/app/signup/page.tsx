@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle, useLanguage } from "@/components/language-provider";
+import { AuthIntroVideo } from "@/components/auth-intro-video";
 import { AllergyIngredients } from "@/components/allergy-ingredients";
 import { Select } from "@/components/ui/select";
 
@@ -148,6 +149,7 @@ export default function SignupPage() {
       <ThemeToggle className="auth-theme-toggle" />
       <main className="auth-shell">
         <section className="auth-intro" aria-label={t("เกี่ยวกับ Aphrodize", "About Aphrodize")}>
+          <AuthIntroVideo />
           <Link className="auth-brand" href="/"><Image width={40} height={40} src="/assets/aphrodize-logo.svg" alt="" unoptimized />Aphrodize</Link>
           <div className="intro-copy">
             <p className="eyebrow">WELLNESS SKIN TRACKING</p>

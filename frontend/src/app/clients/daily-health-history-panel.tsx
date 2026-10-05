@@ -9,6 +9,7 @@ import type {
   HealthSignal,
 } from "@/lib/daily-health-types";
 import DailyHealthRiskResults from "./daily-health-risk-results";
+import DashboardInsights from "./dashboard-insights";
 import { useLanguage } from "@/components/language-provider";
 import { selectHistoryDays } from "@/lib/history-selection";
 
@@ -269,10 +270,7 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
         </header>
         <p>{t("สำรวจค่า UV ท้องฟ้าโปร่งรายจังหวัด สำหรับวันนี้และพรุ่งนี้ เพื่อวางแผนกิจกรรมกลางแจ้ง", "Explore clear-sky UV by province for today and tomorrow to plan your time outdoors.")}</p>
       </section>
-      <section className="home-insights-card" aria-label={t("สัญญาณและคำแนะนำจากข้อมูลล่าสุด", "Signals and guidance from your latest record")}>
-        <header className="home-card-heading"><h2>{t("สิ่งที่ควรใส่ใจ", "Personal insights")}</h2>{latest && !unavailable ? <span className="home-period">{t("จากบันทึก", "From your record on")} {dateLabel(latest.local_date)}</span> : null}</header>
-        {unavailable || !latest ? <p>{t("เมื่อมีข้อมูล ระบบจะแสดงสัญญาณและคำแนะนำเฉพาะคุณที่นี่", "Your personal signals and guidance will appear here when records are available")}</p> : <div lang="th">{language === "en" ? <p lang="en">Recorded guidance is currently available in Thai.</p> : null}<DailyHealthRiskResults interpretation={latest.interpretation} /></div>}
-      </section>
+      <DashboardInsights latest={latest} loading={loading} failed={failed} requiresLogin={requiresLogin} onRetry={onRetry} language={language} dateLabel={dateLabel} />
       {!unavailable && items.length > 0 ? <details className="home-history-details"><summary>{t("ข้อมูลรายวันที่ใช้ในภาพรวม", "Recorded daily details (Thai)")} ({items.length} {t("วัน", "days")})</summary><div className="daily-history-list" lang="th">{[...items].sort((a, b) => b.local_date.localeCompare(a.local_date)).map((item) => <DailyHistoryEntry key={item.local_date} item={item} />)}</div></details> : null}
     </div>
   );
