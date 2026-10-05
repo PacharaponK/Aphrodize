@@ -27,6 +27,7 @@ users:
         prediction_target_date: 2026-09-27
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture
       - local_date: 2026-09-27
         timezone: Asia/Bangkok
@@ -43,6 +44,7 @@ users:
         prediction_target_date: null
         prediction_status: not_run
         prediction_model_id: null
+        next_day_forecasts: null
         data_source: fixture
   - display_name: Nattapong Srisuk
     email: male@gmail.com
@@ -72,6 +74,7 @@ users:
         prediction_target_date: 2026-09-27
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture
       - local_date: 2026-09-27
         timezone: Asia/Bangkok
@@ -88,6 +91,7 @@ users:
         prediction_target_date: 2026-09-28
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture
   - display_name: Pimchanok Wattanakul
     email: female@gmail.com
@@ -117,6 +121,7 @@ users:
         prediction_target_date: 2026-09-27
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture
       - local_date: 2026-09-27
         timezone: Asia/Bangkok
@@ -133,4 +138,5 @@ users:
         prediction_target_date: 2026-09-28
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture
