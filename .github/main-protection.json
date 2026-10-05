@@ -1,7 +1,17 @@
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["Backend CI", "Frontend CI"]
+    "contexts": [],
+    "checks": [
+      {
+        "context": "Backend CI",
+        "app_id": 15368
+      },
+      {
+        "context": "Frontend CI",
+        "app_id": 15368
+      }
+    ]
   },
   "enforce_admins": true,
   "required_pull_request_reviews": {

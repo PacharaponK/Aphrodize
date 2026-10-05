@@ -8,7 +8,8 @@ branch, and manual dispatch. No path filters skip required checks. Each job has 
 The workflow uses GitHub-hosted Ubuntu 24.04 runners, read-only repository access,
 and commit-pinned Actions. It needs no production secrets or live services.
 
-Required check names must remain exactly:
+Required check names must remain exactly (the baseline binds them to the verified
+GitHub Actions app ID 15368):
 
 - `Backend CI`: Python 3.11; locked project dependencies plus the `ci` group;
   Ruff and the root pytest suite. Headless OpenCV is included for landmark tests.
