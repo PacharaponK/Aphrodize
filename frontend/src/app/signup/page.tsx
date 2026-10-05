@@ -15,51 +15,37 @@ type AccountDetails = { displayName: string; email: string; password: string };
 type AnswerMap = Record<string, string>;
 
 const questions = [
-  ["sex", "เพศ"], ["age_years", "อายุของคุณ (ปี)"], ["height_cm", "ส่วนสูงของคุณ (เซนติเมตร)"], ["weight_kg", "น้ำหนักของคุณ (กิโลกรัม)"], ["sleep_hours", "โดยเฉลี่ยเมื่อคืนคุณนอนกี่ชั่วโมง?"], ["sleep_quality", "คุณภาพการนอนของคุณเป็นอย่างไร?"], ["water_liters", "เมื่อวานคุณดื่มน้ำเปล่าประมาณกี่ลิตร?"], ["outdoor_minutes", "เมื่อวานคุณทำกิจกรรมกลางแจ้งกี่นาที?"], ["sunscreen_frequency", "คุณทาครีมกันแดดบ่อยแค่ไหน?"], ["skin_type", "คุณคิดว่าผิวหน้าของคุณเป็นประเภทใด?"], ["skin_sensitivity", "ผิวของคุณไวต่อการระคายเคืองเพียงใด?"], ["known_product_allergy", "คุณมีประวัติแพ้ผลิตภัณฑ์ดูแลผิวหรือไม่?"], ["allergy_details", "โปรดระบุส่วนผสมหรือผลิตภัณฑ์ที่เคยแพ้"], ["severe_irritation", "ขณะนี้มีการระคายเคืองผิวอย่างรุนแรงหรือไม่?"], ["stress_level", "ระดับความเครียดในช่วงสัปดาห์นี้ (1 ต่ำ – 5 สูง)"], ["menstrual_tracking", "คุณต้องการติดตามข้อมูลรอบเดือนหรือไม่?"], ["menstrual_status", "วันนี้คุณอยู่ระหว่างมีประจำเดือนหรือไม่?"], ["wellness_goal", "เป้าหมายหลักที่อยากติดตามคืออะไร?"],
+  ["sex", "เพศ"], ["age_years", "อายุของคุณ (ปี)"], ["height_cm", "ส่วนสูงของคุณ (เซนติเมตร)"], ["weight_kg", "น้ำหนักของคุณ (กิโลกรัม)"], ["sunscreen_frequency", "คุณทาครีมกันแดดบ่อยแค่ไหน?"], ["skin_type", "คุณคิดว่าผิวหน้าของคุณเป็นประเภทใด?"], ["skin_sensitivity", "ผิวของคุณไวต่อการระคายเคืองเพียงใด?"], ["known_product_allergy", "คุณมีประวัติแพ้ผลิตภัณฑ์ดูแลผิวหรือไม่?"], ["allergy_details", "โปรดระบุส่วนผสมหรือผลิตภัณฑ์ที่เคยแพ้"], ["severe_irritation", "ขณะนี้มีการระคายเคืองผิวอย่างรุนแรงหรือไม่?"], ["menstrual_tracking", "คุณต้องการติดตามข้อมูลรอบเดือนหรือไม่?"], ["wellness_goal", "เป้าหมายหลักที่อยากติดตามคืออะไร?"],
 ] as const;
 
 const options: Record<string, readonly [string, string][]> = {
   sex: [["male", "ชาย"], ["female", "หญิง"], ["prefer_not_to_say", "ไม่สะดวกระบุ"]],
-  sleep_hours: [["4", "น้อยกว่า 5 ชั่วโมง"], ["5.5", "5–6 ชั่วโมง"], ["6.5", "6–7 ชั่วโมง"], ["7.5", "7–8 ชั่วโมง"], ["8.5", "8–9 ชั่วโมง"], ["9.5", "มากกว่า 9 ชั่วโมง"]],
-  sleep_quality: [["poor", "ไม่ดี"], ["fair", "พอใช้"], ["good", "ดี"], ["excellent", "ดีมาก"]],
-  water_liters: [["0.5", "น้อยกว่า 1 ลิตร"], ["1", "ประมาณ 1 ลิตร"], ["1.5", "ประมาณ 1.5 ลิตร"], ["2", "ประมาณ 2 ลิตร"], ["2.5", "ประมาณ 2.5 ลิตร"], ["3", "3 ลิตรขึ้นไป"]],
-  outdoor_minutes: [["0", "ไม่ได้ทำกิจกรรมกลางแจ้ง"], ["15", "1–30 นาที"], ["45", "31–60 นาที"], ["90", "1–2 ชั่วโมง"], ["150", "มากกว่า 2 ชั่วโมง"]],
   sunscreen_frequency: [["never", "ไม่เคย"], ["sometimes", "บางครั้ง"], ["most_days", "เกือบทุกวัน"], ["every_day", "ทุกวัน"]],
   skin_type: [["dry", "แห้ง"], ["normal", "ปกติ"], ["combination", "ผสม"], ["oily", "มัน"], ["unsure", "ไม่แน่ใจ"]],
   skin_sensitivity: [["low", "ต่ำ"], ["medium", "ปานกลาง"], ["high", "สูง"], ["unsure", "ไม่แน่ใจ"]],
   known_product_allergy: [["no", "ไม่มีประวัติที่ทราบ"], ["yes", "มี"], ["unsure", "ไม่แน่ใจ"]],
   severe_irritation: [["no", "ไม่มี"], ["yes", "มี"], ["unsure", "ไม่แน่ใจ"]],
-  stress_level: [["1", "1 — ต่ำมาก"], ["2", "2"], ["3", "3 — ปานกลาง"], ["4", "4"], ["5", "5 — สูงมาก"]],
   menstrual_tracking: [["yes", "ต้องการ"], ["no", "ไม่ต้องการ"], ["prefer_not_to_say", "ไม่สะดวกตอบ"], ["not_applicable", "ไม่เกี่ยวข้องกับฉัน"]],
-  menstrual_status: [["on_period", "อยู่ระหว่างมีประจำเดือน"], ["not_on_period", "ไม่ได้อยู่ระหว่างมีประจำเดือน"], ["unsure", "ไม่แน่ใจ"], ["prefer_not_to_say", "ไม่สะดวกตอบ"]],
   wellness_goal: [["skin_tracking", "ติดตามผิว"], ["sleep", "การนอน"], ["hydration", "การดื่มน้ำ"], ["outdoor_habits", "กิจกรรมกลางแจ้ง"], ["general_wellness", "สุขภาพโดยรวม"]],
 };
 
 const englishQuestions: Record<string, string> = {
-  sex: "Gender", age_years: "What is your age in years?", height_cm: "What is your height in centimetres?", weight_kg: "What is your weight in kilograms?", sleep_hours: "On average, how many hours did you sleep last night?",
-  sleep_quality: "How would you rate your sleep quality?", water_liters: "How much plain water did you drink yesterday?",
-  outdoor_minutes: "How many minutes were you outdoors yesterday?", sunscreen_frequency: "How often do you use sunscreen?",
+  sex: "Gender", age_years: "What is your age in years?", height_cm: "What is your height in centimetres?", weight_kg: "What is your weight in kilograms?", sunscreen_frequency: "How often do you use sunscreen?",
   skin_type: "Which skin type best describes your face?", skin_sensitivity: "How sensitive is your skin to irritation?",
   known_product_allergy: "Do you have a known skincare-product allergy?", allergy_details: "Which ingredient or product caused the reaction?", severe_irritation: "Are you currently experiencing severe skin irritation?",
-  stress_level: "How stressed have you felt this week? (1 low – 5 high)", menstrual_tracking: "Would you like to track menstrual information?",
-  menstrual_status: "Are you menstruating today?", wellness_goal: "What would you most like to track?",
+  menstrual_tracking: "Would you like to track menstrual information?",
+  wellness_goal: "What would you most like to track?",
 };
 
 const englishOptions: Record<string, Record<string, string>> = {
   sex: { male: "Male", female: "Female", prefer_not_to_say: "Prefer not to say" },
   age_group: { under_13: "Under 13", "13_17": "13–17 years", "18_24": "18–24 years", "25_34": "25–34 years", "35_44": "35–44 years", "45_54": "45–54 years", "55_plus": "55 years or older" },
-  sleep_hours: { "4": "Under 5 hours", "5.5": "5–6 hours", "6.5": "6–7 hours", "7.5": "7–8 hours", "8.5": "8–9 hours", "9.5": "Over 9 hours" },
-  sleep_quality: { poor: "Poor", fair: "Fair", good: "Good", excellent: "Excellent" },
-  water_liters: { "0.5": "Under 1 liter", "1": "About 1 liter", "1.5": "About 1.5 liters", "2": "About 2 liters", "2.5": "About 2.5 liters", "3": "3 liters or more" },
-  outdoor_minutes: { "0": "No outdoor activity", "15": "1–30 minutes", "45": "31–60 minutes", "90": "1–2 hours", "150": "Over 2 hours" },
   sunscreen_frequency: { never: "Never", sometimes: "Sometimes", most_days: "Most days", every_day: "Every day" },
   skin_type: { dry: "Dry", normal: "Normal", combination: "Combination", oily: "Oily", unsure: "Not sure" },
   skin_sensitivity: { low: "Low", medium: "Medium", high: "High", unsure: "Not sure" },
   known_product_allergy: { no: "No known allergy", yes: "Yes", unsure: "Not sure" },
   severe_irritation: { no: "No", yes: "Yes", unsure: "Not sure" },
-  stress_level: { "1": "1 — Very low", "2": "2", "3": "3 — Moderate", "4": "4", "5": "5 — Very high" },
   menstrual_tracking: { yes: "Yes", no: "No", prefer_not_to_say: "Prefer not to answer", not_applicable: "Not applicable to me" },
-  menstrual_status: { on_period: "Yes, I am menstruating", not_on_period: "No", unsure: "Not sure", prefer_not_to_say: "Prefer not to answer" },
   wellness_goal: { skin_tracking: "Skin tracking", sleep: "Sleep", hydration: "Hydration", outdoor_habits: "Outdoor activity", general_wellness: "General wellness" },
 };
 
@@ -75,7 +61,7 @@ function ageGroupForAge(age: number): string {
 
 function wellnessPayload(answers: AnswerMap, guardianConsent: boolean, allergyIngredients: string[]) {
   const ageYears = Number(answers.age_years);
-  return { allergy_ingredients: answers.known_product_allergy === "yes" ? allergyIngredients : [], sex: answers.sex, age_group: ageGroupForAge(ageYears), age_years: ageYears, guardian_consent: guardianConsent, height_cm: Number(answers.height_cm), weight_kg: Number(answers.weight_kg), sleep_hours: Number(answers.sleep_hours), sleep_quality: answers.sleep_quality, water_liters: Number(answers.water_liters), outdoor_minutes: Number(answers.outdoor_minutes), sunscreen_frequency: answers.sunscreen_frequency, skin_type: answers.skin_type, skin_sensitivity: answers.skin_sensitivity, known_product_allergy: answers.known_product_allergy, allergy_details: answers.known_product_allergy === "yes" ? answers.allergy_details : null, severe_irritation: answers.severe_irritation, stress_level: Number(answers.stress_level), menstrual_tracking: answers.sex === "male" ? "not_applicable" : answers.menstrual_tracking, menstrual_status: answers.sex === "male" ? "not_applicable" : answers.menstrual_status, wellness_goal: answers.wellness_goal };
+  return { allergy_ingredients: answers.known_product_allergy === "yes" ? allergyIngredients : [], sex: answers.sex, age_group: ageGroupForAge(ageYears), age_years: ageYears, guardian_consent: guardianConsent, height_cm: Number(answers.height_cm), weight_kg: Number(answers.weight_kg), sunscreen_frequency: answers.sunscreen_frequency, skin_type: answers.skin_type, skin_sensitivity: answers.skin_sensitivity, known_product_allergy: answers.known_product_allergy, allergy_details: answers.known_product_allergy === "yes" ? answers.allergy_details : null, severe_irritation: answers.severe_irritation, menstrual_tracking: answers.sex === "male" ? "not_applicable" : answers.menstrual_tracking, wellness_goal: answers.wellness_goal };
 }
 
 export default function SignupPage() {
@@ -92,7 +78,7 @@ export default function SignupPage() {
   const [guardianConsent, setGuardianConsent] = useState(false);
   const [allergyIngredients, setAllergyIngredients] = useState<string[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const visibleQuestions = useMemo(() => questions.filter(([name]) => (answers.sex !== "male" || (name !== "menstrual_tracking" && name !== "menstrual_status")) && (name !== "allergy_details" || answers.known_product_allergy === "yes")), [answers.sex, answers.known_product_allergy]);
+  const visibleQuestions = useMemo(() => questions.filter(([name]) => (answers.sex !== "male" || name !== "menstrual_tracking") && (name !== "allergy_details" || answers.known_product_allergy === "yes")), [answers.sex, answers.known_product_allergy]);
   const [questionName, questionLabel] = visibleQuestions[questionIndex];
   const displayedQuestion = language === "en" ? englishQuestions[questionName] ?? questionLabel : questionLabel;
   const isLastQuestion = questionIndex === visibleQuestions.length - 1;
