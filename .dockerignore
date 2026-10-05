@@ -11,3 +11,9 @@ node_modules
 storage/artifacts
 storage/data
 storage/models
+
+# Nested frontend secrets and generated builds
+**/.env
+**/.env.*
+**/node_modules
+**/.next

@@ -1,0 +1,168 @@
+name: aphrodize
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-environment: &environment
+  APP_ENV: production
+  POSTGRES_HOST: postgres
+  POSTGRES_USER: ${POSTGRES_USER:-aphrodize}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+  POSTGRES_DB: ${POSTGRES_DB:-aphrodize}
+  REDIS_HOST: redis
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?Required}
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-aphrodize}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Required}
+  MINIO_SECURE: "false"
+  MINIO_BUCKET: ${MINIO_BUCKET:-aphrodize-private}
+  API_USERNAME: ${API_USERNAME:-aphrodize}
+  API_PASSWORD: ${API_PASSWORD:?Required}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Required}
+  JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aphrodize}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+      POSTGRES_DB: ${POSTGRES_DB:-aphrodize}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes", --requirepass, "${REDIS_PASSWORD:?Required}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Required}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  minio:
+    image: aphrodize-minio:RELEASE.2025-09-07T16-13-09Z
+    build:
+      context: .
+      dockerfile: docker/minio.Dockerfile
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-aphrodize}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Required}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  minio-init:
+    image: aphrodize-api:vm
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    command: python -m backend.scripts.init_buckets
+    environment: *environment
+    depends_on:
+      minio:
+        condition: service_healthy
+    logging: *logging
+
+  api:
+    image: aphrodize-api:vm
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *environment
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - ./storage/artifacts/uv:/app/storage/artifacts/uv:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  frontend:
+    image: aphrodize-frontend:vm
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        SITE_URL: https://${VM_HOST:?Set VM_HOST}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      BACKEND_API_URL: http://api:8000
+      BACKEND_API_USERNAME: ${API_USERNAME:-aphrodize}
+      BACKEND_API_PASSWORD: ${API_PASSWORD:?Required}
+      ANALYSIS_SESSION_SECRET: ${ANALYSIS_SESSION_SECRET:?Required}
+      SITE_URL: https://${VM_HOST:?Set VM_HOST}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      VM_HOST: ${VM_HOST:?Set VM_HOST}
+    ports:
+      - "${VM_BIND_IP:?Set VM_BIND_IP}:80:80"
+      - "${VM_BIND_IP:?Set VM_BIND_IP}:443:443"
+    volumes:
+      - ./docker/Caddyfile.vm:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

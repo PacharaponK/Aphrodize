@@ -1,0 +1,30 @@
+name: aphrodize-gpu
+services:
+  inference-worker:
+    image: aphrodize-inference:cuda118
+    build:
+      context: .
+      dockerfile: docker/inference-cuda.Dockerfile
+    env_file: .env.gpu
+    environment:
+      APP_ENV: production
+      APHRODIZE_WRINKLE_REVIEWED_POLICY: /app/ai/ffhq_wrinkle/reviewed_policy.json
+      APHRODIZE_WRINKLE_APPROVED_MANIFEST: ""
+      APHRODIZE_WRINKLE_POLICY_BUNDLE: ""
+      LABEL_STUDIO_API_KEY: ""
+      LABEL_STUDIO_PROJECT_ID: "0"
+    gpus: all
+    volumes:
+      - type: bind
+        source: ${GPU_MODEL_DIR:?Set GPU_MODEL_DIR in .env.gpu}
+        target: /app/storage/models/ffhq-wrinkle
+        read_only: true
+        bind:
+          create_host_path: false
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # No auto-start until preflight and a real image test have passed.
+    restart: "no"
