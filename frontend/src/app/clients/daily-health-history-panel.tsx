@@ -9,6 +9,7 @@ import type {
   HealthSignal,
 } from "@/lib/daily-health-types";
 import DailyHealthRiskResults from "./daily-health-risk-results";
+import HealthInlineDetails from "./health-inline-details";
 import DashboardInsights from "./dashboard-insights";
 import { useLanguage } from "@/components/language-provider";
 import { selectHistoryDays } from "@/lib/history-selection";
@@ -142,7 +143,7 @@ function DailyHistoryEntry({ item, compact = false }: { item: DailyHealthHistory
   const t = (th: string, en: string) => english ? en : th;
   const summary: HealthSignal = item.interpretation.daily_health_summary;
   const unavailableCount = [summary, item.interpretation.skin_care_attention_level,
-    item.interpretation.acne_flare_signal, item.interpretation.next_day_predictions.low_energy_signal,
+    item.interpretation.next_day_predictions.low_energy_signal,
     item.interpretation.next_day_predictions.thirst_attention].filter((signal) => signal.level === null && signal.status !== "predicted").length;
 
   return (
@@ -170,10 +171,7 @@ function DailyHistoryEntry({ item, compact = false }: { item: DailyHealthHistory
       </div>
       {compact ? <>
         {unavailableCount > 0 ? <p className="daily-history-availability">{t(`ยังประเมินไม่ได้ ${unavailableCount} สัญญาณ`, `${unavailableCount} signals not assessed`)}</p> : null}
-        <details className="daily-history-details">
-          <summary>{t("ดูรายละเอียด", "View details")}<span className="sr-only"> {formatDate(item.local_date, english ? "en-US" : "th-TH")}</span></summary>
-          <DailyHealthRiskResults interpretation={item.interpretation} />
-        </details>
+        <HealthInlineDetails interpretation={item.interpretation} language={english ? "en" : "th"} date={formatDate(item.local_date, english ? "en-US" : "th-TH")} className="daily-history-details" />
       </> : <DailyHealthRiskResults interpretation={item.interpretation} />}
     </article>
   );
@@ -271,7 +269,6 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
         <p>{t("สำรวจค่า UV ท้องฟ้าโปร่งรายจังหวัด สำหรับวันนี้และพรุ่งนี้ เพื่อวางแผนกิจกรรมกลางแจ้ง", "Explore clear-sky UV by province for today and tomorrow to plan your time outdoors.")}</p>
       </section>
       <DashboardInsights latest={latest} loading={loading} failed={failed} requiresLogin={requiresLogin} onRetry={onRetry} language={language} dateLabel={dateLabel} />
-      {!unavailable && items.length > 0 ? <details className="home-history-details"><summary>{t("ข้อมูลรายวันที่ใช้ในภาพรวม", "Recorded daily details (Thai)")} ({items.length} {t("วัน", "days")})</summary><div className="daily-history-list" lang="th">{[...items].sort((a, b) => b.local_date.localeCompare(a.local_date)).map((item) => <DailyHistoryEntry key={item.local_date} item={item} />)}</div></details> : null}
     </div>
   );
 }

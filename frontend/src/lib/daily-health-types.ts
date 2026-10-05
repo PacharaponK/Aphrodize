@@ -45,7 +45,8 @@ export type ProfileGuidance = {
 export type DailyHealthInterpretation = {
   daily_health_summary: HealthSignal;
   skin_care_attention_level: HealthSignal;
-  acne_flare_signal: HealthSignal;
+  /** Legacy historical payloads only; not displayed or returned by new predictions. */
+  acne_flare_signal?: HealthSignal;
   next_day_predictions: {
     low_energy_signal: HealthSignal;
     thirst_attention: HealthSignal;
@@ -166,6 +167,7 @@ export type DailyHealthProfile = {
   height_cm?: number | null;
   skin_type_guidance_consent_active?: boolean;
   model_training_consent_active: boolean;
+  model_training_consent_current_active?: boolean;
   can_report_outcomes: boolean;
   age_band: AgeBand | null;
   smoking_status: SmokingStatus | null;

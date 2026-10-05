@@ -12,10 +12,12 @@ from typing import Any
 import joblib
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION, MODEL_TRAINING_CONSENT_VERSIONS
 from backend.core.db.models import DailyHealthModelDeployment, DailyHealthModelVersion
 from backend.services.daily_health_training import (
     ARTIFACT_ROOT,
     ENERGY_TARGET_NAMES,
+    FEATURE_AVAILABILITY_POLICY,
     FEATURE_NAMES,
     MODEL_FAMILY,
     TARGET_NAMES,
@@ -133,6 +135,11 @@ def load_approved_candidate_bundle(
         "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
         "synthetic_data_included": False,
         "predictions_used_as_labels": False,
+        "feature_availability_policy": FEATURE_AVAILABILITY_POLICY,
+        "training_consent_versions": (
+            [MODEL_TRAINING_CONSENT_VERSION] if target_names == ENERGY_TARGET_NAMES
+            else list(MODEL_TRAINING_CONSENT_VERSIONS)
+        ),
     }
     if any(manifest.get(key) != value for key, value in expected_manifest.items()):
         raise DailyHealthCandidateUnavailable(
@@ -150,25 +157,24 @@ def load_approved_candidate_bundle(
         raise DailyHealthCandidateUnavailable(
             "Candidate has no validation and holdout test metrics."
         )
-    if target_names == ENERGY_TARGET_NAMES:
-        # An energy candidate must outperform a train-only mean baseline in both views.
+    # Every target must beat a train-only baseline in both independent views.
+    for target in target_names:
         for split, baseline in (
             ("test", "test_mean_baseline"),
             ("temporal_test", "temporal_mean_baseline"),
         ):
             try:
-                error = float(version.metrics[split]["reported_energy_level_0_10"]["mae"])
-                baseline_error = float(
-                    version.metrics[baseline]["reported_energy_level_0_10"]["mae"]
-                )
-            except (KeyError, TypeError, ValueError) as error:
+                error = version.metrics[split][target]["mae"]
+                baseline_error = version.metrics[baseline][target]["mae"]
+            except (KeyError, TypeError) as exc:
                 raise DailyHealthCandidateUnavailable(
-                    "Energy candidate requires participant and temporal baseline metrics."
-                ) from error
-            if not (math.isfinite(error) and math.isfinite(baseline_error)
-                    and 0 <= error < baseline_error):
+                    f"Candidate requires participant and temporal baseline metrics for {target}."
+                ) from exc
+            if (type(error) not in (int, float) or type(baseline_error) not in (int, float)
+                    or not math.isfinite(error) or not math.isfinite(baseline_error)
+                    or not 0 <= error < baseline_error):
                 raise DailyHealthCandidateUnavailable(
-                    "Energy candidate does not outperform its observed-outcome baseline."
+                    f"Candidate does not outperform its observed-outcome baseline for {target}."
                 )
 
     try:

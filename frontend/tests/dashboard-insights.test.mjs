@@ -18,12 +18,15 @@ function load(name) {
   new Function("require", "module", "exports", compiled)(dependency => {
     if (dependency === "next/link") return { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) };
     if (dependency === "./daily-health-risk-results") return load("daily-health-risk-results.tsx");
+    if (dependency === "./health-inline-details") return load("health-inline-details.tsx");
+    if (dependency.endsWith(".css")) return {};
     if (dependency === "@/components/language-provider") return { useLanguage: () => ({ language }) };
     return nativeRequire(dependency);
   }, testModule, testModule.exports);
   return testModule.exports;
 }
 const Insights = load("dashboard-insights.tsx").default;
+const InlineDetails = load("health-inline-details.tsx").default;
 const render = props => renderToStaticMarkup(React.createElement(Insights, {
   loading: false, failed: false, requiresLogin: false, onRetry() {}, language, dateLabel: date => date, ...props,
 }));
@@ -35,6 +38,30 @@ const latest = { local_date: "2026-10-04", interpretation: {
   next_day_predictions: { low_energy_signal: unavailable, thirst_attention: { ...unavailable } },
   profile_guidance: [{ topic: "test", status: "available", message: "คำแนะนำโปรไฟล์เดิม" }],
 } };
+
+test("inline details deduplicate guidance, group unavailable forecasts and preserve scope", () => {
+  const html = renderToStaticMarkup(React.createElement(InlineDetails, {
+    interpretation: latest.interpretation, language: "en", date: latest.local_date,
+  }));
+  assert.equal((html.match(/ข้อหนึ่ง/g) ?? []).length, 1);
+  assert.equal((html.match(/Record observed outcomes/g) ?? []).length, 1);
+  assert.equal((html.match(/Model not ready/g) ?? []).length, 2);
+  assert.ok(html.includes("Reasons &amp; guidance") && html.includes("Hide details"));
+  assert.ok(html.includes("คำแนะนำโปรไฟล์เดิม") && html.includes(latest.local_date));
+  assert.ok(!html.includes("health-signal-card") && !html.includes("Acne"));
+  assert.ok(!html.includes('<details class="health-inline-details " open'));
+});
+
+test("inline details keep availability reasons distinct and profile reference links", () => {
+  const data = structuredClone(latest.interpretation);
+  data.next_day_predictions.thirst_attention.status = "insufficient_history";
+  data.profile_guidance[0].reference_url = "https://example.org/reference";
+  const html = renderToStaticMarkup(React.createElement(InlineDetails, {
+    interpretation: data, language: "en", date: latest.local_date,
+  }));
+  assert.ok(html.includes("Insufficient history") && html.includes("Model not ready"));
+  assert.ok(html.includes('href="https://example.org/reference"'));
+});
 
 test("login, loading, failure and empty states are distinct and hide saved results", () => {
   for (const [props, copy, action] of [
@@ -54,9 +81,10 @@ test("compact summary deduplicates and limits guidance while closed details pres
   assert.equal((beforeDetails.match(/ข้อหนึ่ง/g) ?? []).length, 1);
   assert.ok(beforeDetails.includes("ข้อสอง"));
   assert.ok(!beforeDetails.includes("ข้อสาม"));
-  assert.match(html, /<details class="home-insights-details">/);
+  assert.match(html, /<details class="health-inline-details home-insights-details">/);
   assert.ok(html.includes("ข้อสาม") && html.includes("ข้อสี่") && html.includes("คำแนะนำโปรไฟล์เดิม"));
-  assert.ok(html.includes("3 signals not assessed"));
+  assert.ok(html.includes("2 signals not assessed"));
+  assert.doesNotMatch(html, /Your reported breakouts|Observed breakouts|acne-observation-title/);
   assert.match(html, /datetime="2026-10-04"/i);
   assert.ok(!html.includes('<div lang="th">'));
 });
@@ -74,7 +102,7 @@ test("valid zero forecast retains target, meaning and provenance; invalid values
 test("Thai controls render without changing stored guidance", () => {
   language = "th";
   const html = render({ latest });
-  assert.ok(html.includes("ดูรายละเอียดทุกสัญญาณและวิธีประเมิน"));
+  assert.ok(html.includes("เหตุผลและคำแนะนำ") && html.includes("ซ่อนรายละเอียด"));
   assert.ok(html.includes("ข้อความสรุปเดิม"));
   language = "en";
 });

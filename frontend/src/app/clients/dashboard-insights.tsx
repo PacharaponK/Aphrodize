@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { DailyHealthHistoryItem, HealthSignal } from "@/lib/daily-health-types";
-import DailyHealthRiskResults from "./daily-health-risk-results";
+import HealthInlineDetails from "./health-inline-details";
 
 type Props = {
   latest?: DailyHealthHistoryItem;
@@ -25,7 +25,7 @@ export default function DashboardInsights({ latest, loading, failed, requiresLog
   const interpretation = ready ? latest.interpretation : null;
   const summary = interpretation?.daily_health_summary;
   const signals = interpretation ? [summary!, interpretation.skin_care_attention_level,
-    interpretation.acne_flare_signal, interpretation.next_day_predictions.low_energy_signal,
+    interpretation.next_day_predictions.low_energy_signal,
     interpretation.next_day_predictions.thirst_attention] : [];
   const unavailableCount = signals.filter(signal => signal.level === null && !hasForecast(signal)).length;
   // Show saved messages only; deduplicate identical guidance without rewriting it.
@@ -56,10 +56,7 @@ export default function DashboardInsights({ latest, loading, failed, requiresLog
       {recommendations.length ? <div className="home-insights-actions"><h3>{t("สิ่งที่ควรใส่ใจ", "Things to consider")}</h3><ul>{recommendations.map(message => <li key={message} lang="th">{message}</li>)}</ul>{language === "en" ? <small>Saved guidance is shown in its original Thai.</small> : null}</div> : null}
       {forecasts.length ? <div className="home-insights-forecasts">{forecasts.map(({ label, signal }) => <div key={label}><h3>{label}</h3><p><strong>{signal.value_0_10} / 10</strong> · {t("ค่าประมาณทดลอง", "Experimental estimate")}</p>{signal.target_date ? <p>{t("สำหรับ", "For")} <time dateTime={signal.target_date}>{dateLabel(signal.target_date)}</time></p> : null}<small>{signal.target === "perceived_energy" ? t("ค่าสูงหมายถึงรู้สึกมีพลังงานมากขึ้น", "Higher means more perceived energy.") : t("ความกระหายที่รู้สึก ไม่ใช่สูตรน้ำดื่มตามน้ำหนัก", "Perceived thirst, not the weight-based water formula.")}</small></div>)}</div> : null}
       {unavailableCount ? <p className="home-insights-availability">{t(`ยังประเมินไม่ได้ ${unavailableCount} สัญญาณ — ดูเหตุผลในรายละเอียด`, `${unavailableCount} signals not assessed — see reasons in details.`)}</p> : null}
-      <details className="home-insights-details">
-        <summary>{t("ดูรายละเอียดทุกสัญญาณและวิธีประเมิน", "View all signals and assessment details")}</summary>
-        <DailyHealthRiskResults interpretation={latest.interpretation} />
-      </details>
+      <HealthInlineDetails interpretation={latest.interpretation} language={language === "th" ? "th" : "en"} date={dateLabel(latest.local_date)} className="home-insights-details" />
       <footer className="home-insights-footer"><p>{t("สัญญาณจากบันทึกสุขภาพ ไม่ใช่การวินิจฉัย", "Signals from your health records—not a diagnosis.")}</p><Link className="text-button" href="/trend">{t("ดูประวัติและแนวโน้ม", "View history & trends")}</Link></footer>
     </div>}
   </section>;

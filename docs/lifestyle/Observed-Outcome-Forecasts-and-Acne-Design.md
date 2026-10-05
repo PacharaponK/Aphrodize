@@ -5,15 +5,23 @@
 - Thirst and energy cards display numeric **experimental perceived-outcome estimates** only from a manually approved, intact candidate trained on opted-in real self-reports. Include D+1, model ID and method. Never turn the estimate into unvalidated low/moderate/high clinical categories.
 - The current-day, weight-based hydration formula remains a separate calculated metric. It is not the model's thirst output and cannot populate the next-day thirst card.
 - New inference results carry a two-hour signed receipt bound to the input day, sleep minutes, water and outdoor choice. Storage verifies the receipt rather than trusting submitted forecast numbers. Verified next-day outputs are kept separately in `daily_health_entries.next_day_forecasts`; historical rows are not recomputed or relabeled. Outcomes remain separate training labels.
-- If no real candidate is deployed, show `model_not_ready`, not a claim that this account's history was checked. Acne shows `not_supported`. OOD inference abstains from next-day forecasts, including test-only OOD mode.
+- If no real candidate is deployed, show `model_not_ready`, not a claim that this account's history was checked. Acne cards, collection UI and forecast pipeline have been removed; the acne sections below are archived design proposals, not current features. OOD inference abstains from next-day forecasts, including test-only OOD mode.
 
 ## Energy pipeline
 
-- Keep the existing thirst/dryness candidate compatible. Prefer the extended target vector `[reported_thirst_level_0_10, reported_dryness_level_0_10, reported_energy_level_0_10]` only when that complete cohort independently reaches 100 matched days from five actively consenting users. Missing energy is excluded, never inferred; zero is valid.
+- Support two-target thirst/dryness and extended `[reported_thirst_level_0_10, reported_dryness_level_0_10, reported_energy_level_0_10]` candidates. The complete cohort must independently reach 100 matched days from five actively consenting users. Missing energy is excluded, never inferred; zero is valid. Older artifacts without the safety-policy and consent-version manifest markers must be rebuilt before promotion or serving.
 - Pair only the same user's `user_reported` lifestyle inputs on D with observed outcomes on D+1. Imported fixtures, synthetic rows and prior predictions are excluded. Energy direction is **higher means more perceived energy**, not a low-energy risk score.
 - A candidate remains review-only. Retain participant-disjoint validation/test; additionally fit a separate chronological evaluation model using dates strictly before the last 20% of distinct dates. Mean baselines use training labels only. Publish per-target MAE/RMSE/R², participant test mean baseline, temporal test and temporal mean baseline. These are two separate evaluation views, not a claim of a joint participant/time split.
-- Energy promotion requires finite, nonnegative energy MAE that improves on the mean baseline in both participant and chronological holdouts, plus the existing explicit administrator review. If temporal coverage is insufficient, promotion is blocked. This engineering gate is not clinical validation.
+- Every target, including thirst and dryness in two-target candidates, requires finite, nonnegative MAE strictly better than its mean baseline in both participant and chronological holdouts, plus explicit administrator review. Missing, equal, invalid or worse metrics block promotion. If temporal coverage is insufficient, promotion is blocked. This engineering gate is not clinical validation.
 - Consent withdrawal during training invalidates the snapshot; existing candidate/deployment revocation logic remains in force. Never auto-promote a candidate or manufacture labels to meet the cohort threshold.
+
+## Input availability and training consent
+
+- Both `created_at` and `updated_at` must be timezone-aware, ordered, and strictly before midnight at the start of target day D+1 in `Asia/Bangkok`. Late corrections, backfills and missing or naive timestamps are excluded from training. Records remain stored unchanged; there are no historical feature snapshots from which to reconstruct pre-edit values.
+- Refresh database rows when checking the consent-filtered training snapshot. Fingerprints and candidate manifests include `created-and-updated-before-target-bangkok-day-v1`, preventing reuse of a pre-policy snapshot as a safe candidate.
+- Legacy `daily-health-model-training-v1` permits thirst/dryness only. Expanded `daily-health-model-training-v2` explicitly covers recorded history and self-reported thirst, dryness and energy for shared next-day models across accounts. Energy training requires active v2 consent; v1 is never silently upgraded.
+- The current form offers an unchecked v2 opt-in to users with only v1 consent and retains withdrawal controls. Legacy API clients default to v1; unknown versions are rejected. Withdrawal revokes both scopes without deleting daily-health history.
+- These guards address mutable input availability, not immutable historical versions of outcome labels, and do not constitute clinical validation or automatically enable a deployed model.
 
 ## Acne: proposed collection form, not yet implemented
 

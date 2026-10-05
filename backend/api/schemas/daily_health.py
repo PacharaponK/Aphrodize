@@ -100,6 +100,10 @@ class DailyHealthEntryUpsert(BaseModel):
     personalization_consent: bool = False
     age_guidance_consent: bool = False
     model_training_consent: bool = False
+    # Older clients cannot grant the expanded energy scope by sending only True.
+    model_training_consent_version: Literal[
+        "daily-health-model-training-v1", "daily-health-model-training-v2"
+    ] = "daily-health-model-training-v1"
     age_band: AgeBand | None = None
     smoking_status: Literal["current", "former", "never", "prefer_not_to_say"] | None = None
     currently_menstruating: bool | None = None

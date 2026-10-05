@@ -159,7 +159,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             ...current,
             personalizationConsent: profile.consent_active || current.personalizationConsent,
             ageGuidanceConsent: profile.age_guidance_consent_active || current.ageGuidanceConsent,
-            modelTrainingConsent: profile.model_training_consent_active,
+            modelTrainingConsent: profile.model_training_consent_current_active === true,
             ageBand: profile.age_guidance_consent_active ? profile.age_band ?? "" : current.ageBand,
             smokingStatus: profile.consent_active ? profile.smoking_status ?? "" : current.smokingStatus,
           }));
@@ -198,6 +198,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         consent_active: false,
         age_guidance_consent_active: false,
         model_training_consent_active: personalProfile.model_training_consent_active,
+        model_training_consent_current_active: personalProfile.model_training_consent_current_active,
         can_report_outcomes: true,
         age_band: null,
         smoking_status: null,
@@ -226,7 +227,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         cache: "no-store",
       });
       if (!response.ok) throw new Error(t("ถอนความยินยอมไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not withdraw consent. Please try again."));
-      setPersonalProfile((current) => ({ ...current, model_training_consent_active: false }));
+      setPersonalProfile((current) => ({ ...current, model_training_consent_active: false, model_training_consent_current_active: false }));
       setForm((current) => ({ ...current, modelTrainingConsent: false }));
       setStorageStatus("saved");
       setStorageMessage(t("ถอนความยินยอมแล้ว; candidate ที่ยังไม่อนุมัติจะใช้ไม่ได้ และจะไม่นำข้อมูลไปสร้างรุ่นถัดไป", "Consent withdrawn. Unapproved candidates will be disabled, and your data will not be used for future versions."));
@@ -309,6 +310,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             ? dailyEntry.currentlyMenstruating
             : null,
           model_training_consent: dailyEntry.modelTrainingConsent,
+          model_training_consent_version: "daily-health-model-training-v2",
         }),
       });
       const result = await response.json().catch(() => null);
@@ -602,7 +604,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             <span>{t("ยินยอมให้บันทึกข้อมูลสุขภาพรายวันนี้ในฐานข้อมูลเพื่อใช้กับประวัติและพัฒนาระบบต่อ โดยเข้าใจว่าคะแนนจากโมเดลเป็นเพียงค่าคาดการณ์ ไม่ใช่คะแนนจริงสำหรับใช้ train", "I consent to saving today's health entry for history and system improvement. I understand model estimates are predictions, not ground-truth training labels.")}</span>
           </label>
 
-          {!personalProfile.model_training_consent_active ? (
+          {!personalProfile.model_training_consent_current_active ? (
             <label className="daily-data-consent model-training-consent">
               <input
                 type="checkbox"
@@ -610,18 +612,21 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                 onChange={(event) => updateForm("modelTrainingConsent", event.target.checked)}
               />
               <span>
-                {t("ยินยอมแยกต่างหากให้นำข้อมูลรายวันที่บันทึกและผล thirst/dryness ที่ฉันรายงานจริงไปใช้ฝึกและประเมิน candidate model รุ่นใหม่; ไม่ใช้คะแนน prediction หรือข้อมูลสังเคราะห์เป็นคำตอบจริง", "I separately consent to using my saved daily data and self-reported thirst/dryness outcomes to train and evaluate future candidate models. Predictions and synthetic data are not treated as ground truth.")}
+                {t("ยินยอมเวอร์ชันใหม่ให้นำประวัติรายวันและผลความกระหาย ผิวแห้ง และพลังงานที่ฉันรายงานจริงไปฝึกและประเมินโมเดลร่วมหลายบัญชีสำหรับวันถัดไป ไม่ใช่โมเดลเฉพาะบัญชี ไม่ใช้ prediction หรือข้อมูลสังเคราะห์เป็นคำตอบจริง ข้ามได้และถอนภายหลังได้", "I consent to the updated scope: use my saved daily history and self-reported thirst, dryness and energy to train and evaluate shared next-day models across accounts, not an account-only model. Predictions and synthetic data are not ground truth. This is optional and can be withdrawn.")}
               </span>
             </label>
-          ) : (
+          ) : null}
+          {personalProfile.model_training_consent_active ? (
             <div className="model-training-consent-status">
-              <p>{t("คุณยินยอมให้นำข้อมูลรายวันและผลที่รายงานจริงไปสร้าง candidate model แล้ว", "You have consented to using daily data and real reported outcomes for candidate models.")}</p>
+              <p>{personalProfile.model_training_consent_current_active
+                ? t("ความยินยอมปัจจุบันครอบคลุม thirst/dryness/energy", "Current consent covers thirst, dryness and energy.")
+                : t("ความยินยอมเดิมครอบคลุม thirst/dryness เท่านั้น ยังไม่อนุญาตให้ฝึก energy", "Previous consent covers thirst/dryness only, not energy training.")}</p>
               <button className="profile-delete-button" type="button" onClick={() => void revokeModelTrainingConsent()}>
                 {t("ถอนความยินยอมสำหรับการฝึกโมเดล", "Withdraw model-training consent")}
               </button>
               <small>{t("การถอนจะหยุดใช้ข้อมูลในรุ่นถัดไป; ไม่ได้ลบประวัติหรือย้อนลบรุ่นโมเดลที่สร้างเสร็จแล้ว", "Withdrawal stops use in future versions; it does not delete history or roll back completed models.")}</small>
             </div>
-          )}
+          ) : null}
 
           {formError && <p className="tracker-form-error" role="alert">{formError}</p>}
           <div className="tracker-form-actions">

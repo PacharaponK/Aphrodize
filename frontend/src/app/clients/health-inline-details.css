@@ -1,0 +1,29 @@
+.health-inline-details{border-top:1px solid var(--line);color:var(--ink)}
+.health-inline-details>summary{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:12px 0!important;box-sizing:border-box;cursor:pointer;color:var(--primary-deep);font-size:14px;font-weight:700;list-style:none}
+.health-inline-details>summary::-webkit-details-marker{display:none}
+.health-inline-details>summary::marker{content:""}
+.health-inline-details .inline-details-open{display:none}
+.health-inline-details[open]>summary .inline-details-open{display:inline}
+.health-inline-details[open]>summary .inline-details-closed{display:none}
+.health-inline-details[open]>summary svg{transform:rotate(180deg)}
+.health-inline-body{display:grid;gap:24px;padding:4px 0 20px;overflow-wrap:anywhere}
+.health-inline-body section{min-width:0}
+.health-inline-body h4{margin:0 0 12px;font-size:15px;line-height:1.5;color:var(--ink)}
+.health-inline-body p,.health-inline-body ul,.health-inline-body dl{margin:0}
+.health-inline-body dl{display:grid;gap:12px}
+.health-inline-body dl>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 16px}
+.health-inline-body dt{font-weight:700;font-size:13px;line-height:1.6}
+.health-inline-body dd{margin:0;font-size:14px;line-height:1.65}
+.health-inline-body .inline-status-note{font-size:13px;line-height:1.65;color:var(--muted)}
+.health-inline-body dd.inline-status-note{grid-column:1/-1}
+.health-inline-body .inline-saved-copy{display:grid;gap:8px;padding-left:20px;max-width:72ch;font-size:14px;line-height:1.75;color:var(--ink-soft);margin-top:12px}
+.inline-unavailable{padding-top:12px;border-top:1px solid var(--line)}
+.inline-unavailable .text-button{display:inline-flex;align-items:center;min-height:44px;margin-top:8px}
+.inline-provenance{border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.inline-provenance>summary{min-height:44px;padding:12px 0;cursor:pointer;font-weight:700;box-sizing:border-box}
+.health-inline-details summary:focus-visible,.health-inline-body a:focus-visible{outline:2px solid var(--primary-deep);outline-offset:4px}
+.health-inline-body a{text-underline-offset:4px}
+.health-inline-body strong{font-variant-numeric:tabular-nums}
+@media(min-width:900px){.health-inline-body{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px}.health-inline-body>.inline-outlook-section,.health-inline-body>.inline-provenance,.health-inline-body>p{grid-column:1/-1}.inline-unavailable dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.health-inline-body .inline-unavailable p{margin-top:8px}
+@media(max-width:480px){.health-inline-body dl>div{grid-template-columns:1fr;gap:3px}.health-inline-body{gap:20px}.health-inline-body dd.inline-status-note{grid-column:auto}}

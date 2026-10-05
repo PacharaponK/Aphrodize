@@ -405,6 +405,29 @@ class DailyHealthMenstrualCheckin(Base):
 DailyHealthMenstrualCheckIn = DailyHealthMenstrualCheckin
 
 
+class AcneObservation(Base):
+    """Optional observed breakouts, never a forecast or shared training label."""
+
+    __tablename__ = "acne_observations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "local_date", name="uq_acne_observation_user_date"),
+        CheckConstraint("response IN ('yes', 'no', 'unsure')", name="ck_acne_response"),
+    )
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    local_date: Mapped[date] = mapped_column(Date)
+    response: Mapped[str] = mapped_column(String(8))
+    regions: Mapped[list] = mapped_column(JSON, default=list)
+    provenance: Mapped[str] = mapped_column(String(32), default="user_reported")
+    consent_version: Mapped[str] = mapped_column(String(64), default="acne-tracking-v1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class DailyHealthOutcome(Base):
     """Observed next-day self reports, kept separate from model predictions."""
 

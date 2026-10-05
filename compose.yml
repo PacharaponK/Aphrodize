@@ -3,6 +3,7 @@ name: aphrodize
 # The API accepts uploads; Redis hands image and training jobs to separate workers.
 x-api-environment: &api-environment
   APP_ENV: development
+  ACNE_TRACKING_ENABLED: ${ACNE_TRACKING_ENABLED:-false}
   POSTGRES_HOST: postgres
   POSTGRES_USER: ${POSTGRES_USER:-aphrodize}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}

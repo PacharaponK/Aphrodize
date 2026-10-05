@@ -2,16 +2,14 @@
 
 import type { DailyHealthInterpretation, HealthSignal } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
-
 const riskSignals = (interpretation: DailyHealthInterpretation, language: "th" | "en") => [
-  { label: language === "en" ? "Overall wellness" : "สุขภาพโดยรวม", signal: interpretation.daily_health_summary },
-  { label: language === "en" ? "Dryness and skin care" : "ผิวแห้งและการดูแลผิว", signal: interpretation.skin_care_attention_level },
-  { label: language === "en" ? "Acne signal" : "สัญญาณสิว", signal: interpretation.acne_flare_signal },
-  { label: language === "en" ? "Next-day energy" : "พลังงานวันถัดไป", signal: interpretation.next_day_predictions.low_energy_signal },
-  { label: language === "en" ? "Next-day thirst" : "กระหายน้ำวันถัดไป", signal: interpretation.next_day_predictions.thirst_attention },
+  { id: "wellness", label: language === "en" ? "Overall wellness" : "สุขภาพโดยรวม", signal: interpretation.daily_health_summary },
+  { id: "dryness", label: language === "en" ? "Dryness and skin care" : "ผิวแห้งและการดูแลผิว", signal: interpretation.skin_care_attention_level },
+  { id: "energy", label: language === "en" ? "Next-day energy" : "พลังงานวันถัดไป", signal: interpretation.next_day_predictions.low_energy_signal },
+  { id: "thirst", label: language === "en" ? "Next-day thirst" : "กระหายน้ำวันถัดไป", signal: interpretation.next_day_predictions.thirst_attention },
 ];
 
-function levelLabel(signal: HealthSignal, language: "th" | "en"): string {
+export function levelLabel(signal: HealthSignal, language: "th" | "en"): string {
   if (signal.level === "low") return language === "en" ? "Low" : "ต่ำ";
   if (signal.level === "moderate") return language === "en" ? "Moderate" : "ปานกลาง";
   if (signal.level === "high") return language === "en" ? "High" : "สูง";
@@ -27,7 +25,7 @@ function levelLabel(signal: HealthSignal, language: "th" | "en"): string {
   }
 }
 
-function unavailableMessage(signal: HealthSignal, language: "th" | "en"): string {
+export function unavailableMessage(signal: HealthSignal, language: "th" | "en"): string {
   switch (signal.status) {
     case "not_supported":
       return language === "en" ? "This assessment is not implemented yet." : "ยังไม่มีระบบประเมินสัญญาณนี้";
@@ -92,8 +90,8 @@ export default function DailyHealthRiskResults({
   return (
     <div className="daily-risk-results">
       <div className="daily-risk-grid" aria-label={language === "en" ? "Risk levels and wellness signals" : "ระดับความเสี่ยงและสัญญาณสุขภาพ"}>
-        {riskSignals(interpretation, language).map(({ label, signal }) => (
-          <RiskCard key={label} label={label} signal={signal} language={language} />
+        {riskSignals(interpretation, language).map(({ id, label, signal }) => (
+          <RiskCard key={id} label={label} signal={signal} language={language} />
         ))}
       </div>
       {interpretation.profile_guidance.length > 0 ? (

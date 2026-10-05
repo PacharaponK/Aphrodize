@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from sklearn.ensemble import RandomForestRegressor
 
+from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION, MODEL_TRAINING_CONSENT_VERSIONS
 from backend.services.daily_health_model_registry import (
     DailyHealthCandidateUnavailable,
     load_approved_candidate_bundle,
@@ -15,6 +16,7 @@ from backend.services.daily_health_model_registry import (
 )
 from backend.services.daily_health_training import (
     ENERGY_TARGET_NAMES,
+    FEATURE_AVAILABILITY_POLICY,
     FEATURE_NAMES,
     MODEL_FAMILY,
     TARGET_NAMES,
@@ -34,7 +36,10 @@ def make_candidate(tmp_path: Path) -> tuple[SimpleNamespace, Path]:
     joblib.dump(model, model_path)
     metrics = {
         "validation": {"thirst": {"mae": 1.0}},
-        "test": {"thirst": {"mae": 1.2}},
+        "test": {target: {"mae": 1.0} for target in TARGET_NAMES},
+        "test_mean_baseline": {target: {"mae": 2.0} for target in TARGET_NAMES},
+        "temporal_test": {target: {"mae": 1.0} for target in TARGET_NAMES},
+        "temporal_mean_baseline": {target: {"mae": 2.0} for target in TARGET_NAMES},
     }
     manifest = {
         "version_id": version_id,
@@ -48,6 +53,8 @@ def make_candidate(tmp_path: Path) -> tuple[SimpleNamespace, Path]:
         "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
         "synthetic_data_included": False,
         "predictions_used_as_labels": False,
+        "feature_availability_policy": FEATURE_AVAILABILITY_POLICY,
+        "training_consent_versions": list(MODEL_TRAINING_CONSENT_VERSIONS),
         "artifact_sha256": hashlib.sha256(model_path.read_bytes()).hexdigest(),
         "metrics": metrics,
     }
@@ -109,11 +116,12 @@ def test_energy_candidate_requires_both_holdouts_to_beat_baseline(tmp_path: Path
     manifest_path = model_path.parent / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["targets"] = ENERGY_TARGET_NAMES
+    manifest["training_consent_versions"] = [MODEL_TRAINING_CONSENT_VERSION]
     manifest["artifact_sha256"] = hashlib.sha256(model_path.read_bytes()).hexdigest()
     for split in ("test", "temporal_test"):
-        version.metrics[split] = {"reported_energy_level_0_10": {"mae": 1.0}}
+        version.metrics[split]["reported_energy_level_0_10"] = {"mae": 1.0}
     for split in ("test_mean_baseline", "temporal_mean_baseline"):
-        version.metrics[split] = {"reported_energy_level_0_10": {"mae": 2.0}}
+        version.metrics[split]["reported_energy_level_0_10"] = {"mae": 2.0}
     manifest["metrics"] = version.metrics
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     bundle = load_approved_candidate_bundle(version, artifact_root=tmp_path)
@@ -140,6 +148,29 @@ def test_candidate_purge_removes_only_manifested_generated_outputs(tmp_path: Pat
     assert not model_path.exists()
     assert not manifest_path.exists()
     assert not model_path.parent.exists()
+
+
+@pytest.mark.parametrize("target", TARGET_NAMES)
+@pytest.mark.parametrize("split", ["test", "temporal_test"])
+@pytest.mark.parametrize("mae", [2.0, 3.0, -1.0, float("nan"), float("inf"), True])
+def test_all_targets_must_improve_both_holdouts(tmp_path, target, split, mae):
+    version, model_path = make_candidate(tmp_path)
+    version.metrics[split][target]["mae"] = mae
+    (model_path.parent / "manifest.json").write_text(
+        json.dumps({**json.loads((model_path.parent / "manifest.json").read_text()),
+                    "metrics": version.metrics}), encoding="utf-8")
+    with pytest.raises(DailyHealthCandidateUnavailable):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
+
+
+def test_old_candidate_without_as_of_policy_cannot_be_promoted(tmp_path):
+    version, model_path = make_candidate(tmp_path)
+    path = model_path.parent / "manifest.json"
+    manifest = json.loads(path.read_text())
+    manifest.pop("feature_availability_policy")
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(DailyHealthCandidateUnavailable):
+        load_approved_candidate_bundle(version, artifact_root=tmp_path)
 
 
 def test_candidate_purge_rejects_unknown_files_without_deleting_anything(tmp_path: Path) -> None:

@@ -17,13 +17,13 @@ new Function("require", "module", "exports", compiled)(name => name === "@/compo
 const absent = { level: null, status: "model_not_ready" };
 const prediction = { level: null, status: "predicted", value_0_10: 6.2,
   target_date: "2026-10-06", model_id: "review-approved-test-model", target: "perceived_thirst" };
-function render(signal = prediction) {
+function render(signal = prediction, acneReadiness) {
   return renderToStaticMarkup(React.createElement(loaded.exports.default, { interpretation: {
     daily_health_summary: absent, skin_care_attention_level: absent,
     acne_flare_signal: { level: null, status: "not_supported" },
     next_day_predictions: { low_energy_signal: absent, thirst_attention: signal },
     profile_guidance: [],
-  } }));
+  }, ...(acneReadiness ? { acneReadiness } : {}) }));
 }
 test("observed forecast renders value, target day and source without fabricated risk grade", () => {
   const html = render();
@@ -34,10 +34,10 @@ test("observed forecast renders value, target day and source without fabricated 
   assert.match(html, /Experimental estimate/);
   assert.doesNotMatch(html, /health-signal-high/);
 });
-test("unsupported acne is distinct from undeployed energy and thirst models", () => {
+
+test("removed acne signal stays hidden for legacy historical responses", () => {
   const html = render(absent);
-  assert.match(html, /Not supported yet/);
-  assert.match(html, /Model not ready/);
-  assert.doesNotMatch(html, /Not enough self-reported/);
-  assert.match(html, /Record observed outcomes/);
+  assert.doesNotMatch(html, /Acne signal|Forecast model not enabled|Current account data readiness|acne-observation-title/);
+  assert.match(html, /Next-day energy/);
+  assert.match(html, /Next-day thirst/);
 });

@@ -411,11 +411,6 @@ def build_health_interpretation(
                 else []
             ),
         },
-        "acne_flare_signal": {
-            "level": None,
-            "status": "not_supported",
-            "reason_codes": ["acne_outcome_protocol_not_implemented"],
-        },
         "next_day_predictions": {
             "low_energy_signal": {
                 "level": None,

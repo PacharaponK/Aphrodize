@@ -26,7 +26,7 @@ from backend.api.schemas.daily_health import (
     DailyHealthProfileUpsert,
     DailyHealthProfileWeightUpsert,
 )
-from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION
+from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION, MODEL_TRAINING_CONSENT_VERSIONS
 from backend.core.db.models import (
     Consent,
     DailyHealthAgeBand,
@@ -54,6 +54,7 @@ from backend.services.daily_health_model_registry import (
 from backend.services.daily_health_personal_forecast import (
     build_personal_daily_health_forecast,
 )
+from backend.services.daily_health_training import inputs_available_before_target
 
 router = APIRouter()
 user_router = APIRouter(dependencies=[Depends(require_matching_user)])
@@ -354,19 +355,20 @@ async def upsert_daily_health_entry(
         select(Consent.id)
         .where(
             Consent.user_id == user_id,
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.version == payload.model_training_consent_version,
             Consent.revoked_at.is_(None),
         )
         .limit(1)
     )
     if payload.model_training_consent and active_training_consent is None:
-        session.add(Consent(user_id=user_id, version=MODEL_TRAINING_CONSENT_VERSION))
+        session.add(Consent(user_id=user_id, version=payload.model_training_consent_version))
 
     await session.commit()
     response = DailyHealthEntryRead.model_validate(entry)
     if (
         (active_training_consent is not None or payload.model_training_consent)
         and entry.data_source == "user_reported"
+        and inputs_available_before_target(entry, entry.local_date + timedelta(days=1))
     ):
         response.training_eligible = await session.scalar(
             select(DailyHealthOutcome.id)
@@ -755,10 +757,16 @@ async def read_daily_health_profile(
         select(Consent.id)
         .where(
             Consent.user_id == user_id,
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.version.in_(MODEL_TRAINING_CONSENT_VERSIONS),
             Consent.revoked_at.is_(None),
         )
         .limit(1)
+    )
+    current_training_consent = await session.scalar(
+        select(Consent.id).where(
+            Consent.user_id == user_id, Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.revoked_at.is_(None),
+        ).limit(1)
     )
     profile = await session.get(DailyHealthProfile, user_id)
     age_band = await session.get(DailyHealthAgeBand, user_id)
@@ -778,6 +786,7 @@ async def read_daily_health_profile(
             else None
         ),
         "model_training_consent_active": active_training_consent is not None,
+        "model_training_consent_current_active": current_training_consent is not None,
         "can_report_outcomes": active_daily_consent is not None,
         "age_band": (age_band.age_band if active_age_consent is not None and age_band else None),
         "smoking_status": (
@@ -980,7 +989,7 @@ async def delete_daily_health_data(
     had_training_consent = await session.scalar(
         select(Consent.id).where(
             Consent.user_id == user_id,
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.version.in_(MODEL_TRAINING_CONSENT_VERSIONS),
         ).limit(1)
     )
     had_reported_entry = await session.scalar(
@@ -1027,7 +1036,7 @@ async def delete_daily_health_data(
                     SKIN_TYPE_GUIDANCE_CONSENT_VERSION,
                     WEIGHT_PROFILE_CONSENT_VERSION,
                     HEIGHT_PROFILE_CONSENT_VERSION,
-                    MODEL_TRAINING_CONSENT_VERSION,
+                    *MODEL_TRAINING_CONSENT_VERSIONS,
                 ]
             ),
             Consent.revoked_at.is_(None),
@@ -1242,7 +1251,7 @@ async def revoke_daily_health_model_training_consent(
         update(Consent)
         .where(
             Consent.user_id == user_id,
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.version.in_(MODEL_TRAINING_CONSENT_VERSIONS),
             Consent.revoked_at.is_(None),
         )
         .values(revoked_at=func.now())

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import joblib
 import numpy as np
@@ -19,7 +20,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION
+from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION, MODEL_TRAINING_CONSENT_VERSIONS
 from backend.core.db.models import (
     Consent,
     DailyHealthEntry,
@@ -35,6 +36,7 @@ MODEL_FAMILY = "daily_health_next_day_random_forest"
 FEATURE_NAMES = ["sleep_duration_minutes", "water_intake_ml", "outdoor_exposure_choice"]
 TARGET_NAMES = ["reported_thirst_level_0_10", "reported_dryness_level_0_10"]
 ENERGY_TARGET_NAMES = [*TARGET_NAMES, "reported_energy_level_0_10"]
+FEATURE_AVAILABILITY_POLICY = "created-and-updated-before-target-bangkok-day-v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT_ROOT = (
     REPOSITORY_ROOT
@@ -52,6 +54,17 @@ class TrainingExample:
     target_date: date
     feature_values: tuple[float, float, float]
     target_values: tuple[float, ...]
+
+
+def inputs_available_before_target(entry: DailyHealthEntry, target_date: date) -> bool:
+    """Mutable records have no historical snapshot: reject late or unprovable inputs."""
+    cutoff = datetime.combine(target_date, datetime.min.time(), ZoneInfo("Asia/Bangkok"))
+    created, updated = entry.created_at, entry.updated_at
+    return (
+        isinstance(created, datetime) and created.utcoffset() is not None
+        and isinstance(updated, datetime) and updated.utcoffset() is not None
+        and created <= updated < cutoff
+    )
 
 
 def build_next_day_training_examples(
@@ -80,7 +93,7 @@ def build_next_day_training_examples(
 
         prior_day = outcome.target_date - timedelta(days=1)
         entry = entries_by_user_date.get((user_id, prior_day))
-        if entry is None:
+        if entry is None or not inputs_available_before_target(entry, outcome.target_date):
             continue
 
         examples.append(
@@ -144,7 +157,11 @@ def training_dataset_fingerprint(examples: Sequence[TrainingExample]) -> str:
         }
         for example in examples
     ]
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        {"feature_availability_policy": FEATURE_AVAILABILITY_POLICY,
+         "training_consent_policy": MODEL_TRAINING_CONSENT_VERSION,
+         "examples": payload}, sort_keys=True, separators=(",", ":"),
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -162,7 +179,10 @@ async def load_consent_filtered_training_examples(
 ) -> list[TrainingExample]:
     consented_result = await session.scalars(
         select(Consent.user_id).where(
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.version.in_(
+                (MODEL_TRAINING_CONSENT_VERSION,) if include_energy
+                else MODEL_TRAINING_CONSENT_VERSIONS
+            ),
             Consent.revoked_at.is_(None),
         )
     )
@@ -174,14 +194,14 @@ async def load_consent_filtered_training_examples(
         select(DailyHealthEntry).where(
             DailyHealthEntry.user_id.in_(consented_user_ids),
             DailyHealthEntry.data_source == "user_reported",
-        )
+        ).execution_options(populate_existing=True)
     )
     outcomes_result = await session.scalars(
         select(DailyHealthOutcome).where(
             DailyHealthOutcome.user_id.in_(consented_user_ids),
             DailyHealthOutcome.reported_thirst_level_0_10.is_not(None),
             DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
-        )
+        ).execution_options(populate_existing=True)
     )
     return build_next_day_training_examples(
         list(entries_result.all()),
@@ -378,6 +398,11 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
             "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
             "synthetic_data_included": False,
             "predictions_used_as_labels": False,
+            "feature_availability_policy": FEATURE_AVAILABILITY_POLICY,
+            "training_consent_versions": (
+                [MODEL_TRAINING_CONSENT_VERSION] if target_names == ENERGY_TARGET_NAMES
+                else list(MODEL_TRAINING_CONSENT_VERSIONS)
+            ),
             "split_policy": "participant_group_holdout_60_20_20",
             "metrics": {
                 "validation": validation_metrics, "test": test_metrics,

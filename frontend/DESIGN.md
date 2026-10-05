@@ -1,4 +1,7 @@
 <design-context>
+<!-- Acne forecasting and Acne signal were removed at the user’s request on 5 October 2026.
+The observation form and Dashboard observation summary are also removed. Do not render
+acne collection, history or research controls. Retain stored data and backend cleanup APIs. -->
 ---
 version: alpha
 name: Aphrodize-dashboard
@@ -299,7 +302,15 @@ Approved 5 October 2026 as a route-specific extension of the incumbent Aphrodize
 
 ## ประวัติและแนวโน้มสุขภาพ (`/trend`)
 
-- Next-day thirst/energy cards use real approved observed-outcome model estimates, not hydration formulas or severity bands. Show numeric 0–10, forecast target date, model ID and experimental scope; higher energy means more perceived energy. Missing deployment is “Model not ready”, not an assertion that account history was evaluated. Acne remains “Not supported yet” pending the collection/model protocol in `docs/lifestyle/Observed-Outcome-Forecasts-and-Acne-Design.md`.
+- Dashboard no longer renders the separate “Recorded daily details (Thai)” seven-day disclosure. Keep weekly charts and daily values, Personal insights inline details, and the history/search on `/trend` unchanged.
+
+- Approved inline details revision: History dates and Dashboard Personal insights share a native, initially closed “Reasons & guidance” disclosure with an expanded “Hide details” label and chevron. Inside, use flat full-width sections for recorded assessment statuses/reasons, deduplicated saved guidance and next-day outlook. Group unavailable forecasts quietly, preserving each distinct reason and only one identical observed-outcomes action. Keep experimental value/target date/meaning visible and model ID/method in a secondary provenance disclosure. Preserve all saved content, profile references, original-language tagging and backend behavior; no nested signal cards, modal or new animation. Use theme tokens, mobile stacking, 44px-plus controls and visible keyboard focus. This supersedes the older History/Dashboard details rendering only; Daily health results remain unchanged.
+
+- Shared model-training consent v2 explicitly covers saved history and self-reported thirst, dryness and energy for shared next-day models across accounts. Keep this optional and separate from account-only personal forecasting. Existing v1 consent remains thirst/dryness-only and must not preselect the expanded checkbox; withdrawal remains available for either version and revokes both without deleting health history. No silent consent upgrade or automatic model deployment.
+
+- Acne collection UI, observation history summary and Acne signal are removed from Daily health and Dashboard. Existing stored observations and consent records remain unchanged; backend ownership checks and cleanup APIs are retained. Do not reintroduce acne forms or forecast cards.
+
+- Next-day thirst/energy cards use real approved observed-outcome model estimates, not hydration formulas or severity bands. Show numeric 0–10, forecast target date, model ID and experimental scope; higher energy means more perceived energy. Missing deployment is “Model not ready”, not an assertion that account history was evaluated. Acne forecasting is removed; ignore legacy acne signals in saved interpretations.md`.
 
 - History shows only the three latest recorded days within the last 30 Bangkok calendar days (today through today minus 29 days), newest first. Missing days are not filled or counted as zero. The existing personal-outlook charts and Home/Daily Health behavior remain unchanged.
 - Provide a labeled date search constrained to that window and “Back to latest” to clear the search. Searching an unrecorded day shows a specific empty state, not a substitute record. Date controls and actions wrap on mobile and retain 44px targets, keyboard focus, theme and language support.

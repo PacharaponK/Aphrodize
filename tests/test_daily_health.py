@@ -215,6 +215,7 @@ class FakeSession:
         entry: DailyHealthEntry,
         has_consent: bool = True,
         has_training_consent: bool = False,
+        has_current_training_consent: bool = False,
         has_outcome: bool = False,
         profile_weight_kg: float | None = None,
         profile_height_cm: float | None = None,
@@ -222,6 +223,7 @@ class FakeSession:
         self.entry = entry
         self.has_consent = has_consent
         self.has_training_consent = has_training_consent
+        self.has_current_training_consent = has_current_training_consent
         self.has_outcome = has_outcome
         self.profile_weight_kg = profile_weight_kg
         self.profile_height_cm = profile_height_cm
@@ -245,6 +247,12 @@ class FakeSession:
         if "daily_health_outcomes" in str(statement):
             return uuid4() if self.has_outcome else None
         params = statement.compile().params.values()
+        if "daily-health-model-training-v2" in params:
+            return uuid4() if self.has_current_training_consent else None
+        if any(isinstance(value, list | tuple) and "daily-health-model-training-v2" in value
+               for value in params):
+            active = self.has_training_consent or self.has_current_training_consent
+            return uuid4() if active else None
         if "daily-health-model-training-v1" in params:
             return uuid4() if self.has_training_consent else None
         return uuid4() if self.has_consent else None
@@ -331,7 +339,7 @@ async def test_entry_eligibility_uses_next_day_outcome_and_training_consent() ->
         sleep_score_method="duration", predicted_thirst_score_0_10=4.2,
         predicted_dryness_score_0_10=3.8, prediction_target_date=date(2026, 9, 27),
         prediction_status="predicted", prediction_model_id="test", data_source="user_reported",
-        created_at=datetime.now(UTC), updated_at=datetime.now(UTC),
+        created_at=datetime(2026, 9, 26, tzinfo=UTC), updated_at=datetime(2026, 9, 26, tzinfo=UTC),
     )
     payload = DailyHealthEntryUpsert(
         local_date=entry.local_date, sleep_duration_minutes=360,
@@ -345,9 +353,17 @@ async def test_entry_eligibility_uses_next_day_outcome_and_training_consent() ->
     result = await upsert_daily_health_entry(user_id, payload, session)
     assert result.training_eligible is False
 
+    entry.updated_at = datetime(2026, 9, 26, 17, tzinfo=UTC)
+    session = FakeSession(entry, has_training_consent=True, has_outcome=True)
+    result = await upsert_daily_health_entry(user_id, payload, session)
+    assert result.training_eligible is False
+
 
 @pytest.mark.asyncio
-async def test_daily_entry_can_grant_separate_opt_in_for_model_training() -> None:
+@pytest.mark.parametrize(
+    "version", ["daily-health-model-training-v1", "daily-health-model-training-v2"]
+)
+async def test_daily_entry_can_grant_separate_opt_in_for_model_training(version) -> None:
     user_id = uuid4()
     entry = DailyHealthEntry(
         id=uuid4(),
@@ -371,12 +387,13 @@ async def test_daily_entry_can_grant_separate_opt_in_for_model_training() -> Non
         water_intake_ml=1400,
         outdoor_exposure_choice=1,
         model_training_consent=True,
+        model_training_consent_version=version,
     )
 
     await upsert_daily_health_entry(user_id, payload, session)
 
     assert any(
-        isinstance(item, Consent) and item.version == "daily-health-model-training-v1"
+        isinstance(item, Consent) and item.version == version
         for item in session.added
     )
     assert session.committed is True
@@ -466,6 +483,7 @@ async def test_profile_read_hides_data_when_personalization_consent_is_inactive(
         "consent_active": False,
         "age_guidance_consent_active": False,
         "model_training_consent_active": False,
+        "model_training_consent_current_active": False,
         "can_report_outcomes": False,
         "age_band": None,
         "smoking_status": None,
@@ -474,6 +492,17 @@ async def test_profile_read_hides_data_when_personalization_consent_is_inactive(
         "height_profile_consent_active": False,
         "height_cm": None,
     }
+
+
+@pytest.mark.asyncio
+async def test_old_consent_is_visible_but_does_not_precheck_energy_opt_in():
+    session = FakeSession(DailyHealthEntry(), has_training_consent=True)
+    result = await read_daily_health_profile(uuid4(), session)
+    assert result["model_training_consent_active"] is True
+    assert result["model_training_consent_current_active"] is False
+    session.has_current_training_consent = True
+    result = await read_daily_health_profile(uuid4(), session)
+    assert result["model_training_consent_current_active"] is True
 
 
 @pytest.mark.asyncio
@@ -548,7 +577,8 @@ async def test_training_consent_can_be_revoked_without_deleting_daily_history() 
         for statement in statements
     )
     assert any(
-        "daily-health-model-training-v1" in statement.params.values() for statement in statements
+        any(value == ["daily-health-model-training-v1", "daily-health-model-training-v2"]
+            for value in statement.params.values()) for statement in statements
     )
     assert session.committed is True
 

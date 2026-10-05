@@ -53,7 +53,7 @@ def test_real_model_exposes_numeric_next_day_energy_and_thirst_not_hydration_for
     assert signals["thirst_attention"]["target_date"] == "2026-10-06"
     assert signals["thirst_attention"]["level"] is None
     assert result["predictions"]["thirst_score_0_10"]["status"] == "calculated"
-    assert result["interpretation"]["acne_flare_signal"]["status"] == "not_supported"
+    assert "acne_flare_signal" not in result["interpretation"]
 
 
 def test_old_two_target_candidate_does_not_invent_energy():
