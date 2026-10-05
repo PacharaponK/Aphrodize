@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.core.db.models import DailyHealthModelDeployment, DailyHealthModelVersion
 from backend.services.daily_health_training import (
     ARTIFACT_ROOT,
+    ENERGY_TARGET_NAMES,
     FEATURE_NAMES,
     MODEL_FAMILY,
     TARGET_NAMES,
@@ -116,12 +118,15 @@ def load_approved_candidate_bundle(
             "Candidate manifest or artifact cannot be read."
         ) from error
 
+    target_names = manifest.get("targets")
+    if target_names not in (TARGET_NAMES, ENERGY_TARGET_NAMES):
+        raise DailyHealthCandidateUnavailable("Candidate targets are unsupported.")
     expected_manifest = {
         "version_id": version.version_id,
         "model_family": MODEL_FAMILY,
         "prediction_horizon_days": 1,
         "features": FEATURE_NAMES,
-        "targets": TARGET_NAMES,
+        "targets": target_names,
         "training_records": version.training_records,
         "participant_count": version.participant_count,
         "dataset_fingerprint": version.dataset_fingerprint,
@@ -145,6 +150,26 @@ def load_approved_candidate_bundle(
         raise DailyHealthCandidateUnavailable(
             "Candidate has no validation and holdout test metrics."
         )
+    if target_names == ENERGY_TARGET_NAMES:
+        # An energy candidate must outperform a train-only mean baseline in both views.
+        for split, baseline in (
+            ("test", "test_mean_baseline"),
+            ("temporal_test", "temporal_mean_baseline"),
+        ):
+            try:
+                error = float(version.metrics[split]["reported_energy_level_0_10"]["mae"])
+                baseline_error = float(
+                    version.metrics[baseline]["reported_energy_level_0_10"]["mae"]
+                )
+            except (KeyError, TypeError, ValueError) as error:
+                raise DailyHealthCandidateUnavailable(
+                    "Energy candidate requires participant and temporal baseline metrics."
+                ) from error
+            if not (math.isfinite(error) and math.isfinite(baseline_error)
+                    and 0 <= error < baseline_error):
+                raise DailyHealthCandidateUnavailable(
+                    "Energy candidate does not outperform its observed-outcome baseline."
+                )
 
     try:
         estimator = joblib.load(artifact_path)
@@ -154,7 +179,7 @@ def load_approved_candidate_bundle(
         ) from error
     if getattr(estimator, "n_features_in_", None) != len(FEATURE_NAMES):
         raise DailyHealthCandidateUnavailable("Candidate feature shape is unsupported.")
-    if getattr(estimator, "n_outputs_", None) != len(TARGET_NAMES):
+    if getattr(estimator, "n_outputs_", None) != len(target_names):
         raise DailyHealthCandidateUnavailable("Candidate target shape is unsupported.")
 
     return {
@@ -163,7 +188,7 @@ def load_approved_candidate_bundle(
             "model_id": version.version_id,
             "model_family": MODEL_FAMILY,
             "features": FEATURE_NAMES,
-            "targets": TARGET_NAMES,
+            "targets": target_names,
             "prediction_horizon_days": 1,
             "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
             "holdout": {"metrics": version.metrics.get("test", {})},

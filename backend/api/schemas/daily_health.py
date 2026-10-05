@@ -86,6 +86,7 @@ class DailyHealthPredictionInput(BaseModel):
     prediction_status: Literal["predicted", "not_available", "prediction_failed"]
     model_id: str | None = Field(default=None, max_length=128)
     target_date: date | None = None
+    forecast_receipt: str | None = Field(default=None, max_length=8192)
 
 
 class DailyHealthEntryUpsert(BaseModel):
@@ -146,6 +147,7 @@ class DailyHealthEntryRead(BaseModel):
     prediction_target_date: date | None
     prediction_status: str
     prediction_model_id: str | None
+    next_day_forecasts: dict | None = None
     data_source: str
     training_eligible: bool = False
     created_at: datetime

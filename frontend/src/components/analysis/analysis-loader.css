@@ -1,0 +1,20 @@
+/* Drawing motion adapted from SelfMadeSystem's giant-bird-69 on Uiverse.
+ * License: see analysis-loader.LICENSE.txt. Geometry: existing Aphrodize logo. */
+.analysis-logo-loader { display: grid; justify-items: center; gap: 16px; padding: clamp(24px, 4vw, 40px); margin-block: 24px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); text-align: center; }
+.analysis-loader-logo { width: clamp(160px, 24vw, 220px); height: auto; aspect-ratio: 1; }
+.analysis-loader-logo path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.analysis-loader-track path { stroke: var(--line); stroke-width: .35; }
+.analysis-loader-ink path { stroke: var(--primary-deep); stroke-width: .6; stroke-dasharray: 360 0; stroke-dashoffset: 0; }
+.analysis-logo-loader .analysis-loader-status { max-width: 46ch; margin: 0; font-size: 18px; font-weight: 700; color: var(--ink); }
+.analysis-logo-loader .analysis-loader-note { max-width: 48ch; margin: 0; font-size: 12px; color: var(--muted); }
+.analysis-logo-loader .analysis-loader-pause { min-height: 44px; }
+.analysis-logo-loader[data-paused="true"] .analysis-loader-ink path { animation-play-state: paused; }
+@media (prefers-reduced-motion: no-preference) {
+  .analysis-loader-ink path { animation: analysis-logo-array 4s ease-in-out infinite, analysis-logo-offset 4s linear infinite; }
+}
+@keyframes analysis-logo-array { 0% { stroke-dasharray: 0 1 359 0; } 50% { stroke-dasharray: 0 359 1 0; } 100% { stroke-dasharray: 359 1 0 0; } }
+@keyframes analysis-logo-offset { from { stroke-dashoffset: 365; } to { stroke-dashoffset: 5; } }
+@media (prefers-reduced-motion: reduce) {
+  .analysis-loader-ink path { fill: var(--primary); stroke: none; animation: none; }
+  .analysis-loader-pause { display: none; }
+}

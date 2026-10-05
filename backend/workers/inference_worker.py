@@ -95,11 +95,14 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                     artifact_sink=artifacts.update,
                 )
                 # Raw model arrays stay temporary; only these two PNGs are retained.
-                for kind in ("overlay", "mask"):
+                for kind in ("overlay", "mask", "regions", "outline"):
+                    if kind not in artifacts:
+                        continue
                     # Derived keys belong to this user and analysis ID.
                     key = analysis_artifact_key(analysis.user_id, analysis.id, kind)
                     # Save only viewable PNGs, never uploaded photo or model arrays.
-                    await asyncio.to_thread(put_bytes, key, artifacts[kind], "image/png")
+                    mime = "image/svg+xml" if kind == "outline" else "image/png"
+                    await asyncio.to_thread(put_bytes, key, artifacts[kind], mime)
                     uploaded.append(key)
                 # Both derived images have a 24-hour viewing lifetime.
                 expires_at = datetime.now(UTC) + timedelta(hours=24)
@@ -179,7 +182,7 @@ async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> 
     # Reconstruct both private object keys from the IDs in the delayed job.
     keys = [
         analysis_artifact_key(UUID(user_id), UUID(analysis_id), kind)
-        for kind in ("overlay", "mask")
+        for kind in ("overlay", "mask", "regions", "outline")
     ]
     await asyncio.to_thread(remove_objects, keys)
 

@@ -32,6 +32,7 @@ async def test_startup_adds_missing_account_columns_without_dropping_data(monkey
     await db_session.create_database_schema()
 
     assert not any("DROP TABLE" in s for s in statements)
+    assert any("ADD COLUMN next_day_forecasts JSON" in s for s in statements)
     assert any("ADD COLUMN IF NOT EXISTS status" in s for s in statements)
     assert any("ADD COLUMN IF NOT EXISTS deleted_at" in s for s in statements)
     assert any("ADD CONSTRAINT ck_users_status" in s for s in statements)

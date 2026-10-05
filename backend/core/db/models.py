@@ -284,6 +284,8 @@ class DailyHealthEntry(Base):
     sleep_score_method: Mapped[str] = mapped_column(String(128))
     predicted_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     predicted_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Verified server outputs, distinct from hydration formulas and observed labels.
+    next_day_forecasts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Predictions always describe the following local day.  It remains nullable for
     # historical rows created before prediction provenance was recorded.
     prediction_target_date: Mapped[date | None] = mapped_column(Date, nullable=True)

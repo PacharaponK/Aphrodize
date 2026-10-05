@@ -61,3 +61,18 @@ test("province values and source markers come from the supplied data", () => {
   assert.match(html, /fill="#ee9347"/);
   assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 1);
 });
+
+test("mission view is opt-in and its decorative depth adds no interactive provinces", () => {
+  const html = render([], { missionView: true });
+  assert.match(html, /uv-mission-map/);
+  assert.match(html, /class="uv-map-depth" aria-hidden="true"/);
+  assert.equal((html.match(/role="button"/g) ?? []).length, 77);
+  assert.match(html, /ซูมเข้าจังหวัดที่เลือก/);
+  assert.doesNotMatch(render([]), /uv-map-depth/);
+});
+
+test("stale values cannot appear as an available UV reading in accessible labels", () => {
+  const html = render([{ ...shapes.find((p) => p.id === "bangkok"), uv_index: 7.2, status: "stale", level: "high", source: "open_meteo" }]);
+  assert.match(html, /กรุงเทพมหานคร: ไม่มีข้อมูลที่พร้อมใช้/);
+  assert.doesNotMatch(html, /UV 7\.2/);
+});

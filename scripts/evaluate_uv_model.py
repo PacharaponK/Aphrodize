@@ -9,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / "storage/artifacts/uv"
 DATA = ROOT / "storage/data/uv/temis_clear_sky_uv.csv"
@@ -22,11 +21,13 @@ def block_bootstrap_ci(improvements, *, block=14, repeats=2000, seed=42):
     if len(gains) < block:
         raise ValueError("Not enough test days for a block bootstrap")
     rng = np.random.default_rng(seed)
-    starts = rng.integers(0, len(gains) - block + 1,
-                          size=(repeats, (len(gains) + block - 1) // block))
-    samples = (starts[:, :, None] + np.arange(block)).reshape(repeats, -1)[:, :len(gains)]
-    return [round(float(value), 4) for value in np.quantile(gains[samples].mean(axis=1),
-                                                            (0.025, 0.975))]
+    starts = rng.integers(
+        0, len(gains) - block + 1, size=(repeats, (len(gains) + block - 1) // block)
+    )
+    samples = (starts[:, :, None] + np.arange(block)).reshape(repeats, -1)[:, : len(gains)]
+    return [
+        round(float(value), 4) for value in np.quantile(gains[samples].mean(axis=1), (0.025, 0.975))
+    ]
 
 
 def threshold_counts(actual, predicted, threshold):
@@ -40,21 +41,28 @@ def threshold_counts(actual, predicted, threshold):
     }
 
 
-def main():
-    metrics = json.loads((ARTIFACTS / "metrics.json").read_text(encoding="utf-8"))
-    if hashlib.sha256(DATA.read_bytes()).hexdigest() != metrics["source_sha256"]:
+def main(bundle=None):
+    artifacts = bundle / "artifacts" if bundle else ARTIFACTS
+    data = bundle / "dataset.csv" if bundle else DATA
+    metrics = json.loads((artifacts / "metrics.json").read_text(encoding="utf-8"))
+    if hashlib.sha256(data.read_bytes()).hexdigest() != metrics["source_sha256"]:
         raise ValueError("Training CSV changed; rerun train_uv_model.py first")
 
     grouped = defaultdict(list)
-    with (ARTIFACTS / "backtest_predictions.csv").open(newline="", encoding="utf-8") as file:
+    with (artifacts / "backtest_predictions.csv").open(newline="", encoding="utf-8") as file:
         for row in csv.DictReader(file):
             if row["split"] == "test" and row["sarimax_h2"]:
                 grouped[row["city"]].append(row)
     if set(grouped) != set(metrics["cities"]):
         raise ValueError("Prediction cities do not match training metrics")
 
-    report = {"horizon_days": 2, "split": "test", "bootstrap_block_days": 14,
-              "bootstrap_repeats": 2000, "cities": {}}
+    report = {
+        "horizon_days": 2,
+        "split": "test",
+        "bootstrap_block_days": 14,
+        "bootstrap_repeats": 2000,
+        "cities": {},
+    }
     for city, rows in grouped.items():
         days = [date.fromisoformat(row["date"]) for row in rows]
         if len(set(days)) != len(days) or days != sorted(days):
@@ -73,8 +81,10 @@ def main():
             raise ValueError(f"Backtest rows disagree with metrics: {city}")
         by_year = {}
         by_month = {}
-        for label, groups in ((by_year, [day.year for day in days]),
-                              (by_month, [day.month for day in days])):
+        for label, groups in (
+            (by_year, [day.year for day in days]),
+            (by_month, [day.month for day in days]),
+        ):
             for key in sorted(set(groups)):
                 mask = np.array([group == key for group in groups])
                 label[str(key)] = {
@@ -107,14 +117,21 @@ def main():
             },
         }
         report["cities"][city] = city_report
-        print(f"{city}: MAE {city_report['mae']}, gain 95% CI "
-              f"{city_report['mae_gain_95pct_block_bootstrap_ci']}, "
-              f"months beating persistence {city_report['months_beating_persistence']}/12")
+        print(
+            f"{city}: MAE {city_report['mae']}, gain 95% CI "
+            f"{city_report['mae_gain_95pct_block_bootstrap_ci']}, "
+            f"months beating persistence {city_report['months_beating_persistence']}/12"
+        )
 
-    output = ARTIFACTS / "evaluation.json"
+    output = artifacts / "evaluation.json"
     output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Saved {output}")
+    return report
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bundle", type=Path)
+    main(parser.parse_args().bundle)

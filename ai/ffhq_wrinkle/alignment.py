@@ -13,6 +13,7 @@ import cv2
 import numpy as np
 
 ALIGNMENT_SIZE = 1024
+DETECTION_VERSION = "yunet-max640-v2"
 
 
 @dataclass(frozen=True)
@@ -41,7 +42,7 @@ class YuNetFaceDetector:
         score_threshold: float = 0.6,
         nms_threshold: float = 0.3,
         top_k: int = 5000,
-        maximum_input_side: int = 1600,
+        maximum_input_side: int = 640,
     ) -> None:
         model_path = Path(model_path)
         if not model_path.is_file():
@@ -77,9 +78,7 @@ class YuNetFaceDetector:
         detector_height, detector_width = detector_image.shape[:2]
         self._detector.setInputSize((detector_width, detector_height))
         # OpenCV expects BGR even though the rest of this pipeline uses RGB.
-        _, faces = self._detector.detect(
-            cv2.cvtColor(detector_image, cv2.COLOR_RGB2BGR)
-        )
+        _, faces = self._detector.detect(cv2.cvtColor(detector_image, cv2.COLOR_RGB2BGR))
         if faces is None:
             return []
         results: list[FaceDetection] = []
@@ -93,9 +92,7 @@ class YuNetFaceDetector:
         return sorted(results, key=lambda item: item.confidence, reverse=True)
 
 
-def ffhq_alignment_quad(
-    detection: FaceDetection, scale: float = 1.0
-) -> np.ndarray:
+def ffhq_alignment_quad(detection: FaceDetection, scale: float = 1.0) -> np.ndarray:
     """Use the eye and mouth landmarks to locate an oriented face square."""
 
     # YuNet landmarks: eyes, nose, and mouth corners in source coordinates.
@@ -111,9 +108,7 @@ def ffhq_alignment_quad(
     eye_to_eye = eye_right - eye_left
     eye_to_mouth = mouth_average - eye_average
     # Mix horizontal eye spacing with a perpendicular mouth direction.
-    axis_x = eye_to_eye + np.array(
-        [eye_to_mouth[1], -eye_to_mouth[0]], dtype=np.float32
-    )
+    axis_x = eye_to_eye + np.array([eye_to_mouth[1], -eye_to_mouth[0]], dtype=np.float32)
     norm = float(np.linalg.norm(axis_x))
     if norm < 1e-6:
         raise ValueError("degenerate facial landmarks cannot be aligned")

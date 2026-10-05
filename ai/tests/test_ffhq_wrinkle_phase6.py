@@ -2,6 +2,7 @@ import json
 import unittest
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from fastapi.testclient import TestClient
@@ -69,6 +70,10 @@ def prediction(probability):
 
 
 class ScoringTests(unittest.TestCase):
+    def test_empty_policy_environment_uses_unreleased_default(self):
+        with patch.dict("os.environ", {"APHRODIZE_WRINKLE_POLICY_BUNDLE": ""}):
+            self.assertEqual(TestClient(create_app()).get("/health").status_code, 200)
+
     def test_all_scores_are_versioned_and_bounded(self):
         face = np.ones((100, 100), dtype=bool)
         wrinkle = np.zeros_like(face)
@@ -118,6 +123,27 @@ class ConfidenceTests(unittest.TestCase):
 
 
 class ServiceTests(unittest.TestCase):
+    def test_landmark_geometry_is_experimental_and_cannot_inherit_old_release(self):
+        face = np.ones((8, 8), dtype=bool)
+        roi = np.zeros_like(face)
+        roi[2:4, 2:4] = True
+        service = WrinkleAnalysisService(confidence_policy=calibrated_policy())
+        response = service.build_response(prediction(np.full((8, 8), .95)), face,
+                                          regional_rois={"forehead": roi})
+        self.assertIsNone(response.derived_score)
+        self.assertFalse(response.recommendation_gate.eligible)
+        self.assertIn("landmark_roi_not_calibrated", response.recommendation_gate.reasons)
+        self.assertEqual(response.experimental_score.roi_version, "mediapipe-landmark-skin-roi-v1")
+        self.assertEqual(response.experimental_score.regions["forehead"].evaluated_pixels, 4)
+        self.assertEqual(response.model_output.regional_geometry_status, "available")
+
+    def test_missing_landmarks_keeps_overall_but_withholds_regions(self):
+        response = WrinkleAnalysisService().build_response(
+            prediction(np.full((8, 8), .95)), np.ones((8, 8), dtype=bool), regional_rois={}
+        )
+        self.assertEqual(response.experimental_score.regions, {})
+        self.assertEqual(response.model_output.regional_geometry_status, "unavailable")
+
     def test_owner_review_releases_only_the_approved_model_without_calibration_claims(self):
         policy = load_confidence_policy(
             Path(__file__).resolve().parents[1] / "ffhq_wrinkle" / "reviewed_policy.json"
@@ -199,6 +225,7 @@ class ServiceTests(unittest.TestCase):
             Image.fromarray(np.ones((4, 4), dtype=np.uint8) * 255).save(
                 Path(output) / "face_mask.png"
             )
+            Image.new("RGB", (4, 4), "gray").save(Path(output) / "aligned_face.png")
             return prediction(np.full((4, 4), 0.95))
 
         service = WrinkleAnalysisService(

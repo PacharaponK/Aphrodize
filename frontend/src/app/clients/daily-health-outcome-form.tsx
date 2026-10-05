@@ -45,6 +45,7 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
         );
       }
       setStatus(t("บันทึกผลที่คุณรายงานเองแล้ว · แยกจากผล prediction และยังไม่ใช้เป็นคำวินิจฉัย", "Your self-reported outcome was saved separately from predictions and is not a diagnosis."));
+      window.dispatchEvent(new Event("daily-health-data-updated"));
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : t("บันทึกข้อมูลไม่สำเร็จ", "Could not save the data."));
     } finally {
@@ -61,6 +62,7 @@ export default function DailyHealthOutcomeForm({ initialDate }: { initialDate: s
         <p className="training-threshold-note">{t("การสร้าง candidate ต้องมีข้อมูลที่จับคู่ครบอย่างน้อย 100 วันจากผู้ใช้ที่ยินยอมอย่างน้อย 5 คน; รุ่นถัดไปจะพิจารณาเมื่อมีข้อมูลใหม่เพิ่มอีกอย่างน้อย 25 วัน การบันทึกข้อมูลรายวันหรือคะแนน prediction เพียงอย่างเดียวไม่ใช่ label และไม่ทำให้เกิดการฝึก", "A candidate requires at least 100 complete paired days from 5 consenting users. A new version is considered after at least 25 additional days. Daily entries or predicted scores alone are not labels and do not trigger training.")}</p>
       </div>
       <form className="daily-outcome-form" onSubmit={submitOutcome}>
+        <p className="training-threshold-note">{t("รุ่นที่มี energy ต้องมีพลังงาน ความกระหาย และผิวแห้งที่รายงานจริงครบทั้งสามค่าเพียงพอตามเกณฑ์ และผ่านการตรวจความแม่นยำกับการอนุมัติก่อนเปิดใช้", "Energy candidates need enough paired days with all three observed scores: energy, thirst and dryness. Accuracy review and explicit model approval are required before use.")}</p>
         <label className="tracker-field" htmlFor="outcome-date">
           <span>{t("วันที่สังเกตผล", "Date observed")}</span>
           <input

@@ -185,6 +185,7 @@ export default function SignupPage() {
                 </div>
                 <div className="wizard-question">
                   <label htmlFor={questionName}>{questionIndex + 1}. {displayedQuestion}</label>
+                  {(questionName === "height_cm" || questionName === "weight_kg") && <p className="metadata">{t("กรอกครั้งเดียวตอนสมัคร ค่านี้จะบันทึกในข้อมูลสมัครสมาชิกและนำมาใช้ต่อ ไม่ต้องกรอกซ้ำทุกวัน", "Enter once at signup. This value is saved with your signup information and reused; no daily re-entry is needed.")}</p>}
                   {questionName === "allergy_details" ? (
                     <><AllergyIngredients values={allergyIngredients} onChange={setAllergyIngredients} disabled={isSubmitting} /><textarea id={questionName} maxLength={500} value={answers[questionName] ?? ""} onChange={(event) => { setAnswers((current) => ({ ...current, [questionName]: event.target.value })); clearMessage(); }} disabled={isSubmitting} required={allergyIngredients.length === 0} /></>
                   ) : questionName === "age_years" || questionName === "height_cm" || questionName === "weight_kg" ? (

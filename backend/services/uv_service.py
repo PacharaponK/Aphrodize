@@ -32,6 +32,11 @@ def load_recommendation(city: str, now: datetime | None = None) -> dict:
         days = selected["days"]
         source = snapshot["source"]
         model_version = selected["model_version"]
+        pointer = SNAPSHOT.with_name("serving_version.json")
+        if pointer.exists():
+            expected = json.loads(pointer.read_text(encoding="utf-8"))["version"]
+            if model_version != expected:
+                raise ValueError("UV snapshot version does not match the serving deployment")
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise ValueError("UV forecast snapshot is unavailable or invalid") from error
     if generated.tzinfo is None or not -timedelta(minutes=5) <= now - generated <= timedelta(

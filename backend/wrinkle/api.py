@@ -24,7 +24,7 @@ ALLOWED_MEDIA_TYPES = {
 
 def create_app(service: WrinkleAnalysisService | None = None) -> FastAPI:
     app = FastAPI(title="Aphrodize Wrinkle Analysis API", version="1.0.0")
-    policy_bundle = os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE")
+    policy_bundle = os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None
     analysis_service = service or WrinkleAnalysisService(released_policy_bundle=policy_bundle)
 
     @app.get("/health")

@@ -185,9 +185,9 @@ def test_prediction_api_returns_two_scores_for_in_domain_input() -> None:
         "high",
     }
     assert result["interpretation"]["next_day_predictions"]["low_energy_signal"]["status"] == (
-        "insufficient_history"
+        "model_not_ready"
     )
-    assert result["interpretation"]["acne_flare_signal"]["status"] == "insufficient_data"
+    assert result["interpretation"]["acne_flare_signal"]["status"] == "not_supported"
 
 
 def test_sleep_attention_uses_consented_age_band_without_inventing_a_clinical_risk() -> None:

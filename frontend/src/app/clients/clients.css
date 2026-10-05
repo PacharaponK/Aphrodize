@@ -164,3 +164,9 @@ html[data-theme="black"] .clients-page .score-method-content code{background:var
 .clients-page .profile-weight-form {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 }
+
+/* Restore native modal centering after the global margin reset. */
+.clients-page .daily-entry-dialog {
+  margin: auto;
+  inset: 0;
+}

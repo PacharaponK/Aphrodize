@@ -23,6 +23,11 @@ type Recommendation = {
   };
   wrinkle_regions?: string[];
   wrinkle_region_scores?: { region: string; score: number }[];
+  selection_reason?: string;
+  wrinkle_area_measurements?: {
+    region: string; wrinkle_area_ratio: number; visible_area_band: string;
+    near_boundary: boolean;
+  }[];
   products?: {
     id: string; brand: string; name: string; variant: string;
     price_satang: number | null; price_checked_at: string | null;
@@ -74,6 +79,7 @@ const COPY = {
     signInRequired: "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล",
     signInHint: "เข้าสู่ระบบเพื่อดูคำแนะนำที่อ้างอิงจากข้อมูลผิวของคุณ",
     noData: "ยังไม่มีข้อมูลคำแนะนำ",
+    noProducts: "ยังไม่มีผลิตภัณฑ์ที่ตรวจทานแล้วตรงกับเงื่อนไขที่เลือก",
     safetyBlocked: "หยุดคำแนะนำเพื่อความปลอดภัย",
     updateFirst: "ต้องอัปเดตข้อมูลก่อน",
     startQuestionnaire: "เริ่มตอบแบบสอบถาม →",
@@ -101,7 +107,7 @@ const COPY = {
     ml: "มล.",
     notRecorded: "ไม่ระบุ",
     usesReportedData: "ใช้เฉพาะข้อมูลที่คุณรายงานเอง; ค่าคาดการณ์จากโมเดล Daily Health ไม่ถูกใช้เพื่อแนะนำผลิตภัณฑ์",
-    sourceLanguage: "คำอธิบายคำแนะนำและแหล่งอ้างอิงแสดงตามภาษาต้นฉบับ",
+    sourceLanguage: "ชื่อสินค้า ส่วนผสม คำเตือนจากฉลาก และชื่อแหล่งอ้างอิงแสดงตามต้นฉบับ",
     imageNotUsed: "คะแนนจากภาพไม่ได้ถูกใช้:",
     imageScoreUnavailable: "คะแนนภาพไม่พร้อมใช้งาน",
     dateUnknown: "วันที่ไม่ระบุ",
@@ -113,13 +119,14 @@ const COPY = {
     signInRequired: "Sign in to view your personalized guidance.",
     signInHint: "Sign in to see guidance based on your skin profile.",
     noData: "No guidance data is available yet.",
+    noProducts: "No reviewed products match your selected criteria yet.",
     safetyBlocked: "Guidance paused for safety",
     updateFirst: "Update your information first",
     startQuestionnaire: "Start questionnaire →",
     updateSafety: "Update safety information →",
     editProfile: "Edit skin and sun-care information →",
     category: "Product category",
-    source: "Clinical rationale & evidence",
+    source: "Recommendation rationale and sources",
     dataUsed: "Information used:",
     imageScore: "Image score",
     dailyReported: "Self-reported daily health data",
@@ -140,12 +147,73 @@ const COPY = {
     ml: "ml",
     notRecorded: "Not recorded",
     usesReportedData: "Only information you reported is used. Daily Health model estimates are not used for product guidance.",
-    sourceLanguage: "Guidance descriptions and references are shown in their source language.",
+    sourceLanguage: "Product names, ingredients, label cautions and reference titles are shown in their original language.",
     imageNotUsed: "Image score not used:",
     imageScoreUnavailable: "Image score is unavailable",
     dateUnknown: "Date not specified",
   },
 } as const;
+
+// Match reviewed API copy exactly; unknown or revised text keeps its original meaning.
+const THAI_GUIDANCE: Record<string, string> = {
+  "fragrance-free moisturizer": "มอยส์เจอไรเซอร์ปราศจากน้ำหอม",
+  "gentle, oil-free non-comedogenic cleanser": "คลีนเซอร์อ่อนโยน ปราศจากน้ำมัน และไม่อุดตันรูขุมขน",
+  "lightweight moisturizer for combination skin": "มอยส์เจอไรเซอร์เนื้อบางเบาสำหรับผิวผสม",
+  "gentle cleanser": "คลีนเซอร์อ่อนโยน",
+  "broad-spectrum sunscreen SPF 30+": "กันแดดปกป้องทั้ง UVA และ UVB ค่า SPF 30 ขึ้นไป",
+  "lightweight daily moisturizer": "มอยส์เจอไรเซอร์เนื้อบางเบาสำหรับใช้ประจำวัน",
+  "wrinkle care for eye contour": "ผลิตภัณฑ์ดูแลริ้วรอยบริเวณรอบดวงตา",
+  "wrinkle care for face": "ผลิตภัณฑ์ดูแลริ้วรอยบนใบหน้า",
+  "You reported dry skin.": "คุณรายงานว่ามีผิวแห้ง",
+  "You recently reported skin dryness in the daily health tracker.": "คุณรายงานอาการผิวแห้งในบันทึกสุขภาพรายวันล่าสุด",
+  "The American Academy of Dermatology lists fragrance-free skin care and moisturizer among its general dry-skin tips.": "American Academy of Dermatology (AAD) แนะนำผลิตภัณฑ์ดูแลผิวปราศจากน้ำหอมและมอยส์เจอไรเซอร์เป็นส่วนหนึ่งของแนวทางดูแลผิวแห้งทั่วไป",
+  "You reported oily skin.": "คุณรายงานว่ามีผิวมัน",
+  "The American Academy of Dermatology recommends a mild, gentle face wash and products labelled oil-free or non-comedogenic for oily skin.": "AAD แนะนำผลิตภัณฑ์ล้างหน้าที่อ่อนโยน และผลิตภัณฑ์ที่ระบุบนฉลากว่าปราศจากน้ำมันหรือไม่อุดตันรูขุมขนสำหรับผิวมัน",
+  "You reported combination skin.": "คุณรายงานว่ามีผิวผสม",
+  "Consider a lightweight moisturizer for dry areas and avoid applying it to areas that feel oily.": "พิจารณามอยส์เจอไรเซอร์เนื้อบางเบาสำหรับบริเวณที่แห้ง และหลีกเลี่ยงการทาบริเวณที่รู้สึกมัน",
+  "You are unsure of your skin type, so this starts with a simple gentle-cleanser category rather than a targeted active product.": "คุณยังไม่แน่ใจประเภทผิว จึงเริ่มจากหมวดคลีนเซอร์อ่อนโยนทั่วไป แทนผลิตภัณฑ์ที่มีสารออกฤทธิ์เฉพาะทาง",
+  "You reported infrequent sunscreen use and recent outdoor exposure.": "คุณรายงานว่าใช้กันแดดไม่สม่ำเสมอและมีกิจกรรมกลางแจ้งเมื่อเร็ว ๆ นี้",
+  "AAD recommends broad-spectrum sunscreen with SPF 30 or higher; this does not explain wrinkle scores.": "AAD แนะนำกันแดดที่ปกป้องทั้ง UVA และ UVB ค่า SPF 30 ขึ้นไป ข้อมูลนี้ไม่ได้อธิบายสาเหตุของคะแนนริ้วรอย",
+  "You reported regular sunscreen use.": "คุณรายงานว่าใช้กันแดดสม่ำเสมอ",
+  "Continue choosing broad-spectrum SPF 30+ sun protection as part of a daily routine.": "เลือกใช้กันแดดที่ปกป้องทั้ง UVA และ UVB ค่า SPF 30 ขึ้นไปต่อไปเป็นส่วนหนึ่งของกิจวัตรประจำวัน",
+  "You reported normal skin.": "คุณรายงานว่ามีผิวปกติ",
+  "A simple moisturizer is a general routine option; choose a texture that feels comfortable on your skin.": "มอยส์เจอไรเซอร์ทั่วไปเป็นตัวเลือกสำหรับกิจวัตรดูแลผิว เลือกเนื้อสัมผัสที่รู้สึกสบายผิว",
+  "You reported an age under 18.": "คุณรายงานว่ามีอายุต่ำกว่า 18 ปี",
+  "Keep a simple routine of gentle cleansing, fragrance-free moisturizing and SPF 30+ sun protection.": "ใช้กิจวัตรพื้นฐาน ได้แก่ การทำความสะอาดอย่างอ่อนโยน มอยส์เจอไรเซอร์ปราศจากน้ำหอม และกันแดดค่า SPF 30 ขึ้นไป",
+  "Do not add anti-aging active products without professional advice.": "ไม่ควรเพิ่มผลิตภัณฑ์สารออกฤทธิ์เพื่อลดเลือนวัยโดยไม่ได้รับคำแนะนำจากผู้เชี่ยวชาญ",
+  "Released wrinkle regions are shown as visual context only.": "บริเวณริ้วรอยที่ผ่านเกณฑ์เผยแพร่แสดงเพื่อประกอบข้อมูลจากภาพเท่านั้น",
+  "They do not identify a cause, predict product effects, or authorize use near the eyes.": "ข้อมูลนี้ไม่ได้ระบุสาเหตุ ทำนายผลของผลิตภัณฑ์ หรือยืนยันว่าใช้ผลิตภัณฑ์ใกล้ดวงตาได้",
+  "The approved image marks these regions.": "ภาพที่ผ่านเกณฑ์ระบุบริเวณเหล่านี้",
+  "Only products whose reviewed labels describe wrinkle care for this application area are matched.": "จับคู่เฉพาะผลิตภัณฑ์ที่ฉลากผ่านการตรวจทานและระบุการดูแลริ้วรอยสำหรับบริเวณนี้",
+  "The image does not predict product benefits.": "ภาพไม่ได้ทำนายประโยชน์ที่จะได้รับจากผลิตภัณฑ์",
+  "Follow the current label.": "ปฏิบัติตามฉลากปัจจุบัน",
+  "General skin-care product information based on reported inputs and reviewed labels.": "ข้อมูลผลิตภัณฑ์ดูแลผิวทั่วไปอ้างอิงจากข้อมูลที่คุณรายงานและฉลากที่ผ่านการตรวจทาน",
+  "A catalog match is not a guarantee against allergy.": "การจับคู่กับแค็ตตาล็อกไม่ได้รับประกันว่าจะไม่เกิดการแพ้",
+  "It is not a diagnosis, treatment advice, or evidence that a product will change a wrinkle score.": "ข้อมูลนี้ไม่ใช่การวินิจฉัย คำแนะนำการรักษา หรือหลักฐานว่าผลิตภัณฑ์จะเปลี่ยนคะแนนริ้วรอย",
+  "Check the full ingredient list and stop use if irritation occurs.": "ตรวจสอบรายการส่วนผสมทั้งหมด และหยุดใช้หากเกิดการระคายเคือง",
+  "gentle": "อ่อนโยน", "oil-free": "ปราศจากน้ำมัน", "non-comedogenic": "ไม่อุดตันรูขุมขน",
+  "fragrance-free": "ปราศจากน้ำหอม", "lightweight": "เนื้อบางเบา", "wrinkle-care": "ดูแลริ้วรอย",
+  "Invalid product market": "ตลาดสินค้าไม่ถูกต้อง", "Invalid product budget": "งบประมาณสินค้าไม่ถูกต้อง",
+};
+
+const AREA_LABELS: Record<string, { th: string; en: string }> = {
+  none: { th: "ไม่ตรวจพบพื้นที่", en: "No segmented area" },
+  low: { th: "น้อย", en: "Low" },
+  medium: { th: "ปานกลาง", en: "Medium" },
+  high: { th: "มาก", en: "High" },
+};
+
+const ENGLISH_ERRORS: Record<string, string> = {
+  "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล": COPY.en.signInRequired,
+  "ยังไม่มีผลวิเคราะห์ในเบราว์เซอร์นี้": "No analysis is available in this browser yet.",
+  "โหลดคำแนะนำไม่สำเร็จ": COPY.en.errorFallback,
+  "ยังเชื่อมต่อบริการคำแนะนำไม่ได้": "Could not connect to the guidance service. Please try again.",
+};
+
+function localizeGuidance(value: string, language: Language): string {
+  if (language === "en") return ENGLISH_ERRORS[value] ?? value;
+  return THAI_GUIDANCE[value] ?? value.split(/(?<=\.) /).map((sentence) => THAI_GUIDANCE[sentence] ?? sentence).join(" ");
+}
 
 const REGION_LABELS: Record<string, { th: string; en: string }> = {
   forehead: { th: "หน้าผาก", en: "Forehead" },
@@ -218,7 +286,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
       fetch(`/api/analysis/recommendations?${query.toString()}`, { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
+        if (!response.ok) throw new Error(response.status === 401 ? "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล" : typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
         return body as Result;
       })
       .then((result) => {
@@ -235,25 +303,27 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
 
   if (loading) return <p role="status">{copy.loading}</p>;
   if (error) {
+    const loginRequired = error.includes("เข้าสู่ระบบ") || error.toLowerCase().includes("sign in");
+    const errorText = loginRequired ? copy.signInRequired : localizeGuidance(error, language);
     if (compact) {
-      const loginRequired = error.includes("เข้าสู่ระบบ") || error.toLowerCase().includes("sign in");
       return <div className={`recommendation-inline-state${loginRequired ? " is-auth-required" : ""}`} role="status">
         {loginRequired && <span className="recommendation-inline-icon" aria-hidden="true"><LockKeyhole size={19} /></span>}
-        <div className="recommendation-inline-copy"><p>{loginRequired ? copy.signInRequired : error || copy.errorFallback}</p>{loginRequired && <small>{copy.signInHint}</small>}</div>
+        <div className="recommendation-inline-copy"><p>{errorText}</p>{loginRequired && <small>{copy.signInHint}</small>}</div>
         {loginRequired && <Link className="primary-button" href="/login">{copy.signIn}<ArrowRight size={16} aria-hidden="true" /></Link>}
       </div>;
     }
-    return <div className="recommendation-card" role="status"><p>{error || copy.errorFallback}</p>{error.includes("เข้าสู่ระบบ") && <Link className="text-button" href="/login">{copy.signIn} →</Link>}</div>;
+    return <div className="recommendation-card" role="status"><p>{errorText}</p>{loginRequired && <Link className="text-button" href="/login">{copy.signIn} →</Link>}</div>;
   }
   if (!data) return <p role="status">{copy.noData}</p>;
   if (data.status === "pending") return <p role="status">{language === "th" ? "รอวิเคราะห์ภาพสำเร็จก่อนแนะนำผลิตภัณฑ์" : "Product guidance will be available after image analysis completes."}</p>;
+  const recommendations = data.recommendations.filter((item) => !!item.products?.length);
 
   const reason = (key: string | null | undefined, fallback: string) => key
     ? REASON_LABELS[key]?.[language] ?? fallback
     : fallback;
 
   return (
-    <div aria-live="polite" className="recommendation-panel-root">
+    <div aria-live="polite" lang={language} className="recommendation-panel-root">
       <form className="recommendation-filters" onSubmit={(event) => {
         event.preventDefault();
         const values = new FormData(event.currentTarget);
@@ -296,18 +366,29 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
         <button className="secondary-button" type="submit">{language === "th" ? "ใช้ตัวกรอง" : "Apply filters"}</button>
         {maxPrice !== null && <small>{language === "th" ? "ใช้เฉพาะราคาที่มีแหล่งอ้างอิงและตรวจสอบใน 30 วันล่าสุด งบนี้ต่อสินค้า ไม่ใช่ราคารวมทั้งชุด" : "Uses sourced prices checked within 30 days. This limit applies to each product, not the whole routine."}</small>}
       </form>
-      {language === "th" && <p className="analysis-localization-note">{copy.sourceLanguage}</p>}
       {data.profile_context && <p className="recommendation-profile-note">{language === "th" ? "ข้อมูลผิวที่ใช้: " : "Skin profile used: "}<strong>{SKIN_LABELS[data.profile_context.skin_type]?.[language] ?? copy.notRecorded}</strong>{language === "th" ? " · ความไวต่อการระคายเคือง: " : " · Sensitivity: "}<strong>{data.profile_context.skin_sensitivity === "medium" ? (language === "th" ? "ปานกลาง" : "Moderate") : (language === "th" ? "ต่ำ" : "Low")}</strong> · <Link href="/profile">{language === "th" ? "ดูโปรไฟล์" : "View profile"}</Link></p>}
       {data.status === "safety_blocked" ? (
         <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p>{data.blocked_reason !== "profile_consent_required" && <Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link>}</article>
-      ) : data.recommendations.length ? (
+      ) : recommendations.length ? (
         <div className="recommendation-list recommendation-categories-stack">
-          {data.recommendations.map((item) => (
+          {recommendations.map((item) => (
             <article className="recommendation-card recommendation-group" key={item.rule_id}>
               <div className="recommendation-category-header">
                 <span className="status moderate recommendation-category-badge">{copy.category}</span>
-                <h3>{item.category}</h3>
-                <p className="recommendation-rationale">{item.rationale}</p>
+                <h3>{localizeGuidance(item.category, language)}</h3>
+                <p className="recommendation-rationale">{localizeGuidance(item.rationale, language)}</p>
+                {!!item.wrinkle_area_measurements?.length && <div className="recommendation-note">
+                  <strong>{language === "th" ? "ระดับพื้นที่ริ้วรอยที่ตรวจพบ" : "Detected wrinkle area level"}</strong>
+                  <ul>{item.wrinkle_area_measurements.map((area) => <li key={area.region}>
+                    {REGION_LABELS[area.region]?.[language] ?? area.region}: {AREA_LABELS[area.visible_area_band]?.[language] ?? area.visible_area_band}
+                    {" · "}{(area.wrinkle_area_ratio * 100).toFixed(2)}%
+                    {area.near_boundary && (language === "th" ? " · ใกล้จุดแบ่งระดับ" : " · Near a band boundary")}
+                  </li>)}</ul>
+                  <p>{item.selection_reason
+                    ? (language === "th" ? "แสดงหมวดดูแลริ้วรอยเมื่อพื้นที่ถึงระดับปานกลางหรือมากและพ้นช่วงเผื่อรอบจุดแบ่งระดับน้อย จัดลำดับหมวดตามพื้นที่ดิบ และจับคู่สินค้าจากฉลากกับประเภทผิว" : "Wrinkle-care categories appear at medium or high area beyond the low-boundary buffer. Categories are ordered by uncapped area; products match reviewed labels and skin type.")
+                    : (language === "th" ? "หมวดดูแลพื้นฐานนี้เลือกจากโปรไฟล์ของคุณ ผลภาพแสดงประกอบและไม่ทำให้เปลี่ยนไปใช้สูตรที่แรงขึ้น" : "This basic-care category uses your profile. Image context does not select a stronger formula.")}</p>
+                  <small>{language === "th" ? "เกณฑ์ทดลองที่เจ้าของโครงการตรวจทาน ระดับรายบริเวณอาจเปลี่ยนตามภาพ และไม่ใช่หลักฐานว่าสินค้าจะลดคะแนน" : "Owner-reviewed provisional thresholds. Regional levels can vary between photos and do not establish product effects."}</small>
+                </div>}
               </div>
 
               {item.products?.length ? (
@@ -333,8 +414,9 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                         <p className="product-skin-match">
                           {language === "th" ? "ประเภทผิวตามฉลาก: " : "Label skin type: "}
                           {SKIN_LABELS[product.matched_skin_type]?.[language] ?? product.matched_skin_type}
-                          {product.matched_claims.length > 0 && ` · ${product.matched_claims.join(", ")}`}
+                          {product.matched_claims.length > 0 && ` · ${product.matched_claims.map((claim) => localizeGuidance(claim, language)).join(", ")}`}
                         </p>
+                        <p className="metadata">{language === "th" ? "จับคู่ตามฉลากและประเภทผิว โดยให้รายการที่ระบุประเภทผิวของคุณโดยตรงมาก่อนรายการสำหรับทุกสภาพผิว" : "Matched by label and skin type; explicit skin-type matches precede all-skin products."}</p>
                         {product.price_satang != null && (
                           <div className="product-price-row">
                             <span className="product-price-amount">
@@ -347,13 +429,11 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                           </div>
                         )}
                         {product.purchase_url && (
-                          <p>
                             <a className="primary-button recommendation-buy recommendation-buy-btn" href={product.purchase_url} target="_blank" rel="noopener noreferrer">
                               {language === "th" ? "ดูสินค้า / สั่งซื้อ" : "View product / Buy"} <ArrowRight size={16} aria-hidden="true" />
                             </a>
-                          </p>
                         )}
-                        {product.warnings_label && <p className="recommendation-warning">{product.warnings_label}</p>}
+                        {product.warnings_label && <p className="recommendation-warning"><strong>{language === "th" ? "ข้อควรระวัง: " : "Caution: "}</strong>{product.warnings_label}</p>}
                         <details className="product-inci-details">
                           <summary>{language === "th" ? "ส่วนผสมและแหล่งข้อมูล" : "Ingredients and sources"}</summary>
                           <p className="product-inci-content">{product.ingredients_inci.join(", ")}</p>
@@ -372,9 +452,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                     </div>
                   ))}
                 </div>
-              ) : data.product_context?.status !== "allergy_review_required" && (
-                <p className="metadata">{language === "th" ? "ยังไม่มีผลิตภัณฑ์ที่ตรวจทานแล้วตรงกับเงื่อนไขนี้" : "No reviewed product matches this guidance yet."}</p>
-              )}
+              ) : null}
 
               {!compact && (
                 <details className="recommendation-evidence-drawer">
@@ -388,7 +466,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
                       <p><strong>{copy.regions}</strong> {item.wrinkle_regions.map((region) => REGION_LABELS[region]?.[language] ?? region).join(", ")}</p>
                     ) : null}
                     {item.wrinkle_region_scores?.map((region) => (
-                      <p key={region.region}>{REGION_LABELS[region.region]?.[language] ?? region.region}: wrinkle score {region.score.toFixed(1)} / 100</p>
+                      <p key={region.region}>{REGION_LABELS[region.region]?.[language] ?? region.region}: {language === "th" ? "คะแนนริ้วรอย" : "Wrinkle score"} {region.score.toFixed(1)} / 100</p>
                     ))}
                     <p className="metadata">{copy.rule} {item.rule_id} · v{item.rule_version} · {copy.knowledgeBase} {item.knowledge_source.id} v{item.knowledge_source.version}</p>
                     <p><a href={item.knowledge_source.reference.url} target="_blank" rel="noreferrer">{item.knowledge_source.reference.title} ↗</a></p>
@@ -398,6 +476,8 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
             </article>
           ))}
         </div>
+      ) : data.recommendations.length ? (
+        <p className="recommendation-note" role="status">{copy.noProducts}</p>
       ) : (
         <article className="recommendation-card recommendation-blocked"><span className="status">{copy.noGuidance}</span><h3>{copy.startWithData}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ" : "There is not enough recorded information for an available guidance rule.")}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.editProfile}</Link></article>
       )}
@@ -421,8 +501,9 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
       {!compact && data.image_context.status !== "eligible" && (
         <p className="recommendation-note">{copy.imageNotUsed} {reason(data.image_context.reason, copy.imageScoreUnavailable)}</p>
       )}
-      {!compact && <><p className="metadata">กฎคำแนะนำ v{data.rule_version}{data.image_context.score_version ? ` · score ${data.image_context.score_version}` : ""}{data.image_context.calibration_version ? ` · calibration ${data.image_context.calibration_version}` : ""}</p>
-      <p className="recommendation-warning">{data.disclaimer}</p></>}
+      {!compact && <><p className="metadata">{language === "th" ? "กฎคำแนะนำ" : "Guidance rules"} v{data.rule_version}{data.image_context.score_version ? ` · ${language === "th" ? "รุ่นคะแนน" : "Score version"} ${data.image_context.score_version}` : ""}{data.image_context.calibration_version ? ` · ${language === "th" ? "รุ่นการปรับเทียบ" : "Calibration version"} ${data.image_context.calibration_version}` : ""}</p>
+      <p className="recommendation-warning">{localizeGuidance(data.disclaimer, language)}</p></>}
+      <p className="analysis-localization-note">{copy.sourceLanguage}</p>
     </div>
   );
 }
