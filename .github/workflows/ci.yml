@@ -36,7 +36,7 @@ jobs:
       - name: Install locked Python dependencies
         run: uv sync --locked --no-default-groups --group ci --no-install-package opencv-python
       - name: Lint backend and tests
-        run: uv run --no-sync ruff check backend tests
+        run: uv run --no-sync ruff check backend tests scripts/release_manifest.py scripts/deploy_vm.py scripts/check-vm-readiness.py
       - name: Run backend tests
         run: uv run --no-sync python -m pytest
 
