@@ -17,3 +17,15 @@ storage/models
 **/.env.*
 **/node_modules
 **/.next
+
+# Private/runtime output and isolated execution bookkeeping
+logs
+output
+outputs
+.superpowers
+.agents
+.codex
+**/.venv
+**/.uv-cache
+**/*.log
+**/*.sqlite*

@@ -31,6 +31,8 @@ include = ["backend*"]
 "backend.libs" = ["uv_provinces.json"]
 
 [dependency-groups]
+production = ["opencv-python-headless==4.11.0.86"]
+
 dev = [
   "httpx>=0.28,<0.29",
   "ipykernel>=6,<8",
