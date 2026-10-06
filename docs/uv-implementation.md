@@ -1,6 +1,6 @@
 # UV feature: delivery and operation
 
-Checked 29 September 2026 (Asia/Bangkok). Users can select Bangkok, Songkhla, or Chiang Mai and see today/tomorrow clear-sky UV, WHO-based protection advice, optional noon weather, and source-reviewed sunscreen products.
+Operation checked against code on 6 October 2026 (Asia/Bangkok). The recommendation feature covers Bangkok, Songkhla and Chiang Mai. The separate [Thailand map](uv-thailand-map.md) supports 77 API areas or three model areas without mixing sources. Source audits and evaluation numbers below are dated historical evidence, not fresh provider checks.
 
 ## Phase 4 decision: observed all-sky UV
 
@@ -26,11 +26,11 @@ Only published, reviewed sunscreen records with a source URL, SPF ≥30, and sta
 From the repository root:
 
 ```powershell
-docker compose up -d --build api uv-refresh
+docker compose --profile ai --profile background up -d --build
 docker compose exec -T api python /app/scripts/seed_uv_products.py
 ```
 
-The refresh service downloads raw TEMIS data, trains local models on first run if artifacts are absent, updates existing model state with new days, requests only cloud/rain weather fields from Open-Meteo, and atomically writes `storage/artifacts/uv/forecast_snapshot.json` every six hours. A failed refresh retries after 30 minutes. The API serves `/api/v1/uv/recommendation?city=bangkok` with Basic authentication. The Next.js server proxy protects credentials; `/#uv` is the UV section on the home dashboard; `/capture` shows image analysis results and product guidance in place after submission. The legacy `/recommendation` and `/result-detail` routes redirect to `/capture#results`. A missing weather response leaves weather null without blocking UV. Missing or stale TEMIS data, a snapshot older than eight hours, or dates beyond the evaluated horizon returns 503. Generated files under `storage/` stay outside Git.
+The refresh service downloads raw TEMIS data, trains local models on first run if artifacts are absent, updates model state, and atomically writes `storage/artifacts/uv/forecast_snapshot.json` every six hours. It also refreshes the separate 77-area Open-Meteo `map_snapshot.json`; weather context never corrects the three-city model UV. A failed refresh retries after 30 minutes. The API serves `/api/v1/uv/recommendation?city=bangkok` with Basic authentication. The Next.js server proxy protects credentials; `/#uv` is the dashboard UV section. `/capture` shows image results/products; legacy `/recommendation` redirects to `/capture#products` and `/result-detail` to `/capture#results`. Missing weather leaves weather null without blocking UV. Missing/stale TEMIS data, snapshot age over eight hours, or dates beyond the evaluated horizon returns 503. Generated files remain outside Git.
 
 For local checks:
 

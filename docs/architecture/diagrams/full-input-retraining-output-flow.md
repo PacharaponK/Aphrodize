@@ -183,6 +183,6 @@ flowchart TD
 7. **Baseline ต้องระบุแหล่งที่มา:** หากไม่มี active Daily Health candidate เส้นทางเดิมใช้ baseline ไม่ใช่ผล actual หรือหลักฐานว่า next-day candidate ถูก deploy แล้ว
 8. **Generic time-series/tabular training ไม่รวมใน flow ฝึกจริงนี้:** ปัจจุบันเป็น metadata-only; ไม่ควรนำมานับเป็น retrained models
 
-## ข้อค้างจากการตรวจล่าสุด
+## Deployment checks
 
-Label Studio SDK authentication เคยตอบ 401, API container ยังไม่มี admin credentials ที่ valid และ UV snapshot ยังไม่พร้อมในการตรวจรอบก่อนหน้า ต้องแก้ configuration และทดสอบใหม่ก่อนอ้างว่าระบบครบวงจร สถานะนี้เป็นบันทึก ณ วันที่ระบุ ไม่ใช่ live monitoring
+This source flow does not confirm live deployment readiness. Check credentials, Label Studio project access, model mounts, workers and fresh UV snapshots before use. See [Component Flows](../Component-Flows.md) and [Human Review](../../ai/Human-Review.md) for current boundaries.

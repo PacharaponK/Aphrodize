@@ -11,7 +11,7 @@
 | 4 | one-image inference สำหรับ U-Net/SwinUNETR | คืน logits, probability, mask, overlay และ metadata ของ checkpoint/threshold |
 | 5 | ประเมินบน official test IDs 100 ภาพกับ manual masks | U-Net micro Dice 0.658634, IoU 0.491018; SwinUNETR micro Dice 0.650086, IoU 0.481576. เลือก U-Net เป็น quality-first candidate |
 | 6 | score/ROI/confidence gate และ FastAPI contract | ค่าเริ่มต้น `not_calibrated` จึง `abstained` ไม่คืน derived score หรือคำแนะนำ |
-| 7 | validation contract, threshold calibration และ release gate | เครื่องมือพร้อม แต่ยังไม่มี held-out target-user validation set ที่มี consent; production policy ยังไม่ออก |
+| 7 | validation contract, threshold calibration และ release gate | เครื่องมือพร้อม แต่ยังไม่มี held-out target-user validation set; มี owner-reviewed prototype policy แยกจาก statistical calibration |
 
 รายงานจัดระเบียบโฟลเดอร์เดิมบันทึกการย้าย source และการลบ generated cache; โครงสร้างปัจจุบันและวิธีใช้งานอยู่ใน [AI README](../../../ai/README.md) แล้ว
 
@@ -19,5 +19,5 @@
 
 - ผล Phase 5 เป็นการประเมินบน official test set ไม่ใช่หลักฐานความแม่นยำกับภาพผู้ใช้จริง
 - ห้ามใช้ official test IDs หรือ masks ที่อาจเคยใช้ฝึกเพื่อออก production confidence threshold
-- ก่อนปล่อยคะแนนหรือคำแนะนำ ต้องมี target-user validation set ที่แยกจาก training/test และผ่าน consent/provenance gate ตาม [แผนวิจัย](FFHQ-Wrinkle-Research-Implementation-Plan.md)
-- ค่า default ของ API ยังเป็น `abstained` จนกว่าจะมี policy ที่ผ่าน release gate
+- Calibrated release ต้องมี target-user validation set ที่แยกจาก training/test และผ่าน consent/provenance gate ตาม [Roadmap](../../roadmap.md)
+- Default policy ยัง abstain; เลือก `APHRODIZE_WRINKLE_REVIEWED_POLICY` เพื่อใช้ owner-reviewed prototype หรือ `APHRODIZE_WRINKLE_POLICY_BUNDLE` สำหรับ calibrated release เพียงแหล่งเดียว Manual policy ไม่ใช่ statistical validation ดู [Wrinkle area implementation](Wrinkle-Area-Implementation.md)
