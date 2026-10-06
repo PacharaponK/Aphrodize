@@ -21,6 +21,14 @@ if args[:1] == ['inspect']:
  print(json.dumps([{'Image': 'sha256:'+'a'*64, 'State': {'Health': {'Status': status}}}]))
 if 'config' in args:
  root = os.environ['FAKE_DEPLOY_DIR']
+ volumes = {'postgres_data':{'name':'aphrodize_postgres_data'}}
+ candidate = 'API_IMAGE' in os.environ
+ if mode == 'extra-vm-volume' and not candidate:
+  volumes['label_studio_data'] = {'name':'aphrodize_label_studio_data'}
+ if mode == 'changed-volume' and candidate:
+  volumes['postgres_data']['name'] = 'private-not-for-logs'
+ if mode == 'new-volume' and candidate:
+  volumes['new_data'] = {'name':'new_data'}
  print(json.dumps({'name':'aphrodize', 'services': {
  'api': {'image':os.environ.get('API_IMAGE','old-api'),
  'volumes':[{'type':'bind','source':root+'/storage/artifacts/uv',
@@ -30,7 +38,7 @@ if 'config' in args:
  'postgres': {'image':'postgres:16-alpine'},
  'caddy': {'image':'caddy:2-alpine', 'volumes':[{'type':'bind','source':root+'/docker/Caddyfile.vm',
  'target':'/etc/caddy/Caddyfile'}]},
- }, 'volumes':{'postgres_data':{'name':'aphrodize_postgres_data'}}}))
+ }, 'volumes':volumes}))
 if 'run' in args and '--no-build' in args: sys.exit(64)
 if 'ps' in args: print('container-'+args[-1])
 if args[:1] == ['pull'] and mode == 'pull-fail': sys.exit(1)
@@ -129,6 +137,26 @@ class VmDeploymentTests(unittest.TestCase):
         self.assertFalse(
             any("down" in command or "prune" in command for command in self.commands())
         )
+
+    def test_preserves_extra_vm_volume_when_release_omits_optional_service(self):
+        result = self.run_deploy("extra-vm-volume")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        candidate = json.loads(Path(current["config"]).read_text())
+        self.assertEqual(
+            candidate["volumes"]["label_studio_data"],
+            {"name": "aphrodize_label_studio_data"},
+        )
+
+    def test_volume_changes_rejected_with_safe_diagnostic_before_mutation(self):
+        for mode in ("changed-volume", "new-volume"):
+            with self.subTest(mode=mode):
+                result = self.run_deploy(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Persistent volume configuration changed", result.stderr)
+                self.assertNotIn("private-not-for-logs", result.stdout + result.stderr)
+                self.assertFalse(any("up" in c or "run" in c for c in self.commands()))
+                self.assertFalse((self.deploy / ".releases/current-release.json").exists())
 
     def test_pull_failure_does_not_update_services(self):
         result = self.run_deploy("pull-fail")
