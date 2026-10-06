@@ -93,6 +93,23 @@ function displayValue(metric: ForecastMetric, value: number, language: Language)
   return `${value.toLocaleString(language === "th" ? "th-TH" : "en-US")} ${translate(language, "มล.", "ml")}`;
 }
 
+// Axis units are hours for sleep and ml for water; API values stay unchanged.
+export function forecastAxis(metric: ForecastMetric, values: number[]) {
+  const display = (value: number) => metric === "sleep_duration_minutes" ? value / 60 : value;
+  const readings = values.map(display);
+  const minimum = readings.length ? Math.min(...readings) : 0;
+  const maximum = readings.length ? Math.max(...readings) : 0;
+  const span = Math.max(maximum - minimum, metric === "sleep_duration_minutes" ? 1 : 250);
+  const rawStep = span / 4;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const step = [1, 2, 2.5, 5, 10].find((factor) => factor * magnitude >= rawStep)! * magnitude;
+  const lower = Math.max(0, Math.floor((minimum - span * .15) / step) * step);
+  const upper = Math.ceil((maximum + span * .15) / step) * step;
+  const ticks = Array.from({ length: Math.round((upper - lower) / step) + 1 }, (_, i) => Number((lower + i * step).toFixed(8)));
+  const position = (value: number) => 140 - ((value - lower) / (upper - lower)) * 112;
+  return { ticks, lower, upper, position, pointPosition: (value: number) => position(display(value)) };
+}
+
 export function ForecastLineChart({
   metric,
   language,
@@ -115,13 +132,11 @@ export function ForecastLineChart({
   const values = actual.map((day) => metricValue(day, metric));
   const numericValues = values.filter((value): value is number => value !== null);
   const chartValues = forecastValue === null ? numericValues : [...numericValues, forecastValue];
-  const minimum = chartValues.length ? Math.min(...chartValues) : 0;
-  const maximum = chartValues.length ? Math.max(...chartValues) : 1;
-  const range = maximum - minimum || Math.max(1, maximum * 0.1);
-  const lowerBound = Math.max(0, minimum - range * 0.18);
-  const upperBound = maximum + range * 0.18;
+  const axis = forecastAxis(metric, chartValues);
+  const formatNumber = (value: number) => value.toLocaleString(language === "th" ? "th-TH" : "en-US", { maximumFractionDigits: 2 });
+  const pointLabel = (value: number) => formatNumber(metric === "sleep_duration_minutes" ? Math.round(value / 60 * 10) / 10 : value);
   const x = (index: number) => 22 + index * 42;
-  const y = (value: number) => 100 - ((value - lowerBound) / (upperBound - lowerBound)) * 76;
+  const y = axis.pointPosition;
   const lastActualIndex = values.reduce<number>(
     (last, value, index) => value === null ? last : index,
     -1,
@@ -154,8 +169,16 @@ export function ForecastLineChart({
         <span>{translate(language, "สำหรับ", "For")} <time dateTime={targetDate}>{formatDate(targetDate, language, true)}</time></span>
       </div>
       <figure className="personal-forecast-chart">
-        <svg viewBox="0 0 332 110" role="img" aria-label={accessibleLabel}>
-          <line className="personal-forecast-grid-line" x1="18" x2="324" y1="100" y2="100" />
+        <div className="personal-forecast-chart-scroll" tabIndex={0} role="region" aria-label={translate(language, `${heading}: กราฟ เลื่อนแนวนอนเพื่อดูทุกวัน`, `${heading}: chart, scroll horizontally to view all days`)}>
+        <div className="personal-forecast-chart-layout">
+          <div className="personal-forecast-y-axis" aria-hidden="true">
+            <span className="personal-forecast-y-unit">{unit}</span>
+            {axis.ticks.map((tick) => <span className="personal-forecast-y-tick" key={tick} style={{ top: `${axis.position(tick) / 160 * 100}%` }}>{formatNumber(tick)}</span>)}
+          </div>
+          <div className="personal-forecast-plot-column">
+          <div className="personal-forecast-plot">
+        <svg viewBox="0 0 332 160" role="img" aria-label={accessibleLabel}>
+          {axis.ticks.map((tick) => <line key={tick} className="personal-forecast-grid-line" x1="0" x2="332" y1={axis.position(tick)} y2={axis.position(tick)} />)}
           {values.slice(0, -1).map((value, index) => {
             const nextValue = values[index + 1];
             if (value === null || nextValue === null) return null;
@@ -207,12 +230,21 @@ export function ForecastLineChart({
             </rect>
           ) : null}
         </svg>
+        <div className="personal-forecast-point-labels" aria-hidden="true">
+          {values.map((value, index) => value === null ? null : <span key={actual[index].local_date} className="personal-forecast-point-value" data-series="actual" style={{ left: `${x(index) / 332 * 100}%`, top: `${y(value) / 160 * 100}%` }}>{pointLabel(value)}</span>)}
+          {forecastValue !== null && <span className="personal-forecast-point-value is-forecast" data-series="forecast" style={{ left: `${x(7) / 332 * 100}%`, top: `${y(forecastValue) / 160 * 100}%` }}>{pointLabel(forecastValue)}</span>}
+        </div>
+          </div>
         {/* HTML ticks retain their reading size when the SVG scales on phones. */}
         <div className="personal-forecast-axis-dates" aria-hidden="true">
-          <span>{actual.length ? formatDate(actual[0].local_date, language) : "-"}</span>
-          <span>{actual.length ? formatDate(actual[Math.floor((actual.length - 1) / 2)].local_date, language) : "-"}</span>
-          <span>{formatDate(targetDate, language)}</span>
+          <span style={{ left: `${x(0) / 332 * 100}%` }}>{actual.length ? formatDate(actual[0].local_date, language) : "-"}</span>
+          <span style={{ left: `${x(Math.max(0, Math.floor((actual.length - 1) / 2))) / 332 * 100}%` }}>{actual.length ? formatDate(actual[Math.floor((actual.length - 1) / 2)].local_date, language) : "-"}</span>
+          <span style={{ left: `${x(7) / 332 * 100}%` }}>{formatDate(targetDate, language)}</span>
         </div>
+          </div>
+        </div>
+        </div>
+        <p className="personal-forecast-scroll-hint">{translate(language, "จอแคบ: เลื่อนกราฟซ้าย–ขวาเพื่อดูทุกวัน", "On narrow screens, scroll the chart to view all days.")}</p>
         <figcaption className="personal-forecast-legend">
           <span><i className="personal-forecast-legend-actual" aria-hidden="true" />{translate(language, "ข้อมูลจริง", "Actual")}</span>
           <span><i className="personal-forecast-legend-estimate" aria-hidden="true" />{translate(language, "ประมาณวันถัดไป", "Next-day forecast")}</span>

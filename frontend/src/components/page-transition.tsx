@@ -37,5 +37,5 @@ export function PageTransition({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   // A layout-neutral boundary, not a keyed template that resets forms on navigation.
-  return <div ref={container} style={{ display: "contents" }}>{children}</div>;
+  return <div ref={container} data-color-system="hierarchical" style={{ display: "contents" }}>{children}</div>;
 }

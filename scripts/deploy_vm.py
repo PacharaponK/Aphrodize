@@ -17,6 +17,10 @@ SOURCE = Path(__file__).resolve().parents[1]
 OVERLAYS = {"compose.duckdns.yml", "compose.vm-worker-access.yml"}
 
 
+class DeploymentError(RuntimeError):
+    """An authored diagnostic safe to show in public Actions logs."""
+
+
 def run(command, *, env=None, input_text=None, timeout=60):
     """Suppress tool output: Compose configuration can contain runtime secrets."""
     try:
@@ -225,8 +229,19 @@ class Deployment:
         for service in ("postgres", "redis", "minio", "caddy"):
             if config["services"].get(service) != old_config["services"].get(service):
                 raise ValueError(f"Infrastructure change in {service} needs a separate deployment")
-        if config.get("volumes") != old_config.get("volumes"):
-            raise ValueError("Persistent volume configuration changed")
+        # Optional VM services can declare volumes absent from the release source.
+        # Keep their declarations, but reject new or changed release volume mappings.
+        old_volumes = old_config.get("volumes", {})
+        release_volumes = config.get("volumes", {})
+        if any(
+            name not in old_volumes or value != old_volumes[name]
+            for name, value in release_volumes.items()
+        ):
+            raise DeploymentError(
+                "Persistent volume configuration changed; explicit migration required"
+            )
+        if old_volumes:
+            config["volumes"] = {**old_volumes, **release_volumes}
         for service in ("api", "frontend"):
             if config["services"][service].get("volumes") != old_config["services"][service].get(
                 "volumes"
@@ -325,6 +340,9 @@ def main():
             deployment.recover()
         else:
             deployment.rollback()
+    except DeploymentError as exc:
+        print(f"Deployment failed: {exc}", file=sys.stderr)
+        return 1
     except (Exception, KeyboardInterrupt):
         # Keep exception chains/config content out of public Actions logs.
         print(
