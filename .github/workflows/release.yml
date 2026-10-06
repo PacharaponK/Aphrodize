@@ -1,0 +1,210 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A running update must finish recovery before a newer release can start.
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.repository == 'PacharaponK/Aphrodize'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.validate.outputs.sha }}
+      site_url: ${{ steps.validate.outputs.site_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Validate tested commit and production origin
+        id: validate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          main_sha=$(gh api repos/PacharaponK/Aphrodize/commits/main --jq .sha)
+          tested_sha=$(python3 scripts/release_manifest.py origin --event-file "$GITHUB_EVENT_PATH" --current-sha "$main_sha")
+          site_url=$(python3 -c 'import os; from scripts.release_manifest import validate_site_url; print(validate_site_url(os.environ["SITE_URL"]))')
+          echo "sha=$tested_sha" >> "$GITHUB_OUTPUT"
+          echo "site_url=$site_url" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, frontend, minio]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.candidate.outputs.sha }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Build and publish immutable candidate
+        id: image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: docker/${{ matrix.service }}.Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/pacharaponk/aphrodize-${{ matrix.service }}:sha-${{ needs.candidate.outputs.sha }}
+          build-args: SITE_URL=${{ needs.candidate.outputs.site_url }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/PacharaponK/Aphrodize
+            org.opencontainers.image.revision=${{ needs.candidate.outputs.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: Smoke-test production API imports and health handler
+        if: matrix.service == 'api'
+        env:
+          IMAGE: ghcr.io/pacharaponk/aphrodize-api@${{ steps.image.outputs.digest }}
+        run: |
+          docker run --rm --network none "$IMAGE" python -c 'import asyncio, cv2; from backend.main import app; from backend.api.v1.routes.health import health; assert asyncio.run(health()) == {"status": "ok"}; assert app'
+      - name: Save digest
+        env:
+          SERVICE: ${{ matrix.service }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          mkdir -p digests
+          printf '%s\n' "$DIGEST" > "digests/$SERVICE.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: digest-${{ matrix.service }}-${{ needs.candidate.outputs.sha }}
+          path: digests/*.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  manifest:
+    needs: [candidate, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.candidate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: digest-*-${{ needs.candidate.outputs.sha }}
+          path: digests
+          merge-multiple: true
+      - name: Assemble complete release manifest
+        env:
+          SOURCE_SHA: ${{ needs.candidate.outputs.sha }}
+          SITE_URL: ${{ needs.candidate.outputs.site_url }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          from scripts.release_manifest import SERVICES, validate_manifest
+          images = {name: 'ghcr.io/pacharaponk/aphrodize-' + name + '@' + Path('digests/' + name + '.txt').read_text().strip() for name in SERVICES}
+          data = validate_manifest({'schema_version': 1, 'source_sha': os.environ['SOURCE_SHA'], 'run_id': int(os.environ['GITHUB_RUN_ID']), 'site_url': os.environ['SITE_URL'], 'images': images})
+          Path('release-manifest.json').write_text(json.dumps(data, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-manifest-${{ needs.candidate.outputs.sha }}
+          path: release-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Record published commit
+        env:
+          SOURCE_SHA: ${{ needs.candidate.outputs.sha }}
+        run: echo "Published release manifest for $SOURCE_SHA" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: [candidate, manifest]
+    if: >-
+      needs.manifest.result == 'success' &&
+      vars.VM_DEPLOY_ENABLED == 'true'
+    runs-on: [self-hosted, linux, x64, aphrodize-deploy]
+    environment: production
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    env:
+      VM_DEPLOY_DIR: ${{ vars.VM_DEPLOY_DIR }}
+      VM_COMPOSE_OVERLAYS: ${{ vars.VM_COMPOSE_OVERLAYS }}
+      VM_TLS_CA_FILE: ${{ vars.VM_TLS_CA_FILE }}
+      SOURCE_SHA: ${{ needs.candidate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.candidate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-manifest-${{ needs.candidate.outputs.sha }}
+          path: release-input
+      - name: Validate current-run manifest
+        run: |
+          python3 scripts/release_manifest.py validate release-input/release-manifest.json --source-sha "$SOURCE_SHA" --run-id "$GITHUB_RUN_ID"
+      - name: Authenticate to GHCR using temporary credentials
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          echo "DOCKER_CONFIG=$RUNNER_TEMP/aphrodize-docker-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          export DOCKER_CONFIG="$RUNNER_TEMP/aphrodize-docker-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          install -d -m 700 "$DOCKER_CONFIG"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      - name: Check main immediately before VM update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          req = urllib.request.Request('https://api.github.com/repos/PacharaponK/Aphrodize/commits/main', headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'User-Agent': 'Aphrodize-release'})
+          with urllib.request.urlopen(req, timeout=20) as response:
+              current = json.load(response)['sha']
+          if current != os.environ['SOURCE_SHA']:
+              raise SystemExit('Candidate superseded by newer main; no services updated')
+          PY
+      - name: Deploy and verify (automatic rollback on failure)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          args=(--verify-main --manifest release-input/release-manifest.json --deploy-dir "$VM_DEPLOY_DIR" --overlays "$VM_COMPOSE_OVERLAYS")
+          if [[ -n "$VM_TLS_CA_FILE" ]]; then args+=(--ca-file "$VM_TLS_CA_FILE"); fi
+          bash scripts/deploy-vm.sh "${args[@]}"
+      - name: Remove temporary registry credentials
+        if: always()
+        run: |
+          if [[ -d "$DOCKER_CONFIG" ]]; then
+            docker logout ghcr.io || true
+            rm -f -- "$DOCKER_CONFIG/config.json"
+            rmdir -- "$DOCKER_CONFIG" || true
+          fi
+      - name: Record deployment result
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: echo "Deployment $SOURCE_SHA — $RESULT; a recovered candidate still reports failure." >> "$GITHUB_STEP_SUMMARY"
