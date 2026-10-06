@@ -226,6 +226,28 @@ class Deployment:
         }
         config = json.loads(run(self.compose(files) + ["config", "--format", "json"], env=env))
         old_config = json.loads(Path(previous["config"]).read_text())
+        # Runtime integrations live in the VM configuration, separately from images.
+        # Reject releases that silently drop a configured annotation workflow.
+        runtime_files = [self.directory / "compose.vm.yml"]
+        runtime_files.extend(self.directory / name for name in self.overlays)
+        runtime_config = json.loads(
+            run(self.compose(runtime_files) + ["config", "--format", "json"])
+        )
+        runtime_env = runtime_config["services"]["api"].get("environment", {})
+        candidate_env = config["services"]["api"].get("environment", {})
+        if runtime_env.get("LABEL_STUDIO_API_KEY") and int(
+            runtime_env.get("LABEL_STUDIO_PROJECT_ID", 0)
+        ) > 0:
+            if any(
+                candidate_env.get(key) != runtime_env.get(key)
+                for key in (
+                    "LABEL_STUDIO_URL", "LABEL_STUDIO_API_KEY", "LABEL_STUDIO_PROJECT_ID"
+                )
+            ):
+                raise DeploymentError(
+                    "Release drops or changes the VM annotation review configuration; "
+                    "no services updated"
+                )
         for service in ("postgres", "redis", "minio", "caddy"):
             if config["services"].get(service) != old_config["services"].get(service):
                 raise ValueError(f"Infrastructure change in {service} needs a separate deployment")
