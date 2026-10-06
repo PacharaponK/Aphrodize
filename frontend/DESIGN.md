@@ -34,10 +34,12 @@ colors:
 typography:
   font-family: "Libre Baskerville 400 for h1-h2; Montserrat 400 for body/UI and 700 for bold; Noto Sans Thai fallback"
   page-title: "clamp(30px, 3vw, 42px) / 1.2 / Libre Baskerville 400"
-  section-title: "20px / 1.35 / Libre Baskerville 400"
-  card-title: "16px / 1.4 / Montserrat 700"
-  body: "15px / 1.6 / 400"
-  secondary: "13px / 1.55 / 400"
+  section-title: "clamp(24px, 1.4vw, 28px) / 1.35 / Libre Baskerville 400"
+  card-title: "18px / 1.4 / Montserrat 700"
+  body: "16px / 1.65 / 400"
+  secondary: "14px / 1.6 / 400"
+  metadata: "13px / 1.6 / 400"
+  chart-tick: "12px / 1.6 / 400, HTML labels do not scale with SVG"
   eyebrow: "11px / 1.4 / 600 / 1px tracking"
   metric: "30px / 1.3 / Montserrat 700, tabular numerals"
 
@@ -89,6 +91,8 @@ components:
 # Aphrodize — แนวทางออกแบบ
 
 ## สถานะปัจจุบัน
+
+- Approved shared typography scale (6 October 2026): body16px, secondary/help/consent14px, peripheral metadata13px and chart ticks12px through rem-based shared tokens in `design-system.css`. Data-card section headings use24–28px by role; subordinate headings use18px. Preserve the expressive Home hero, page titles and real metric numerals rather than enlarging every heading uniformly. Navbar labels are14px on desktop and16px in the collapsed menu; collapse at1200px instead of shrinking labels. Forecast date ticks are HTML outside the scalable SVG so phone resizing cannot shrink them; legends/daily values stay14px and wrap, never shrink at narrow breakpoints. Preserve actual/predicted semantics, consent text, provenance, localized copy, themes, reduced motion and all API behavior. Inputs use16px, including onboarding numeric fields. Keep this scale consistent across Profile, Capture/results/products, Health/Trends, UV, Auth and admin.
 
 - Approved unified width system (6 October 2026, supersedes all earlier route-specific width limits): every page uses one 1920px outer frame and one `--responsive-page-gutter` (desktop clamp 16px–72px, tablet 18px, phone 14px). Navbar edges align with main content edges. Home/footer, Capture, Daily Health, Trends, Profile, Quality recovery, UV explorer, Auth, onboarding and admin share this frame. Profile no longer has a 1240px cap; Auth no longer uses a 520px form cap; sparse health/history sections and recovery panels no longer have narrower outer cards. Keep readable 65–75ch text/form measures inside the full-width frames and retain route-specific internal columns. Dialogs keep task-specific sizes and page heights remain content-driven. Capture's empty chooser has a content-sized 200px minimum; real image/camera previews retain contain-fit sizes. Preserve consent, data, error states and native interactions; no overflow masking.
 

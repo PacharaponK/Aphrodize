@@ -163,7 +163,7 @@ test("shared navigation defaults to English with visible account controls and a 
   assert.match(unchanged, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
   assert.equal(unchanged.includes('class="app-navigation-sign-in"'), false);
   const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
-  assert.match(navigationCss, /@media\s*\(max-width:\s*900px\)[\s\S]*?\.app-navigation\.is-motion-style \.app-navigation-controls\s*\{[^}]*display:\s*flex;/);
+  assert.match(navigationCss, /@media\s*\(max-width:\s*1200px\)[\s\S]*?\.app-navigation\.is-motion-style \.app-navigation-controls\s*\{[^}]*display:\s*flex;/);
   assert.match(navigationCss, /\.app-navigation\.is-motion-style \.app-navigation-language\s*\{[^}]*display:\s*none;/);
   assert.match(navigationCss, /\.app-navigation\.is-motion-style\.is-open \.app-navigation-language\s*\{[^}]*display:\s*block\s*[;}]/);
 });
