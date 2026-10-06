@@ -8,6 +8,7 @@
 | ข้อกำหนด consent, privacy และคำกล่าวอ้าง | [Safety and Governance](project/Safety%20and%20Governance.md) |
 | ภาพรวมระบบที่ทำงานอยู่ | [Architecture diagram](architecture/diagrams/diagram.md) และ [ER ของฐานข้อมูลปัจจุบัน](architecture/diagrams/database-er.md) |
 | Flow ของ UI, API, Redis, PostgreSQL, MinIO, MLflow และ Label Studio | [Component and Service Flows](architecture/Component-Flows.md) |
+| Mermaid เต็มตั้งแต่ input → retraining → output | [Full Input → Retraining → Output Flow](architecture/diagrams/full-input-retraining-output-flow.md) |
 | ตั้งค่าและรัน FFHQ-Wrinkle | [AI README](../ai/README.md) |
 | กรอก Daily Health และดูผล | [Daily Health Input Flow](lifestyle/Daily-Health-Input-Flow.md) |
 | เข้าใจโมเดลและเส้นทางข้อมูล UV | [การทำงานของโมเดลทำนาย UV](uv-model-workflow.md) |
