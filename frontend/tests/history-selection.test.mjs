@@ -11,10 +11,11 @@ function compile(path, overrides = {}) {
   const nativeRequire = createRequire(filename);
   const source = fs.readFileSync(filename, "utf8");
   const compiled = ts.transpileModule(source, { compilerOptions: {
-    module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
+    target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
   } }).outputText;
   const evaluated = { exports: {} };
   new Function("require", "module", "exports", compiled)(name => {
+    if (name.endsWith(".css")) return {};
     if (name in overrides) return overrides[name];
     if (name.startsWith(".")) {
       const dependency = new URL(`${name}.tsx`, filename);
@@ -62,7 +63,6 @@ function renderHistory({ selected = "", search = "", language = "en", view = "tr
     "next/link": { __esModule: true, default: ({ children, ...props }) => React.createElement("a", props, children) },
     "@/components/language-provider": { useLanguage: () => ({ language }) },
     "@/lib/history-selection": { selectHistoryDays },
-    "./daily-health-risk-results": { __esModule: true, default: () => React.createElement("p", null, "Full recorded results") },
   });
   return renderToStaticMarkup(React.createElement(exports.default, { view }));
 }
@@ -72,23 +72,24 @@ test("trend renders bounded date controls, closed details, real zero and predict
   assert.match(html, /min="2026-09-06"/);
   assert.match(html, /max="2026-10-05"/);
   assert.match(html, /Back to latest/);
-  assert.match(html, /<details class="daily-history-details">/);
+  assert.match(html, /<details class="health-inline-details daily-history-details">/);
   assert.doesNotMatch(html, /<details[^>]*open/);
-  assert.match(html, /3 signals not assessed/);
+  assert.match(html, /2 signals not assessed/);
   assert.match(html, /0 ml/);
   assert.match(html, /Forecast signals for/);
-  assert.match(html, /Full recorded results/);
+  assert.match(html, /Recorded advice/);
+  assert.match(html, /Insufficient history/);
 });
 
 test("missing date has a localized empty state, not the latest record", () => {
   const html = renderHistory({ selected: "2026-09-12", search: "2026-09-12", language: "th" });
   assert.match(html, /ไม่มีบันทึกวันที่/);
   assert.match(html, /กลับวันล่าสุด/);
-  assert.doesNotMatch(html, /Full recorded results/);
+  assert.doesNotMatch(html, /Recorded advice|daily-history-entry/);
 });
 
 test("weekly overview keeps full results and no trend search", () => {
   const html = renderHistory({ view: "overview" });
-  assert.doesNotMatch(html, /history-search-date|daily-history-details/);
-  assert.match(html, /Full recorded results/);
+  assert.doesNotMatch(html, /history-search-date|health-inline-details|daily-history-details/);
+  assert.match(html, /Recorded advice/);
 });

@@ -19,9 +19,10 @@ function loadTsx(filename) {
   tsxModuleCache.set(filename, evaluatedModule);
   const nativeRequire = createRequire(filename);
   const source = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   const requireLocal = (name) => {
+    if (name.endsWith(".css")) return {};
     const localBase = name.startsWith("@/")
       ? path.resolve(testDirectory, "../src", name.slice(2))
       : name.startsWith(".")
@@ -169,7 +170,7 @@ test("shared navigation defaults to English with visible account controls and a 
 
 test("the root layout owns navigation so changing pages does not remount it", () => {
   const readSource = (file) => fs.readFileSync(path.resolve(testDirectory, "../src", file), "utf8");
-  assert.match(readSource("app/layout.tsx"), /<SharedNavigation\s*\/>\{children\}/);
+  assert.match(readSource("app/layout.tsx"), /<SharedNavigation\s*\/>\s*<PageTransition>\{children\}<\/PageTransition>/);
   const sourceDirectory = path.resolve(testDirectory, "../src");
   for (const file of fs.readdirSync(sourceDirectory, { recursive: true }).filter((file) => file.endsWith(".tsx"))) {
     const normalized = file.replaceAll("\\", "/");
