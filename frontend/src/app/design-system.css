@@ -1127,9 +1127,13 @@ html[data-theme="black"] .app-shell main .capture-card p:not(.eyebrow) {
 
 /* Give wide screens room to breathe while keeping every layout shrink-safe. */
 :root {
+  /* Provenance is a reading cue, never a health/severity rating. */
   --page-frame-max: 1920px;
   --responsive-page-gutter: clamp(16px, 3.4vw, 72px);
 }
+.evidence-label { display:inline-flex; align-items:center; width:fit-content; max-width:100%; padding:4px 8px; border:1px solid var(--line); border-radius:6px; color:var(--muted); background:var(--surface-soft); font:400 var(--text-meta, .8125rem)/1.5 var(--font-ui); }
+.evidence-label[data-evidence="recorded"] { color:var(--ink); background:var(--surface); border-color:var(--border-strong); }
+.evidence-label[data-evidence="forecast"], .evidence-label[data-evidence="estimate"] { border-style:dashed; }
 @media (max-width: 900px) { :root { --responsive-page-gutter: 18px; } }
 @media (max-width: 480px) { :root { --responsive-page-gutter: 14px; } }
 /* One outer frame: navbar edges meet workspace content edges at every breakpoint. */

@@ -67,12 +67,13 @@ test("overview omits product and UV guidance, with the old route redirecting to 
   assert.match(onboarding, /router\.push\(effectiveFullEdit \? "\/profile" : "\/"\)/);
 });
 
-test("UV map entry appears before personal insights even without health records", () => {
+test("personal insights precedes the secondary UV entry in every data state", () => {
   for (const state of [{}, { requiresLogin: true }, { loading: true }, { failed: true }]) {
     const html = render(state);
     assert.match(html, /aria-labelledby="home-uv-map-heading"/);
     assert.match(html, /href="\/uv-map"/);
-    assert.ok(html.indexOf('id="home-uv-map-heading"') < html.indexOf("Personal insights"));
+    assert.ok(html.indexOf("Personal insights") < html.indexOf('id="home-uv-map-heading"'));
+    assert.match(html, /class="secondary-button"[^>]*>Explore UV map/);
   }
 });
 
@@ -101,10 +102,37 @@ test("home hero stays inside main with an honest decorative image and motion con
   assert.match(html, /href="\/capture"/);
   assert.match(html, /aria-pressed="false"[^>]*>Pause text animation/);
   const heroSource = fs.readFileSync(path.resolve(testDirectory, "../src/components/home-hero.tsx"), "utf8");
-  assert.match(heroSource, /if \(paused \|\| reduced\) return;/);
+  assert.match(heroSource, /if \(paused \|\| reduced \|\| compact\) return;/);
   assert.match(heroSource, /prefers-reduced-motion: reduce/);
   assert.match(heroSource, /if \(!document\.hidden\)/);
   assert.match(heroSource, /removeEventListener\("visibilitychange", schedule\)/);
+});
+
+test("authenticated hero is compact with a recording action; guests keep the introduction", () => {
+  const auth = loadTsx(path.resolve(testDirectory, "../src/components/auth-presentation.tsx"));
+  const { HomeHero } = loadTsx(path.resolve(testDirectory, "../src/components/home-hero.tsx"));
+  const original = auth.useAuthPresentation;
+  try {
+    auth.useAuthPresentation = () => ({ authStatus: "signed-in" });
+    const html = renderToStaticMarkup(withLanguage(React.createElement(HomeHero)));
+    assert.match(html, /home-hero-compact/);
+    assert.match(html, /href="\/clients"/);
+    assert.match(html, /Log today/);
+    assert.doesNotMatch(html, /home-hero-words|Pause text animation/);
+    auth.useAuthPresentation = () => ({ authStatus: "signed-out" });
+    const guest = renderToStaticMarkup(withLanguage(React.createElement(HomeHero)));
+    assert.doesNotMatch(guest, /home-hero-compact/);
+    assert.match(guest, /home-hero-words|Analyze skin/);
+  } finally { auth.useAuthPresentation = original; }
+});
+
+test("weekly cards distinguish recorded, calculated and stored forecast provenance", () => {
+  const html = render();
+  assert.equal((html.match(/<article[^>]*data-evidence="calculated"/g) || []).length, 2);
+  assert.equal((html.match(/<article[^>]*data-evidence="recorded"/g) || []).length, 1);
+  assert.equal((html.match(/<article[^>]*data-evidence="forecast"/g) || []).length, 1);
+  assert.match(html, /Recorded/);
+  assert.match(html, /Calculated/);
 });
 
 test("logged-out, loading and error states do not fabricate scores or records", () => {

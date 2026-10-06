@@ -8,6 +8,7 @@ import DailyHealthOutcomeForm from "./daily-health-outcome-form";
 import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
 import { Select } from "@/components/ui/select";
+import { EvidenceLabel } from "@/components/evidence-label";
 
 type OutdoorChoice = "under_1_hour" | "1_to_under_3_hours" | "3_to_under_4_hours" | "4_hours_or_more";
 
@@ -659,24 +660,28 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             <p className="entry-date-line" role="status" aria-live="polite">{t("สรุปข้อมูลวันที่", "Summary for")} {displayDate(entry.date, locale)}</p>
             <div className="tracker-metric-grid">
               <article className="tracker-metric duration-metric">
+                <EvidenceLabel kind="recorded" language={language} />
                 <p className="eyebrow">{t("ระยะเวลานอนที่คำนวณได้", "SLEEP DURATION")}</p>
                 <strong>{entry.sleepHours} {t("ชม.", "hr")} {entry.sleepMinutes} {t("นาที", "min")}</strong>
                 <p>{t("รวม", "Total")} {entry.sleepDurationMinutes.toLocaleString(locale)} {t("นาที", "minutes")}</p>
               </article>
               <article className="tracker-metric sleep-score-metric">
+                <EvidenceLabel kind="calculated" language={language} />
                 <p className="eyebrow">SLEEP SCORE</p>
                 <strong>{calculatedSleepScore?.toFixed(1) ?? "—"} <small>/ 100</small></strong>
                 <p>{t("คะแนนเต็มที่เพดานสูตร 9 ชั่วโมง", "Score caps at the 9-hour formula limit.")}</p>
               </article>
               <article className="tracker-metric pending-metric">
+                <EvidenceLabel kind={prediction?.predictions.thirst_score_0_10.status === "calculated" ? "calculated" : prediction?.model?.prediction_horizon_days ? "forecast" : "estimate"} language={language} />
                 <p className="eyebrow">THIRST SCORE</p>
                 <strong>{isPredicting ? "…" : thirstScore?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
-                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : prediction?.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
+                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : prediction?.predictions.thirst_score_0_10.status === "calculated" ? t("ตามสูตรน้ำหนัก ไม่ใช่ความกระหายที่รายงานเอง", "Weight-based formula, not self-reported thirst") : prediction?.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
                 {!isPredicting && thirstScore == null && hydrationRangeStatus === "missing_weight" && (
                   <Link href="/profile">{t("ไปที่โปรไฟล์ →", "Open profile →")}</Link>
                 )}
               </article>
               <article className="tracker-metric pending-metric">
+                <EvidenceLabel kind={prediction?.model?.prediction_horizon_days ? "forecast" : "estimate"} language={language} />
                 <p className="eyebrow">DRYNESS SCORE</p>
                 <strong>{isPredicting ? "…" : prediction?.predictions.skin_dryness_score_0_10.value?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
                 <p>{prediction?.predictions.skin_dryness_score_0_10.value == null ? t("ไม่มีคะแนนในรอบนี้", "No score available this time") : prediction.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>

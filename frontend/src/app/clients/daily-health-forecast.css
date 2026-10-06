@@ -20,6 +20,13 @@
 .personal-forecast-metric-heading h3{margin:0;font-size:16px;line-height:1.4}
 .personal-forecast-metric-unit{padding:4px 8px;border-radius:999px;background:var(--surface-soft);color:var(--muted);font-size:11px;white-space:nowrap}
 .personal-forecast-chart{margin:13px 0 0;min-width:0}
+.personal-forecast-next-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; padding:12px 0; margin-top:12px; border-block:1px dashed var(--line); color:var(--muted); font-size:var(--text-secondary); }
+.personal-forecast-next-summary strong { color:var(--ink); font-variant-numeric:tabular-nums; }
+.personal-forecast-next-summary > span:last-child { flex-basis:100%; }
+.personal-forecast-metric-heading .evidence-label { margin-bottom:8px; }
+.trend-page .personal-forecast-panel { box-shadow:none; background:var(--surface); }
+.trend-page .personal-forecast-metric-card { box-shadow:none; }
+.trend-page .personal-forecast-method-note { background:transparent; border-left:0; padding:0; }
 .personal-forecast-chart svg{display:block;width:100%;height:auto;overflow:visible}
 .personal-forecast-grid-line{stroke:var(--line);stroke-width:1}
 .personal-forecast-actual-line{stroke:var(--primary-deep);stroke-width:2.5;stroke-linecap:round}

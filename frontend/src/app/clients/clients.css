@@ -203,6 +203,13 @@ html[data-theme="black"] .clients-page .page-content.clients-content {
   margin-inline: auto;
 }
 .clients-page .daily-entry-copy { min-width: 0; }
+.clients-page .tracker-metric .evidence-label { margin-bottom:12px; }
+.clients-page .tracker-metric:has(.evidence-label[data-evidence="recorded"]) { background:var(--surface); border-color:var(--border-strong); }
+.clients-page .tracker-metric:has(.evidence-label[data-evidence="forecast"]),
+.clients-page .tracker-metric:has(.evidence-label[data-evidence="estimate"]) { background:var(--surface-soft); border-style:dashed; }
+.clients-page .tracker-metric > strong { color:var(--ink); }
+.clients-page .duration-metric { background:var(--surface); }
+.clients-page .daily-entry-card { box-shadow:none; background:var(--surface); border-color:var(--border-strong); }
 .clients-page .daily-entry-copy p { max-width: 65ch; }
 @media (max-width: 600px) {
   .clients-page .daily-entry-card { flex-direction: column; align-items: stretch; }
