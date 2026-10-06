@@ -2,6 +2,17 @@
  * This shared, layout-neutral scope wins over legacy route colors without
  * !important. Keep UV fills, risk badges, consent and forecast shapes intact. */
 :root {
+  /* Page wash is separate from --canvas: hero image scrims keep their tone. */
+  --page-canvas: #f4e9ec;
+  --surface-soft: #f8eff2;
+  --surface-muted: #ede0e5;
+  --line: #dbc0c8;
+  --border-strong: #b28a96;
+  --ink-soft: #39292f;
+  --muted: #503b42;
+  --chart-actual: #b63240;
+  --chart-forecast: #d34455;
+  --chart-grid: #dbc0c8;
   --surface-prominent: var(--surface);
   --surface-supporting: var(--surface-soft);
   --surface-context: var(--surface-muted);
@@ -13,12 +24,30 @@
   --shadow-prominent: 0 10px 26px -22px rgb(34 24 28 / 28%);
 }
 html[data-theme="black"] {
+  --page-canvas: #100d10;
+  --surface: #282127;
+  --surface-soft: #332831;
+  --surface-muted: #40323b;
+  --line: #604952;
+  --border-strong: #91707e;
+  --ink-soft: #f0e3e9;
+  --muted: #decbd4;
+  --chart-actual: #ffb4bb;
+  --chart-forecast: #ff929b;
+  --chart-grid: #604952;
   --surface-emphasis: #30232a;
   --danger: #ffb4bb;
   --danger-surface: #3c242c;
   --success-ink: #a4ecc3;
   --success-surface: #1c3328;
   --shadow-prominent: none;
+}
+
+:root body,
+html:root { background-color: var(--page-canvas); }
+:root [data-color-system="hierarchical"] .home-reveal-content { background: var(--page-canvas); }
+:root [data-color-system="hierarchical"] .home-dashboard-shell {
+  --dashboard-glass-surface: color-mix(in srgb, var(--surface) 94%, transparent);
 }
 
 /* Brand belongs to the primary action, not every surrounding control. */
@@ -171,6 +200,10 @@ html[data-theme="black"] {
 :root [data-color-system="hierarchical"] :is(.quality-panel, .workspace-panel) {
   background: var(--surface-prominent);
   border-color: var(--line);
+}
+/* Profile's outer workspace has no fill; inner identity/data surfaces remain. */
+:root [data-color-system="hierarchical"] .workspace-panel.profile-panel {
+  background: transparent;
 }
 :root [data-color-system="hierarchical"] .showcase-grid a {
   background: var(--surface-supporting);

@@ -102,27 +102,29 @@ test("home hero stays inside main with an honest decorative image and motion con
   assert.match(html, /href="\/capture"/);
   assert.match(html, /aria-pressed="false"[^>]*>Pause text animation/);
   const heroSource = fs.readFileSync(path.resolve(testDirectory, "../src/components/home-hero.tsx"), "utf8");
-  assert.match(heroSource, /if \(paused \|\| reduced \|\| compact\) return;/);
+  assert.match(heroSource, /if \(paused \|\| reduced\) return;/);
   assert.match(heroSource, /prefers-reduced-motion: reduce/);
   assert.match(heroSource, /if \(!document\.hidden\)/);
   assert.match(heroSource, /removeEventListener\("visibilitychange", schedule\)/);
 });
 
-test("authenticated hero is compact with a recording action; guests keep the introduction", () => {
+test("signed-in and guest visitors both retain the restored expressive hero", () => {
   const auth = loadTsx(path.resolve(testDirectory, "../src/components/auth-presentation.tsx"));
   const { HomeHero } = loadTsx(path.resolve(testDirectory, "../src/components/home-hero.tsx"));
   const original = auth.useAuthPresentation;
   try {
     auth.useAuthPresentation = () => ({ authStatus: "signed-in" });
     const html = renderToStaticMarkup(withLanguage(React.createElement(HomeHero)));
-    assert.match(html, /home-hero-compact/);
-    assert.match(html, /href="\/clients"/);
-    assert.match(html, /Log today/);
-    assert.doesNotMatch(html, /home-hero-words|Pause text animation/);
+    assert.doesNotMatch(html, /home-hero-compact|Your latest records and next steps/);
+    assert.match(html, /href="\/capture"/);
+    assert.match(html, /Analyze skin/);
+    assert.match(html, /home-hero-words/);
+    assert.match(html, /Pause text animation/);
     auth.useAuthPresentation = () => ({ authStatus: "signed-out" });
     const guest = renderToStaticMarkup(withLanguage(React.createElement(HomeHero)));
     assert.doesNotMatch(guest, /home-hero-compact/);
     assert.match(guest, /home-hero-words|Analyze skin/);
+    assert.equal(html, guest);
   } finally { auth.useAuthPresentation = original; }
 });
 
