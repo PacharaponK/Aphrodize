@@ -158,6 +158,7 @@ export type SkinType =
   | "prefer_not_to_say";
 
 export type DailyHealthProfile = {
+  sex?: "male" | "female" | "prefer_not_to_say" | null;
   has_session: boolean;
   consent_active: boolean;
   age_guidance_consent_active: boolean;

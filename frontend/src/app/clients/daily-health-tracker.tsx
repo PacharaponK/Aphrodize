@@ -141,6 +141,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     smoking_status: null,
   });
   const [isPredicting, setIsPredicting] = useState(false);
+  const canAskMenstruation = personalProfile.has_session && personalProfile.sex !== "male";
   const [storageStatus, setStorageStatus] = useState<StorageStatus>("idle");
   const [storageMessage, setStorageMessage] = useState("");
   const predictionRequestId = useRef(0);
@@ -194,6 +195,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       });
       if (!response.ok) throw new Error(t("ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not delete the information. Please try again."));
       setPersonalProfile({
+        sex: personalProfile.sex,
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -258,6 +260,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       setPrediction(null);
       setForm({ ...emptyForm, date: localDateValue() });
       setPersonalProfile({
+        sex: personalProfile.sex,
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -368,7 +371,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       ageGuidanceConsent: form.ageGuidanceConsent,
       ageBand: form.ageGuidanceConsent && form.ageBand ? form.ageBand : null,
       smokingStatus: form.personalizationConsent && form.smokingStatus ? form.smokingStatus : null,
-      currentlyMenstruating: form.personalizationConsent && form.menstruationChoice
+      currentlyMenstruating: canAskMenstruation && form.personalizationConsent && form.menstruationChoice
         ? form.menstruationChoice === "yes"
         : null,
     } satisfies DailyEntry;
@@ -513,7 +516,9 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                 checked={form.personalizationConsent}
                 onChange={(event) => updateForm("personalizationConsent", event.target.checked)}
               />
-              <span>{t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status and menstrual check-ins for personalized guidance only, not diagnosis.")}</span>
+              <span>{canAskMenstruation
+                ? t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status and menstrual check-ins for personalized guidance only, not diagnosis.")
+                : t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่ เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status for personalized guidance only, not diagnosis.")}</span>
             </label>
             {form.personalizationConsent && (
               <div className="personal-context-fields">
@@ -533,7 +538,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                     ]}
                   />
                 </label>
-                <fieldset className="tracker-field">
+                {canAskMenstruation && <fieldset className="tracker-field">
                   <legend>{t("กำลังมีประจำเดือนวันนี้หรือไม่ (ไม่บังคับ)", "Are you menstruating today? (Optional)")}</legend>
                   <div className="period-checkin-options">
                     <label>
@@ -564,7 +569,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                       <span>{t("ไม่ใช่", "No")}</span>
                     </label>
                   </div>
-                </fieldset>
+                </fieldset>}
               </div>
             )}
             <label className="personalization-consent">
