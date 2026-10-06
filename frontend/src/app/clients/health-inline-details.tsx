@@ -1,14 +1,11 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import type { DailyHealthInterpretation, HealthSignal } from "@/lib/daily-health-types";
-import { levelLabel, unavailableMessage } from "./daily-health-risk-results";
+import type { DailyHealthInterpretation } from "@/lib/daily-health-types";
+import { levelLabel, unavailableMessage, validForecast } from "./daily-health-risk-results";
 import "./health-inline-details.css";
 
 const unique = (values: string[]) => [...new Set(values.filter(Boolean))];
-const validForecast = (signal: HealthSignal) => signal.status === "predicted"
-  && typeof signal.value_0_10 === "number" && Number.isFinite(signal.value_0_10)
-  && signal.value_0_10 >= 0 && signal.value_0_10 <= 10;
 
 export default function HealthInlineDetails({ interpretation, language, date, className = "" }: {
   interpretation: DailyHealthInterpretation;

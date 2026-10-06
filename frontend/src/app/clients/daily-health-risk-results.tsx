@@ -9,6 +9,10 @@ const riskSignals = (interpretation: DailyHealthInterpretation, language: "th" |
   { id: "thirst", label: language === "en" ? "Next-day thirst" : "กระหายน้ำวันถัดไป", signal: interpretation.next_day_predictions.thirst_attention },
 ];
 
+export const validForecast = (signal: HealthSignal) => signal.status === "predicted"
+  && typeof signal.value_0_10 === "number" && Number.isFinite(signal.value_0_10)
+  && signal.value_0_10 >= 0 && signal.value_0_10 <= 10;
+
 export function levelLabel(signal: HealthSignal, language: "th" | "en"): string {
   if (signal.level === "low") return language === "en" ? "Low" : "ต่ำ";
   if (signal.level === "moderate") return language === "en" ? "Moderate" : "ปานกลาง";
@@ -44,14 +48,13 @@ export function unavailableMessage(signal: HealthSignal, language: "th" | "en"):
 
 function RiskCard({ label, signal, language }: { label: string; signal: HealthSignal; language: "th" | "en" }) {
   const hasLevel = signal.level !== null;
-  const hasForecast = signal.status === "predicted" && typeof signal.value_0_10 === "number"
-    && Number.isFinite(signal.value_0_10) && signal.value_0_10 >= 0 && signal.value_0_10 <= 10;
+  const hasForecast = validForecast(signal);
   const signalClass = hasLevel ? ` health-signal-${signal.level}` : " health-signal-unrated";
 
   return (
     <article className={`health-signal-card${signalClass}`}>
       <div className="health-signal-heading">
-        <h3>{label}</h3>
+        <h4>{label}</h4>
         <span className="health-signal-level">{levelLabel(signal, language)}</span>
       </div>
       {hasForecast ? <div className="health-signal-forecast">
@@ -60,7 +63,6 @@ function RiskCard({ label, signal, language }: { label: string; signal: HealthSi
         <p className="health-signal-note">{signal.target === "perceived_energy"
           ? language === "en" ? "Estimated perceived energy; higher means more energy." : "ค่าประมาณพลังงานที่รู้สึก ค่าสูงหมายถึงมีพลังงานมากขึ้น"
           : language === "en" ? "Estimated perceived thirst, not the weight-based water formula." : "ค่าประมาณความกระหายที่รู้สึก ไม่ใช่สูตรน้ำดื่มตามน้ำหนัก"}</p>
-        <p className="health-signal-note">{language === "en" ? "Model" : "โมเดล"}: {signal.model_id}</p>
       </div> : null}
       {signal.headline ? <p className="health-signal-headline" lang={language === "en" ? "th" : undefined}>{signal.headline}</p> : null}
       {signal.possible_signals?.length ? (
@@ -69,46 +71,69 @@ function RiskCard({ label, signal, language }: { label: string; signal: HealthSi
       {!hasLevel && !hasForecast && !signal.headline && !signal.possible_signals?.length ? (
         <p className="health-signal-note">{unavailableMessage(signal, language)}</p>
       ) : null}
-      {signal.status === "model_not_ready" ? <a className="text-button" href="/clients#daily-outcome-title">{language === "en" ? "Record observed outcomes" : "บันทึกผลที่สังเกตจริง"}</a> : null}
-      {signal.recommendations?.length ? (
-        <ul className="health-signal-recommendations">
-          {signal.recommendations.map((recommendation) => (
-            <li key={recommendation} lang={language === "en" ? "th" : undefined}>{recommendation}</li>
-          ))}
-        </ul>
-      ) : null}
     </article>
   );
 }
 
 export default function DailyHealthRiskResults({
-  interpretation,
+  interpretation, date, guidance = [], modelId,
 }: {
   interpretation: DailyHealthInterpretation;
+  date?: string;
+  guidance?: string[];
+  modelId?: string | null;
 }) {
   const { language } = useLanguage();
+  const t = (th: string, en: string) => language === "th" ? th : en;
+  const signals = riskSignals(interpretation, language);
+  const forecasts = signals.slice(2);
+  const unavailable = forecasts.filter(({ signal }) => !validForecast(signal));
+  const messages = [...new Set([
+    ...signals.flatMap(({ signal }) => signal.recommendations ?? []),
+    ...interpretation.profile_guidance.map(({ message }) => message),
+    ...guidance,
+  ].filter(Boolean))];
   return (
     <div className="daily-risk-results">
-      <div className="daily-risk-grid" aria-label={language === "en" ? "Risk levels and wellness signals" : "ระดับความเสี่ยงและสัญญาณสุขภาพ"}>
-        {riskSignals(interpretation, language).map(({ id, label, signal }) => (
-          <RiskCard key={id} label={label} signal={signal} language={language} />
-        ))}
-      </div>
-      {interpretation.profile_guidance.length > 0 ? (
-        <section className="profile-guidance daily-risk-profile-guidance" aria-label={language === "en" ? "Personalized guidance" : "คำแนะนำตามข้อมูลส่วนตัว"}>
-          <h3>{language === "en" ? "Guidance based on your profile" : "คำแนะนำที่ปรับตามข้อมูลส่วนตัว"}</h3>
-          <ul>
-            {interpretation.profile_guidance.map(({ topic, message, reference_url, reference_label }) => (
-              <li key={topic}>
-                <span lang={language === "en" ? "th" : undefined}>{message}</span>
-                {reference_url ? (
-                  <> <a href={reference_url} target="_blank" rel="noreferrer" lang={language === "en" ? "th" : undefined}>{reference_label ?? (language === "en" ? "Source" : "แหล่งข้อมูล")}</a></>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <section className="daily-risk-current" aria-label={t("จากบันทึกของคุณ", "Your recorded day")}>
+        <h3>{t("จากบันทึกของคุณ", "Your recorded day")}{date ? <> · <time dateTime={date}>{date}</time></> : null}</h3>
+        <div className="daily-risk-grid">
+          {signals.slice(0, 2).map(({ id, label, signal }) => (
+            <RiskCard key={id} label={label} signal={signal} language={language} />
+          ))}
+        </div>
+      </section>
+      <section className="daily-risk-outlook" aria-label={t("แนวโน้มวันถัดไป", "Next-day outlook")}>
+        <h3>{t("แนวโน้มวันถัดไป", "Next-day outlook")}</h3>
+        {forecasts.some(({ signal }) => validForecast(signal)) ? <div className="daily-risk-grid">
+          {forecasts.filter(({ signal }) => validForecast(signal)).map(({ id, label, signal }) => <RiskCard key={id} label={label} signal={signal} language={language} />)}
+        </div> : null}
+        {unavailable.length ? <div className="daily-risk-unavailable">
+          <dl>{unavailable.map(({ id, label, signal }) => <div key={id}>
+            <dt>{label}</dt><dd>{signal.status === "predicted" ? t("ยังไม่มีผล", "Unavailable") : levelLabel(signal, language)}</dd>
+            <dd className="health-signal-note">{unavailableMessage(signal, language)}</dd>
+            {signal.headline && signal.status !== "out_of_training_domain" ? <dd lang="th">{signal.headline}</dd> : null}
+            {signal.possible_signals?.length ? <dd lang="th">{signal.possible_signals.join(" · ")}</dd> : null}
+          </div>)}</dl>
+          {unavailable.some(({ signal }) => signal.status === "model_not_ready") ? <p className="health-signal-note">{t("การบันทึกผลจริงไม่ทำให้โมเดลเปิดใช้งานทันที ต้องผ่านการตรวจสอบและอนุมัติก่อน", "Recording outcomes does not activate a model immediately; review and approval are still required.")}</p> : null}
+          {unavailable.some(({ signal }) => ["model_not_ready", "insufficient_data", "insufficient_history"].includes(signal.status)) ? <a className="text-button" href="/clients#daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</a> : null}
+        </div> : null}
+      </section>
+      {messages.length ? <details className="daily-risk-guidance">
+        <summary>{t("คำแนะนำและเหตุผล", "Guidance & context")}</summary>
+        {language === "en" ? <p className="health-signal-note">Guidance is shown in its original Thai.</p> : null}
+        <ul>{messages.map(message => <li key={message} lang="th">{message}
+          {interpretation.profile_guidance.filter(item => item.message === message && item.reference_url).map(item => <span key={item.topic}> <a href={item.reference_url} target="_blank" rel="noreferrer">{item.reference_label ?? t("แหล่งข้อมูล", "Source")}</a></span>)}
+        </li>)}</ul>
+      </details> : null}
+      {modelId || signals.some(({ signal }) => signal.model_id || signal.method || signal.drivers?.length || signal.reason_codes?.length) ? <details className="daily-risk-provenance">
+        <summary>{t("วิธีประเมินและที่มาของผล", "Assessment method & provenance")}</summary>
+        {modelId ? <p className="health-signal-note">{t("โมเดลของคะแนน", "Score model")}: {modelId}</p> : null}
+        <dl>{signals.filter(({ signal }) => signal.model_id || signal.method || signal.drivers?.length || signal.reason_codes?.length).map(({ id, label, signal }) => <div key={id}>
+          <dt>{label}</dt>{signal.model_id ? <dd>{signal.model_id}</dd> : null}{signal.method ? <dd>{signal.method}</dd> : null}
+          {[...new Set([...(signal.drivers ?? []), ...(signal.reason_codes ?? [])])].map(reason => <dd key={reason}>{reason}</dd>)}
+        </div>)}</dl>
+      </details> : null}
       <p className="daily-risk-disclaimer">{language === "en" ? "Signals from your health records—not a diagnosis." : "สัญญาณจากบันทึกสุขภาพ ไม่ใช่การวินิจฉัย"}</p>
     </div>
   );
