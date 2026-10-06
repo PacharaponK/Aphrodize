@@ -411,25 +411,40 @@ def build_health_interpretation(
                 else []
             ),
         },
-        "acne_flare_signal": {
-            "level": None,
-            "status": "insufficient_data",
-            "reason_codes": ["no_self_reported_acne_labels"],
-        },
         "next_day_predictions": {
             "low_energy_signal": {
                 "level": None,
-                "status": "insufficient_history",
-                "reason_codes": ["no_user_reported_target_labels"],
+                "status": "model_not_ready",
+                "reason_codes": ["energy_model_not_deployed"],
             },
             "thirst_attention": {
                 "level": None,
-                "status": "insufficient_history",
-                "reason_codes": ["no_user_reported_target_labels"],
+                "status": "model_not_ready",
+                "reason_codes": ["no_approved_observed_outcome_model"],
             },
         },
         "profile_guidance": profile_guidance,
     }
+
+
+def build_next_day_signals(
+    metadata: dict[str, Any], outputs: dict[str, float], *, target_date: date,
+) -> dict[str, dict[str, Any]]:
+    """Numeric experimental estimates, never unvalidated clinical severity bands."""
+    signals: dict[str, dict[str, Any]] = {}
+    for key, target in (
+        ("thirst_attention", "reported_thirst_level_0_10"),
+        ("low_energy_signal", "reported_energy_level_0_10"),
+    ):
+        if target in outputs:
+            signals[key] = {
+                "level": None, "status": "predicted", "value_0_10": outputs[target],
+                "target_date": target_date.isoformat(), "model_id": metadata["model_id"],
+                "method": "user_reported_next_day_model",
+                "target": "perceived_energy" if key == "low_energy_signal" else "perceived_thirst",
+                "reason_codes": [],
+            }
+    return signals
 
 
 def predict_daily_health(
@@ -476,6 +491,7 @@ def predict_daily_health(
     ]
     thirst_score: float | None = hydration["score_0_10"]
     dryness_score: float | None = None
+    observed_outputs: dict[str, float] = {}
     if inside_training_domain or allow_out_of_domain_test_prediction:
         try:
             prediction = np.asarray(
@@ -484,9 +500,21 @@ def predict_daily_health(
             ).reshape(-1)
         except Exception as error:
             raise RuntimeError("Daily score model inference failed.") from error
-        if len(prediction) != 2 or not np.isfinite(prediction).all():
+        targets = metadata.get("targets", [])
+        observed_model = (
+            metadata.get("data_policy") == "active_opt_in_and_user_reported_numeric_outcomes_only"
+            and prediction_horizon_days == 1
+        )
+        expected_outputs = len(targets) if observed_model and targets else 2
+        if (expected_outputs not in (2, 3) or len(prediction) != expected_outputs
+                or not np.isfinite(prediction).all()):
             raise RuntimeError("Daily score model returned invalid score outputs.")
         dryness_score = round(float(np.clip(prediction[1], 0, 10)), 1)
+        if observed_model and targets and inside_training_domain:
+            observed_outputs = {
+                target: round(float(np.clip(value, 0, 10)), 1)
+                for target, value in zip(targets, prediction, strict=True)
+            }
     else:
         if not allow_out_of_domain_test_prediction:
             warnings.append(
@@ -526,6 +554,20 @@ def predict_daily_health(
         skin_type=skin_type,
         thirst_is_calculated=True,
     )
+    interpretation["next_day_predictions"].update(build_next_day_signals(
+        metadata, observed_outputs, target_date=date.fromordinal(local_date.toordinal() + 1),
+    ))
+    if (metadata.get("data_policy") == "active_opt_in_and_user_reported_numeric_outcomes_only"
+            and prediction_horizon_days == 1 and not inside_training_domain):
+        for key, target in (
+            ("thirst_attention", "reported_thirst_level_0_10"),
+            ("low_energy_signal", "reported_energy_level_0_10"),
+        ):
+            if target in metadata.get("targets", []):
+                interpretation["next_day_predictions"][key] = {
+                    "level": None, "status": "out_of_training_domain",
+                    "reason_codes": input_domain_reasons,
+                }
     guidance = make_guidance(
         sleep_total,
         None,

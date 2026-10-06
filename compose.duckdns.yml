@@ -1,0 +1,12 @@
+# Add this overlay to compose.vm.yml for a publicly trusted certificate.
+# DNS-01 validation does not require public access to the VM.
+services:
+  caddy:
+    image: aphrodize-caddy:2.11.6-duckdns-0.5.0
+    build:
+      context: .
+      dockerfile: docker/caddy-duckdns.Dockerfile
+    environment:
+      DUCKDNS_API_TOKEN: ${DUCKDNS_API_TOKEN:?Set DUCKDNS_API_TOKEN in .env}
+    volumes:
+      - ./docker/Caddyfile.duckdns:/etc/caddy/Caddyfile:ro

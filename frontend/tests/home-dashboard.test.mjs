@@ -19,9 +19,10 @@ function loadTsx(filename) {
   tsxModuleCache.set(filename, evaluatedModule);
   const nativeRequire = createRequire(filename);
   const source = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+    compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
   }).outputText;
   const requireLocal = (name) => {
+    if (name.endsWith(".css")) return {};
     const localBase = name.startsWith("@/")
       ? path.resolve(testDirectory, "../src", name.slice(2))
       : name.startsWith(".")
@@ -47,7 +48,7 @@ const render = (props = {}) => renderToStaticMarkup(withLanguage(React.createEle
 
 test("overview omits product and UV guidance, with the old route redirecting to results", () => {
   const { default: legacyPage } = loadTsx(path.resolve(testDirectory, "../src/app/recommendation/page.tsx"));
-  assert.throws(legacyPage, (error) => error.digest === "NEXT_REDIRECT;replace;/capture#results;307;");
+  assert.throws(legacyPage, (error) => error.digest === "NEXT_REDIRECT;replace;/capture#products;307;");
   const { default: oldResultsPage } = loadTsx(path.resolve(testDirectory, "../src/app/result-detail/page.tsx"));
   assert.throws(oldResultsPage, (error) => error.digest === "NEXT_REDIRECT;replace;/capture#results;307;");
   const { UvRecommendation } = loadTsx(path.resolve(testDirectory, "../src/app/recommendation/uv-recommendation.tsx"));
@@ -75,26 +76,35 @@ test("UV map entry appears before personal insights even without health records"
   }
 });
 
-test("the looping decorative video belongs to main, not an article", () => {
+test("home hero stays inside main with an honest decorative image and motion controls", () => {
   const filename = path.resolve(testDirectory, "../src/app/page.tsx");
-  const source = ts.createSourceFile(filename, fs.readFileSync(filename, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const pageText = fs.readFileSync(filename, "utf8");
-  assert.doesNotMatch(pageText, /legacy\/home\.js/, "the stale legacy script must not inject duplicate navbar controls");
-  const videoParents = [];
+  const source = ts.createSourceFile(filename, pageText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  assert.doesNotMatch(pageText, /legacy\/home\.js/, "legacy scripts must not duplicate navbar controls");
+  const heroParents = [];
   function visit(node, ancestors = []) {
     const tag = ts.isJsxElement(node) ? node.openingElement.tagName.getText(source)
       : ts.isJsxSelfClosingElement(node) ? node.tagName.getText(source) : null;
-    if (tag === "HomeMotionVideo") videoParents.push(ancestors);
-    ts.forEachChild(node, (child) => visit(child, tag ? [...ancestors, tag] : ancestors));
+    if (tag === "HomeHero") heroParents.push(ancestors);
+    ts.forEachChild(node, child => visit(child, tag ? [...ancestors, tag] : ancestors));
   }
   visit(source);
-  assert.equal(videoParents.length, 1);
-  assert.deepEqual(videoParents[0].slice(-2), ["main", "figure"]);
-  assert.equal(videoParents[0].includes("article"), false);
-  const videoSource = fs.readFileSync(path.resolve(testDirectory, "../src/components/home-motion-video.tsx"), "utf8");
-  assert.match(videoSource, /\r?\n\s+loop\r?\n/);
-  assert.match(videoSource, /\r?\n\s+muted\r?\n/);
-  assert.match(videoSource, /\r?\n\s+playsInline\r?\n/);
+  assert.equal(heroParents.length, 1);
+  assert.equal(heroParents[0].at(-1), "main");
+  assert.equal(heroParents[0].includes("article"), false);
+  const { HomeHero } = loadTsx(path.resolve(testDirectory, "../src/components/home-hero.tsx"));
+  const html = renderToStaticMarkup(withLanguage(React.createElement(HomeHero)));
+  assert.match(html, /aria-labelledby="home-hero-title"/);
+  assert.match(html, /alt=""/);
+  assert.match(html, /aphrodize-hero-face\.png/);
+  assert.match(html, /Visual demo, not an analysis result/);
+  assert.match(html, /href="\/capture"/);
+  assert.match(html, /aria-pressed="false"[^>]*>Pause text animation/);
+  const heroSource = fs.readFileSync(path.resolve(testDirectory, "../src/components/home-hero.tsx"), "utf8");
+  assert.match(heroSource, /if \(paused \|\| reduced\) return;/);
+  assert.match(heroSource, /prefers-reduced-motion: reduce/);
+  assert.match(heroSource, /if \(!document\.hidden\)/);
+  assert.match(heroSource, /removeEventListener\("visibilitychange", schedule\)/);
 });
 
 test("logged-out, loading and error states do not fabricate scores or records", () => {
@@ -133,7 +143,7 @@ test("dashboard chrome defaults to English without inventing personal content", 
   assert.equal(/[\u0E00-\u0E7F]/u.test(html), false);
 });
 
-test("shared navigation defaults to English and keeps mobile controls in the menu", () => {
+test("shared navigation defaults to English with visible account controls and a mobile language menu", () => {
   const english = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "dashboard", showThemeToggle: true, showSignIn: true })));
   assert.match(english, /aria-label="Open menu"/);
   assert.match(english, />Overview</);
@@ -145,22 +155,22 @@ test("shared navigation defaults to English and keeps mobile controls in the men
   assert.match(english, />Dark</);
   assert.match(english, /aria-controls="primary-navigation navigation-controls"/);
   assert.match(english, /id="navigation-controls"/);
-  assert.match(english, /class="[^"]*app-nav-settings-trigger[^"]*"/);
-  assert.match(english, /aria-label="Settings"/);
-  assert.match(english, /id="nav-settings-dropdown"/);
+  assert.match(english, /class="app-navigation-language"/);
+  assert.match(english, /class="app-navigation-auth-action app-navigation-sign-in"/);
   const unchanged = renderToStaticMarkup(withLanguage(React.createElement(AppNavigation, { active: "clients" })));
   assert.match(unchanged, /aria-label="Open menu"/);
   assert.match(unchanged, /Daily health/);
   assert.match(unchanged, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
   assert.equal(unchanged.includes('class="app-navigation-sign-in"'), false);
   const navigationCss = fs.readFileSync(path.resolve(testDirectory, "../src/app/design-system.css"), "utf8");
-  assert.match(navigationCss, /@media\s*\(max-width:\s*1200px\)[\s\S]*?\.app-navigation-controls\s*\{[^}]*display:\s*none;/);
-  assert.match(navigationCss, /\.app-navigation\.is-open \.app-navigation-controls\s*\{\s*display:\s*flex;/);
+  assert.match(navigationCss, /@media\s*\(max-width:\s*900px\)[\s\S]*?\.app-navigation\.is-motion-style \.app-navigation-controls\s*\{[^}]*display:\s*flex;/);
+  assert.match(navigationCss, /\.app-navigation\.is-motion-style \.app-navigation-language\s*\{[^}]*display:\s*none;/);
+  assert.match(navigationCss, /\.app-navigation\.is-motion-style\.is-open \.app-navigation-language\s*\{[^}]*display:\s*block\s*[;}]/);
 });
 
 test("the root layout owns navigation so changing pages does not remount it", () => {
   const readSource = (file) => fs.readFileSync(path.resolve(testDirectory, "../src", file), "utf8");
-  assert.match(readSource("app/layout.tsx"), /<SharedNavigation\s*\/>\{children\}/);
+  assert.match(readSource("app/layout.tsx"), /<SharedNavigation\s*\/>\s*<PageTransition>\{children\}<\/PageTransition>/);
   const sourceDirectory = path.resolve(testDirectory, "../src");
   for (const file of fs.readdirSync(sourceDirectory, { recursive: true }).filter((file) => file.endsWith(".tsx"))) {
     const normalized = file.replaceAll("\\", "/");

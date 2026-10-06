@@ -263,7 +263,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!owner) return failed(401, "No active analysis session in this browser");
     const artifact = request.nextUrl.searchParams.get("artifact");
     // Only the two display images can be fetched through this proxy.
-    if (artifact && artifact !== "mask" && artifact !== "overlay") {
+    if (artifact && !["mask", "overlay", "regions", "outline"].includes(artifact)) {
       return failed(400, "Unknown artifact");
     }
     const path = artifact
@@ -277,7 +277,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (artifact) {
       // Stream image bytes with private, non-cacheable response headers.
       return new NextResponse(await response.arrayBuffer(), {
-        headers: { "Content-Type": "image/png", "Cache-Control": "private, no-store" },
+        headers: {
+          "Content-Type": artifact === "outline" ? "image/svg+xml" : "image/png",
+          "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+          "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+        },
       });
     }
     return NextResponse.json(await response.json(), { headers: { "Cache-Control": "no-store" } });

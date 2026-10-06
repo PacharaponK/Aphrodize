@@ -8,20 +8,27 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 from PIL import Image, ImageOps
 
-from .alignment import ALIGNMENT_SIZE, FaceDetection, YuNetFaceDetector, align_face
+from .alignment import (
+    ALIGNMENT_SIZE,
+    DETECTION_VERSION,
+    FaceDetection,
+    YuNetFaceDetector,
+    align_face,
+)
 from .face_parsing import (
     face_mask_from_labels,
     load_bisenet,
     mask_rgb_image,
     parse_face,
 )
+from .paths import MODEL_ROOT
 from .quality import (
     QualityAssessment,
     QualityConfig,
@@ -30,12 +37,11 @@ from .quality import (
     assess_source_quality,
     quality_config_dict,
 )
-from .paths import MODEL_ROOT
 from .texture_map import PREPROCESSING_VERSION as TEXTURE_VERSION
 from .texture_map import generate_texture_map
 
 SUPPORTED_FORMATS = {"JPEG", "PNG", "WEBP"}
-PREPROCESSING_VERSION = f"ffhq-user-image-v1+{TEXTURE_VERSION}"
+PREPROCESSING_VERSION = f"ffhq-user-image-v1+{TEXTURE_VERSION}+{DETECTION_VERSION}"
 MANAGED_ARTIFACTS = (
     "aligned_face.png",
     "face_mask.png",
@@ -52,6 +58,7 @@ class PreprocessResult:
     ``tensor`` is ``[4,H,W]``; RGB arrays are ``[H,W,3]``; ``face_mask`` and
     ``texture_map`` are ``[H,W]``. Metadata names the saved artifacts.
     """
+
     tensor: np.ndarray
     aligned_face: np.ndarray
     face_mask: np.ndarray
@@ -72,8 +79,7 @@ def load_user_image(path: str | Path) -> tuple[np.ndarray, str]:
         # Reject formats whose decoding and quality behavior this pipeline has not defined.
         if image_format not in SUPPORTED_FORMATS:
             raise ValueError(
-                f"unsupported image format {image_format or 'unknown'}; "
-                "expected JPEG, PNG, or WebP"
+                f"unsupported image format {image_format or 'unknown'}; expected JPEG, PNG, or WebP"
             )
         # Rotate according to camera EXIF, drop alpha if present, and force three RGB channels.
         rgb = ImageOps.exif_transpose(opened).convert("RGB")
@@ -84,8 +90,8 @@ def load_user_image(path: str | Path) -> tuple[np.ndarray, str]:
 def build_four_channel_tensor(masked_face: np.ndarray, texture: np.ndarray) -> np.ndarray:
     """Stack masked RGB and texture as float32 ``[4, H, W]`` in ``[-1, 1]``.
 
-The first three channels are face-only RGB; the fourth is the texture map.
-``predict_image`` passes this array to PyTorch without rereading the NPY file.
+    The first three channels are face-only RGB; the fourth is the texture map.
+    ``predict_image`` passes this array to PyTorch without rereading the NPY file.
     """
 
     # RGB must have one color triplet at every image coordinate.
@@ -187,9 +193,7 @@ def preprocess_image(
         # Face parsing runs on the aligned face, independently of wrinkle inference.
         if parser is None:
             # BiSeNet labels face parts; it does not predict wrinkles.
-            model = load_bisenet(
-                bisenet_checkpoint or MODEL_ROOT / "79999_iter.pth", device="cpu"
-            )
+            model = load_bisenet(bisenet_checkpoint or MODEL_ROOT / "79999_iter.pth", device="cpu")
             # BiSeNet assigns a face-part class at each pixel of its 512² output.
             labels = parse_face(aligned, model, device="cpu")
         else:
@@ -224,9 +228,7 @@ def preprocess_image(
     # Full aligned RGB face: shared coordinates for every later image artifact.
     Image.fromarray(aligned, mode="RGB").save(output_dir / "aligned_face.png")
     # White marks pixels kept for wrinkle inference; black is excluded.
-    Image.fromarray(face_mask.astype(np.uint8) * 255, mode="L").save(
-        output_dir / "face_mask.png"
-    )
+    Image.fromarray(face_mask.astype(np.uint8) * 255, mode="L").save(output_dir / "face_mask.png")
     # The three RGB model channels have zeroes outside the face mask.
     Image.fromarray(masked_face, mode="RGB").save(output_dir / "masked_face.png")
     # The fourth model channel is saved as a viewable grayscale image.

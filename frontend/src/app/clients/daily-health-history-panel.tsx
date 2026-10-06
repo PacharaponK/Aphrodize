@@ -9,6 +9,10 @@ import type {
   HealthSignal,
 } from "@/lib/daily-health-types";
 import DailyHealthRiskResults from "./daily-health-risk-results";
+import HealthInlineDetails from "./health-inline-details";
+import DashboardInsights from "./dashboard-insights";
+import { useLanguage } from "@/components/language-provider";
+import { selectHistoryDays } from "@/lib/history-selection";
 
 type HistoryView = "overview" | "trend" | "dashboard";
 const DAILY_HEALTH_DATA_UPDATED_EVENT = "daily-health-data-updated";
@@ -133,33 +137,42 @@ function WeeklySummary({ items }: { items: DailyHealthHistoryItem[] }) {
   );
 }
 
-function DailyHistoryEntry({ item }: { item: DailyHealthHistoryItem }) {
+function DailyHistoryEntry({ item, compact = false }: { item: DailyHealthHistoryItem; compact?: boolean }) {
+  const { language } = useLanguage();
+  const english = compact && language === "en";
+  const t = (th: string, en: string) => english ? en : th;
   const summary: HealthSignal = item.interpretation.daily_health_summary;
+  const unavailableCount = [summary, item.interpretation.skin_care_attention_level,
+    item.interpretation.next_day_predictions.low_energy_signal,
+    item.interpretation.next_day_predictions.thirst_attention].filter((signal) => signal.level === null && signal.status !== "predicted").length;
 
   return (
     <article className="daily-history-entry">
       <header className="daily-history-entry-heading">
         <div>
-          <p className="eyebrow">บันทึกประจำวันที่</p>
-          <h3><time dateTime={item.local_date}>{formatDate(item.local_date)}</time></h3>
+          {!compact ? <p className="eyebrow">บันทึกประจำวันที่</p> : null}
+          <h3><time dateTime={item.local_date}>{formatDate(item.local_date, english ? "en-US" : "th-TH")}</time></h3>
           {item.prediction_target_date && item.prediction_target_date !== item.local_date ? (
             <p className="daily-history-target-date">
-              สัญญาณคาดการณ์สำหรับ {formatDate(item.prediction_target_date)}
+              {t("สัญญาณคาดการณ์สำหรับ", "Forecast signals for")} {formatDate(item.prediction_target_date, english ? "en-US" : "th-TH")}
             </p>
           ) : null}
         </div>
         {summary.level ? (
           <span className={`health-signal-level health-signal-level-${summary.level}`}>
-            ภาพรวม: {summary.level === "low" ? "ต่ำ" : summary.level === "moderate" ? "ปานกลาง" : "สูง"}
+            {t("ภาพรวม", "Overall")}: {summary.level === "low" ? t("ต่ำ", "Low") : summary.level === "moderate" ? t("ปานกลาง", "Moderate") : t("สูง", "High")}
           </span>
         ) : null}
       </header>
-      <div className="daily-history-input-summary" aria-label="ข้อมูลประจำวันที่บันทึก">
-        <span>นอน <strong>{durationLabel(item.input.sleep_duration_total_minutes)}</strong></span>
-        <span>น้ำดื่ม <strong>{item.input.water_intake_ml.toLocaleString("th-TH")} มล.</strong></span>
-        <span>กลางแจ้ง <strong>{outdoorLabel(item.input.outdoor_exposure_choice)}</strong></span>
+      <div className="daily-history-input-summary" aria-label={t("ข้อมูลประจำวันที่บันทึก", "Recorded daily inputs")}>
+        <span>{t("นอน", "Sleep")} <strong>{english ? `${Math.floor(item.input.sleep_duration_total_minutes / 60)}h ${item.input.sleep_duration_total_minutes % 60}m` : durationLabel(item.input.sleep_duration_total_minutes)}</strong></span>
+        <span>{t("น้ำดื่ม", "Water")} <strong>{item.input.water_intake_ml.toLocaleString(english ? "en-US" : "th-TH")} {t("มล.", "ml")}</strong></span>
+        <span>{t("กลางแจ้ง", "Outdoors")} <strong>{english ? ["Under 1h", "1–under 3h", "3–under 4h", "4h or more"][item.input.outdoor_exposure_choice - 1] ?? "Not recorded" : outdoorLabel(item.input.outdoor_exposure_choice)}</strong></span>
       </div>
-      <DailyHealthRiskResults interpretation={item.interpretation} />
+      {compact ? <>
+        {unavailableCount > 0 ? <p className="daily-history-availability">{t(`ยังประเมินไม่ได้ ${unavailableCount} สัญญาณ`, `${unavailableCount} signals not assessed`)}</p> : null}
+        <HealthInlineDetails interpretation={item.interpretation} language={english ? "en" : "th"} date={formatDate(item.local_date, english ? "en-US" : "th-TH")} className="daily-history-details" />
+      </> : <DailyHealthRiskResults interpretation={item.interpretation} />}
     </article>
   );
 }
@@ -255,22 +268,24 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
         </header>
         <p>{t("สำรวจค่า UV ท้องฟ้าโปร่งรายจังหวัด สำหรับวันนี้และพรุ่งนี้ เพื่อวางแผนกิจกรรมกลางแจ้ง", "Explore clear-sky UV by province for today and tomorrow to plan your time outdoors.")}</p>
       </section>
-      <section className="home-insights-card" aria-label={t("สัญญาณและคำแนะนำจากข้อมูลล่าสุด", "Signals and guidance from your latest record")}>
-        <header className="home-card-heading"><h2>{t("สิ่งที่ควรใส่ใจ", "Personal insights")}</h2>{latest && !unavailable ? <span className="home-period">{t("จากบันทึก", "From your record on")} {dateLabel(latest.local_date)}</span> : null}</header>
-        {unavailable || !latest ? <p>{t("เมื่อมีข้อมูล ระบบจะแสดงสัญญาณและคำแนะนำเฉพาะคุณที่นี่", "Your personal signals and guidance will appear here when records are available")}</p> : <div lang="th">{language === "en" ? <p lang="en">Recorded guidance is currently available in Thai.</p> : null}<DailyHealthRiskResults interpretation={latest.interpretation} /></div>}
-      </section>
-      {!unavailable && items.length > 0 ? <details className="home-history-details"><summary>{t("ข้อมูลรายวันที่ใช้ในภาพรวม", "Recorded daily details (Thai)")} ({items.length} {t("วัน", "days")})</summary><div className="daily-history-list" lang="th">{[...items].sort((a, b) => b.local_date.localeCompare(a.local_date)).map((item) => <DailyHistoryEntry key={item.local_date} item={item} />)}</div></details> : null}
+      <DashboardInsights latest={latest} loading={loading} failed={failed} requiresLogin={requiresLogin} onRetry={onRetry} language={language} dateLabel={dateLabel} />
     </div>
   );
 }
 
 export default function DailyHealthHistoryPanel({ view }: { view: HistoryView }) {
+  const { language } = useLanguage();
+  const t = (th: string, en: string) => language === "en" ? en : th;
   const [history, setHistory] = useState<DailyHealthHistoryResponse | null>(null);
   const [failed, setFailed] = useState(false);
   const [requiresLogin, setRequiresLogin] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [searchDate, setSearchDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [windowEnd] = useState(todayInBangkok);
+  const windowStart = shiftDate(windowEnd, -29);
   const limit = view === "trend" ? 30 : 7;
-  const title = view === "overview" ? "สรุปสุขภาพและความเสี่ยงรายสัปดาห์" : "แนวโน้มความเสี่ยงรายวัน";
+  const title = view === "overview" ? "สรุปสุขภาพและความเสี่ยงรายสัปดาห์" : t("ประวัติสุขภาพ", "Health history");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -281,10 +296,10 @@ export default function DailyHealthHistoryPanel({ view }: { view: HistoryView })
     };
     window.addEventListener(DAILY_HEALTH_DATA_UPDATED_EVENT, refreshHistory);
 
-    const today = todayInBangkok();
+    const today = view === "trend" ? windowEnd : todayInBangkok();
     const dateRange = view !== "trend"
       ? `&from_date=${shiftDate(today, -6)}&to_date=${today}`
-      : "";
+      : `&from_date=${windowStart}&to_date=${windowEnd}`;
     void fetch(`/api/daily-health/entries?limit=${limit}${dateRange}`, {
       cache: "no-store",
       signal: controller.signal,
@@ -312,10 +327,12 @@ export default function DailyHealthHistoryPanel({ view }: { view: HistoryView })
       controller.abort();
       window.removeEventListener(DAILY_HEALTH_DATA_UPDATED_EVENT, refreshHistory);
     };
-  }, [limit, retryCount, view]);
+  }, [limit, retryCount, view, windowStart, windowEnd]);
 
   const items = history?.items ?? [];
-  const visibleItems = view === "overview" ? items.slice(0, 7) : items;
+  const visibleItems = view === "trend"
+    ? selectHistoryDays(items, windowStart, windowEnd, selectedDate)
+    : view === "overview" ? items.slice(0, 7) : items;
 
   if (view === "dashboard") return <DashboardHistory items={items} loading={history === null && !failed} failed={failed} requiresLogin={requiresLogin} onRetry={() => { setFailed(false); setHistory(null); setRetryCount((count) => count + 1); }} />;
 
@@ -323,43 +340,70 @@ export default function DailyHealthHistoryPanel({ view }: { view: HistoryView })
     <section className={`daily-history-panel daily-history-${view}`} aria-label={title}>
       <header className="daily-history-panel-heading">
         <div>
-          <p className="eyebrow">{view === "overview" ? "WEEKLY HEALTH OVERVIEW" : "HEALTH RISK HISTORY"}</p>
+          {view === "overview" ? <p className="eyebrow">WEEKLY HEALTH OVERVIEW</p> : null}
           <h2>{title}</h2>
           <p>
             {view === "overview"
               ? "สรุปค่าเฉลี่ยจากวันที่มีบันทึกจริงใน 7 วันปฏิทินล่าสุด พร้อมข้อมูลรายวันของคุณ"
-              : "ดูระดับความเสี่ยงและคำแนะนำแยกตามวันที่บันทึกย้อนหลังไม่เกิน 30 รายการ"}
+              : t("แสดง 3 วันล่าสุดที่มีบันทึก ค้นหาวันย้อนหลังได้ภายใน 30 วัน", "Your 3 latest recorded days. Search any date in the last 30 days.")}
           </p>
         </div>
       </header>
 
+      {view === "trend" ? <form className="daily-history-search" onSubmit={(event) => {
+        event.preventDefault();
+        const date = String(new FormData(event.currentTarget).get("local_date") ?? "");
+        if (date >= windowStart && date <= windowEnd) {
+          setSearchDate(date);
+          setSelectedDate(date);
+        }
+      }}>
+        <div className="daily-history-date-field">
+          <label htmlFor="history-search-date">{t("ค้นหาตามวันที่", "Search by date")}</label>
+          <input id="history-search-date" name="local_date" type="date" value={searchDate} min={windowStart} max={windowEnd} required
+            onChange={(event) => setSearchDate(event.target.value)} aria-describedby="history-search-range" />
+        </div>
+        <button type="submit" className="secondary-button" disabled={history === null || failed}>{t("ค้นหา", "Search")}</button>
+        <button type="button" className="text-button" disabled={!searchDate && !selectedDate} onClick={() => {
+          setSearchDate(""); setSelectedDate("");
+        }}>{t("กลับวันล่าสุด", "Back to latest")}</button>
+        <p id="history-search-range" className="daily-history-search-range">{formatDate(windowStart, language === "en" ? "en-US" : "th-TH")} – {formatDate(windowEnd, language === "en" ? "en-US" : "th-TH")}</p>
+      </form> : null}
+
       {failed ? (
         <div className="daily-history-empty" role="status">
-          <p>ยังโหลดประวัติความเสี่ยงไม่ได้</p>
+          <p>{t("ยังโหลดประวัติไม่ได้", "Unable to load your history")}</p>
           <button className="secondary-button" type="button" onClick={() => {
             setFailed(false);
+            setHistory(null);
             setRetryCount((count) => count + 1);
           }}>
-            ลองอีกครั้ง
+            {t("ลองอีกครั้ง", "Retry")}
           </button>
         </div>
       ) : history === null ? (
-        <p className="daily-history-loading" role="status">กำลังโหลดข้อมูลความเสี่ยง…</p>
+        <p className="daily-history-loading" role="status">{t("กำลังโหลดประวัติ…", "Loading your history…")}</p>
       ) : visibleItems.length === 0 ? (
-        <div className="daily-history-empty">
-          <h3>{view === "overview" ? "ยังไม่มีข้อมูลใน 7 วันล่าสุด" : "ยังไม่มีข้อมูลรายวันที่บันทึกไว้"}</h3>
+        <div className="daily-history-empty" role="status">
+          <h3>{view === "overview" ? "ยังไม่มีข้อมูลใน 7 วันล่าสุด" : selectedDate
+            ? t(`ไม่มีบันทึกวันที่ ${formatDate(selectedDate)}`, `No record for ${formatDate(selectedDate, "en-US")}`)
+            : t("ยังไม่มีบันทึกใน 30 วันล่าสุด", "No records in the last 30 days")}</h3>
           <p>
             {view === "overview"
               ? "บันทึกสุขภาพรายวันเพื่อเริ่มดูค่าเฉลี่ยและแนวโน้มเฉพาะคุณ"
-              : "บันทึกข้อมูลสุขภาพรายวันก่อน แล้วผลความเสี่ยงเฉพาะคุณจะแสดงที่นี่"}
+              : selectedDate ? t("ลองเลือกวันอื่น หรือกลับไปดูวันล่าสุด", "Choose another date or return to your latest records.")
+              : t("บันทึกสุขภาพรายวันเพื่อเริ่มดูประวัติของคุณ", "Record your daily health to start your history.")}
           </p>
-          <Link className="primary-button" href="/clients">ไปบันทึกสุขภาพรายวัน</Link>
+          {!selectedDate ? <Link className="primary-button" href="/clients">{t("ไปบันทึกสุขภาพรายวัน", "Record daily health")}</Link> : null}
         </div>
       ) : (
         <>
           {view === "overview" ? <WeeklySummary items={visibleItems} /> : null}
+          {view === "trend" ? <p className="daily-history-results-label" role="status">{selectedDate
+            ? t("ผลค้นหา 1 วัน", "1 recorded day found")
+            : t(`แสดง ${visibleItems.length} วันล่าสุดที่มีบันทึก`, `Showing ${visibleItems.length} latest recorded days`)}</p> : null}
           <div className="daily-history-list">
-            {visibleItems.map((item) => <DailyHistoryEntry key={item.local_date} item={item} />)}
+            {visibleItems.map((item) => <DailyHistoryEntry key={`${selectedDate || "latest"}-${item.local_date}`} item={item} compact={view === "trend"} />)}
           </div>
         </>
       )}

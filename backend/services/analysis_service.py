@@ -13,10 +13,11 @@ from backend.core.config import settings
 from backend.core.db.models import Analysis, AnalysisStatus, Consent, Product
 from backend.libs.minio_client import put_bytes
 from backend.libs.redis_client import get_arq_pool
+from backend.libs.wrinkle_area import AREA_BAND_VERSION, assess_visible_area
 
 ANALYSIS_CONSENT_VERSION = "1.0"
 
-RECOMMENDATION_RULE_VERSION = "2026-10-01.2"
+RECOMMENDATION_RULE_VERSION = "2026-10-05.1"
 RECOMMENDATION_KNOWLEDGE_ID = "aphrodize-category-baseline"
 RECOMMENDATION_KNOWLEDGE_VERSION = "1.0.0"
 KNOWLEDGE_SOURCES = {
@@ -206,7 +207,6 @@ def recommendations_for(
     age_years = answers.get("age_years")
     age_group = answers.get("age_group")
     sunscreen = answers.get("sunscreen_frequency")
-    outdoor_minutes = answers.get("outdoor_minutes")
     reported_dryness_context = daily_context.get("reported_dryness")
     reported_dryness = (
         reported_dryness_context.get("value")
@@ -315,18 +315,10 @@ def recommendations_for(
         "under_13",
         "13_17",
     }
-    initial_outdoor_high = isinstance(outdoor_minutes, int | float) and outdoor_minutes >= 60
     daily_outdoor_high = type(daily_outdoor) is int and 2 <= daily_outdoor <= 4
-    if sunscreen in {"never", "sometimes"} and (initial_outdoor_high or daily_outdoor_high):
-        sunscreen_fields = ["sunscreen_frequency"]
-        sunscreen_sources = ["self_reported"]
-        if initial_outdoor_high:
-            sunscreen_fields.insert(0, "outdoor_minutes")
-        if daily_outdoor_high:
-            sunscreen_fields.append("daily_outdoor_exposure_choice")
-            # Sunscreen frequency is always the questionnaire prerequisite. Daily
-            # outdoor exposure adds a second source; it never replaces that source.
-            sunscreen_sources = ["self_reported", "daily_health_reported"]
+    if sunscreen in {"never", "sometimes"} and daily_outdoor_high:
+        sunscreen_fields = ["sunscreen_frequency", "daily_outdoor_exposure_choice"]
+        sunscreen_sources = ["self_reported", "daily_health_reported"]
         add(
             "broad-spectrum sunscreen SPF 30+",
             "R-SUN-OUTDOOR-001",
@@ -399,6 +391,26 @@ def recommendations_for(
                 and isfinite(regions[name]["score"])
                 and 0 < regions[name]["score"] <= 100
             ]
+            area_measurements = {}
+            for name in wrinkle_regions:
+                value = regions[name]
+                try:
+                    measured = assess_visible_area(
+                        value.get("wrinkle_pixels"), value.get("evaluated_pixels")
+                    )
+                except ValueError:
+                    continue
+                if measured["wrinkle_area_ratio"] is None:
+                    continue
+                ratio = measured["wrinkle_area_ratio"]
+                measured["near_boundary"] = any(
+                    abs(ratio - boundary) <= boundary * 0.1
+                    for boundary in measured["thresholds"].values()
+                )
+                area_measurements[name] = {"region": name, **measured}
+            image_context["area_band_version"] = AREA_BAND_VERSION
+            image_context["area_measurements"] = list(area_measurements.values())
+            image_context["area_policy"] = "owner_reviewed_provisional"
             for item in items:
                 if not wrinkle_regions or "moisturizer" not in item["category"]:
                     continue
@@ -418,6 +430,7 @@ def recommendations_for(
                 item["wrinkle_region_scores"] = [
                     {"region": name, "score": regions[name]["score"]} for name in wrinkle_regions
                 ]
+                item["wrinkle_area_measurements"] = list(area_measurements.values())
                 item["rationale"] += (
                     " Released wrinkle regions are shown as visual context only. They do not "
                     "identify a cause, predict product effects, or authorize use near the eyes."
@@ -432,6 +445,16 @@ def recommendations_for(
                     ("eye_contour", [name for name in wrinkle_regions if name in eye_regions]),
                     ("face", [name for name in wrinkle_regions if name not in eye_regions]),
                 ):
+                    # ponytail: single-image provisional bands; validate per-region repeatability
+                    # before introducing stronger product or longitudinal decisions.
+                    relevant_regions = [
+                        name
+                        for name in relevant_regions
+                        if name in area_measurements
+                        and area_measurements[name]["visible_area_band"] in {"medium", "high"}
+                        and area_measurements[name]["wrinkle_area_ratio"]
+                        >= area_measurements[name]["thresholds"]["low_ratio"] * 1.1
+                    ]
                     if not relevant_regions:
                         continue
                     add(
@@ -450,12 +473,24 @@ def recommendations_for(
                         {
                             "application_region": area,
                             "wrinkle_regions": relevant_regions,
+                            "wrinkle_area_measurements": [
+                                area_measurements[name] for name in relevant_regions
+                            ],
+                            "priority_area_ratio": max(
+                                area_measurements[name]["wrinkle_area_ratio"]
+                                for name in relevant_regions
+                            ),
+                            "selection_reason": (
+                                "provisional_visible_area_above_low_boundary_buffer"
+                            ),
                             "wrinkle_region_scores": [
                                 {"region": name, "score": regions[name]["score"]}
                                 for name in relevant_regions
                             ],
                         }
                     )
+            # Order targeted concerns by uncapped area, then keep the basic routine.
+            items.sort(key=lambda item: -item.get("priority_area_ratio", 0))
 
     return {
         "status": "ready" if items else "no_recommendation",
@@ -532,7 +567,10 @@ def attach_catalog_products(
         if rule is None:
             continue
         category, required_claims = rule
-        for product in products:
+        for product in sorted(
+            products,
+            key=lambda product: skin_type not in (product.target_skin_types or []),
+        ):
             if product.status != "published" or product.reviewed_at is None:
                 continue
             # Named recommendations must include reviewed shopping links and real photos.
@@ -613,6 +651,7 @@ def attach_catalog_products(
                     if skin_type in product.target_skin_types
                     else "all",
                     "matched_claims": sorted(required),
+                    "match_reason": "reviewed_label_and_skin_type",
                 }
             )
             matched = True

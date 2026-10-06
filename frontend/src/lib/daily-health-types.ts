@@ -21,7 +21,12 @@ export type HydrationCalculation = {
 
 export type HealthSignal = {
   level: AttentionLevel;
-  status: "available" | "not_available" | "out_of_training_domain" | "insufficient_data" | "insufficient_history";
+  status: "available" | "not_available" | "out_of_training_domain" | "insufficient_data" | "insufficient_history" | "not_supported" | "model_not_ready" | "predicted";
+  value_0_10?: number;
+  target_date?: string;
+  model_id?: string;
+  method?: string;
+  target?: "perceived_energy" | "perceived_thirst";
   reason_codes?: string[];
   headline?: string;
   drivers?: string[];
@@ -40,7 +45,8 @@ export type ProfileGuidance = {
 export type DailyHealthInterpretation = {
   daily_health_summary: HealthSignal;
   skin_care_attention_level: HealthSignal;
-  acne_flare_signal: HealthSignal;
+  /** Legacy historical payloads only; not displayed or returned by new predictions. */
+  acne_flare_signal?: HealthSignal;
   next_day_predictions: {
     low_energy_signal: HealthSignal;
     thirst_attention: HealthSignal;
@@ -54,6 +60,7 @@ export type DailyHealthScores = {
 };
 
 export type PredictionResponse = {
+  forecast_receipt?: string | null;
   local_date: string;
   prediction_target_date: string;
   model_status: string;
@@ -102,6 +109,44 @@ export type DailyHealthHistoryResponse = {
   items: DailyHealthHistoryItem[];
 };
 
+export type PersonalForecastMetric = {
+  value: number | null;
+  status: "predicted" | "insufficient_history";
+};
+
+export type PersonalForecastDay = {
+  local_date: string;
+  sleep_duration_minutes: number | null;
+  water_intake_ml: number | null;
+};
+
+export type DailyHealthPersonalForecast = {
+  enabled: boolean;
+  status:
+    | "daily_health_consent_required"
+    | "consent_required"
+    | "forecasted"
+    | "insufficient_history";
+  prediction_target_date?: string;
+  history_start_date?: string;
+  history_end_date?: string;
+  actual?: PersonalForecastDay[];
+  predictions?: {
+    sleep_duration_minutes: PersonalForecastMetric;
+    water_intake_ml: PersonalForecastMetric;
+  };
+  model?: {
+    model_id: string;
+    family: string;
+    scope: "account_only";
+    prediction_horizon_days: 1;
+    history_window_days: number;
+    observations_used: number;
+    minimum_observations: number;
+    method: string;
+  };
+};
+
 export type SmokingStatus = "current" | "former" | "never" | "prefer_not_to_say";
 export type AgeBand = "13_17" | "18_60" | "61_64" | "65_plus";
 export type SkinType =
@@ -122,6 +167,7 @@ export type DailyHealthProfile = {
   height_cm?: number | null;
   skin_type_guidance_consent_active?: boolean;
   model_training_consent_active: boolean;
+  model_training_consent_current_active?: boolean;
   can_report_outcomes: boolean;
   age_band: AgeBand | null;
   smoking_status: SmokingStatus | null;

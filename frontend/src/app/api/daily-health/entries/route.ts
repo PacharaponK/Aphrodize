@@ -18,10 +18,12 @@ type DailyHealthRequest = {
     prediction_status: "predicted" | "not_available" | "prediction_failed";
     model_id: string | null;
     target_date?: string | null;
+    forecast_receipt?: string | null;
   } | null;
   personalization_consent?: boolean;
   age_guidance_consent?: boolean;
   model_training_consent?: boolean;
+  model_training_consent_version?: "daily-health-model-training-v1" | "daily-health-model-training-v2";
   age_band?: "13_17" | "18_60" | "61_64" | "65_plus" | null;
   smoking_status?: "current" | "former" | "never" | "prefer_not_to_say" | null;
   currently_menstruating?: boolean | null;
@@ -55,6 +57,8 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (value.personalization_consent !== undefined && typeof value.personalization_consent !== "boolean") return false;
   if (value.age_guidance_consent !== undefined && typeof value.age_guidance_consent !== "boolean") return false;
   if (value.model_training_consent !== undefined && typeof value.model_training_consent !== "boolean") return false;
+  if (value.model_training_consent_version !== undefined
+    && !["daily-health-model-training-v1", "daily-health-model-training-v2"].includes(String(value.model_training_consent_version))) return false;
   if (value.age_band !== undefined
     && value.age_band !== null
     && !["13_17", "18_60", "61_64", "65_plus"].includes(String(value.age_band))) return false;
@@ -70,6 +74,8 @@ function isDailyHealthRequest(value: unknown): value is DailyHealthRequest {
   if (value.prediction === null) return true;
   if (!isRecord(value.prediction)) return false;
   const status = value.prediction.prediction_status;
+  const receipt = value.prediction.forecast_receipt;
+  if (receipt != null && (typeof receipt !== "string" || receipt.length > 8192)) return false;
   const targetDate = value.prediction.target_date;
   if (targetDate !== undefined && targetDate !== null) {
     const parsedTarget = typeof targetDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(targetDate)
@@ -168,6 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         personalization_consent: body.personalization_consent === true,
         age_guidance_consent: body.age_guidance_consent === true,
         model_training_consent: body.model_training_consent === true,
+        model_training_consent_version: body.model_training_consent_version ?? "daily-health-model-training-v1",
         age_band: body.age_guidance_consent === true ? body.age_band ?? null : null,
         smoking_status: body.personalization_consent === true ? body.smoking_status ?? null : null,
         currently_menstruating: body.personalization_consent === true

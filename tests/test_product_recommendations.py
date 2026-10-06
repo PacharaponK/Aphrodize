@@ -47,13 +47,24 @@ def test_self_reported_fallback_is_available_when_wrinkle_gate_is_withheld():
     assert result["status"] == "ready"
     assert [item["category"] for item in result["recommendations"]] == [
         "fragrance-free moisturizer",
-        "broad-spectrum sunscreen SPF 30+",
     ]
     assert all(item["signal_sources"] == ["self_reported"] for item in result["recommendations"])
     assert result["image_context"] == {
         "status": "withheld",
         "reason": "wrinkle_confidence_not_released",
     }
+
+
+def test_old_questionnaire_outdoor_value_does_not_override_daily_low_exposure():
+    result = recommendations_for(
+        analysis(),
+        safe_profile(outdoor_minutes=90, sunscreen_frequency="sometimes"),
+        {"lifestyle": {"outdoor_exposure_choice": 1}},
+    )
+    assert not any(
+        item["category"] == "broad-spectrum sunscreen SPF 30+"
+        for item in result["recommendations"]
+    )
 
 
 def test_only_calibrated_released_region_scores_can_be_combined_with_self_report():
@@ -411,8 +422,10 @@ def test_wrinkle_products_require_adult_age_and_the_matching_label_application_a
                 "score_version": "v1",
                 "roi_version": "v1",
                 "regions": {
-                    "forehead": {"score": 12},
-                    "image_left_periocular": {"score": 9},
+                    "forehead": {"score": 40, "wrinkle_pixels": 200, "evaluated_pixels": 10000},
+                    "image_left_periocular": {
+                        "score": 50, "wrinkle_pixels": 250, "evaluated_pixels": 10000,
+                    },
                 },
             },
         }

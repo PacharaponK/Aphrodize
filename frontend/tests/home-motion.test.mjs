@@ -48,9 +48,13 @@ test("overview motion targets current cards, respects reduced motion and cleans 
   assert.deepEqual(animations.map(({ target }) => target), cards);
   assert.equal(animations[1].from.x, -40);
   assert.equal(animations[2].from.x, 40);
-  for (const { from, to } of animations) {
+  for (const { target, from, to } of animations) {
     assert.ok((from.opacity ?? 1) > 0, "content remains visible during motion");
-    assert.equal(to.scrollTrigger.toggleActions, "restart none restart reverse");
+    assert.equal(to.scrollTrigger.toggleActions, "play none none none");
+    assert.equal(to.scrollTrigger.trigger, target);
+    assert.equal(to.scrollTrigger.start, "top 92%");
+    assert.equal(to.scrollTrigger.fastScrollEnd, true);
+    assert.equal(to.scrollTrigger.preventOverlaps, true);
     assert.ok(to.duration + (to.delay ?? 0) <= 1.2);
     assert.equal(to.x, 0);
     assert.equal(to.y, 0);

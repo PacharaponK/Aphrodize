@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, House, LogIn, LogOut, Menu, TrendingUp, UserRound, X } from "lucide-react";
-import { NavSettingsDropdown } from "./nav-settings-dropdown";
-import { useLanguage } from "./language-provider";
+import { LanguageToggle, useLanguage } from "./language-provider";
+import { ThemeToggle } from "./theme-toggle";
 
 type ActiveSection = "dashboard" | "capture" | "clients" | "trend" | "profile" | "none";
 
@@ -129,10 +129,11 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
   }, [mobileOpen]);
 
   return (
-    <header className={`app-navigation${mobileOpen ? " is-open" : ""}`}>
+    <header className={`app-navigation is-motion-style${mobileOpen ? " is-open" : ""}`}>
       <div className="app-navigation-inner">
         <Link className="brand" href={dashboardHref} aria-label="Aphrodize home" onClick={() => setMobileOpen(false)}>
-          <Image width={50} height={50} className="brand-mark" src="/assets/aphrodize-logo.svg" alt="" unoptimized />
+          <Image width={50} height={50} className="brand-mark brand-mark-light" src="/assets/aphrodize-logo.svg" alt="" unoptimized />
+          <Image width={50} height={50} className="brand-mark brand-mark-dark" src="/assets/aphrodize-logo-dark.svg" alt="" unoptimized />
           <span>Aphrodize</span>
         </Link>
         <button
@@ -165,8 +166,9 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
             );
           })}
         </nav>
+        <div className="app-navigation-language"><LanguageToggle /></div>
         <div id="navigation-controls" className="app-navigation-controls">
-          <NavSettingsDropdown showTheme={showThemeToggle} />
+          {showThemeToggle && <ThemeToggle className="app-navigation-preview-theme" />}
           <AuthNavigationAction
             language={language}
             authStatus={authStatus}

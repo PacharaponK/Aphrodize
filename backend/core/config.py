@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Aphrodize"
     app_env: str = "development"
+    acne_tracking_enabled: bool = False
     database_url: str | None = None
     postgres_host: str = "localhost"
     postgres_user: str = "aphrodize"

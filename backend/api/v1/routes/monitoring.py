@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.db.models import Analysis
 from backend.core.db.session import get_session
+from backend.services.uv_lifecycle import ARTIFACTS, read_json
 from backend.services.uv_service import load_recommendation
 
 router = APIRouter()
@@ -18,13 +19,32 @@ router = APIRouter()
 async def uv_health() -> dict:
     try:
         forecasts = {
-            city: load_recommendation(city)
-            for city in ("bangkok", "songkhla", "chiang_mai")
+            city: load_recommendation(city) for city in ("bangkok", "songkhla", "chiang_mai")
         }
     except ValueError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    try:
+        quality = read_json(ARTIFACTS / "monitoring.json")
+        updated = datetime.fromisoformat(quality["generated_at"])
+        if updated.tzinfo is None or not timedelta(minutes=-5) <= datetime.now(
+            UTC
+        ) - updated <= timedelta(hours=8):
+            quality = {"status": "stale"}
+    except (OSError, ValueError, KeyError, TypeError):
+        quality = {"status": "unavailable"}
+    try:
+        training = read_json(ARTIFACTS / "pipeline_status.json")
+        training = {
+            key: training[key]
+            for key in ("at", "status", "version", "gate_passed", "error_type")
+            if key in training
+        }
+    except (OSError, ValueError, TypeError):
+        training = {"status": "unavailable"}
     return {
         "status": "fresh",
+        "quality": quality,
+        "training": training,
         "cities": {
             city: {
                 "data_date": value["data_date"],
@@ -46,11 +66,13 @@ def summarize_analyses(rows: list[Analysis]) -> dict:
         if row.completed_at:
             created = (
                 row.created_at.replace(tzinfo=UTC)
-                if row.created_at.tzinfo is None else row.created_at
+                if row.created_at.tzinfo is None
+                else row.created_at
             )
             completed = (
                 row.completed_at.replace(tzinfo=UTC)
-                if row.completed_at.tzinfo is None else row.completed_at
+                if row.completed_at.tzinfo is None
+                else row.completed_at
             )
             record["latency"].append(max(0.0, (completed - created).total_seconds()))
     result = {}
@@ -73,10 +95,14 @@ async def analysis_health(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     # ponytail: cap the local pilot scan; use a metrics store when traffic exceeds 5000/week.
-    rows = list((await session.scalars(
-        select(Analysis)
-        .where(Analysis.created_at >= datetime.now(UTC) - timedelta(hours=hours))
-        .order_by(Analysis.created_at.desc())
-        .limit(5000)
-    )).all())
+    rows = list(
+        (
+            await session.scalars(
+                select(Analysis)
+                .where(Analysis.created_at >= datetime.now(UTC) - timedelta(hours=hours))
+                .order_by(Analysis.created_at.desc())
+                .limit(5000)
+            )
+        ).all()
+    )
     return summarize_analyses(rows)

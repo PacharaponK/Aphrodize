@@ -9,9 +9,15 @@ from zoneinfo import ZoneInfo
 import numpy as np
 from prepare_uv_dataset import main as download_temis
 from statsmodels.tsa.statespace.sarimax import SARIMAXResults
-from train_uv_model import ARTIFACTS, CITIES, MODELS, fourier, load_data
-from train_uv_model import main as train_models
+from train_uv_model import ARTIFACTS, CITIES, fourier, load_data
 
+from backend.services.uv_lifecycle import (
+    atomic_json,
+    deployment_lock,
+    monitor,
+    record_forecasts,
+    serving_models,
+)
 from backend.services.uv_map_service import refresh_api_map
 
 COORDINATES = {
@@ -50,7 +56,9 @@ def noon_weather(city: str, today) -> dict:
         return {}
 
 
-def build_snapshot(series, today):
+def build_snapshot(series, today, *, model_dir=None, version=None):
+    if model_dir is None:
+        model_dir, version = serving_models()
     if any(series[city][0][-1] < today - timedelta(days=1) for city in CITIES):
         raise ValueError("TEMIS data are older than yesterday; refusing to publish stale UV")
     result = {
@@ -61,7 +69,7 @@ def build_snapshot(series, today):
     }
     for city in CITIES:
         days, values = series[city]
-        model_path = MODELS / f"{city}.pkl"
+        model_path = model_dir / f"{city}.pkl"
         model = SARIMAXResults.load(model_path)
         if model.nobs > len(days):
             raise ValueError(f"{city}: saved model is newer than TEMIS data")
@@ -72,7 +80,6 @@ def build_snapshot(series, today):
             model = model.append(
                 np.asarray(values[model.nobs :]), exog=fourier(new_days), refit=False
             )
-            model.save(model_path)
         # Keep today's map value a prediction, even when TEMIS already publishes today.
         if days[-1] >= today:
             history_end = days.index(today)
@@ -92,7 +99,7 @@ def build_snapshot(series, today):
         weather = noon_weather(city, today)
         result["cities"][city] = {
             "data_date": days[-1].isoformat(),
-            "model_version": f"sarimax-fourier-{model.nobs}",
+            "model_version": version,
             "days": [
                 {
                     "date": day.isoformat(),
@@ -110,7 +117,7 @@ def build_snapshot(series, today):
     return result
 
 
-def main():
+def refresh():
     today = datetime.now(ZoneInfo("Asia/Bangkok")).date()
     try:
         map_failures = refresh_api_map(today)
@@ -118,19 +125,33 @@ def main():
         print(f"UV map snapshot unavailable ({type(error).__name__})")
         map_failures = 1
     download_temis()
-    if any(not (MODELS / f"{city}.pkl").exists() for city in CITIES):
-        train_models()
+    model_dir, _ = serving_models()
+    if any(not (model_dir / f"{city}.pkl").exists() for city in CITIES):
+        raise ValueError("UV models missing; train, evaluate and approve a candidate first")
     series = load_data()
     snapshot = build_snapshot(series, today)
+    record_forecasts(snapshot, series)
+    monitoring = monitor(series)
+    if monitoring["status"] == "alert":
+        print(
+            f"UV quality alert: {monitoring['alerts']}; labels: {monitoring['label_corrections']}"
+        )
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     temporary = SNAPSHOT.with_suffix(".json.tmp")
     temporary.write_text(
         json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    version = next(iter(snapshot["cities"].values()))["model_version"]
+    atomic_json(ARTIFACTS / "serving_version.json", {"version": version})
     temporary.replace(SNAPSHOT)
     print(f"Published {SNAPSHOT} for {today} and {today + timedelta(days=1)}")
     if map_failures:
         raise RuntimeError("Some UV map batches failed; retry refresh in 30 minutes")
+
+
+def main():
+    with deployment_lock():
+        refresh()
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 import { pageMetadata } from "@/lib/page-metadata";
 import DailyHealthHistoryPanel from "../clients/daily-health-history-panel";
+import DailyHealthForecastTrend from "../clients/daily-health-forecast-trend";
 import { LocalizedText } from "@/components/language-provider";
 import "../clients/clients.css";
 import "../clients/daily-health-history.css";
+import "../clients/daily-health-forecast.css";
 
 export const metadata = pageMetadata(
   "Trends",
@@ -23,6 +25,7 @@ export default function Page() {
           <p className="clients-intro">
             <LocalizedText th="ดูระดับสัญญาณสุขภาพ คำแนะนำ และปัจจัยรายวันจากข้อมูลที่บันทึกไว้ โดยไม่ใช้ผลประเมินแทนการวินิจฉัย" en="Review daily signals, guidance and contributing factors from your records. These estimates are not a diagnosis." />
           </p>
+          <DailyHealthForecastTrend />
           <DailyHealthHistoryPanel view="trend" />
         </section>
       </main>

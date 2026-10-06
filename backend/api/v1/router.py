@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from backend.api.deps import require_admin_credentials, require_api_credentials
 from backend.api.v1.routes import (
+    acne,
     analyses,
     auth,
     consents,
@@ -18,6 +19,7 @@ from backend.api.v1.routes import (
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(acne.router, prefix="/acne", tags=["acne"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 protected = [Depends(require_api_credentials)]
 api_router.include_router(

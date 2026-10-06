@@ -27,6 +27,7 @@ users:
         prediction_target_date: 2026-09-27
         prediction_status: predicted
         prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture
       - local_date: 2026-09-27
         timezone: Asia/Bangkok
@@ -43,4 +44,99 @@ users:
         prediction_target_date: null
         prediction_status: not_run
         prediction_model_id: null
+        next_day_forecasts: null
+        data_source: fixture
+  - display_name: Nattapong Srisuk
+    email: male@gmail.com
+    password: "123456789"
+    consent_accepted: true
+    profile:
+      sex: male
+      age_group: "25_34"
+      guardian_consent: false
+      sunscreen_frequency: most_days
+      skin_type: oily
+      menstrual_tracking: not_applicable
+      wellness_goal: hydration
+    daily_entries:
+      - local_date: 2026-09-26
+        timezone: Asia/Bangkok
+        sleep_duration_minutes: 420
+        water_intake_ml: 1800
+        weight_kg: 72.0
+        calculated_thirst_score_0_10: 1.7
+        thirst_score_method: recorded-fluid-shortfall-weight-v1
+        outdoor_exposure_choice: 3
+        sleep_score_0_100: 77.8
+        sleep_score_method: "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        predicted_thirst_score_0_10: 3.8
+        predicted_dryness_score_0_10: 2.4
+        prediction_target_date: 2026-09-27
+        prediction_status: predicted
+        prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
+        data_source: fixture
+      - local_date: 2026-09-27
+        timezone: Asia/Bangkok
+        sleep_duration_minutes: 480
+        water_intake_ml: 2400
+        weight_kg: 72.0
+        calculated_thirst_score_0_10: 0.0
+        thirst_score_method: recorded-fluid-shortfall-weight-v1
+        outdoor_exposure_choice: 2
+        sleep_score_0_100: 88.9
+        sleep_score_method: "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        predicted_thirst_score_0_10: 2.1
+        predicted_dryness_score_0_10: 1.8
+        prediction_target_date: 2026-09-28
+        prediction_status: predicted
+        prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
+        data_source: fixture
+  - display_name: Pimchanok Wattanakul
+    email: female@gmail.com
+    password: "123456789"
+    consent_accepted: true
+    profile:
+      sex: female
+      age_group: "25_34"
+      guardian_consent: false
+      sunscreen_frequency: every_day
+      skin_type: dry
+      menstrual_tracking: "yes"
+      wellness_goal: skin_tracking
+    daily_entries:
+      - local_date: 2026-09-26
+        timezone: Asia/Bangkok
+        sleep_duration_minutes: 390
+        water_intake_ml: 1200
+        weight_kg: 54.0
+        calculated_thirst_score_0_10: 2.6
+        thirst_score_method: recorded-fluid-shortfall-weight-v1
+        outdoor_exposure_choice: 2
+        sleep_score_0_100: 72.2
+        sleep_score_method: "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        predicted_thirst_score_0_10: 4.2
+        predicted_dryness_score_0_10: 5.1
+        prediction_target_date: 2026-09-27
+        prediction_status: predicted
+        prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
+        data_source: fixture
+      - local_date: 2026-09-27
+        timezone: Asia/Bangkok
+        sleep_duration_minutes: 465
+        water_intake_ml: 1800
+        weight_kg: 54.0
+        calculated_thirst_score_0_10: 0.0
+        thirst_score_method: recorded-fluid-shortfall-weight-v1
+        outdoor_exposure_choice: 1
+        sleep_score_0_100: 86.1
+        sleep_score_method: "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
+        predicted_thirst_score_0_10: 2.5
+        predicted_dryness_score_0_10: 3.7
+        prediction_target_date: 2026-09-28
+        prediction_status: predicted
+        prediction_model_id: fixture-demo-v1
+        next_day_forecasts: null
         data_source: fixture

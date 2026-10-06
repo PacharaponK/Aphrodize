@@ -284,6 +284,8 @@ class DailyHealthEntry(Base):
     sleep_score_method: Mapped[str] = mapped_column(String(128))
     predicted_thirst_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
     predicted_dryness_score_0_10: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Verified server outputs, distinct from hydration formulas and observed labels.
+    next_day_forecasts: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # Predictions always describe the following local day.  It remains nullable for
     # historical rows created before prediction provenance was recorded.
     prediction_target_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -401,6 +403,29 @@ class DailyHealthMenstrualCheckin(Base):
 
 
 DailyHealthMenstrualCheckIn = DailyHealthMenstrualCheckin
+
+
+class AcneObservation(Base):
+    """Optional observed breakouts, never a forecast or shared training label."""
+
+    __tablename__ = "acne_observations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "local_date", name="uq_acne_observation_user_date"),
+        CheckConstraint("response IN ('yes', 'no', 'unsure')", name="ck_acne_response"),
+    )
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    local_date: Mapped[date] = mapped_column(Date)
+    response: Mapped[str] = mapped_column(String(8))
+    regions: Mapped[list] = mapped_column(JSON, default=list)
+    provenance: Mapped[str] = mapped_column(String(32), default="user_reported")
+    consent_version: Mapped[str] = mapped_column(String(64), default="acne-tracking-v1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
 
 class DailyHealthOutcome(Base):

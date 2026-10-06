@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import joblib
 import numpy as np
@@ -19,7 +20,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION
+from backend.core.consents import MODEL_TRAINING_CONSENT_VERSION, MODEL_TRAINING_CONSENT_VERSIONS
 from backend.core.db.models import (
     Consent,
     DailyHealthEntry,
@@ -34,6 +35,8 @@ MIN_NEW_RECORDS_PER_VERSION = 25
 MODEL_FAMILY = "daily_health_next_day_random_forest"
 FEATURE_NAMES = ["sleep_duration_minutes", "water_intake_ml", "outdoor_exposure_choice"]
 TARGET_NAMES = ["reported_thirst_level_0_10", "reported_dryness_level_0_10"]
+ENERGY_TARGET_NAMES = [*TARGET_NAMES, "reported_energy_level_0_10"]
+FEATURE_AVAILABILITY_POLICY = "created-and-updated-before-target-bangkok-day-v1"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 ARTIFACT_ROOT = (
     REPOSITORY_ROOT
@@ -50,7 +53,18 @@ class TrainingExample:
     participant_id: str
     target_date: date
     feature_values: tuple[float, float, float]
-    target_values: tuple[float, float]
+    target_values: tuple[float, ...]
+
+
+def inputs_available_before_target(entry: DailyHealthEntry, target_date: date) -> bool:
+    """Mutable records have no historical snapshot: reject late or unprovable inputs."""
+    cutoff = datetime.combine(target_date, datetime.min.time(), ZoneInfo("Asia/Bangkok"))
+    created, updated = entry.created_at, entry.updated_at
+    return (
+        isinstance(created, datetime) and created.utcoffset() is not None
+        and isinstance(updated, datetime) and updated.utcoffset() is not None
+        and created <= updated < cutoff
+    )
 
 
 def build_next_day_training_examples(
@@ -58,6 +72,7 @@ def build_next_day_training_examples(
     outcomes: Sequence[DailyHealthOutcome],
     *,
     consented_user_ids: set[UUID],
+    include_energy: bool = False,
 ) -> list[TrainingExample]:
     """Pair a self-reported day's outcomes with the opted-in user's previous-day inputs."""
     entries_by_user_date: dict[tuple[UUID, date], DailyHealthEntry] = {}
@@ -72,10 +87,13 @@ def build_next_day_training_examples(
         dryness = outcome.reported_dryness_level_0_10
         if user_id not in consented_user_ids or thirst is None or dryness is None:
             continue
+        energy = outcome.reported_energy_level_0_10
+        if include_energy and energy is None:
+            continue
 
         prior_day = outcome.target_date - timedelta(days=1)
         entry = entries_by_user_date.get((user_id, prior_day))
-        if entry is None:
+        if entry is None or not inputs_available_before_target(entry, outcome.target_date):
             continue
 
         examples.append(
@@ -87,7 +105,8 @@ def build_next_day_training_examples(
                     float(entry.water_intake_ml),
                     float(entry.outdoor_exposure_choice),
                 ),
-                target_values=(float(thirst), float(dryness)),
+                target_values=(float(thirst), float(dryness), float(energy))
+                if include_energy else (float(thirst), float(dryness)),
             )
         )
     return sorted(examples, key=lambda item: (item.target_date, item.participant_id))
@@ -138,7 +157,11 @@ def training_dataset_fingerprint(examples: Sequence[TrainingExample]) -> str:
         }
         for example in examples
     ]
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        {"feature_availability_policy": FEATURE_AVAILABILITY_POLICY,
+         "training_consent_policy": MODEL_TRAINING_CONSENT_VERSION,
+         "examples": payload}, sort_keys=True, separators=(",", ":"),
+    )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -152,10 +175,14 @@ def should_create_next_candidate(
 
 async def load_consent_filtered_training_examples(
     session: AsyncSession,
+    *, include_energy: bool = False,
 ) -> list[TrainingExample]:
     consented_result = await session.scalars(
         select(Consent.user_id).where(
-            Consent.version == MODEL_TRAINING_CONSENT_VERSION,
+            Consent.version.in_(
+                (MODEL_TRAINING_CONSENT_VERSION,) if include_energy
+                else MODEL_TRAINING_CONSENT_VERSIONS
+            ),
             Consent.revoked_at.is_(None),
         )
     )
@@ -167,25 +194,37 @@ async def load_consent_filtered_training_examples(
         select(DailyHealthEntry).where(
             DailyHealthEntry.user_id.in_(consented_user_ids),
             DailyHealthEntry.data_source == "user_reported",
-        )
+        ).execution_options(populate_existing=True)
     )
     outcomes_result = await session.scalars(
         select(DailyHealthOutcome).where(
             DailyHealthOutcome.user_id.in_(consented_user_ids),
             DailyHealthOutcome.reported_thirst_level_0_10.is_not(None),
             DailyHealthOutcome.reported_dryness_level_0_10.is_not(None),
-        )
+        ).execution_options(populate_existing=True)
     )
     return build_next_day_training_examples(
         list(entries_result.all()),
         list(outcomes_result.all()),
         consented_user_ids=consented_user_ids,
+        include_energy=include_energy,
     )
+
+
+async def load_preferred_training_examples(
+    session: AsyncSession,
+) -> tuple[list[TrainingExample], list[str]]:
+    """Prefer three real targets only when their own cohort meets the existing floor."""
+    extended = await load_consent_filtered_training_examples(session, include_energy=True)
+    if (len(extended) >= MIN_TRAINING_RECORDS
+            and len({row.participant_id for row in extended}) >= MIN_TRAINING_PARTICIPANTS):
+        return extended, ENERGY_TARGET_NAMES
+    return await load_consent_filtered_training_examples(session), TARGET_NAMES
 
 
 async def enqueue_candidate_training_if_ready(session: AsyncSession) -> bool:
     """Queue at most one daily training attempt, without failing a saved outcome."""
-    examples = await load_consent_filtered_training_examples(session)
+    examples, target_names = await load_preferred_training_examples(session)
     participant_count = len({example.participant_id for example in examples})
     if len(examples) < MIN_TRAINING_RECORDS or participant_count < MIN_TRAINING_PARTICIPANTS:
         return False
@@ -209,7 +248,11 @@ async def enqueue_candidate_training_if_ready(session: AsyncSession) -> bool:
     if not should_create_next_candidate(
         current_records=len(examples),
         last_candidate_records=(
-            latest_candidate.training_records if latest_candidate is not None else None
+            latest_candidate.training_records
+            if latest_candidate is not None
+            and ("reported_energy_level_0_10" in (latest_candidate.metrics or {}).get("test", {}))
+            == (target_names == ENERGY_TARGET_NAMES)
+            else None
         ),
     ):
         return False
@@ -228,9 +271,11 @@ async def enqueue_candidate_training_if_ready(session: AsyncSession) -> bool:
         await redis.close()
 
 
-def _split_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, dict[str, float | None]]:
+def _split_metrics(
+    y_true: np.ndarray, y_pred: np.ndarray, target_names: list[str] = TARGET_NAMES,
+) -> dict[str, dict[str, float | None]]:
     metrics: dict[str, dict[str, float | None]] = {}
-    for index, target_name in enumerate(TARGET_NAMES):
+    for index, target_name in enumerate(target_names):
         actual = y_true[:, index]
         predicted = y_pred[:, index]
         r2 = None
@@ -246,7 +291,7 @@ def _split_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, dict[str
 
 async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthModelVersion | None:
     """Train and persist a review-only candidate; the production predictor is not changed."""
-    examples = await load_consent_filtered_training_examples(session)
+    examples, target_names = await load_preferred_training_examples(session)
     participants = {example.participant_id for example in examples}
     if len(examples) < MIN_TRAINING_RECORDS or len(participants) < MIN_TRAINING_PARTICIPANTS:
         return None
@@ -292,9 +337,30 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
         )
         model.fit(x[train_indexes], y[train_indexes])
         validation_metrics = _split_metrics(
-            y[validation_indexes], model.predict(x[validation_indexes])
+            y[validation_indexes], model.predict(x[validation_indexes]), target_names
         )
-        test_metrics = _split_metrics(y[test_indexes], model.predict(x[test_indexes]))
+        test_metrics = _split_metrics(y[test_indexes], model.predict(x[test_indexes]), target_names)
+        test_baseline = _split_metrics(
+            y[test_indexes],
+            np.tile(np.mean(y[train_indexes], axis=0), (len(test_indexes), 1)), target_names,
+        )
+        # Chronological validation: train only on dates before the temporal holdout.
+        dates = sorted({row.target_date for row in examples})
+        cutoff = dates[max(1, int(len(dates) * 0.8))] if len(dates) >= 5 else None
+        temporal_metrics = None
+        temporal_baseline = None
+        if cutoff is not None:
+            earlier = [i for i, row in enumerate(examples) if row.target_date < cutoff]
+            later = [i for i, row in enumerate(examples) if row.target_date >= cutoff]
+            temporal_model = RandomForestRegressor(
+                n_estimators=300, min_samples_leaf=2, random_state=42, n_jobs=-1,
+            ).fit(x[earlier], y[earlier])
+            temporal_metrics = _split_metrics(
+                y[later], temporal_model.predict(x[later]), target_names,
+            )
+            temporal_baseline = _split_metrics(
+                y[later], np.tile(np.mean(y[earlier], axis=0), (len(later), 1)), target_names,
+            )
 
         current_status = await session.scalar(
             select(DailyHealthModelVersion.status)
@@ -305,7 +371,9 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
             version.status = "stale"
             await session.commit()
             return version
-        current_examples = await load_consent_filtered_training_examples(session)
+        current_examples = await load_consent_filtered_training_examples(
+            session, include_energy=target_names == ENERGY_TARGET_NAMES,
+        )
         if training_dataset_fingerprint(current_examples) != fingerprint:
             version.status = "stale"
             await session.commit()
@@ -322,7 +390,7 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
             "model_type": "RandomForestRegressor",
             "prediction_horizon_days": 1,
             "features": FEATURE_NAMES,
-            "targets": TARGET_NAMES,
+            "targets": target_names,
             "training_records": len(examples),
             "participant_count": len(participants),
             "dataset_fingerprint": fingerprint,
@@ -330,8 +398,17 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
             "data_policy": "active_opt_in_and_user_reported_numeric_outcomes_only",
             "synthetic_data_included": False,
             "predictions_used_as_labels": False,
+            "feature_availability_policy": FEATURE_AVAILABILITY_POLICY,
+            "training_consent_versions": (
+                [MODEL_TRAINING_CONSENT_VERSION] if target_names == ENERGY_TARGET_NAMES
+                else list(MODEL_TRAINING_CONSENT_VERSIONS)
+            ),
             "split_policy": "participant_group_holdout_60_20_20",
-            "metrics": {"validation": validation_metrics, "test": test_metrics},
+            "metrics": {
+                "validation": validation_metrics, "test": test_metrics,
+                "test_mean_baseline": test_baseline,
+                "temporal_test": temporal_metrics, "temporal_mean_baseline": temporal_baseline,
+            },
             "trained_at": datetime.now(UTC).isoformat(),
         }
         (artifact_dir / "manifest.json").write_text(

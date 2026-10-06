@@ -20,6 +20,16 @@ async def create_database_schema() -> None:
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        entry_columns = await connection.run_sync(
+            lambda sync_connection: {
+                column["name"]
+                for column in inspect(sync_connection).get_columns("daily_health_entries")
+            }
+        ) or set()
+        if "next_day_forecasts" not in entry_columns:
+            await connection.execute(
+                text("ALTER TABLE daily_health_entries ADD COLUMN next_day_forecasts JSON")
+            )
         product_columns = await connection.run_sync(
             lambda sync_connection: {
                 column["name"] for column in inspect(sync_connection).get_columns("products")

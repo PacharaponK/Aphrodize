@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import tempfile
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -22,7 +23,16 @@ from ai.ffhq_wrinkle.confidence import (
     evaluate_confidence,
     load_confidence_policy,
 )
+from ai.ffhq_wrinkle.landmark_rois import (
+    ROI_VERSION as LANDMARK_ROI_VERSION,
+)
+from ai.ffhq_wrinkle.landmark_rois import (
+    build_landmark_rois,
+    detect_landmarks,
+    render_region_map,
+)
 from ai.ffhq_wrinkle.modeling import ModelBundle, load_wrinkle_model
+from ai.ffhq_wrinkle.personal_outline import render_personal_outline
 from ai.ffhq_wrinkle.prediction import PredictionResult, predict_image
 from ai.ffhq_wrinkle.scoring import ScoreConfig, derive_scores
 
@@ -131,17 +141,38 @@ class WrinkleAnalysisService:
             # read the latter from the PNG saved by preprocess_image().
             with Image.open(work / "prediction" / "face_mask.png") as opened:
                 face_mask = np.asarray(opened.convert("L")) > 0
+            # Detect on the SAME aligned RGB grid used by segmentation and scoring.
+            regional_rois = {}
+            region_map = None
+            personal_outline = None
+            with Image.open(work / "prediction" / "aligned_face.png") as opened:
+                aligned = np.asarray(opened.convert("RGB"))
+            try:
+                points = detect_landmarks(aligned)
+                regional_rois = build_landmark_rois(points, face_mask)
+                region_map = render_region_map(
+                    points, regional_rois, result.mask, area_regions=True,
+                )
+                personal_outline = render_personal_outline(points, regional_rois, result.mask)
+            except (ImportError, RuntimeError, ValueError):
+                # Never substitute fixed/schematic coordinates for missing landmarks.
+                pass
             if artifact_sink is not None:
                 # Copy display PNGs and the aligned review face before scratch cleanup.
                 artifact_sink({
                     "overlay": (work / "prediction" / "overlay.png").read_bytes(),
                     "mask": (work / "prediction" / "wrinkle_mask.png").read_bytes(),
                     "aligned_face": (work / "prediction" / "aligned_face.png").read_bytes(),
+                    **({"regions": region_map} if region_map is not None else {}),
+                    **({"outline": personal_outline} if personal_outline is not None else {}),
                 })
             # Convert arrays to a small JSON-compatible response before cleanup.
-            return self.build_response(result, face_mask)
+            return self.build_response(result, face_mask, regional_rois=regional_rois,
+                                       outline_available=personal_outline is not None)
 
-    def build_response(self, result: PredictionResult, face_mask: np.ndarray) -> AnalysisResponse:
+    def build_response(self, result: PredictionResult, face_mask: np.ndarray,
+                       *, regional_rois: dict[str, np.ndarray] | None = None,
+                       outline_available: bool = False) -> AnalysisResponse:
         """Convert raw arrays into a policy-gated, path-free public response.
 
         A failed confidence gate still produces an explicitly experimental
@@ -164,6 +195,12 @@ class WrinkleAnalysisService:
         # Both measured confidence and policy/model compatibility must pass.
         gate_passed = bool(confidence["passed"])
         reasons = list(confidence["reasons"])
+        config = self.score_config
+        if regional_rois is not None:
+            config = replace(config, roi_version=LANDMARK_ROI_VERSION)
+            # Existing release/calibration applies to fixed ROIs, not this new geometry.
+            gate_passed = False
+            reasons.append("landmark_roi_not_calibrated")
         # Only one of these score fields is populated for a given response.
         derived = None
         experimental = None
@@ -171,7 +208,8 @@ class WrinkleAnalysisService:
         if gate_passed:
             # Approved scores can be used by the recommendation provider.
             derived = derive_scores(
-                result.mask, face_mask, gate_passed=True, config=self.score_config
+                result.mask, face_mask, gate_passed=True, config=config,
+                regional_rois=regional_rois,
             )
             recommendations = self.recommendation_provider(derived)
         else:
@@ -181,7 +219,8 @@ class WrinkleAnalysisService:
                 face_mask,
                 gate_passed=False,
                 allow_experimental=True,
-                config=self.score_config,
+                config=config,
+                regional_rois=regional_rois,
             )
         # Expose counts and provenance, but no logits, source path, or raw arrays.
         response = {
@@ -200,6 +239,11 @@ class WrinkleAnalysisService:
                 "face_pixels": metadata["face_pixels"],
                 "confidence": confidence,
                 "artifacts_publicly_available": False,
+                "regional_geometry_status": (
+                    "available" if regional_rois else "unavailable"
+                ) if regional_rois is not None else "legacy_fixed",
+                "regional_map_version": "head-region-area-v3" if regional_rois else None,
+                "personalized_outline_available": outline_available,
             },
             "derived_score": derived,
             "experimental_score": experimental,

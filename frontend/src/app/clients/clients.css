@@ -164,3 +164,16 @@ html[data-theme="black"] .clients-page .score-method-content code{background:var
 .clients-page .profile-weight-form {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 }
+
+/* Restore native modal centering after the global margin reset. */
+.clients-page .daily-entry-dialog {
+  margin: auto;
+  inset: 0;
+}
+.clients-page .tracker-empty-state{grid-template-columns:42px minmax(0,1fr);align-items:center;justify-items:start;gap:14px;padding:18px;text-align:start}
+.clients-page .tracker-empty-icon{margin:0}
+.clients-page .tracker-empty-state p{max-width:none}
+.clients-page .daily-input-method{color:var(--muted);font-size:13px}
+.clients-page .daily-input-method summary{cursor:pointer;min-height:44px;align-content:center}
+.clients-page .daily-input-method summary:focus-visible{outline:2px solid var(--primary-deep);outline-offset:3px;border-radius:6px}
+.clients-page .daily-input-method p{margin:4px 0 8px;line-height:1.65}
