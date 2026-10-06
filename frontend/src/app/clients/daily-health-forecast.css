@@ -42,16 +42,16 @@
 :root .personal-forecast-plot-column .personal-forecast-axis-dates span{position:absolute;top:50%;transform:translate(-50%,-50%);white-space:nowrap}
 .personal-forecast-scroll-hint{margin:4px 0 0;color:var(--muted);font-size:var(--text-meta)}
 @media(min-width:1400px){.personal-forecast-scroll-hint{display:none}}
-.personal-forecast-grid-line{stroke:var(--line);stroke-width:1}
-.personal-forecast-actual-line{stroke:var(--primary-deep);stroke-width:2.5;stroke-linecap:round}
-.personal-forecast-next-line{stroke:var(--primary);stroke-width:2.5;stroke-dasharray:5 5;stroke-linecap:round}
-.personal-forecast-actual-point{fill:var(--primary-deep);stroke:var(--surface);stroke-width:2}
-.personal-forecast-predicted-point{fill:var(--surface);stroke:var(--primary);stroke-width:2.5}
+.personal-forecast-grid-line{stroke:var(--chart-grid);stroke-width:1}
+.personal-forecast-actual-line{stroke:var(--chart-actual);stroke-width:2.5;stroke-linecap:round}
+.personal-forecast-next-line{stroke:var(--chart-forecast);stroke-width:2.5;stroke-dasharray:5 5;stroke-linecap:round}
+.personal-forecast-actual-point{fill:var(--chart-actual);stroke:var(--surface);stroke-width:2}
+.personal-forecast-predicted-point{fill:var(--surface);stroke:var(--chart-forecast);stroke-width:2.5}
 .personal-forecast-axis-label{fill:var(--muted);font:10px var(--font-ui,sans-serif)}
 .personal-forecast-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;color:var(--muted);font-size:11px}
 .personal-forecast-legend span{display:inline-flex;align-items:center;gap:6px}
-.personal-forecast-legend i{display:inline-block;width:14px;height:3px;border-radius:999px;background:var(--primary-deep)}
-.personal-forecast-legend .personal-forecast-legend-estimate{height:0;border-top:2px dashed var(--primary)}
+.personal-forecast-legend i{display:inline-block;width:14px;height:3px;border-radius:999px;background:var(--chart-actual)}
+.personal-forecast-legend .personal-forecast-legend-estimate{height:0;border-top:2px dashed var(--chart-forecast)}
 .personal-forecast-values{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
 .personal-forecast-values summary{color:var(--link);font-size:12px;font-weight:700;cursor:pointer}
 .personal-forecast-values ul{display:grid;gap:0;margin:8px 0 0;padding:0;list-style:none}

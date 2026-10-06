@@ -38,6 +38,7 @@ for (const theme of ["pastel", "black"]) {
       ["--primary-deep", "--primary-soft"], ["--danger", "--surface-prominent"],
       ["--danger", "--danger-surface"], ["--success-ink", "--success-surface"],
       ["--success-ink", "--surface-prominent"],
+      ["--muted", "--page-canvas"], ["--ink-soft", "--page-canvas"],
     ];
     for (const [foreground, background] of pairs) {
       const ratio = contrast(p[foreground], p[background]);
@@ -45,6 +46,28 @@ for (const theme of ["pastel", "black"]) {
     }
   });
 }
+
+for (const theme of ["pastel", "black"]) {
+  test(`${theme}: data marks exceed 3:1 and surfaces separate from the page`, () => {
+    const p = palette(theme);
+    for (const mark of ["--chart-actual", "--chart-forecast", "--muted"]) {
+      for (const surface of ["--surface-prominent", "--surface-supporting"]) {
+        assert.ok(contrast(p[mark], p[surface]) >= 3, `${mark} on ${surface}`);
+        assert.ok(contrast(p[mark], p[surface]) > contrast(p["--chart-grid"], p[surface]), "data must lead over grid");
+      }
+    }
+    assert.ok(contrast(p["--surface-prominent"], p["--page-canvas"]) > 1.1);
+    assert.notEqual(p["--surface-supporting"], p["--surface-prominent"]);
+  });
+}
+
+test("charts use shared contrast tokens without changing forecast shapes", () => {
+  const css = read("src/app/clients/daily-health-forecast.css");
+  assert.match(css, /stroke:var\(--chart-actual\)/);
+  assert.match(css, /stroke:var\(--chart-forecast\).*stroke-dasharray:5 5/);
+  assert.match(css, /stroke:var\(--chart-grid\)/);
+  assert.match(read("src/app/home.css"), /fill: var\(--chart-actual\)/);
+});
 
 test("the layout loads shared hierarchy once and the persistent boundary covers routes", () => {
   assert.equal(read("src/app/layout.tsx").match(/import "\.\/component-hierarchy\.css";/g)?.length, 1);
@@ -71,4 +94,14 @@ test("selected UV and forecast alerts consume defined theme-aware tokens", () =>
   assert.equal(values.background, "var(--primary-soft)");
   for (const theme of ["pastel", "black"]) assert.ok(palette(theme)["--danger"]);
   assert.match(hierarchy.toString(), /\.form-message\.success \{ color: var\(--success-ink\); \}/);
+});
+
+test("Profile outer workspace has no background without clearing inner cards", () => {
+  const rules = [];
+  hierarchy.walkRules((rule) => rules.push(rule));
+  const profile = rules.find((rule) => rule.selector.endsWith(".workspace-panel.profile-panel"));
+  assert.ok(profile);
+  assert.equal(profile.nodes.find((decl) => decl.prop === "background").value, "transparent");
+  assert.ok(rules.indexOf(profile) > rules.findIndex((rule) => rule.selector.includes(":is(.quality-panel, .workspace-panel)")));
+  assert.equal(profile.nodes.filter((node) => node.type === "decl").length, 1);
 });
