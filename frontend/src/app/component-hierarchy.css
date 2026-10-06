@@ -1,0 +1,233 @@
+/* Component prominence is not a health/severity scale.
+ * This shared, layout-neutral scope wins over legacy route colors without
+ * !important. Keep UV fills, risk badges, consent and forecast shapes intact. */
+:root {
+  --surface-prominent: var(--surface);
+  --surface-supporting: var(--surface-soft);
+  --surface-context: var(--surface-muted);
+  --surface-emphasis: #fff4f5;
+  --danger: #a52b36;
+  --danger-surface: #fff1f2;
+  --success-ink: #24603d;
+  --success-surface: #edf7f0;
+  --shadow-prominent: 0 10px 26px -22px rgb(34 24 28 / 28%);
+}
+html[data-theme="black"] {
+  --surface-emphasis: #30232a;
+  --danger: #ffb4bb;
+  --danger-surface: #3c242c;
+  --success-ink: #a4ecc3;
+  --success-surface: #1c3328;
+  --shadow-prominent: none;
+}
+
+/* Brand belongs to the primary action, not every surrounding control. */
+:root body .primary-button {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+:root body .primary-button:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+:root body .primary-button:active:not(:disabled) {
+  background: var(--primary-hover);
+}
+:root body .primary-button:disabled {
+  background: var(--surface-context);
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+:root body .secondary-button {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+:root body .secondary-button:hover:not(:disabled) {
+  background: var(--surface-supporting);
+  border-color: var(--primary-deep);
+}
+:root body :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+:root body input::placeholder,
+:root body textarea::placeholder { color: var(--muted); opacity: 1; }
+
+/* Dashboard: recorded information has a clear frame, provenance stays quiet.
+ * Preserve the existing glass effect and its opaque accessibility fallback. */
+:root [data-color-system="hierarchical"] .home-dashboard-shell :is(.home-overview-card, .home-wellness-card, .home-insights-card:not(.home-uv-utility)) {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-prominent);
+}
+:root [data-color-system="hierarchical"] .home-dashboard-shell .home-metric-card {
+  border-color: var(--line);
+  box-shadow: none;
+}
+:root [data-color-system="hierarchical"] .home-dashboard-shell .home-metric-value { color: var(--ink); }
+:root [data-color-system="hierarchical"] .home-dashboard-shell :is(.home-metric-note, .home-chart-caption, .home-chart-days) { color: var(--muted); }
+
+/* Daily Health: today's readings / next action lead; explanations recede. */
+:root [data-color-system="hierarchical"] .clients-page :is(.daily-entry-card, .tracker-results, .daily-entry-dialog, .daily-health-dashboard) {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-prominent);
+}
+:root [data-color-system="hierarchical"] .clients-page :is(.tracker-metric, .duration-metric) {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root [data-color-system="hierarchical"] .clients-page .tracker-metric:has(.evidence-label[data-evidence="recorded"]) {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+}
+:root [data-color-system="hierarchical"] .clients-page .tracker-metric > strong { color: var(--ink); }
+:root [data-color-system="hierarchical"] .clients-page :is(.range-note, .daily-data-consent, .model-training-consent-status, .test-profile-weight, .tracker-empty-state, .score-method-details, .age-guidance, .personalized-guidance, .personal-context-fieldset) {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+:root [data-color-system="hierarchical"] .clients-page :is(.training-threshold-note, .model-limit-note) {
+  background: var(--surface-supporting);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+:root [data-color-system="hierarchical"] .clients-page :is(.health-signal-reasons, .health-signal-possibilities, .health-signal-note, .personalized-guidance-list, .age-guidance-card p) { color: var(--muted); }
+:root [data-color-system="hierarchical"] .clients-page .outdoor-choice:not(.selected) {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+}
+:root [data-color-system="hierarchical"] .clients-page .outdoor-choice.selected {
+  background: var(--primary-soft);
+  border-color: var(--primary-deep);
+}
+
+/* Trends: actual series retain their solid markers; forecasts retain dashes.
+ * No new axis or data transformation is introduced here. */
+:root [data-color-system="hierarchical"] .trend-page .personal-forecast-panel {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-prominent);
+}
+:root [data-color-system="hierarchical"] :is(.personal-forecast-state, .personal-forecast-consent, .personal-forecast-insufficient, .personal-forecast-loading, .personal-forecast-method-note, .daily-history-empty, .daily-history-loading, .daily-weekly-summary) {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+:root [data-color-system="hierarchical"] :is(.daily-history-panel, .daily-history-entry, .personal-forecast-metric-card) {
+  background: var(--surface-prominent);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root [data-color-system="hierarchical"] .personal-forecast-next-summary {
+  background: var(--surface-supporting);
+  color: var(--muted);
+}
+:root [data-color-system="hierarchical"] :is(.daily-history-input-summary span, .daily-weekly-summary-card p, .daily-weekly-summary-card small) { color: var(--muted); }
+
+/* Profile keeps the approved identity gradient and flat key/value layout. */
+:root [data-color-system="hierarchical"] .profile-panel :is(.profile-answers dt, .profile-saved-measurement dt) { color: var(--muted); }
+:root [data-color-system="hierarchical"] .profile-panel :is(.profile-answers dd, .profile-saved-measurement dd) { color: var(--ink); }
+:root [data-color-system="hierarchical"] .profile-panel .cycle-summary-grid > article {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+}
+
+/* Auth and onboarding: stable fields, one prominent submit action. */
+:root [data-color-system="hierarchical"] :is(.auth-card, .onboarding-card) {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+}
+:root [data-color-system="hierarchical"] :is(.auth-card, .onboarding-card) :is(input:not([type="checkbox"]):not([type="radio"]), select) {
+  background-color: var(--surface-supporting);
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+:root [data-color-system="hierarchical"] :is(.signup-section, .allergy-ingredients) { border-color: var(--line); }
+
+/* Capture: the image and measured area lead; methods/support stay subdued. */
+:root [data-color-system="hierarchical"] :is(.capture-image-area, .capture-permissions, .analysis-page--face .analysis-image-section, .analysis-page--face .analysis-summary) {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-prominent);
+}
+:root [data-color-system="hierarchical"] .analysis-page--face .analysis-kpi-tile.analysis-coverage {
+  background: var(--surface-emphasis);
+}
+:root [data-color-system="hierarchical"] :is(.analysis-method, .analysis-extra-regions, .capture-image-frame, .recommendation-filters, .recommendation-context, .recommendation-note) {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+  color: var(--ink-soft);
+  box-shadow: none;
+}
+:root [data-color-system="hierarchical"] .recommendation-note { border-left-width: 1px; }
+
+/* Recovery and the route directory stay neutral; real warnings are unchanged. */
+:root [data-color-system="hierarchical"] :is(.quality-panel, .workspace-panel) {
+  background: var(--surface-prominent);
+  border-color: var(--line);
+}
+:root [data-color-system="hierarchical"] .showcase-grid a {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+  color: var(--ink);
+}
+:root [data-color-system="hierarchical"] .showcase-grid a:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary-deep);
+}
+
+/* UV: selection is a control state, never a UV severity color.
+ * Soft selected controls remain readable in dark mode (no white-on-pink). */
+:root [data-color-system="hierarchical"] :is(.uv-map-source, .uv-map-days, .uv-day-buttons) button[aria-pressed="true"] {
+  background: var(--primary-soft);
+  border-color: var(--primary-deep);
+  color: var(--primary-deep);
+}
+:root [data-color-system="hierarchical"] .uv-map-detail {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-prominent);
+}
+:root [data-color-system="hierarchical"] .uv-mission-canvas { background: var(--surface-supporting); }
+:root [data-color-system="hierarchical"] .uv-map-select select {
+  /* Native province selector: prevent the global dark select chevron from
+   * repeating across the field when a route uses native appearance. */
+  background-image: none;
+}
+
+/* Administration uses the same frame/field roles; published/draft badges keep
+ * their existing semantics. Mixed status feedback is neutral, not severity. */
+:root [data-color-system="hierarchical"] .admin-products-page :is(.admin-products-list, .admin-products-editor, .admin-login-card) {
+  background: var(--surface-prominent);
+  border-color: var(--border-strong);
+}
+:root [data-color-system="hierarchical"] .admin-products-page :is(.admin-summary-card, .admin-products-message) {
+  background: var(--surface-supporting);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+
+/* Status text stays legible, including errors on dark auth/forecast surfaces.
+ * Do not recolor risk badges or alert regions generically. */
+:root [data-color-system="hierarchical"] .form-message { color: var(--danger); }
+:root [data-color-system="hierarchical"] .form-message.success { color: var(--success-ink); }
+:root [data-color-system="hierarchical"] .clients-page :is(.tracker-form-error, .storage-status-failed) {
+  background: var(--danger-surface);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+:root [data-color-system="hierarchical"] .clients-page :is(.storage-status-saved, .outcome-saved) {
+  background: var(--success-surface);
+  color: var(--success-ink);
+}
+:root [data-color-system="hierarchical"] :is(.personal-forecast-consent, .personal-forecast-panel-footer) [role="alert"] { color: var(--danger); }
+
+@media (forced-colors: active) {
+  :root body :is(button, a, input, select, textarea, summary):focus-visible { outline-color: Highlight; }
+}

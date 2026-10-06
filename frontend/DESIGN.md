@@ -92,6 +92,8 @@ components:
 
 ## สถานะปัจจุบัน
 
+- Approved site-wide component color hierarchy (6 October 2026): use `component-hierarchy.css` through the layout-neutral `data-color-system="hierarchical"` boundary on all routes. Primary tasks and current results use the prominent surface, strong frame and readable ink; ordinary cards use the supporting surface; methods, provenance and empty/loading states remain quiet without lowering text contrast. Coral remains for primary actions/selection, never for every container. Preserve Home glass/reduced-transparency behavior, Profile's approved identity gradient, UV/risk semantic colors, actual/forecast shapes, layout, typography, motion, consent and API behavior. Selected UV controls use deep accent text on soft accent rather than white text on the dark-mode pink. Shared danger/success foreground and surface tokens cover readable status feedback; mixed admin status messages remain neutral. Text contrast targets are 4.5:1 for normal text and 3:1 for large text. This revision does not add the pending Trends Y axis.
+
 - Approved data-hierarchy revision (6 October 2026): Dashboard, Daily Health and Trends share explicit evidence labels (Recorded, Calculated, Model estimate, Forecast) before values. Labels describe provenance, not severity; preserve missing/zero values, dates, formulas, consent and API behavior. Dashboard Personal insights follows Weekly overview; UV remains a secondary utility action with unchanged semantic colors. Keep passive data cards stable and reserve whole-card lift for actual links. Signed-in Home uses a compact static-heading hero with Log today as its primary action; guests retain the expressive animated introduction. Share only authentication presentation status from the existing navbar check, never credentials or private records; this status does not authorize data access. Preserve the1920px frame, typography scale, theme and reduced-motion behavior.
 
 - Human review boundary (6 October 2026): a queued Label Studio task is not proof that the image result has been reviewed, and model quality-gate success is not deployment approval. Keep experimental/unreviewed results distinct from human-reviewed findings; never infer review completion from task creation. No new model-review screen is implemented by this change.
@@ -316,6 +318,8 @@ Approved 5 October 2026 as a route-specific extension of the incumbent Aphrodize
 - Use existing geometry and attribution; this extension introduces no raster, imagery dependency or new rendering library. Its approved composition and interactions remain local to `/uv-map`.
 
 ## ประวัติและแนวโน้มสุขภาพ (`/trend`)
+
+- Approved Trends axis revision: sleep Y-axis uses hours, water uses ml, with readable HTML numeric ticks and matching subdued horizontal grid lines. A rounded dynamic scale includes both actual readings and the next-day estimate; it is not a clinical threshold. Show numeric HTML labels above actual circle markers and the forecast square, retaining solid/dashed series and missing-date gaps. Keep 12px labels at all viewport sizes; narrow charts scroll inside a keyboard-focusable region with the Y-axis pinned, never shrink text or overflow the page. Units remain visible and the daily-value disclosure retains exact accessible values. No API, model, consent or data changes.
 
 - Dashboard no longer renders the separate “Recorded daily details (Thai)” seven-day disclosure. Keep weekly charts and daily values, Personal insights inline details, and the history/search on `/trend` unchanged.
 

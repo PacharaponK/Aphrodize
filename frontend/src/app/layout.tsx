@@ -10,6 +10,7 @@ import "./globals.css";
 import "./prototype.css";
 import "./analysis.css";
 import "./design-system.css";
+import "./component-hierarchy.css";
 
 const libreBaskerville = localFont({
   src: "./fonts/LibreBaskerville-Variable.ttf",
