@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_storage_buckets_when_reachable() -> None:
+    # Keep the connectivity probe short so unavailable storage does not delay startup.
     host, separator, raw_port = settings.minio_endpoint.rpartition(":")
     if not separator or not host:
         logger.warning("MinIO endpoint is invalid; starting without image storage")
