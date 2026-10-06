@@ -47,11 +47,11 @@
 **Consumes:** Existing uv.lock, frontend lockfile and production Dockerfiles.
 **Produces:** API/frontend/MinIO images buildable for linux/amd64; API imports succeed.
 
-- [ ] Add a `production` dependency group containing the existing locked headless OpenCV version, without CI tools; regenerate lock without unrelated upgrades.
-- [ ] Change API Dockerfile to use locked uv installation in a build stage, exclude GUI OpenCV/dev groups, and copy only the runtime virtualenv/application to the final image.
-- [ ] Extend .dockerignore for repository logs, datasets and generated outputs; review nested frontend secret exclusion.
-- [ ] Build API/frontend/MinIO in disposable builds; verify API imports, configured health route and production dependency contents. Run existing CI checks without touching the live stack.
-- [ ] Commit the isolated build changes.
+- [x] Add a `production` dependency group containing the existing locked headless OpenCV version, without CI tools; regenerate lock without unrelated upgrades.
+- [x] Change API Dockerfile to use locked uv installation in a build stage, exclude GUI OpenCV/dev groups, and copy only the runtime virtualenv/application to the final image.
+- [x] Extend .dockerignore for repository logs, datasets and generated outputs; review nested frontend secret exclusion.
+- [x] Build API/frontend/MinIO in disposable builds; verify API imports, configured health route and production dependency contents. Run existing CI checks without touching the live stack.
+- [x] Commit the isolated build changes.
 
 ### Task 2: Release manifest and provenance validation
 
@@ -60,21 +60,21 @@
 
 **Interfaces:** `validate_manifest(data: dict) -> dict`, `validate_origin(run: dict, main_sha: str) -> str` in scripts/release_manifest.py; command-line validation accepts JSON files, returns 0 only for valid inputs.
 
-- [ ] Write failing tests for a valid main push; reject PR, fork, dev, failed CI and superseded SHA. Validate full 40-hex source SHA, positive run ID, HTTPS origin and exact allowed GHCR digest repositories.
-- [ ] Run `python -m pytest tests/test_release_manifest.py -q`; verify failures are missing implementation, then implement validation and CLI without executing manifest content as shell code.
-- [ ] Test missing image, malformed digest, wrong repository, unsupported schema and unsafe SITE_URL inputs. Repeat focused tests and Ruff until passing.
-- [ ] Commit manifest/provenance implementation and tests.
+- [x] Write failing tests for a valid main push; reject PR, fork, dev, failed CI and superseded SHA. Validate full 40-hex source SHA, positive run ID, HTTPS origin and exact allowed GHCR digest repositories.
+- [x] Run `python -m pytest tests/test_release_manifest.py -q`; verify failures are missing implementation, then implement validation and CLI without executing manifest content as shell code.
+- [x] Test missing image, malformed digest, wrong repository, unsupported schema and unsafe SITE_URL inputs. Repeat focused tests and Ruff until passing.
+- [x] Commit manifest/provenance implementation and tests.
 
 ### Task 3: GitHub-hosted image publishing
 
 **Consumes:** Task 1 Dockerfiles and Task 2 validation contract.
 **Produces:** Three GHCR image digests and release-manifest-<SHA> artifact from the current workflow run.
 
-- [ ] Add release.yml triggered by completed CI workflow_run. Use event/repository/branch/conclusion guards before scheduling privileged jobs; check out originating head_sha with credentials persistence disabled.
-- [ ] Validate current main SHA and SITE_URL on a GitHub-hosted job; pin checkout, login, build and artifact Actions by verified full commit SHA.
-- [ ] Build/push each image with source/revision labels and sha-<SHA> tag. Keep packages:write only on publish jobs; upload the complete manifest after all image builds succeed. Partial publication produces no manifest.
-- [ ] Validate with actionlint and local provenance tests. Confirm workflow conditions never schedule publish/deploy for PR/dev/fork or failed CI. Document the first-main-run acceptance check.
-- [ ] Commit workflow publishing changes.
+- [x] Add release.yml triggered by completed CI workflow_run. Use event/repository/branch/conclusion guards before scheduling privileged jobs; check out originating head_sha with credentials persistence disabled.
+- [x] Validate current main SHA and SITE_URL on a GitHub-hosted job; pin checkout, login, build and artifact Actions by verified full commit SHA.
+- [x] Build/push each image with source/revision labels and sha-<SHA> tag. Keep packages:write only on publish jobs; upload the complete manifest after all image builds succeed. Partial publication produces no manifest.
+- [x] Validate with actionlint and local provenance tests. Confirm workflow conditions never schedule publish/deploy for PR/dev/fork or failed CI. Document the first-main-run acceptance check.
+- [x] Commit workflow publishing changes.
 
 ### Task 4: Transactional VM application update
 
@@ -83,25 +83,25 @@
 
 **Interface:** `bash scripts/deploy-vm.sh --manifest FILE --deploy-dir ABSOLUTE_PATH --overlays CSV`; fake Docker/curl executables on PATH exercise state changes without production containers.
 
-- [ ] Write tests that fail until the deployment script exists: missing/unhealthy baseline and pull failures cause no service update; malformed manifests and unsupported overlays are rejected.
-- [ ] Implement compose.release.yml using API_IMAGE and FRONTEND_IMAGE for api/frontend/minio-init. Render release configuration with preserved production paths and project name; never assume Actions checkout paths are production paths.
-- [ ] Implement host lock and candidate pulls, bootstrap from running local image IDs, exact bundle capture and service-only update with --no-build. Keep infrastructure outside routine release updates.
-- [ ] Add readiness probe for PostgreSQL/Redis/MinIO using API runtime settings, container health checks and verified HTTPS login request. Support explicit internal CA trust.
-- [ ] Test healthy promotion, failure after a partial update, health failure, rollback failure and lock contention. Assert exact previous image restoration, no false successful pointer and no destructive data commands.
-- [ ] Test overlay selection and asset/TLS bind paths, absent manifests, whitespace in deployment paths and crash-state recovery. Run `python -m pytest tests/test_vm_deployment.py -q`, bash -n and shellcheck.
-- [ ] Commit deployment script, readiness probe, Compose override and tests.
+- [x] Write tests that fail until the deployment script exists: missing/unhealthy baseline and pull failures cause no service update; malformed manifests and unsupported overlays are rejected.
+- [x] Implement compose.release.yml using API_IMAGE and FRONTEND_IMAGE for api/frontend/minio-init. Render release configuration with preserved production paths and project name; never assume Actions checkout paths are production paths.
+- [x] Implement host lock and candidate pulls, bootstrap from running local image IDs, exact bundle capture and service-only update with --no-build. Keep infrastructure outside routine release updates.
+- [x] Add readiness probe for PostgreSQL/Redis/MinIO using API runtime settings, container health checks and verified HTTPS login request. Support explicit internal CA trust.
+- [x] Test healthy promotion, failure after a partial update, health failure, rollback failure and lock contention. Assert exact previous image restoration, no false successful pointer and no destructive data commands.
+- [x] Test overlay selection and asset/TLS bind paths, absent manifests, whitespace in deployment paths and crash-state recovery. Run `python -m pytest tests/test_vm_deployment.py -q`, bash -n and shellcheck.
+- [x] Commit deployment script, readiness probe, Compose override and tests.
 
 ### Task 5: Self-hosted deploy orchestration and setup guide
 
 **Consumes:** Current-run manifest artifact, production variables and Task 4 CLI.
 **Produces:** Automatic deployment on eligible releases only after VM_DEPLOY_ENABLED=true; clear job summary with SHA/digests/outcome.
 
-- [ ] Add deploy job to release.yml, dependent on successful publication and enabled deployment. Use exact runner labels, production environment and minimum contents/packages/artifact read permissions.
-- [ ] Download only the manifest from the same run. Recheck main SHA immediately before VM mutation. Use concurrency without cancel-in-progress; host lock remains the final serialization control.
-- [ ] Authenticate GHCR using temporary Docker configuration, invoke the reviewed deploy script, clean up credentials on all exits and report rollback separately from successful deployment.
-- [ ] Write docs/cicd-vm.md with current repo Settings → Actions → Runners registration, runner account/service prerequisites, production environment/main restriction, variables, directory/CA/overlay settings and baseline capture. Registration tokens remain administrator-only and out of chat/source.
-- [ ] Document manual rollback to the retained bundle, migration limits, failed rollback recovery, first enablement and the later automatic main-release behavior.
-- [ ] Run actionlint, shell validation and full existing Backend/Frontend CI. Review complete diff for workflow provenance, token scope and production path handling; commit verified changes and push dev for owner merge.
+- [x] Add deploy job to release.yml, dependent on successful publication and enabled deployment. Use exact runner labels, production environment and minimum contents/packages/artifact read permissions.
+- [x] Download only the manifest from the same run. Recheck main SHA immediately before VM mutation. Use concurrency without cancel-in-progress; host lock remains the final serialization control.
+- [x] Authenticate GHCR using temporary Docker configuration, invoke the reviewed deploy script, clean up credentials on all exits and report rollback separately from successful deployment.
+- [x] Write docs/cicd-vm.md with current repo Settings → Actions → Runners registration, runner account/service prerequisites, production environment/main restriction, variables, directory/CA/overlay settings and baseline capture. Registration tokens remain administrator-only and out of chat/source.
+- [x] Document manual rollback to the retained bundle, migration limits, failed rollback recovery, first enablement and the later automatic main-release behavior.
+- [x] Run actionlint, shell validation and full existing Backend/Frontend CI. Review complete diff for workflow provenance, token scope and production path handling; commit verified changes and push dev for owner merge.
 
 ### Task 6: First live publishing and controlled rollout
 

@@ -186,3 +186,12 @@ that GHCR publishing or production deployment has already run on main.
 References: [workflow_run](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run),
 [image publishing](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images),
 [runner registration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners).
+
+Implementation verification (2026-10-06): Python 3.11 full suite 350 passed,
+frontend 76 passed, ESLint/TypeScript/production build passed, all three production
+images built, API smoke imports passed, actionlint and ShellCheck passed. A fresh
+review found and fixed rollback history preservation, with a regression test.
+Real Compose configuration checks cover base, DuckDNS and worker overlays; a
+separate real Docker stack passed readiness and failed correctly with Redis stopped.
+Registry publishing and live deployment remain unverified until the owner merges
+and completes the setup steps above.

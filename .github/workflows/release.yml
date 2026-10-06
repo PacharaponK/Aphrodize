@@ -115,6 +115,13 @@ jobs:
           pattern: digest-*-${{ needs.candidate.outputs.sha }}
           path: digests
           merge-multiple: true
+      - name: Reject a superseded release before publishing its manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.candidate.outputs.sha }}
+        run: |
+          main_sha=$(gh api repos/PacharaponK/Aphrodize/commits/main --jq .sha)
+          [[ "$main_sha" == "$SOURCE_SHA" ]] || { echo 'Candidate superseded; no deployable manifest published'; exit 1; }
       - name: Assemble complete release manifest
         env:
           SOURCE_SHA: ${{ needs.candidate.outputs.sha }}

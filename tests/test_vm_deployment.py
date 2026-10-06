@@ -190,6 +190,22 @@ class VmDeploymentTests(unittest.TestCase):
         self.assertFalse((self.deploy / ".releases/pending-release.json").exists())
         self.assertEqual(self.run_deploy().returncode, 0)
 
+    def test_failed_next_candidate_preserves_last_successful_rollback_pointer(self):
+        self.assertEqual(self.run_deploy().returncode, 0)
+        previous_file = self.deploy / ".releases/previous-release.json"
+        previous_before = json.loads(previous_file.read_text())
+        current_before = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        (self.state / "up-count").unlink()
+        self.data["source_sha"] = "c" * 40
+        self.data["images"]["api"] = "ghcr.io/pacharaponk/aphrodize-api@sha256:" + "c" * 64
+        self.manifest.write_text(json.dumps(self.data))
+        result = self.run_deploy("update-fail")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(json.loads(previous_file.read_text()), previous_before)
+        self.assertEqual(
+            json.loads((self.deploy / ".releases/current-release.json").read_text()), current_before
+        )
+
     def test_manual_rollback_restores_previous_config(self):
         self.assertEqual(self.run_deploy().returncode, 0)
         result = subprocess.run(

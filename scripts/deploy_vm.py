@@ -187,7 +187,15 @@ class Deployment:
     def restore(self, previous):
         self.update(previous)
         write_json(self.stored("current-release.json"), previous)
-        self.stored("pending-release.json").unlink(missing_ok=True)
+        pending_file = self.stored("pending-release.json")
+        if pending_file.exists():
+            pending = json.loads(pending_file.read_text())
+            history = pending.get("rollback_previous")
+            if history is None:
+                self.stored("previous-release.json").unlink(missing_ok=True)
+            else:
+                write_json(self.stored("previous-release.json"), history)
+        pending_file.unlink(missing_ok=True)
 
     def deploy(self, manifest, verify_main=False):
         if self.stored("pending-release.json").exists():
@@ -233,12 +241,18 @@ class Deployment:
         if verify_main:
             validate_current_main(manifest["source_sha"])
         write_json(self.stored("current-release.json"), previous)
-        write_json(self.stored("previous-release.json"), previous)
+        history = (
+            self.record("previous-release.json")
+            if self.stored("previous-release.json").exists()
+            else None
+        )
         write_json(
-            self.stored("pending-release.json"), {"previous": previous, "candidate": candidate}
+            self.stored("pending-release.json"),
+            {"previous": previous, "candidate": candidate, "rollback_previous": history},
         )
         try:
             self.update(candidate)
+            write_json(self.stored("previous-release.json"), previous)
             write_json(self.stored("current-release.json"), candidate)
             self.stored("pending-release.json").unlink()
         except (Exception, KeyboardInterrupt) as failure:
@@ -273,7 +287,8 @@ class Deployment:
         if self.stored("pending-release.json").exists():
             raise RuntimeError("Unfinished deployment: use --recover")
         write_json(
-            self.stored("pending-release.json"), {"previous": current, "candidate": previous}
+            self.stored("pending-release.json"),
+            {"previous": current, "candidate": previous, "rollback_previous": previous},
         )
         self.update(previous)
         write_json(self.stored("current-release.json"), previous)
