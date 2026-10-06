@@ -302,7 +302,8 @@ html[data-theme="black"] .brand-mark-dark { display: block; }
 .analysis-empty-icon svg { width: 26px; height: 26px; }
 .analysis-empty-state .eyebrow { margin: 0 0 6px; color: var(--primary-deep); }
 .analysis-empty-state h3 { margin-bottom: 6px; }
-.workspace-panel.quality-panel { width: 100%; max-width: none; margin: 0; }
+.workspace-panel.quality-panel { width: 100%; max-width: none; margin-inline: auto; }
+.quality-workspace .workspace-topbar { width: 100%; margin-inline: auto; }
 .quality-panel > p:not(.eyebrow) { max-width: 640px; margin-inline: auto; }
 .quality-panel .page-actions { justify-content: center; }
 .workspace-panel .recommendation-card { max-width: 960px; }
@@ -347,7 +348,7 @@ html[data-theme="black"] .brand-mark-dark { display: block; }
 .auth-theme-toggle { position: absolute; z-index: 2; top: 20px; right: 24px; }
 .auth-language-toggle { position: absolute; z-index: 2; top: 20px; right: 124px; }
 .auth-shell { width: 100%; max-width: none; min-height: calc(100vh - 56px); margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 48px -8px #0f0f0f33; backdrop-filter: none; }
-.auth-card > * { width: min(100%, 520px); margin-inline: auto; }
+.auth-card > * { width: 100%; max-width: 70ch; margin-inline: auto; }
 .auth-intro { background: var(--ink); color: #fff; }
 .auth-intro { position: relative; isolation: isolate; overflow: hidden; }
 .auth-intro-media { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #22181c; }
@@ -579,7 +580,7 @@ html[data-theme="black"] select, html[data-theme="black"] .admin-select { backgr
 
 /* Shared top navigation for dashboard and workspace routes. */
 /* Approved HTML-preview navigation; authentication and language remain live. */
-.app-navigation.is-motion-style{top:12px;width:calc(100% - clamp(32px,6vw,96px));max-width:1504px;margin:14px auto 0;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:0 8px 30px color-mix(in srgb,var(--ink) 4%,transparent)}
+.app-navigation.is-motion-style{top:12px;width:calc(min(100%, var(--page-frame-max)) - 2 * var(--responsive-page-gutter));max-width:none;margin:14px auto 0;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:0 8px 30px color-mix(in srgb,var(--ink) 4%,transparent)}
 .app-navigation.is-motion-style .app-navigation-inner{min-height:76px;padding:12px 20px;gap:24px}
 .app-navigation.is-motion-style .brand{font-size:22px;font-weight:700;letter-spacing:-1px;gap:10px}
 .app-navigation.is-motion-style .brand-mark{width:34px;height:46px}
@@ -630,7 +631,7 @@ html[data-theme="black"] .app-navigation.is-motion-style .nav-link:hover{backgro
   display: flex;
   align-items: center;
   gap: 24px;
-  width: min(100%, 1600px);
+  width: 100%;
   min-height: 72px;
   margin-inline: auto;
   padding: 10px clamp(18px, 3vw, 48px);
@@ -1117,7 +1118,14 @@ html[data-theme="black"] .app-shell main .capture-card p:not(.eyebrow) {
 
 /* Give wide screens room to breathe while keeping every layout shrink-safe. */
 :root {
+  --page-frame-max: 1920px;
   --responsive-page-gutter: clamp(16px, 3.4vw, 72px);
+}
+@media (max-width: 900px) { :root { --responsive-page-gutter: 18px; } }
+@media (max-width: 480px) { :root { --responsive-page-gutter: 14px; } }
+/* One outer frame: navbar edges meet workspace content edges at every breakpoint. */
+.app-navigation.is-motion-style {
+  width: calc(min(100%, var(--page-frame-max)) - 2 * var(--responsive-page-gutter));
 }
 
 html,
@@ -1125,6 +1133,8 @@ body {
   width: 100%;
   min-width: 320px;
 }
+/* Short routes reserve the same scrollbar space as long routes, avoiding width jumps. */
+html { scrollbar-gutter: stable; }
 
 .app-shell,
 .simple-page,
@@ -1142,7 +1152,7 @@ body {
 .app-shell > main,
 .workspace-shell > .workspace-main {
   width: 100%;
-  max-width: 1920px;
+  max-width: var(--page-frame-max);
   margin-inline: auto;
   padding-inline: var(--responsive-page-gutter);
 }
@@ -1153,11 +1163,13 @@ body {
 
 .simple-page {
   width: 100%;
+  max-width: var(--page-frame-max);
+  margin-inline: auto;
   padding-inline: var(--responsive-page-gutter);
 }
 
 .page-frame {
-  width: min(100%, 1920px);
+  width: 100%;
   margin-inline: auto;
 }
 
@@ -1199,21 +1211,21 @@ h3 { font-size: clamp(17px, 1.12vw, 21px); }
 
 .recommendation-card,
 .workspace-shell .recommendation-card {
-  width: min(100%, 1240px);
-  max-width: 1240px;
+  width: 100%;
+  max-width: none;
   margin-inline: auto;
 }
 
 .profile-panel {
-  width: min(100%, 1240px);
-  max-width: 1240px;
+  width: 100%;
+  max-width: none;
   margin-inline: auto;
 }
 
 .recommendation-context,
 .recommendation-note,
 .recommendation-warning {
-  max-width: 1280px;
+  max-width: none;
   margin-inline: auto;
 }
 
@@ -1244,3 +1256,19 @@ h3 { font-size: clamp(17px, 1.12vw, 21px); }
   .page-header { margin-inline: -14px; padding-inline: 14px; }
   .page-content { padding: clamp(16px, 5vw, 22px); }
 }
+
+/* Full-page shells share the navigation frame even when they have their own header. */
+.auth-page,
+main.onboarding-page,
+main.admin-products-page {
+  width: min(100%, var(--page-frame-max));
+  max-width: var(--page-frame-max);
+  margin-inline: auto;
+  padding-inline: var(--responsive-page-gutter);
+}
+.auth-page { padding-block: 72px 28px; }
+.auth-page .auth-shell { width: 100%; max-width: none; min-height: calc(100dvh - 100px); }
+.onboarding-page .onboarding-card { width: 100%; max-width: none; }
+.onboarding-card > :not(.onboarding-controls) { max-width: 72ch; margin-inline: auto; }
+.profile-panel .profile-auth-gate { max-width: none; }
+.signup-login-button { width: 100%; max-width: 70ch; }

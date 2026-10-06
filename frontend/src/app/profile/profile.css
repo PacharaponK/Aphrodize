@@ -1,6 +1,6 @@
 .profile-workspace .workspace-topbar {
-  width: min(100%, 1240px);
-  max-width: 1240px;
+  width: 100%;
+  max-width: none;
   margin-inline: auto;
 }
 

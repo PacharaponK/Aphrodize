@@ -177,3 +177,34 @@ html[data-theme="black"] .clients-page .score-method-content code{background:var
 .clients-page .daily-input-method summary{cursor:pointer;min-height:44px;align-content:center}
 .clients-page .daily-input-method summary:focus-visible{outline:2px solid var(--primary-deep);outline-offset:3px;border-radius:6px}
 .clients-page .daily-input-method p{margin:4px 0 8px;line-height:1.65}
+
+/* The page owns the gutter; all section frames span the same content width. */
+.clients-page .page-content.clients-content,
+html[data-theme="black"] .clients-page .page-content.clients-content {
+  padding: clamp(28px, 3vw, 56px) 0 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.clients-page .clients-intro { max-width: 72ch; line-height: 1.65; }
+.clients-page .daily-entry-card,
+.clients-page .daily-outcome-card,
+.clients-page .daily-data-delete-panel,
+.clients-page .age-guidance,
+.clients-page .score-method-details,
+.clients-page .tracker-results:not(:has(.tracker-metric-grid)),
+.trend-page .daily-history-panel,
+.trend-page .personal-forecast-panel:not(:has(.personal-forecast-chart-grid)) {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin-inline: auto;
+}
+.clients-page .daily-entry-copy { min-width: 0; }
+.clients-page .daily-entry-copy p { max-width: 65ch; }
+@media (max-width: 600px) {
+  .clients-page .daily-entry-card { flex-direction: column; align-items: stretch; }
+  .clients-page .daily-open-button { justify-content: center; }
+}
