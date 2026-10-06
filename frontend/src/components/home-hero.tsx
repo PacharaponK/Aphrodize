@@ -3,12 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Camera } from "lucide-react";
+import { ArrowUpRight, Camera, Plus } from "lucide-react";
 import { useLanguage } from "./language-provider";
+import { useAuthPresentation } from "./auth-presentation";
 
 export function HomeHero() {
   const { language } = useLanguage();
   const th = language === "th";
+  const compact = useAuthPresentation().authStatus === "signed-in";
   const hero = useRef<HTMLElement>(null);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -24,7 +26,7 @@ export function HomeHero() {
   }, []);
 
   useEffect(() => {
-    if (paused || reduced) return;
+    if (paused || reduced || compact) return;
     let timer: ReturnType<typeof setTimeout>;
     const schedule = () => {
       clearTimeout(timer);
@@ -33,7 +35,7 @@ export function HomeHero() {
     schedule();
     document.addEventListener("visibilitychange", schedule);
     return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); };
-  }, [paused, reduced]);
+  }, [paused, reduced, compact]);
 
   useEffect(() => {
     const element = hero.current;
@@ -78,21 +80,21 @@ export function HomeHero() {
   }, []);
 
   let characterIndex = 0;
-  return <section ref={hero} className="home-hero" aria-labelledby="home-hero-title">
+  return <section ref={hero} className={`home-hero${compact ? " home-hero-compact" : ""}`} aria-labelledby="home-hero-title">
     <div className="home-hero-background" aria-hidden="true">
       <Image src="/assets/aphrodize-hero-face.png" alt="" fill priority sizes="(max-width: 1600px) 100vw, 1600px" />
       <span className="home-hero-reticle" />
     </div>
     <div className="home-hero-copy">
       <p className="home-hero-eyebrow">{th ? "ภาพรวมประจำวันของคุณ" : "Your daily overview"}</p>
-      <h1 id="home-hero-title">{th ? "รู้จักผิวของคุณ" : "Know your skin."}<span className={`home-hero-phrase${paused ? " is-paused" : ""}`}>
+      <h1 id="home-hero-title">{th ? "รู้จักผิวของคุณ" : "Know your skin."}{!compact && <span className={`home-hero-phrase${paused ? " is-paused" : ""}`}>
         <span className="home-hero-sr-only">{th ? "ในทุกวัน" : "Day by day."}</span>
         <span key={phrase} className="home-hero-words" aria-hidden="true">{phrase.split(" ").map((word, wordIndex) => <span className="home-hero-word" key={wordIndex}>{Array.from(word).map((letter, letterIndex) => <span className="home-hero-character" key={letterIndex} style={{ animationDelay: `${180 + characterIndex++ * 50}ms` }}>{letter}</span>)}</span>)}</span>
-      </span></h1>
-      <p className="home-hero-description">{th ? "ติดตามภาพผิวควบคู่กับพฤติกรรมการนอนและการดื่มน้ำ ผิว การนอน และการดื่มน้ำในมุมมองเดียว" : "Track your skin images alongside your sleep and hydration habits. Your skin, sleep and hydration in one place."}</p>
-      <div className="home-hero-actions"><Link className="primary-button" href="/capture"><Camera size={20} aria-hidden="true" />{th ? "วิเคราะห์ผิว" : "Analyze skin"}<ArrowUpRight size={20} aria-hidden="true" /></Link><Link className="home-hero-secondary" href="#daily">{th ? "ภาพรวมประจำวัน" : "Your daily overview"}<ArrowUpRight size={20} aria-hidden="true" /></Link></div>
+      </span>}</h1>
+      <p className="home-hero-description">{compact ? (th ? "บันทึกล่าสุดและสิ่งที่ควรใส่ใจ ในมุมมองเดียว" : "Your latest records and next steps, in one place.") : (th ? "ติดตามภาพผิวควบคู่กับพฤติกรรมการนอนและการดื่มน้ำ ผิว การนอน และการดื่มน้ำในมุมมองเดียว" : "Track your skin images alongside your sleep and hydration habits. Your skin, sleep and hydration in one place.")}</p>
+      <div className="home-hero-actions"><Link className="primary-button" href={compact ? "/clients" : "/capture"}>{compact ? <Plus size={20} aria-hidden="true" /> : <Camera size={20} aria-hidden="true" />}{compact ? (th ? "บันทึกวันนี้" : "Log today") : (th ? "วิเคราะห์ผิว" : "Analyze skin")}<ArrowUpRight size={20} aria-hidden="true" /></Link><Link className="home-hero-secondary" href="#daily">{th ? "ภาพรวมประจำวัน" : "Your daily overview"}<ArrowUpRight size={20} aria-hidden="true" /></Link></div>
       <p className="home-hero-footnote">{th ? "เพื่อการติดตามส่วนบุคคล ไม่ใช่การวินิจฉัยทางการแพทย์" : "Personal tracking, not a medical diagnosis."}</p>
-      {!reduced && <button type="button" className="home-hero-pause" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{th ? (paused ? "เล่นข้อความเคลื่อนไหว" : "หยุดข้อความเคลื่อนไหว") : (paused ? "Resume text animation" : "Pause text animation")}</button>}
+      {!reduced && !compact && <button type="button" className="home-hero-pause" aria-pressed={paused} onClick={() => setPaused(value => !value)}>{th ? (paused ? "เล่นข้อความเคลื่อนไหว" : "หยุดข้อความเคลื่อนไหว") : (paused ? "Resume text animation" : "Pause text animation")}</button>}
     </div>
     <p className="home-hero-media-label">{th ? "ภาพสาธิต ไม่ใช่ผลวิเคราะห์" : "Visual demo, not an analysis result"}</p>
   </section>;

@@ -12,6 +12,7 @@ from backend.core.db.models import TrainingRun
 from backend.core.db.session import SessionLocal, close_database
 from backend.libs.redis_client import redis_settings
 from backend.services.curated_training import train_candidate
+from backend.services.daily_health_tracking import track_daily_health_candidate
 from backend.services.daily_health_training import (
     enqueue_candidate_training_if_ready,
     train_daily_health_candidate,
@@ -55,6 +56,8 @@ async def run_training(_: dict, training_run_id: str) -> None:
                 with mlflow.start_run(run_name=f"aphrodize-{run.model_family}") as mlflow_run:
                     mlflow.log_params({"model_family": run.model_family, **run.config})
                     mlflow.set_tag("dataset_uri", run.dataset_uri)
+                    mlflow.set_tag("execution_kind", "metadata_only")
+                    mlflow.set_tag("training_executed", "false")
                     run.mlflow_run_id = mlflow_run.info.run_id
                     run.status = "awaiting_model_package"
         except Exception:
@@ -67,7 +70,18 @@ async def run_training(_: dict, training_run_id: str) -> None:
 async def run_daily_health_candidate_training(_: dict) -> None:
     """Create a review-only version when enough consented self-reports have arrived."""
     async with SessionLocal() as session:
-        await train_daily_health_candidate(session)
+        version = await train_daily_health_candidate(session)
+        if version is not None and version.status == "candidate" and not version.mlflow_run_id:
+            # Keep MLflow I/O outside the worker event loop. A tracking outage must
+            # not discard an already-persisted candidate or activate it.
+            try:
+                version.mlflow_run_id = await asyncio.to_thread(
+                    track_daily_health_candidate, version
+                )
+                await session.commit()
+            except Exception as error:
+                logger.warning("Candidate tracking unavailable: %s", type(error).__name__)
+                raise
 
 
 async def check_daily_health_candidate_training(_: dict) -> None:

@@ -5,8 +5,8 @@
 .admin-products-page .admin-select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--input); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; font-size: 13px; }
 .admin-products-editor form, .admin-products-editor label { display: grid; gap: 8px; }
 
-.admin-products-page { padding: 0 clamp(16px, 3vw, 56px) 72px; color: var(--ink); }
-.admin-products-container { width: min(100%, 1920px); max-width: 1920px; margin: auto; }
+.admin-products-page { width: min(100%, var(--page-frame-max)); max-width: var(--page-frame-max); margin-inline: auto; padding: 0 var(--responsive-page-gutter) 72px; color: var(--ink); }
+.admin-products-container { width: 100%; max-width: none; margin: auto; }
 .admin-products-header { min-height: 80px; margin: 0; border-bottom: 1px solid var(--line); }
 .admin-products-brand { display: flex; align-items: center; gap: 11px; font-size: 13px; font-weight: 800; letter-spacing: .08em; }
 .admin-products-brand strong { color: var(--primary-deep); }
@@ -22,7 +22,7 @@
 .admin-page-intro p:last-child { max-width: 660px; margin: 0; color: var(--muted); font-size: 14px; }
 .admin-page-intro .eyebrow, .admin-products-heading .eyebrow, .admin-editor-heading .eyebrow { margin: 0; color: var(--primary-deep); }
 .admin-products-message { min-height: 0; margin: 0 0 22px; padding: 13px 16px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--primary-soft); color: var(--primary-deep); font-size: 14px; }
-.admin-state-card { display: grid; justify-items: center; gap: 8px; max-width: 620px; margin: 80px auto; padding: 48px; text-align: center; }
+.admin-state-card { display: grid; justify-items: center; gap: 8px; width: 100%; max-width: none; margin: 80px auto; padding: 48px; text-align: center; }
 .admin-state-card svg { color: var(--purple); }
 .admin-state-card h1 { margin: 8px 0 0; font-size: 28px; }
 .admin-state-card p { margin: 0; color: var(--muted); }

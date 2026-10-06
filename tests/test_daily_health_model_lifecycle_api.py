@@ -116,6 +116,7 @@ async def test_candidate_promotion_requires_review_and_records_audit_event(monke
             approval_reason="Reviewed holdout and approved for a monitored trial",
         ),
         session,
+        actor="reviewer-test",
     )
 
     deployment = next(
@@ -127,6 +128,7 @@ async def test_candidate_promotion_requires_review_and_records_audit_event(monke
     assert result["active_version_id"] == version_id
     assert deployment.active_version_id == version_id
     assert event.action == "promote"
+    assert event.actor == "reviewer-test"
     assert event.reason.startswith("Reviewed holdout")
     assert session.committed is True
 
@@ -147,6 +149,7 @@ async def test_candidate_promotion_refuses_an_invalid_artifact(monkeypatch) -> N
                 approval_reason="Reviewed this candidate and checked holdout metrics",
             ),
             session,
+            actor="reviewer-test",
         )
 
     assert error.value.status_code == 409
@@ -171,6 +174,7 @@ async def test_rollback_swaps_to_previous_approved_candidate_and_is_audited(monk
     result = await daily_health.rollback_daily_health_model(
         DailyHealthModelRollbackRequest(reason="Rollback after a regression was observed"),
         session,
+        actor="reviewer-test",
     )
 
     assert result["active_version_id"] == previous_id
@@ -180,6 +184,11 @@ async def test_rollback_swaps_to_previous_approved_candidate_and_is_audited(monk
         for item in session.added
     )
     assert session.committed is True
+
+    event = next(
+        item for item in session.added if isinstance(item, DailyHealthModelDeploymentEvent)
+    )
+    assert event.actor == "reviewer-test"
 
 
 @pytest.mark.asyncio

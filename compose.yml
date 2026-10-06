@@ -227,7 +227,13 @@ services:
     restart: unless-stopped
     environment:
       PYTHONPATH: /app
-      MLFLOW_TRACKING_URI: ${UV_MLFLOW_TRACKING_URI:-file:///app/storage/artifacts/uv/mlruns}
+      MLFLOW_TRACKING_URI: ${UV_MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-aphrodize}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+    depends_on:
+      mlflow:
+        condition: service_healthy
     volumes:
       - ./backend:/app/backend:ro
       - ./scripts:/app/scripts:ro

@@ -30,6 +30,7 @@ class TrainingRunRead(BaseModel):
     status: str
     mlflow_run_id: str | None
     created_at: datetime
+    execution_kind: Literal["model_training", "metadata_only"]
 
 
 class InferenceRequest(BaseModel):

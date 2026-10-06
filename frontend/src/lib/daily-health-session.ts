@@ -13,7 +13,11 @@ export function apiHeaders(): HeadersInit {
   return { Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}` };
 }
 
-export async function accountSession(request: NextRequest): Promise<{ userId: string; token: string } | null> {
+export async function accountSession(request: NextRequest): Promise<{
+  userId: string;
+  token: string;
+  sex?: "male" | "female" | "prefer_not_to_say" | null;
+} | null> {
   const token = request.cookies.get("aphrodize_session")?.value;
   if (!token) return null;
   const response = await fetch(backendUrl("/auth/profile"), {
@@ -27,7 +31,12 @@ export async function accountSession(request: NextRequest): Promise<{ userId: st
     || typeof profile.user_id !== "string" || !UUID.test(profile.user_id)) {
     throw new Error("Backend returned an invalid account identity");
   }
-  return { userId: profile.user_id, token };
+  const savedProfile = "profile" in profile ? profile.profile : null;
+  const savedSex = typeof savedProfile === "object" && savedProfile !== null && "sex" in savedProfile
+    ? savedProfile.sex : null;
+  const sex = savedSex === "male" || savedSex === "female" || savedSex === "prefer_not_to_say"
+    ? savedSex : null;
+  return { userId: profile.user_id, token, sex };
 }
 
 export function sameOrigin(request: NextRequest): boolean {

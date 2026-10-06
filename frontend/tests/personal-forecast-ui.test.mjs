@@ -64,6 +64,9 @@ test("forecast graph separates actual sleep readings from the next-day estimate"
   assert.match(html, /Next-day forecast/);
   assert.match(html, /class="personal-forecast-actual-line"/);
   assert.match(html, /class="personal-forecast-next-line"/);
+  assert.match(html, /data-evidence="recorded"/);
+  assert.match(html, /data-evidence="forecast"/);
+  assert.match(html, /personal-forecast-next-summary/);
   assert.match(html, /data-series="forecast"/);
   assert.match(html, /7\.5/);
   assert.match(html, /2026-10-01/);

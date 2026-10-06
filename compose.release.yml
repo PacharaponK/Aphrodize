@@ -1,0 +1,8 @@
+# Apply after compose.vm.yml and the VM's existing optional overlays.
+services:
+  api:
+    image: ${API_IMAGE:?Set immutable API_IMAGE}
+  frontend:
+    image: ${FRONTEND_IMAGE:?Set immutable FRONTEND_IMAGE}
+  minio-init:
+    image: ${API_IMAGE:?Set immutable API_IMAGE}

@@ -24,6 +24,15 @@
   --radius: 12px;
   --font-ui: var(--font-montserrat), var(--font-noto-sans-thai), Arial, sans-serif;
   --font-display: var(--font-libre-baskerville), var(--font-noto-sans-thai), Georgia, serif;
+  --text-body: 1rem;
+  --text-secondary: .875rem;
+  --text-meta: .8125rem;
+  --text-chart: .75rem;
+  --text-section: clamp(1.5rem, 1.4vw, 1.75rem);
+  --text-card: 1.125rem;
+  --leading-body: 1.65;
+  --leading-secondary: 1.6;
+  --leading-heading: 1.35;
   --background: var(--canvas);
   --foreground: var(--ink);
   --card: #fff;
@@ -35,7 +44,7 @@
 }
 
 html { background: var(--canvas); }
-body { background: var(--canvas); color: var(--ink); font-family: var(--font-ui); line-height: 1.55; }
+body { background: var(--canvas); color: var(--ink); font-family: var(--font-ui); font-size: var(--text-body); line-height: var(--leading-body); }
 button, input { font-family: inherit; }
 h1, h2 { color: var(--ink); font-family: var(--font-display); font-weight: 400; }
 h3, .brand, .page-brand, .auth-brand { color: var(--ink); font-family: var(--font-ui); font-weight: 700; }
@@ -302,7 +311,8 @@ html[data-theme="black"] .brand-mark-dark { display: block; }
 .analysis-empty-icon svg { width: 26px; height: 26px; }
 .analysis-empty-state .eyebrow { margin: 0 0 6px; color: var(--primary-deep); }
 .analysis-empty-state h3 { margin-bottom: 6px; }
-.workspace-panel.quality-panel { width: 100%; max-width: none; margin: 0; }
+.workspace-panel.quality-panel { width: 100%; max-width: none; margin-inline: auto; }
+.quality-workspace .workspace-topbar { width: 100%; margin-inline: auto; }
 .quality-panel > p:not(.eyebrow) { max-width: 640px; margin-inline: auto; }
 .quality-panel .page-actions { justify-content: center; }
 .workspace-panel .recommendation-card { max-width: 960px; }
@@ -347,7 +357,7 @@ html[data-theme="black"] .brand-mark-dark { display: block; }
 .auth-theme-toggle { position: absolute; z-index: 2; top: 20px; right: 24px; }
 .auth-language-toggle { position: absolute; z-index: 2; top: 20px; right: 124px; }
 .auth-shell { width: 100%; max-width: none; min-height: calc(100vh - 56px); margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 24px 48px -8px #0f0f0f33; backdrop-filter: none; }
-.auth-card > * { width: min(100%, 520px); margin-inline: auto; }
+.auth-card > * { width: 100%; max-width: 70ch; margin-inline: auto; }
 .auth-intro { background: var(--ink); color: #fff; }
 .auth-intro { position: relative; isolation: isolate; overflow: hidden; }
 .auth-intro-media { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #22181c; }
@@ -368,7 +378,7 @@ html[data-theme="black"] .brand-mark-dark { display: block; }
 .auth-card label { color: var(--ink-soft); }
 .auth-privacy { color: var(--muted); }
 .auth-back { display: block; margin-top: 18px; text-align: center; font-size: 13px; text-decoration: none; }
-.signup-consent { align-items: flex-start; margin: 7px 0; font-size: 12px !important; line-height: 1.45; }
+.signup-consent { align-items: flex-start; margin: 7px 0; font-size: var(--text-secondary); line-height: var(--leading-body); }
 .form-message.success { color: #16724b; }
 .signup-card { padding-bottom: 40px; }
 .signup-section { display: grid; gap: 10px; margin: 0; padding: 20px 0; border: 0; border-top: 1px solid var(--line); }
@@ -579,12 +589,12 @@ html[data-theme="black"] select, html[data-theme="black"] .admin-select { backgr
 
 /* Shared top navigation for dashboard and workspace routes. */
 /* Approved HTML-preview navigation; authentication and language remain live. */
-.app-navigation.is-motion-style{top:12px;width:calc(100% - clamp(32px,6vw,96px));max-width:1504px;margin:14px auto 0;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:0 8px 30px color-mix(in srgb,var(--ink) 4%,transparent)}
+.app-navigation.is-motion-style{top:12px;width:calc(min(100%, var(--page-frame-max)) - 2 * var(--responsive-page-gutter));max-width:none;margin:14px auto 0;border:1px solid var(--line);border-radius:18px;background:color-mix(in srgb,var(--surface) 90%,transparent);box-shadow:0 8px 30px color-mix(in srgb,var(--ink) 4%,transparent)}
 .app-navigation.is-motion-style .app-navigation-inner{min-height:76px;padding:12px 20px;gap:24px}
 .app-navigation.is-motion-style .brand{font-size:22px;font-weight:700;letter-spacing:-1px;gap:10px}
 .app-navigation.is-motion-style .brand-mark{width:34px;height:46px}
 .app-navigation.is-motion-style .app-navigation-links{margin-inline:auto;gap:24px;justify-content:center}
-.app-navigation.is-motion-style .nav-link{position:relative;min-height:44px;padding:12px 0;border:0;border-radius:0;background:none;box-shadow:none;color:var(--muted);font-size:12px}
+.app-navigation.is-motion-style .nav-link{position:relative;min-height:44px;padding:12px 0;border:0;border-radius:0;background:none;box-shadow:none;color:var(--muted);font-size:var(--text-secondary)}
 .app-navigation.is-motion-style .nav-icon{display:none}
 .app-navigation.is-motion-style .nav-link::after{content:"";position:absolute;left:0;right:0;bottom:6px;height:2px;background:var(--primary);transform:scaleX(0);transform-origin:left;transition:transform .25s cubic-bezier(.16,1,.3,1)}
 .app-navigation.is-motion-style .nav-link:hover::after,.app-navigation.is-motion-style .nav-link.active::after{transform:scaleX(1)}
@@ -598,9 +608,9 @@ html[data-theme="black"] .app-navigation.is-motion-style .nav-link:hover{backgro
 .app-navigation-preview-theme>span{display:none}
 .app-navigation.is-motion-style .app-navigation-preview-theme:hover,.app-navigation.is-motion-style .app-nav-toggle:hover{background:var(--primary-soft)}
 .app-navigation-language .language-toggle{min-width:44px;min-height:44px;background:transparent;border:0;font-size:12px}
-@media(max-width:1100px){.app-navigation.is-motion-style .app-navigation-inner{gap:16px}.app-navigation.is-motion-style .app-navigation-links{gap:14px}.app-navigation.is-motion-style .nav-link{font-size:11px}.app-navigation.is-motion-style .brand{font-size:20px}}
-@media(min-width:901px){.app-navigation.is-motion-style .app-navigation-inner{display:flex}.app-navigation.is-motion-style .app-navigation-links{display:flex;width:auto;padding:0}.app-navigation.is-motion-style .app-navigation-controls{display:flex;margin:0;flex-wrap:nowrap}.app-navigation.is-motion-style.is-open .app-navigation-links{flex-direction:row}}
-@media(max-width:900px){
+@media(max-width:1200px){.app-navigation.is-motion-style .app-navigation-inner{gap:16px}.app-navigation.is-motion-style .app-navigation-links{gap:14px}.app-navigation.is-motion-style .brand{font-size:20px}}
+@media(min-width:1201px){.app-navigation.is-motion-style .app-navigation-inner{display:flex}.app-navigation.is-motion-style .app-navigation-links{display:flex;width:auto;padding:0}.app-navigation.is-motion-style .app-navigation-controls{display:flex;margin:0;flex-wrap:nowrap}.app-navigation.is-motion-style.is-open .app-navigation-links{flex-direction:row}}
+@media(max-width:1200px){
  .app-navigation.is-motion-style .app-navigation-inner{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:0 6px}
  .app-navigation.is-motion-style .app-nav-toggle{display:inline-flex;grid-column:3;grid-row:1}
  .app-navigation.is-motion-style .app-navigation-controls{display:flex;grid-column:2;grid-row:1;margin:0;padding:0;flex-wrap:nowrap}
@@ -608,7 +618,7 @@ html[data-theme="black"] .app-navigation.is-motion-style .nav-link:hover{backgro
  .app-navigation.is-motion-style .app-navigation-auth-action>span{display:none}
  .app-navigation.is-motion-style .app-navigation-links{display:none;grid-column:1/-1;grid-row:2;margin:8px 0 0;gap:0;align-items:stretch}
  .app-navigation.is-motion-style.is-open .app-navigation-links{display:flex;flex-direction:column}
- .app-navigation.is-motion-style .app-navigation-links .nav-link{justify-content:flex-start;padding:12px}
+ .app-navigation.is-motion-style .app-navigation-links .nav-link{justify-content:flex-start;padding:12px;font-size:var(--text-body)}
  .app-navigation.is-motion-style .app-navigation-language{display:none;grid-column:1/-1;grid-row:3;padding-top:8px;border-top:1px solid var(--line)}
  .app-navigation.is-motion-style.is-open .app-navigation-language{display:block}
  .app-navigation.is-motion-style .app-navigation-auth-error{position:absolute;top:100%;right:0;background:var(--surface);padding:8px}
@@ -630,7 +640,7 @@ html[data-theme="black"] .app-navigation.is-motion-style .nav-link:hover{backgro
   display: flex;
   align-items: center;
   gap: 24px;
-  width: min(100%, 1600px);
+  width: 100%;
   min-height: 72px;
   margin-inline: auto;
   padding: 10px clamp(18px, 3vw, 48px);
@@ -1117,7 +1127,18 @@ html[data-theme="black"] .app-shell main .capture-card p:not(.eyebrow) {
 
 /* Give wide screens room to breathe while keeping every layout shrink-safe. */
 :root {
+  /* Provenance is a reading cue, never a health/severity rating. */
+  --page-frame-max: 1920px;
   --responsive-page-gutter: clamp(16px, 3.4vw, 72px);
+}
+.evidence-label { display:inline-flex; align-items:center; width:fit-content; max-width:100%; padding:4px 8px; border:1px solid var(--line); border-radius:6px; color:var(--muted); background:var(--surface-soft); font:400 var(--text-meta, .8125rem)/1.5 var(--font-ui); }
+.evidence-label[data-evidence="recorded"] { color:var(--ink); background:var(--surface); border-color:var(--border-strong); }
+.evidence-label[data-evidence="forecast"], .evidence-label[data-evidence="estimate"] { border-style:dashed; }
+@media (max-width: 900px) { :root { --responsive-page-gutter: 18px; } }
+@media (max-width: 480px) { :root { --responsive-page-gutter: 14px; } }
+/* One outer frame: navbar edges meet workspace content edges at every breakpoint. */
+.app-navigation.is-motion-style {
+  width: calc(min(100%, var(--page-frame-max)) - 2 * var(--responsive-page-gutter));
 }
 
 html,
@@ -1125,6 +1146,8 @@ body {
   width: 100%;
   min-width: 320px;
 }
+/* Short routes reserve the same scrollbar space as long routes, avoiding width jumps. */
+html { scrollbar-gutter: stable; }
 
 .app-shell,
 .simple-page,
@@ -1142,7 +1165,7 @@ body {
 .app-shell > main,
 .workspace-shell > .workspace-main {
   width: 100%;
-  max-width: 1920px;
+  max-width: var(--page-frame-max);
   margin-inline: auto;
   padding-inline: var(--responsive-page-gutter);
 }
@@ -1153,11 +1176,13 @@ body {
 
 .simple-page {
   width: 100%;
+  max-width: var(--page-frame-max);
+  margin-inline: auto;
   padding-inline: var(--responsive-page-gutter);
 }
 
 .page-frame {
-  width: min(100%, 1920px);
+  width: 100%;
   margin-inline: auto;
 }
 
@@ -1172,7 +1197,7 @@ body {
 .analysis-section .result-artifact { min-height: clamp(340px, 42svh, 620px); }
 
 h1 { font-size: clamp(32px, 2.8vw, 56px); }
-h2 { font-size: clamp(24px, 2.1vw, 40px); }
+h2 { font-size: var(--text-section); line-height: var(--leading-heading); }
 h3 { font-size: clamp(17px, 1.12vw, 21px); }
 
 .primary-button,
@@ -1199,21 +1224,21 @@ h3 { font-size: clamp(17px, 1.12vw, 21px); }
 
 .recommendation-card,
 .workspace-shell .recommendation-card {
-  width: min(100%, 1240px);
-  max-width: 1240px;
+  width: 100%;
+  max-width: none;
   margin-inline: auto;
 }
 
 .profile-panel {
-  width: min(100%, 1240px);
-  max-width: 1240px;
+  width: 100%;
+  max-width: none;
   margin-inline: auto;
 }
 
 .recommendation-context,
 .recommendation-note,
 .recommendation-warning {
-  max-width: 1280px;
+  max-width: none;
   margin-inline: auto;
 }
 
@@ -1243,4 +1268,154 @@ h3 { font-size: clamp(17px, 1.12vw, 21px); }
 
   .page-header { margin-inline: -14px; padding-inline: 14px; }
   .page-content { padding: clamp(16px, 5vw, 22px); }
+}
+
+/* Full-page shells share the navigation frame even when they have their own header. */
+.auth-page,
+main.onboarding-page,
+main.admin-products-page {
+  width: min(100%, var(--page-frame-max));
+  max-width: var(--page-frame-max);
+  margin-inline: auto;
+  padding-inline: var(--responsive-page-gutter);
+}
+.auth-page { padding-block: 72px 28px; }
+.auth-page .auth-shell { width: 100%; max-width: none; min-height: calc(100dvh - 100px); }
+.onboarding-page .onboarding-card { width: 100%; max-width: none; }
+.onboarding-card > :not(.onboarding-controls) { max-width: 72ch; margin-inline: auto; }
+.profile-panel .profile-auth-gate { max-width: none; }
+.signup-login-button { width: 100%; max-width: 70ch; }
+
+/* Shared reading roles. Scoped specificity keeps route CSS and retained
+   stylesheets from shrinking meaningful text after client-side navigation. */
+:root :is(
+  .daily-entry-copy h2, .tracker-results > h2,
+  .daily-health-dashboard-heading h2, .daily-outcome-card h2,
+  .personalized-guidance h2, .daily-data-delete-panel h2,
+  .personal-forecast-panel-heading h2, .daily-history-panel-heading h2,
+  .profile-info-section h2, .profile-menstrual h2,
+  .capture-studio h2, .capture-permissions-heading h2,
+  .analysis-summary h2, .analysis-regions h2, .analysis-method h2,
+  .analysis-page--face .analysis-summary h2,
+  .analysis-page--face .analysis-region-panel h2,
+  .recommendation-context-heading h2, .recommendation-category h2,
+  .admin-products-heading h2, .admin-editor-heading h2,
+  .auth-card-heading h2,
+  .home-card-heading h2
+) {
+  font-size: var(--text-section);
+  line-height: var(--leading-heading);
+  text-wrap: balance;
+}
+:root .daily-entry-dialog h2 { font-size: var(--text-section); line-height: var(--leading-heading); }
+:root .analysis-page--face .analysis-summary .analysis-summary-header h3,
+:root .analysis-page--face .analysis-section-heading h3 {
+  font-size: var(--text-section);
+  line-height: var(--leading-heading);
+  text-wrap: balance;
+}
+:root :is(.capture-tips h2, .personal-forecast-metric-heading h3,
+  .daily-history-entry-heading h3, .home-action-card h2) {
+  font-size: var(--text-card);
+  line-height: 1.4;
+}
+
+:root :is(.clients-intro, .capture-intro, .capture-description,
+  .home-hero-description, .profile-section-note,
+  .personal-forecast-panel-heading p:last-child,
+  .daily-history-panel-heading > div > p:last-child,
+  .onboarding-card > p:not(.eyebrow), .auth-intro p:not(.eyebrow)) {
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  max-width: 72ch;
+}
+
+:root :is(.capture-consent-copy, .capture-privacy, .auth-privacy,
+  .signup-section .signup-consent, .home-hero-footnote, .home-safety-note,
+  .daily-data-consent, .personalization-consent, .model-training-consent,
+  .profile-measurement-consent, .onboarding-guardian) {
+  font-size: var(--text-secondary);
+  line-height: 1.7;
+}
+:root :is(.capture-consent-heading small, .home-hero-media-label,
+  .model-training-consent-status small, .home-insights-footer p,
+  .analysis-page--face .analysis-summary .analysis-overview-scope) {
+  font-size: var(--text-meta);
+  line-height: var(--leading-secondary);
+}
+
+:root :is(.capture-tips > p, .capture-tips li p, .capture-local-note p,
+  .capture-empty p, .capture-submit-area p, .capture-submit-area > a,
+  .personal-forecast-state, .personal-forecast-consent,
+  .personal-forecast-insufficient, .personal-forecast-loading,
+  .personal-forecast-method-note, .personal-forecast-values summary,
+  .personal-forecast-values li, .daily-history-empty p,
+  .daily-history-loading, .daily-history-target-date,
+  .daily-history-search-range, .daily-history-availability,
+  .daily-entry-copy > p:last-child, .tracker-empty-state p,
+  .dialog-description, .tracker-field > span, .tracker-field legend,
+  .sleep-inputs label > span, .outdoor-choice-text strong,
+  .health-signal-reasons, .health-signal-possibilities, .health-signal-note,
+  .analysis-page--face .analysis-summary-sub,
+  .analysis-page--face .analysis-section-intro,
+  .analysis-page--face .analysis-image-subheading,
+  .analysis-page--face .analysis-summary-note,
+  .analysis-page--face .kpi-note, .analysis-page--face .analysis-disclaimer p,
+  .analysis-page--face .analysis-method-content p,
+  .next-day-statuses p, .profile-guidance p, .prediction-guidance ul,
+  .score-method-content p, .score-method-content ul,
+  .daily-data-delete-panel p, .training-threshold-note,
+  .profile-account p, .profile-context-note,
+  .profile-panel .profile-answers dt, .profile-panel .profile-answers dd,
+  .profile-panel .profile-saved-measurement dt,
+  .profile-panel .profile-saved-measurement dd,
+  .home-metric-note, .home-chart-data, .home-insights-availability,
+  .uv-map-caption, .uv-map-method, .uv-map-availability,
+  .uv-map-detail dl div, .uv-map-preview, .uv-map-select label,
+  .uv-map-view-controls button, .uv-map-legend li,
+  .recommendation-filters label, .recommendation-filters .filter-label,
+  .recommendation-note, .recommendation-warning,
+  .admin-products-editor label, .admin-product-description) {
+  font-size: var(--text-secondary);
+  line-height: var(--leading-secondary);
+}
+
+:root :is(.tracker-field small, .outdoor-choice-text small,
+  .profile-menstrual th, .cycle-weekday, .cycle-legend,
+  .cycle-summary-grid span, .form-message, .home-period,
+  .home-chart-caption, .home-chart-days, .home-metric-value span,
+  .capture-selected, .capture-empty small,
+  .personal-forecast-metric-unit, .personal-forecast-metric-heading .eyebrow,
+  .analysis-region-facts dt, .analysis-region-facts dd small,
+  .analysis-face-map figcaption, .analysis-region-detail dd small,
+  .recommendation-context-grid span, .recommendation-context-grid small) {
+  font-size: var(--text-meta);
+  line-height: var(--leading-secondary);
+}
+:root .personal-forecast-legend { font-size: var(--text-secondary); line-height: var(--leading-secondary); }
+:root .personal-forecast-axis-label { font-size: var(--text-chart); }
+:root .personal-forecast-axis-dates {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--text-chart);
+  line-height: var(--leading-secondary);
+  font-variant-numeric: tabular-nums;
+}
+:root .personal-forecast-axis-dates span { min-width: 0; }
+:root .personal-forecast-axis-dates span:last-child { text-align: end; }
+:root .uv-map-legend small { font-size: var(--text-meta); }
+:root .analysis-page--face .analysis-region-data .analysis-region-title strong { font-size: var(--text-secondary); }
+:root .analysis-page--face .artifact-tabs button { font-size: var(--text-secondary); }
+
+:root :is(.onboarding-card form input:not([type="checkbox"]):not([type="radio"]),
+  .onboarding-card form select, .recommendation-filters input,
+  .recommendation-filters select, .admin-products-editor input,
+  .admin-products-page .admin-select) { font-size: var(--text-body); }
+:root :is(.auth-card label:not(.signup-consent), .onboarding-card form label,
+  .app-navigation-auth-action, .app-navigation-language .language-toggle,
+  .aphrodize-select-trigger, .aphrodize-select-item-label) {
+  font-size: var(--text-secondary);
 }

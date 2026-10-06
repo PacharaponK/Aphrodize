@@ -40,6 +40,9 @@ api_router.include_router(
 )
 api_router.include_router(daily_health.user_router, prefix="/daily-health", tags=["daily-health"])
 api_router.include_router(
+    daily_health.review_router, prefix="/daily-health", tags=["model review"]
+)
+api_router.include_router(
     training.router, prefix="/training", tags=["training"], dependencies=protected
 )
 api_router.include_router(

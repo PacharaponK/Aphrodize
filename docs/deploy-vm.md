@@ -126,3 +126,10 @@ Review and commit deployment files explicitly; avoid `git add .` for unreviewed 
 Pull approved updates, rebuild, then run `up -d`. Do not use `down -v`: it deletes data.
 Keep PostgreSQL, MinIO, `.env` and the Caddy CA volumes backed up securely. A backup
 and restore exercise is still required before treating this as a production service.
+
+## Deploy tested registry releases
+
+The existing local-build flow above remains available. For the single-repository
+GitHub Actions image publishing and VM deployment flow, see [CI/CD setup](cicd-vm.md).
+It preserves this Compose project and the configured TLS/worker overlays, deploys
+API/frontend by image digest and keeps private rollback state on the VM.

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, RefreshCw, TrendingUp } from "lucide-react";
+import { EvidenceLabel } from "@/components/evidence-label";
 import type {
   DailyHealthPersonalForecast,
   PersonalForecastDay,
@@ -142,13 +143,18 @@ export function ForecastLineChart({
     <article className="personal-forecast-metric-card">
       <header className="personal-forecast-metric-heading">
         <div>
-          <p className="eyebrow">{translate(language, "ข้อมูลที่บันทึกจริง", "ACTUAL DAILY RECORDS")}</p>
+          <EvidenceLabel kind="recorded" language={language} />
           <h3>{heading}</h3>
         </div>
         <span className="personal-forecast-metric-unit">{unit}</span>
       </header>
+      <div className="personal-forecast-next-summary">
+        <EvidenceLabel kind="forecast" language={language} />
+        <strong>{formattedForecast}</strong>
+        <span>{translate(language, "สำหรับ", "For")} <time dateTime={targetDate}>{formatDate(targetDate, language, true)}</time></span>
+      </div>
       <figure className="personal-forecast-chart">
-        <svg viewBox="0 0 332 122" role="img" aria-label={accessibleLabel}>
+        <svg viewBox="0 0 332 110" role="img" aria-label={accessibleLabel}>
           <line className="personal-forecast-grid-line" x1="18" x2="324" y1="100" y2="100" />
           {values.slice(0, -1).map((value, index) => {
             const nextValue = values[index + 1];
@@ -200,16 +206,13 @@ export function ForecastLineChart({
               <title>{`${translate(language, "ค่าประมาณ", "Forecast")}, ${formatDate(targetDate, language, true)}: ${formattedForecast}`}</title>
             </rect>
           ) : null}
-          <text className="personal-forecast-axis-label" x="22" y="118">
-            {actual.length ? formatDate(actual[0].local_date, language) : "-"}
-          </text>
-          <text className="personal-forecast-axis-label" textAnchor="middle" x="148" y="118">
-            {actual.length ? formatDate(actual[Math.floor((actual.length - 1) / 2)].local_date, language) : "-"}
-          </text>
-          <text className="personal-forecast-axis-label" textAnchor="end" x="330" y="118">
-            {formatDate(targetDate, language)}
-          </text>
         </svg>
+        {/* HTML ticks retain their reading size when the SVG scales on phones. */}
+        <div className="personal-forecast-axis-dates" aria-hidden="true">
+          <span>{actual.length ? formatDate(actual[0].local_date, language) : "-"}</span>
+          <span>{actual.length ? formatDate(actual[Math.floor((actual.length - 1) / 2)].local_date, language) : "-"}</span>
+          <span>{formatDate(targetDate, language)}</span>
+        </div>
         <figcaption className="personal-forecast-legend">
           <span><i className="personal-forecast-legend-actual" aria-hidden="true" />{translate(language, "ข้อมูลจริง", "Actual")}</span>
           <span><i className="personal-forecast-legend-estimate" aria-hidden="true" />{translate(language, "ประมาณวันถัดไป", "Next-day forecast")}</span>

@@ -34,10 +34,12 @@ colors:
 typography:
   font-family: "Libre Baskerville 400 for h1-h2; Montserrat 400 for body/UI and 700 for bold; Noto Sans Thai fallback"
   page-title: "clamp(30px, 3vw, 42px) / 1.2 / Libre Baskerville 400"
-  section-title: "20px / 1.35 / Libre Baskerville 400"
-  card-title: "16px / 1.4 / Montserrat 700"
-  body: "15px / 1.6 / 400"
-  secondary: "13px / 1.55 / 400"
+  section-title: "clamp(24px, 1.4vw, 28px) / 1.35 / Libre Baskerville 400"
+  card-title: "18px / 1.4 / Montserrat 700"
+  body: "16px / 1.65 / 400"
+  secondary: "14px / 1.6 / 400"
+  metadata: "13px / 1.6 / 400"
+  chart-tick: "12px / 1.6 / 400, HTML labels do not scale with SVG"
   eyebrow: "11px / 1.4 / 600 / 1px tracking"
   metric: "30px / 1.3 / Montserrat 700, tabular numerals"
 
@@ -89,6 +91,15 @@ components:
 # Aphrodize — แนวทางออกแบบ
 
 ## สถานะปัจจุบัน
+
+- Approved data-hierarchy revision (6 October 2026): Dashboard, Daily Health and Trends share explicit evidence labels (Recorded, Calculated, Model estimate, Forecast) before values. Labels describe provenance, not severity; preserve missing/zero values, dates, formulas, consent and API behavior. Dashboard Personal insights follows Weekly overview; UV remains a secondary utility action with unchanged semantic colors. Keep passive data cards stable and reserve whole-card lift for actual links. Signed-in Home uses a compact static-heading hero with Log today as its primary action; guests retain the expressive animated introduction. Share only authentication presentation status from the existing navbar check, never credentials or private records; this status does not authorize data access. Preserve the1920px frame, typography scale, theme and reduced-motion behavior.
+
+- Human review boundary (6 October 2026): a queued Label Studio task is not proof that the image result has been reviewed, and model quality-gate success is not deployment approval. Keep experimental/unreviewed results distinct from human-reviewed findings; never infer review completion from task creation. No new model-review screen is implemented by this change.
+- Daily Health model-review endpoints now require separate admin credentials. Promote/rollback events expose the authenticated operator account as `actor`, with reason, version and timestamp. Legacy/system events have a null actor; if rendered, label this honestly rather than inventing a reviewer. A shared admin account identifies the account, not the individual behind it. Do not expose credentials in UI or accept a reviewer name from a form as authenticated identity. Existing user-facing prediction, consent, theme, width and typography behavior stays unchanged. See `../docs/ai/Human-Review.md` for the implemented API boundary.
+
+- Approved shared typography scale (6 October 2026): body16px, secondary/help/consent14px, peripheral metadata13px and chart ticks12px through rem-based shared tokens in `design-system.css`. Data-card section headings use24–28px by role; subordinate headings use18px. Preserve the expressive Home hero, page titles and real metric numerals rather than enlarging every heading uniformly. Navbar labels are14px on desktop and16px in the collapsed menu; collapse at1200px instead of shrinking labels. Forecast date ticks are HTML outside the scalable SVG so phone resizing cannot shrink them; legends/daily values stay14px and wrap, never shrink at narrow breakpoints. Preserve actual/predicted semantics, consent text, provenance, localized copy, themes, reduced motion and all API behavior. Inputs use16px, including onboarding numeric fields. Keep this scale consistent across Profile, Capture/results/products, Health/Trends, UV, Auth and admin.
+
+- Approved unified width system (6 October 2026, supersedes all earlier route-specific width limits): every page uses one 1920px outer frame and one `--responsive-page-gutter` (desktop clamp 16px–72px, tablet 18px, phone 14px). Navbar edges align with main content edges. Home/footer, Capture, Daily Health, Trends, Profile, Quality recovery, UV explorer, Auth, onboarding and admin share this frame. Profile no longer has a 1240px cap; Auth no longer uses a 520px form cap; sparse health/history sections and recovery panels no longer have narrower outer cards. Keep readable 65–75ch text/form measures inside the full-width frames and retain route-specific internal columns. Dialogs keep task-specific sizes and page heights remain content-driven. Capture's empty chooser has a content-sized 200px minimum; real image/camera previews retain contain-fit sizes. Preserve consent, data, error states and native interactions; no overflow masking.
 
 - Shared page transitions are entry-only opacity settling after a pathname change: Home 240ms (0.90 to 1), information/auth routes 160ms (0.96 to 1). The shared navbar stays stable. Use a persistent, layout-neutral client boundary, not a keyed template; do not reset child forms/data for animation. Initial loads, hashes (including capture stages), query-only changes and data refreshes do not replay it. No exit delays, overlays, transforms on route ancestors, fabricated metric counting, focus/scroll overrides or new animation dependency. Reduced motion disables it; a changed preference, hidden tab or interrupted navigation cancels it immediately. Keep the existing brand, states and route-specific motion unchanged.
 
@@ -327,7 +338,7 @@ Approved 5 October 2026 as a route-specific extension of the incumbent Aphrodize
 - Profile allergy ingredients have an explicit localized label. Arrays display readable comma-separated values, empty arrays and blank answers display Not recorded, and unknown answer keys never appear as raw internal identifiers. Preserve stored answers and distinguish missing data from None known.
 - Daily health empty states use a compact icon-and-copy row. The water field leads with the full-day input instruction; model training ranges and limitations are available in a closed technical disclosure, not in the main input helper. Storage and optional training consent scope remain visible and unchanged; never hide opt-in choices or withdrawal consequences to shorten the form.
 
-- Profile header and body share the same centered 1240px maximum width via the route-specific `profile-workspace` header rule. Preserve responsive gutters, the existing identity/details columns and mobile stacking. Do not narrow shared workspace headers on other routes.
+- Profile header and body span the shared page frame. Preserve the existing identity/details columns and mobile stacking; do not restore the former 1240px route cap.
 
 - Profile uses a quiet two-column layout: real account identity and saved tracking goal on the left, grouped information on the right. Skin information and precautions appear first, followed by signup information, questionnaire habits, additional answers and the eligible cycle calendar. Collapse to one column below 800px.
 - The left account card follows the approved profile reference: a vertical, 24px-rounded blush-to-coral surface, circular name initial, prominent account name, email and saved tracking-goal tag. Use theme tokens and readable dark text in light mode, theme-aware foregrounds in dark mode. Keep the right-side information unchanged; mobile places the card before details. Do not add a portrait, avatar upload, followers, fabricated statistics or looping animation. Long names, email addresses and missing goals must remain readable.

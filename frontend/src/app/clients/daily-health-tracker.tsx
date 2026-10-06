@@ -8,6 +8,7 @@ import DailyHealthOutcomeForm from "./daily-health-outcome-form";
 import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
 import { Select } from "@/components/ui/select";
+import { EvidenceLabel } from "@/components/evidence-label";
 
 type OutdoorChoice = "under_1_hour" | "1_to_under_3_hours" | "3_to_under_4_hours" | "4_hours_or_more";
 
@@ -141,6 +142,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     smoking_status: null,
   });
   const [isPredicting, setIsPredicting] = useState(false);
+  const canAskMenstruation = personalProfile.has_session && personalProfile.sex !== "male";
   const [storageStatus, setStorageStatus] = useState<StorageStatus>("idle");
   const [storageMessage, setStorageMessage] = useState("");
   const predictionRequestId = useRef(0);
@@ -194,6 +196,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       });
       if (!response.ok) throw new Error(t("ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not delete the information. Please try again."));
       setPersonalProfile({
+        sex: personalProfile.sex,
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -258,6 +261,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       setPrediction(null);
       setForm({ ...emptyForm, date: localDateValue() });
       setPersonalProfile({
+        sex: personalProfile.sex,
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -368,7 +372,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       ageGuidanceConsent: form.ageGuidanceConsent,
       ageBand: form.ageGuidanceConsent && form.ageBand ? form.ageBand : null,
       smokingStatus: form.personalizationConsent && form.smokingStatus ? form.smokingStatus : null,
-      currentlyMenstruating: form.personalizationConsent && form.menstruationChoice
+      currentlyMenstruating: canAskMenstruation && form.personalizationConsent && form.menstruationChoice
         ? form.menstruationChoice === "yes"
         : null,
     } satisfies DailyEntry;
@@ -513,7 +517,9 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                 checked={form.personalizationConsent}
                 onChange={(event) => updateForm("personalizationConsent", event.target.checked)}
               />
-              <span>{t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status and menstrual check-ins for personalized guidance only, not diagnosis.")}</span>
+              <span>{canAskMenstruation
+                ? t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status and menstrual check-ins for personalized guidance only, not diagnosis.")
+                : t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่ เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status for personalized guidance only, not diagnosis.")}</span>
             </label>
             {form.personalizationConsent && (
               <div className="personal-context-fields">
@@ -533,7 +539,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                     ]}
                   />
                 </label>
-                <fieldset className="tracker-field">
+                {canAskMenstruation && <fieldset className="tracker-field">
                   <legend>{t("กำลังมีประจำเดือนวันนี้หรือไม่ (ไม่บังคับ)", "Are you menstruating today? (Optional)")}</legend>
                   <div className="period-checkin-options">
                     <label>
@@ -564,7 +570,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                       <span>{t("ไม่ใช่", "No")}</span>
                     </label>
                   </div>
-                </fieldset>
+                </fieldset>}
               </div>
             )}
             <label className="personalization-consent">
@@ -654,24 +660,28 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             <p className="entry-date-line" role="status" aria-live="polite">{t("สรุปข้อมูลวันที่", "Summary for")} {displayDate(entry.date, locale)}</p>
             <div className="tracker-metric-grid">
               <article className="tracker-metric duration-metric">
+                <EvidenceLabel kind="recorded" language={language} />
                 <p className="eyebrow">{t("ระยะเวลานอนที่คำนวณได้", "SLEEP DURATION")}</p>
                 <strong>{entry.sleepHours} {t("ชม.", "hr")} {entry.sleepMinutes} {t("นาที", "min")}</strong>
                 <p>{t("รวม", "Total")} {entry.sleepDurationMinutes.toLocaleString(locale)} {t("นาที", "minutes")}</p>
               </article>
               <article className="tracker-metric sleep-score-metric">
+                <EvidenceLabel kind="calculated" language={language} />
                 <p className="eyebrow">SLEEP SCORE</p>
                 <strong>{calculatedSleepScore?.toFixed(1) ?? "—"} <small>/ 100</small></strong>
                 <p>{t("คะแนนเต็มที่เพดานสูตร 9 ชั่วโมง", "Score caps at the 9-hour formula limit.")}</p>
               </article>
               <article className="tracker-metric pending-metric">
+                <EvidenceLabel kind={prediction?.predictions.thirst_score_0_10.status === "calculated" ? "calculated" : prediction?.model?.prediction_horizon_days ? "forecast" : "estimate"} language={language} />
                 <p className="eyebrow">THIRST SCORE</p>
                 <strong>{isPredicting ? "…" : thirstScore?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
-                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : prediction?.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
+                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : prediction?.predictions.thirst_score_0_10.status === "calculated" ? t("ตามสูตรน้ำหนัก ไม่ใช่ความกระหายที่รายงานเอง", "Weight-based formula, not self-reported thirst") : prediction?.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
                 {!isPredicting && thirstScore == null && hydrationRangeStatus === "missing_weight" && (
                   <Link href="/profile">{t("ไปที่โปรไฟล์ →", "Open profile →")}</Link>
                 )}
               </article>
               <article className="tracker-metric pending-metric">
+                <EvidenceLabel kind={prediction?.model?.prediction_horizon_days ? "forecast" : "estimate"} language={language} />
                 <p className="eyebrow">DRYNESS SCORE</p>
                 <strong>{isPredicting ? "…" : prediction?.predictions.skin_dryness_score_0_10.value?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
                 <p>{prediction?.predictions.skin_dryness_score_0_10.value == null ? t("ไม่มีคะแนนในรอบนี้", "No score available this time") : prediction.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
