@@ -478,6 +478,7 @@ class DailyHealthModelVersion(Base):
 
     version_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     model_family: Mapped[str] = mapped_column(String(128))
+    mlflow_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     status: Mapped[str] = mapped_column(String(32))
     dataset_fingerprint: Mapped[str] = mapped_column(String(128), unique=True)
     training_records: Mapped[int] = mapped_column(Integer)
@@ -512,6 +513,8 @@ class DailyHealthModelDeploymentEvent(Base):
     # This deliberately has no FK: it is an immutable audit record after pruning.
     version_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     reason: Mapped[str] = mapped_column(Text)
+    # Null means legacy/system event, not an invented human reviewer.
+    actor: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

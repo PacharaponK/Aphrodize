@@ -19,6 +19,9 @@ def serialize(run: TrainingRun) -> TrainingRunRead:
         status=run.status,
         mlflow_run_id=run.mlflow_run_id,
         created_at=run.created_at,
+        execution_kind=(
+            "model_training" if run.model_family == "image_segmentation" else "metadata_only"
+        ),
     )
 
 

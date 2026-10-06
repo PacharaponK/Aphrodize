@@ -43,6 +43,20 @@ def require_admin_credentials(credentials: HTTPBasicCredentials = Depends(securi
         )
 
 
+def require_model_reviewer(credentials: HTTPBasicCredentials = Depends(security)) -> str:
+    """Return the authenticated operator, never an actor supplied in the payload."""
+    require_admin_credentials(credentials)
+    # Shared API credentials must not also grant model-approval privileges.
+    if (
+        settings.admin_username == settings.api_username
+        and settings.admin_password == settings.api_password
+    ):
+        raise HTTPException(
+            status_code=503, detail="Separate model-review credentials are required"
+        )
+    return credentials.username
+
+
 def require_user_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_security),
 ) -> UUID:

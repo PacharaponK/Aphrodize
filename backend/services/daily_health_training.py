@@ -323,6 +323,7 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
         version.participant_count = len(participants)
         version.metrics = None
         version.artifact_uri = None
+        version.mlflow_run_id = None
     await session.commit()
 
     try:
