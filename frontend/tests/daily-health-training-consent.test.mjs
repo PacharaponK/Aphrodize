@@ -10,7 +10,7 @@ const source = ts.transpileModule(fs.readFileSync(new URL("../src/app/api/daily-
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText;
 const loaded = { exports: {} };
-new Function("require", "module", "exports", source)(name => name === "@/lib/daily-health-session" ? {
+new Function("require", "module", "exports", source)(name => name === "@/lib/backend-fetch" ? { backendFetch: (...args) => globalThis.fetch(...args) } : name === "@/lib/daily-health-session" ? {
   accountSession: async () => ({ userId: "test-owner", token: "test-only" }),
   backendUrl: path => `http://backend.test${path}`,
   sameOrigin: request => request.headers.get("origin") === "http://frontend.test",

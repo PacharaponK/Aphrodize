@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import "server-only";
 
 export async function GET(request: Request): Promise<Response> {

@@ -110,7 +110,7 @@ test("today's GET verifies account ownership, forwards the date window and is ne
   const owner = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   context.mock.method(globalThis, "fetch", async (url, options) => {
     assert.equal(options.cache, "no-store");
-    assert.equal(options.headers.Authorization, "Bearer test-session");
+    assert.equal(new Headers(options.headers).get("authorization"), "Bearer test-session");
     if (String(url).endsWith("/auth/profile")) return Response.json({ user_id: owner });
     const request = new URL(url);
     assert.ok(request.pathname.endsWith(`/users/${owner}/entries`));

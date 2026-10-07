@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import "server-only";
 
 const cities = new Set(["bangkok", "songkhla", "chiang_mai"]);

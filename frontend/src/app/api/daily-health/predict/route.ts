@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import type { NextRequest } from "next/server";
 import { accountSession, backendUrl } from "@/lib/daily-health-session";
 import { forwardDailyHealthPrediction } from "@/lib/daily-health-prediction";
