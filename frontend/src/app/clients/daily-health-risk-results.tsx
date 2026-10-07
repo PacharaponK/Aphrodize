@@ -2,12 +2,12 @@
 
 import type { DailyHealthInterpretation, HealthSignal } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
-const riskSignals = (interpretation: DailyHealthInterpretation, language: "th" | "en") => [
+export const riskSignals = (interpretation: DailyHealthInterpretation, language: "th" | "en") => [
   { id: "wellness", label: language === "en" ? "Overall wellness" : "สุขภาพโดยรวม", signal: interpretation.daily_health_summary },
   { id: "dryness", label: language === "en" ? "Dryness and skin care" : "ผิวแห้งและการดูแลผิว", signal: interpretation.skin_care_attention_level },
   { id: "energy", label: language === "en" ? "Next-day energy" : "พลังงานวันถัดไป", signal: interpretation.next_day_predictions.low_energy_signal },
   { id: "thirst", label: language === "en" ? "Next-day thirst" : "กระหายน้ำวันถัดไป", signal: interpretation.next_day_predictions.thirst_attention },
-];
+].filter(({ id, signal }) => !["energy", "thirst"].includes(id) || signal.status !== "model_not_ready");
 
 export const validForecast = (signal: HealthSignal) => signal.status === "predicted"
   && typeof signal.value_0_10 === "number" && Number.isFinite(signal.value_0_10)
@@ -103,7 +103,7 @@ export default function DailyHealthRiskResults({
           ))}
         </div>
       </section>
-      <section className="daily-risk-outlook" aria-label={t("แนวโน้มวันถัดไป", "Next-day outlook")}>
+      {forecasts.length ? <section className="daily-risk-outlook" aria-label={t("แนวโน้มวันถัดไป", "Next-day outlook")}>
         <h3>{t("แนวโน้มวันถัดไป", "Next-day outlook")}</h3>
         {forecasts.some(({ signal }) => validForecast(signal)) ? <div className="daily-risk-grid">
           {forecasts.filter(({ signal }) => validForecast(signal)).map(({ id, label, signal }) => <RiskCard key={id} label={label} signal={signal} language={language} />)}
@@ -115,10 +115,9 @@ export default function DailyHealthRiskResults({
             {signal.headline && signal.status !== "out_of_training_domain" ? <dd lang="th">{signal.headline}</dd> : null}
             {signal.possible_signals?.length ? <dd lang="th">{signal.possible_signals.join(" · ")}</dd> : null}
           </div>)}</dl>
-          {unavailable.some(({ signal }) => signal.status === "model_not_ready") ? <p className="health-signal-note">{t("การบันทึกผลจริงไม่ทำให้โมเดลเปิดใช้งานทันที ต้องผ่านการตรวจสอบและอนุมัติก่อน", "Recording outcomes does not activate a model immediately; review and approval are still required.")}</p> : null}
-          {unavailable.some(({ signal }) => ["model_not_ready", "insufficient_data", "insufficient_history"].includes(signal.status)) ? <a className="text-button" href="/clients#daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</a> : null}
+          {unavailable.some(({ signal }) => ["insufficient_data", "insufficient_history"].includes(signal.status)) ? <a className="text-button" href="/clients#daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</a> : null}
         </div> : null}
-      </section>
+      </section> : null}
       {messages.length ? <details className="daily-risk-guidance">
         <summary>{t("คำแนะนำและเหตุผล", "Guidance & context")}</summary>
         {language === "en" ? <p className="health-signal-note">Guidance is shown in its original Thai.</p> : null}

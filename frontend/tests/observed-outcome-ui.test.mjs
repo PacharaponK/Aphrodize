@@ -39,17 +39,15 @@ test("observed forecast renders value, target day and source without fabricated 
 test("removed acne signal stays hidden for legacy historical responses", () => {
   const html = render(absent);
   assert.doesNotMatch(html, /Acne signal|Forecast model not enabled|Current account data readiness|acne-observation-title/);
-  assert.match(html, /Next-day energy/);
-  assert.match(html, /Next-day thirst/);
+  assert.doesNotMatch(html, /Next-day energy|Next-day thirst|daily-risk-outlook/);
 });
 
-test("current assessment and outlook are separate; unavailable outcomes have one honest action", () => {
+test("model-not-ready outlook is hidden while invalid forecasts remain unavailable", () => {
   const html = render(absent);
   assert.match(html, /daily-risk-current/);
-  assert.match(html, /daily-risk-outlook/);
+  assert.doesNotMatch(html, /daily-risk-outlook/);
   assert.equal((html.match(/<article /g) ?? []).length, 2);
-  assert.equal((html.match(/Record observed outcomes/g) ?? []).length, 1);
-  assert.match(html, /review and approval are still required/);
+  assert.doesNotMatch(html, /Record observed outcomes|review and approval are still required/);
   const invalid = render({ ...prediction, value_0_10: 11 });
   assert.doesNotMatch(invalid, /11 \/ 10|Experimental estimate/);
   assert.match(invalid, /Unavailable/);
@@ -78,7 +76,7 @@ test("Thai grouping and resilient headers retain readable controls", () => {
   language = "th";
   const html = render(absent);
   assert.match(html, /จากบันทึกของคุณ/);
-  assert.match(html, /แนวโน้มวันถัดไป/);
+  assert.doesNotMatch(html, /แนวโน้มวันถัดไป|พลังงานวันถัดไป|กระหายน้ำวันถัดไป/);
   language = "en";
   const css = fs.readFileSync(new URL("../src/app/clients/clients.css", import.meta.url), "utf8");
   assert.match(css, /\.clients-page \.health-signal-heading \{[^}]*flex-wrap: wrap/);

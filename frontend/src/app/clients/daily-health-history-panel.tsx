@@ -145,7 +145,7 @@ function DailyHistoryEntry({ item, compact = false }: { item: DailyHealthHistory
   const summary: HealthSignal = item.interpretation.daily_health_summary;
   const unavailableCount = [summary, item.interpretation.skin_care_attention_level,
     item.interpretation.next_day_predictions.low_energy_signal,
-    item.interpretation.next_day_predictions.thirst_attention].filter((signal) => signal.level === null && signal.status !== "predicted").length;
+    item.interpretation.next_day_predictions.thirst_attention].filter((signal) => signal.level === null && signal.status !== "predicted" && signal.status !== "model_not_ready").length;
 
   return (
     <article className="daily-history-entry">

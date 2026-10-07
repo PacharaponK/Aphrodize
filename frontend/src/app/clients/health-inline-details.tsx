@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import type { DailyHealthInterpretation } from "@/lib/daily-health-types";
-import { levelLabel, unavailableMessage, validForecast } from "./daily-health-risk-results";
+import { levelLabel, riskSignals, unavailableMessage, validForecast } from "./daily-health-risk-results";
 import "./health-inline-details.css";
 
 const unique = (values: string[]) => [...new Set(values.filter(Boolean))];
@@ -14,12 +14,7 @@ export default function HealthInlineDetails({ interpretation, language, date, cl
   className?: string;
 }) {
   const t = (th: string, en: string) => language === "th" ? th : en;
-  const signals = [
-    { label: t("สุขภาพโดยรวม", "Overall wellness"), signal: interpretation.daily_health_summary },
-    { label: t("ผิวแห้งและการดูแลผิว", "Dryness and skin care"), signal: interpretation.skin_care_attention_level },
-    { label: t("พลังงานวันถัดไป", "Next-day energy"), signal: interpretation.next_day_predictions.low_energy_signal },
-    { label: t("กระหายน้ำวันถัดไป", "Next-day thirst"), signal: interpretation.next_day_predictions.thirst_attention },
-  ];
+  const signals = riskSignals(interpretation, language);
   const reasons = unique(signals.flatMap(({ signal }) => [signal.headline ?? "", ...(signal.possible_signals ?? [])]));
   const guidance = unique(signals.flatMap(({ signal }) => signal.recommendations ?? []));
   const forecasts = signals.slice(2);
@@ -52,7 +47,7 @@ export default function HealthInlineDetails({ interpretation, language, date, cl
         </ul>
         {language === "en" ? <p className="inline-status-note">Saved guidance is shown in its original Thai.</p> : null}
       </section> : null}
-      <section className="inline-outlook-section">
+      {forecasts.length ? <section className="inline-outlook-section">
         <h4>{t("การพยากรณ์วันถัดไป", "Next-day outlook")}</h4>
         <dl className="inline-forecasts">{forecasts.filter(({ signal }) => validForecast(signal)).map(({ label, signal }) => <div key={label}>
           <dt>{label}</dt><dd><strong>{signal.value_0_10} / 10</strong> · {t("ค่าประมาณทดลอง", "Experimental estimate")}</dd>
@@ -65,9 +60,9 @@ export default function HealthInlineDetails({ interpretation, language, date, cl
           <dt>{label}</dt><dd>{levelLabel(signal, language)}</dd>
         </div>)}</dl>
           {unique(unavailable.map(({ signal }) => unavailableMessage(signal, language))).map(message => <p className="inline-status-note" key={message}>{message}</p>)}
-          {unavailable.some(({ signal }) => signal.status === "model_not_ready") ? <a className="text-button" href="/clients#daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</a> : null}
+          {unavailable.some(({ signal }) => ["insufficient_data", "insufficient_history"].includes(signal.status)) ? <a className="text-button" href="/clients#daily-outcome-title">{t("บันทึกผลที่สังเกตจริง", "Record observed outcomes")}</a> : null}
         </div> : null}
-      </section>
+      </section> : null}
       {signals.some(({ signal }) => signal.model_id || signal.method || signal.drivers?.length || signal.reason_codes?.length) ? <details className="inline-provenance">
         <summary>{t("วิธีประเมินและที่มาของผล", "Assessment method & provenance")}</summary>
         <dl>{signals.filter(({ signal }) => signal.model_id || signal.method || signal.drivers?.length || signal.reason_codes?.length).map(({ label, signal }) => <div key={label}>
