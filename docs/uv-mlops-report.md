@@ -84,6 +84,19 @@ Artifact เหล่านี้อยู่ในพื้นที่ runtime
 
 ## คู่มือปฏิบัติ
 
+### ตรวจและอนุมัติผ่านหน้าแอดมิน
+
+หน้า `/admin/products` มีหัวข้อ **จัดการโมเดล UV** หลังล็อกอินด้วยบัญชีแอดมินเดิม
+แสดงรุ่นใช้งาน วันฝึก/วันที่ข้อมูล สถานะ pipeline และ monitoring, candidate ล่าสุด,
+ตาราง MAE/bias/undercalls ของทั้งสามเมืองและ h1/h2, MLflow run ID และประวัติการสลับรุ่น
+ปุ่มอนุมัติเปิดเฉพาะ candidate ที่ผ่าน integrity และ quality gate เทียบกับรุ่นปัจจุบัน
+การอนุมัติและย้อนกลับมีหน้าต่างยืนยัน ตรวจ gate/รุ่นซ้ำฝั่ง backend และบันทึกบัญชีที่ยืนยันตัวตน
+ไม่รับชื่อผู้อนุมัติจาก browser และต้องใช้ admin credentials แยกจาก API service credentials
+
+สำหรับ Compose ให้ rebuild/recreate `api` และ frontend หลังอัปเดตนี้ เนื่องจาก API ต้องเข้าถึง
+volume `storage/models/uv` และ `storage/artifacts/uv` แบบเขียนได้ และ `storage/data/uv` แบบอ่านอย่างเดียว
+UI ไม่เพิ่มปุ่มสั่งฝึกและไม่ทำ auto-promotion; `uv-training` ยังคงฝึกตามรอบเดิม
+
 รันจาก root ของ repository คำสั่ง container ใช้ dependencies ชุดเดียวกับบริการจริง:
 
 ```powershell

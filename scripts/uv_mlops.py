@@ -224,36 +224,46 @@ def publish(version, actor, action, expected):
     lifecycle.monitor(series)
 
 
+def review_candidate(version):
+    """Use the same integrity and score checks for review UI and deployment."""
+    bundle, manifest = lifecycle.verify_bundle(version)
+    gate = lifecycle.read_json(bundle / "gate.json")
+    if (
+        gate["passed"] is not True
+        or gate["source_sha256"] != manifest["source_sha256"]
+        or gate["manifest_sha256"] != lifecycle.digest(bundle / "manifest.json")
+        or gate["evaluation_sha256"] != lifecycle.digest(bundle / "artifacts/evaluation.json")
+        or not (bundle / "tracking.json").exists()
+    ):
+        raise ValueError("Candidate has not passed its intact, tracked quality gate")
+    if set(gate["cities"]) != set(lifecycle.CITIES) or any(
+        set(h) != {"h1", "h2"} for h in gate["cities"].values()
+    ):
+        raise ValueError("Quality gate must cover every city and horizon")
+    if not all(
+        lifecycle.gate_scores(s["candidate"], s["incumbent"], s["persistence"])
+        for h in gate["cities"].values()
+        for s in h.values()
+    ):
+        raise ValueError("Candidate scores fail the quality gate")
+    return gate
+
+
 def promote(version, actor):
     with lifecycle.deployment_lock():
-        bundle, manifest = lifecycle.verify_bundle(version)
-        gate = lifecycle.read_json(bundle / "gate.json")
-        if (
-            gate["passed"] is not True
-            or gate["source_sha256"] != manifest["source_sha256"]
-            or gate["manifest_sha256"] != lifecycle.digest(bundle / "manifest.json")
-            or gate["evaluation_sha256"] != lifecycle.digest(bundle / "artifacts/evaluation.json")
-            or not (bundle / "tracking.json").exists()
-        ):
-            raise ValueError("Candidate has not passed its intact, tracked quality gate")
-        if set(gate["cities"]) != set(lifecycle.CITIES) or any(
-            set(h) != {"h1", "h2"} for h in gate["cities"].values()
-        ):
-            raise ValueError("Quality gate must cover every city and horizon")
-        if not all(
-            lifecycle.gate_scores(s["candidate"], s["incumbent"], s["persistence"])
-            for h in gate["cities"].values()
-            for s in h.values()
-        ):
-            raise ValueError("Candidate scores fail the quality gate")
+        gate = review_candidate(version)
         publish(version, actor, "promote", gate["base_version"])
 
 
-def rollback(actor):
+def rollback(actor, *, expected_active=None, expected_target=None):
     with lifecycle.deployment_lock():
         state = lifecycle.deployment()
         if not state["history"] or not state["history"][-1]["from"]:
             raise ValueError("No prior deployment available")
+        if expected_active is not None and (
+            state["active"] != expected_active or state["history"][-1]["from"] != expected_target
+        ):
+            raise ValueError("Deployment changed; refresh before rollback")
         publish(state["history"][-1]["from"], actor, "rollback", state["active"])
 
 
