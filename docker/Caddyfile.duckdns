@@ -1,3 +1,11 @@
+{
+    metrics
+}
+
+:9100 {
+    metrics
+}
+
 {$VM_HOST} {
 	tls {
 		issuer acme {
@@ -9,5 +17,16 @@
 		}
 	}
 	encode zstd gzip
-	reverse_proxy frontend:3000
+	redir /label-studio /label-studio/ 308
+	handle_path /label-studio/* {
+		reverse_proxy label-studio:8080
+	}
+
+    redir /grafana /grafana/ 308
+    handle /grafana/* {
+        reverse_proxy grafana:3000
+    }
+	handle {
+		reverse_proxy frontend:3000
+	}
 }

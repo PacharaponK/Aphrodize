@@ -18,7 +18,7 @@ const selectSource = ts.transpileModule(read("../src/components/ui/select.tsx"),
 const selectModule = { exports: {} };
 new Function("require", "module", "exports", selectSource)(require, selectModule, selectModule.exports);
 let translate;
-function render(language, count = 3, overridesData = {}, error = "") {
+function render(language, count = 3, overridesData = {}, error = "", guest = false) {
   const products = ["Daily moisturizer", "A very long product name for checking responsive layouts and full ingredient disclosures", "Unscented cream"].map((name, index) => ({
     id: String(index), brand: "Layout test", name: language === "th" ? `ผลิตภัณฑ์ทดสอบ ${index + 1} สำหรับตรวจการจัดหน้าและชื่อสินค้าที่ยาว` : name,
     variant: "50 ml", image_url: index === 0 ? "/test-image.svg" : index === 1 ? "/missing-image.png" : null,
@@ -34,7 +34,7 @@ function render(language, count = 3, overridesData = {}, error = "") {
     questionnaire_context: { status: "available" }, daily_context: {}, image_context: { status: "eligible" }, rule_version: "1",
     profile_context: { skin_type: "dry", skin_sensitivity: "medium" }, disclaimer: "General skin-care product information based on reported inputs and reviewed labels. A catalog match is not a guarantee against allergy. It is not a diagnosis, treatment advice, or evidence that a product will change a wrinkle score. Check the full ingredient list and stop use if irritation occurs.", ...overridesData };
   let cursor = 0;
-  const states = [data, error, false, "TH", null];
+  const states = [data, error, false, "TH", null, guest, null];
   const overrides = {
     react: { ...React, useState: () => [states[cursor++], () => {}], useEffect() {} },
     "@/components/language-provider": { useLanguage: () => ({ language }) },
@@ -94,7 +94,17 @@ assert.ok(english.includes("They do not identify a cause"));
 assert.ok(english.includes("Guidance rules v1"));
 assert.ok(english.includes("original language"));
 assert.ok(english.includes("คำเตือนทดสอบ"), "source label cautions must not be removed or guessed");
-assert.ok(render("en", 1, {}, "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล").includes("Sign in to view"));
+for (const language of ["th", "en"]) {
+  const guestHtml = render(language, 1, {}, "", true);
+  for (const name of ["skin_type", "skin_sensitivity", "known_product_allergy", "severe_irritation", "age_group", "sunscreen_frequency"]) {
+    assert.ok(guestHtml.includes(`name="${name}"`));
+  }
+  assert.ok(!guestHtml.includes('href="/login"'));
+  assert.ok(!guestHtml.includes('href="/profile"'));
+  const blockedGuest = render(language, 0, { status: "safety_blocked", blocked_reason: "reported_severe_irritation" }, "", true);
+  assert.ok(!blockedGuest.includes('href="/onboarding/health'));
+  assert.ok(blockedGuest.includes('name="severe_irritation"'));
+}
 assert.ok(render("th", 1, {}, "Invalid product budget").includes("งบประมาณสินค้าไม่ถูกต้อง"));
 assert.ok(render("en", 1, {}, "ยังเชื่อมต่อบริการคำแนะนำไม่ได้").includes("Could not connect"));
 assert.ok(render("th", 1, { status: "pending" }).includes("รอวิเคราะห์ภาพ"));

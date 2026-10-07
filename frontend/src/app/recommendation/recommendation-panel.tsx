@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, LockKeyhole, Store, Globe, Sparkles, Package } from "lucide-react";
+import { ArrowRight, Store, Globe, Sparkles, Package } from "lucide-react";
 import { Select } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { useLanguage, type Language } from "@/components/language-provider";
@@ -75,9 +75,6 @@ const COPY = {
   th: {
     loading: "กำลังโหลดคำแนะนำ…",
     errorFallback: "โหลดคำแนะนำไม่สำเร็จ",
-    signIn: "เข้าสู่ระบบ",
-    signInRequired: "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล",
-    signInHint: "เข้าสู่ระบบเพื่อดูคำแนะนำที่อ้างอิงจากข้อมูลผิวของคุณ",
     noData: "ยังไม่มีข้อมูลคำแนะนำ",
     noProducts: "ยังไม่มีผลิตภัณฑ์ที่ตรวจทานแล้วตรงกับเงื่อนไขที่เลือก",
     safetyBlocked: "หยุดคำแนะนำเพื่อความปลอดภัย",
@@ -115,9 +112,6 @@ const COPY = {
   en: {
     loading: "Loading guidance…",
     errorFallback: "Could not load guidance",
-    signIn: "Sign in",
-    signInRequired: "Sign in to view your personalized guidance.",
-    signInHint: "Sign in to see guidance based on your skin profile.",
     noData: "No guidance data is available yet.",
     noProducts: "No reviewed products match your selected criteria yet.",
     safetyBlocked: "Guidance paused for safety",
@@ -204,7 +198,6 @@ const AREA_LABELS: Record<string, { th: string; en: string }> = {
 };
 
 const ENGLISH_ERRORS: Record<string, string> = {
-  "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล": COPY.en.signInRequired,
   "ยังไม่มีผลวิเคราะห์ในเบราว์เซอร์นี้": "No analysis is available in this browser yet.",
   "โหลดคำแนะนำไม่สำเร็จ": COPY.en.errorFallback,
   "ยังเชื่อมต่อบริการคำแนะนำไม่ได้": "Could not connect to the guidance service. Please try again.",
@@ -276,6 +269,8 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
   const [loading, setLoading] = useState(true);
   const [market, setMarket] = useState("TH");
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [guest, setGuest] = useState(false);
+  const [guestAnswers, setGuestAnswers] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -283,14 +278,21 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
     const query = new URLSearchParams({ scope: source, market });
     if (maxPrice !== null) query.set("max_price_satang", String(maxPrice));
     function load() {
-      fetch(`/api/analysis/recommendations?${query.toString()}`, { cache: "no-store" })
+      fetch(`/api/analysis/recommendations?${query.toString()}`, guestAnswers ? {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(guestAnswers), cache: "no-store",
+      } : { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(response.status === 401 ? "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล" : typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
+        if (!guestAnswers && (body?.guest_profile_required || response.status === 401)) {
+          if (active) setGuest(true);
+          return null;
+        }
+        if (!response.ok) throw new Error(typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
         return body as Result;
       })
       .then((result) => {
-        if (!active) return;
+        if (!active || !result) return;
         setData(result);
         if (result.status === "pending") timer = setTimeout(load, 2500);
       })
@@ -299,22 +301,44 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
     }
     load();
     return () => { active = false; clearTimeout(timer); };
-  }, [source, market, maxPrice]);
+  }, [source, market, maxPrice, guestAnswers]);
 
-  if (loading) return <p role="status">{copy.loading}</p>;
-  if (error) {
-    const loginRequired = error.includes("เข้าสู่ระบบ") || error.toLowerCase().includes("sign in");
-    const errorText = loginRequired ? copy.signInRequired : localizeGuidance(error, language);
-    if (compact) {
-      return <div className={`recommendation-inline-state${loginRequired ? " is-auth-required" : ""}`} role="status">
-        {loginRequired && <span className="recommendation-inline-icon" aria-hidden="true"><LockKeyhole size={19} /></span>}
-        <div className="recommendation-inline-copy"><p>{errorText}</p>{loginRequired && <small>{copy.signInHint}</small>}</div>
-        {loginRequired && <Link className="primary-button" href="/login">{copy.signIn}<ArrowRight size={16} aria-hidden="true" /></Link>}
-      </div>;
-    }
-    return <div className="recommendation-card" role="status"><p>{errorText}</p>{loginRequired && <Link className="text-button" href="/login">{copy.signIn} →</Link>}</div>;
-  }
-  if (!data) return <p role="status">{copy.noData}</p>;
+  const guestForm = guest && <form className="recommendation-card" onSubmit={(event) => {
+    event.preventDefault();
+    const answers = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<string, string>;
+    setLoading(true);
+    setError("");
+    setGuestAnswers(answers);
+  }}>
+    <h3>{language === "th" ? "บอกข้อมูลผิวเพื่อแนะนำผลิตภัณฑ์" : "Tell us about your skin"}</h3>
+    <p>{language === "th" ? "ใช้งานได้โดยไม่ต้องเข้าสู่ระบบ คำตอบใช้เลือกสินค้าในครั้งนี้และไม่บันทึกเป็นโปรไฟล์บัญชี" : "No sign-in needed. Your answers are used for this request and are not saved to an account profile."}</p>
+    <div className="recommendation-filters">
+      {([
+        ["skin_type", "สภาพผิวหน้า", "Skin type", [["dry", "แห้ง", "Dry"], ["normal", "ปกติ", "Normal"], ["combination", "ผสม", "Combination"], ["oily", "มัน", "Oily"]]],
+        ["skin_sensitivity", "ความไวต่อการระคายเคือง", "Skin sensitivity", [["low", "ต่ำ", "Low"], ["medium", "ปานกลาง", "Moderate"], ["high", "สูง", "High"]]],
+        ["known_product_allergy", "เคยแพ้ผลิตภัณฑ์หรือส่วนผสมหรือไม่", "Any known product or ingredient allergy?", [["yes", "เคย", "Yes"], ["no", "ไม่เคย", "No"]]],
+        ["severe_irritation", "ขณะนี้มีการระคายเคืองรุนแรงหรือไม่", "Any severe irritation right now?", [["yes", "มี", "Yes"], ["no", "ไม่มี", "No"]]],
+        ["sunscreen_frequency", "ใช้กันแดดบ่อยแค่ไหน", "How often do you use sunscreen?", [["never", "ไม่ใช้", "Never"], ["sometimes", "บางครั้ง", "Sometimes"], ["every_day", "ทุกวัน", "Every day"]]],
+        ["age_group", "ช่วงอายุ", "Age group", [["under_13", "ต่ำกว่า 13 ปี", "Under 13"], ["13_17", "13–17 ปี", "13–17"], ["18_24", "18–24 ปี", "18–24"], ["25_34", "25–34 ปี", "25–34"], ["35_44", "35–44 ปี", "35–44"], ["45_54", "45–54 ปี", "45–54"], ["55_plus", "55 ปีขึ้นไป", "55+"]]],
+      ] as [string, string, string, string[][]][]).map(([name, th, en, options]) => <label key={name}>
+        <span className="filter-label">{language === "th" ? th : en}</span>
+        <select name={name} required defaultValue={guestAnswers?.[name] ?? ""}>
+          <option value="" disabled>{language === "th" ? "เลือกคำตอบ" : "Choose an answer"}</option>
+          {options.map(([value, th, en]) => <option key={value} value={value}>{language === "th" ? th : en}</option>)}
+          <option value="unknown">{language === "th" ? "ไม่แน่ใจ" : "Not sure"}</option>
+        </select>
+      </label>)}
+    </div>
+    <button className="primary-button" type="submit" disabled={loading}>{loading ? copy.loading : language === "th" ? "แนะนำผลิตภัณฑ์" : "Recommend products"}</button>
+  </form>;
+
+  if (loading && !guest) return <p role="status">{copy.loading}</p>;
+  if (loading || error || !data) return <div className="recommendation-panel-root" lang={language}>
+    {guestForm}
+    {loading && <p role="status">{copy.loading}</p>}
+    {error && <p role="alert">{localizeGuidance(error, language)}</p>}
+    {!guest && !error && <p role="status">{copy.noData}</p>}
+  </div>;
   if (data.status === "pending") return <p role="status">{language === "th" ? "รอวิเคราะห์ภาพสำเร็จก่อนแนะนำผลิตภัณฑ์" : "Product guidance will be available after image analysis completes."}</p>;
   const recommendations = data.recommendations.filter((item) => !!item.products?.length);
 
@@ -324,6 +348,8 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
 
   return (
     <div aria-live="polite" lang={language} className="recommendation-panel-root">
+      {guestForm}
+      {loading && <p role="status">{copy.loading}</p>}
       <form className="recommendation-filters" onSubmit={(event) => {
         event.preventDefault();
         const values = new FormData(event.currentTarget);
@@ -366,9 +392,9 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
         <button className="secondary-button" type="submit">{language === "th" ? "ใช้ตัวกรอง" : "Apply filters"}</button>
         {maxPrice !== null && <small>{language === "th" ? "ใช้เฉพาะราคาที่มีแหล่งอ้างอิงและตรวจสอบใน 30 วันล่าสุด งบนี้ต่อสินค้า ไม่ใช่ราคารวมทั้งชุด" : "Uses sourced prices checked within 30 days. This limit applies to each product, not the whole routine."}</small>}
       </form>
-      {data.profile_context && <p className="recommendation-profile-note">{language === "th" ? "ข้อมูลผิวที่ใช้: " : "Skin profile used: "}<strong>{SKIN_LABELS[data.profile_context.skin_type]?.[language] ?? copy.notRecorded}</strong>{language === "th" ? " · ความไวต่อการระคายเคือง: " : " · Sensitivity: "}<strong>{data.profile_context.skin_sensitivity === "medium" ? (language === "th" ? "ปานกลาง" : "Moderate") : (language === "th" ? "ต่ำ" : "Low")}</strong> · <Link href="/profile">{language === "th" ? "ดูโปรไฟล์" : "View profile"}</Link></p>}
+      {data.profile_context && <p className="recommendation-profile-note">{language === "th" ? "ข้อมูลผิวที่ใช้: " : "Skin profile used: "}<strong>{SKIN_LABELS[data.profile_context.skin_type]?.[language] ?? copy.notRecorded}</strong>{language === "th" ? " · ความไวต่อการระคายเคือง: " : " · Sensitivity: "}<strong>{data.profile_context.skin_sensitivity === "medium" ? (language === "th" ? "ปานกลาง" : "Moderate") : (language === "th" ? "ต่ำ" : "Low")}</strong> {!guest && <> · <Link href="/profile">{language === "th" ? "ดูโปรไฟล์" : "View profile"}</Link></>}</p>}
       {data.status === "safety_blocked" ? (
-        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p>{data.blocked_reason !== "profile_consent_required" && <Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link>}</article>
+        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.safetyBlocked}</span><h3>{copy.updateFirst}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่รายงานต้องได้รับการพิจารณาก่อน" : "Your reported information needs review first.")}</p>{!guest && data.blocked_reason !== "profile_consent_required" && <Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=1"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.updateSafety}</Link>}</article>
       ) : recommendations.length ? (
         <div className="recommendation-list recommendation-categories-stack">
           {recommendations.map((item) => (
@@ -479,7 +505,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
       ) : data.recommendations.length ? (
         <p className="recommendation-note" role="status">{copy.noProducts}</p>
       ) : (
-        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.noGuidance}</span><h3>{copy.startWithData}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ" : "There is not enough recorded information for an available guidance rule.")}</p><Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.editProfile}</Link></article>
+        <article className="recommendation-card recommendation-blocked"><span className="status">{copy.noGuidance}</span><h3>{copy.startWithData}</h3><p>{reason(data.blocked_reason, language === "th" ? "ข้อมูลที่บันทึกยังไม่เพียงพอสำหรับกฎคำแนะนำ" : "There is not enough recorded information for an available guidance rule.")}</p>{!guest && <Link className="primary-button" href={data.questionnaire_context.status === "missing" ? "/onboarding/health" : "/onboarding/health?edit=full"}>{data.questionnaire_context.status === "missing" ? copy.startQuestionnaire : copy.editProfile}</Link>}</article>
       )}
       {data.allergy_context?.reported && (
         <p className="recommendation-warning">{language === "th" ? "คุณรายงานประวัติแพ้" : "You reported an allergy"}{data.allergy_context.details ? `: ${data.allergy_context.details}` : ""}. {language === "th" ? "ระบบงดเลือกสินค้ารายชิ้น แม้บันทึกสารที่แพ้แล้ว การตรวจชื่อส่วนผสมและสารที่เกี่ยวข้องยังไม่ครบถ้วน โปรดให้ผู้เชี่ยวชาญตรวจฉลากจริงก่อนเลือกใช้" : "Named products are withheld because recorded allergens cannot reliably resolve every ingredient and related substance. Have a professional review the current label before use."}</p>

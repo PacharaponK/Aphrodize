@@ -296,3 +296,65 @@ async def test_completed_endpoint_returns_reviewed_products_when_image_score_is_
     assert product["id"] == str(sunscreen.id)
     assert product["price_satang"] == 15900
     assert product["warnings_label"] == "Avoid eyes"
+
+    from backend.api.schemas.product import GuestSkinProfile
+    from backend.api.v1.routes.analyses import get_guest_recommendations
+
+    guest_session = FakeSession(None, None, products=[sunscreen])
+    guest_result = await get_guest_recommendations(
+        GuestSkinProfile(skin_type="dry", skin_sensitivity="low", known_product_allergy="no",
+                         severe_irritation="no", age_group="25_34",
+                         sunscreen_frequency="every_day"),
+        session=guest_session, market="TH", max_price_satang=None,
+    )
+    assert guest_result["recommendations"][1]["products"][0]["id"] == str(sunscreen.id)
+    assert len(guest_session.queries) == 1
+    assert "products" in str(guest_session.queries[0])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [({}, "ready"), ({"skin_sensitivity": "high"}, "safety_blocked"),
+     ({"known_product_allergy": "yes"}, "safety_blocked"),
+     ({"severe_irritation": "yes"}, "safety_blocked"),
+     ({"skin_sensitivity": "unknown"}, "safety_blocked")],
+)
+async def test_guest_uses_transient_answers_without_reading_personal_records(overrides, expected):
+    from backend.api.schemas.product import GuestSkinProfile
+    from backend.api.v1.routes.analyses import get_guest_recommendations
+
+    class CatalogOnlySession:
+        async def scalars(self, query):
+            sql = str(query)
+            assert "products" in sql
+            assert "published" in str(query.compile().params)
+            assert "reviewed_at IS NOT NULL" in sql
+            return SimpleNamespace(all=lambda: [])
+
+    answers = dict(skin_type="dry", skin_sensitivity="low", known_product_allergy="no",
+                   severe_irritation="no", age_group="25_34", sunscreen_frequency="every_day")
+    result = await get_guest_recommendations(
+        GuestSkinProfile(**(answers | overrides)), session=CatalogOnlySession(),
+        market="TH", max_price_satang=50000,
+    )
+    assert result["status"] == expected
+    assert result["questionnaire_context"]["revision_id"] is None
+    assert result["image_context"]["reason"] == "no_analysis"
+    if expected == "ready":
+        assert result["profile_context"]["source"] == "guest"
+    else:
+        assert result["recommendations"] == []
+
+
+def test_guest_schema_rejects_missing_safety_answers_and_account_identifiers():
+    from pydantic import ValidationError
+
+    from backend.api.schemas.product import GuestSkinProfile
+
+    with pytest.raises(ValidationError):
+        GuestSkinProfile(skin_type="dry")
+    with pytest.raises(ValidationError):
+        GuestSkinProfile(skin_type="dry", skin_sensitivity="low", known_product_allergy="no",
+                         severe_irritation="no", age_group="25_34",
+                         sunscreen_frequency="every_day", user_id=str(uuid4()))

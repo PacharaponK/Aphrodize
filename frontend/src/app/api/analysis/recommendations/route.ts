@@ -25,7 +25,7 @@ function currentAnalysis(request: NextRequest): string | null {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return failed(401, "กรุณาเข้าสู่ระบบเพื่อดูคำแนะนำส่วนบุคคล");
+  if (!token) return NextResponse.json({ guest_profile_required: true }, { headers: { "Cache-Control": "no-store" } });
   try {
     const profileScope = request.nextUrl.searchParams.get("scope") === "profile";
     const analysisId = currentAnalysis(request);
@@ -44,6 +44,41 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!response.ok) {
       return failed(response.status, typeof body?.detail === "string" ? body.detail : "โหลดคำแนะนำไม่สำเร็จ");
     }
+    return NextResponse.json(body, { headers: { "Cache-Control": "private, no-store" } });
+  } catch {
+    return failed(502, "ยังเชื่อมต่อบริการคำแนะนำไม่ได้");
+  }
+}
+
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== request.nextUrl.origin) return failed(403, "Invalid request origin");
+  if (Number(request.headers.get("content-length")) > 4096) return failed(413, "Profile is too large");
+  try {
+    const text = await request.text();
+    if (Buffer.byteLength(text) > 4096) return failed(413, "Profile is too large");
+    let answers: unknown;
+    try { answers = JSON.parse(text); } catch { return failed(400, "Invalid skin profile"); }
+    const market = request.nextUrl.searchParams.get("market") ?? "TH";
+    const budget = request.nextUrl.searchParams.get("max_price_satang");
+    if (market !== "TH" && market !== "all") return failed(400, "Invalid product market");
+    if (budget !== null && (!/^\d+$/.test(budget) || Number(budget) > 100_000_000)) return failed(400, "Invalid product budget");
+    const query = new URLSearchParams({ market });
+    if (budget !== null) query.set("max_price_satang", budget);
+    const username = process.env.BACKEND_API_USERNAME;
+    const password = process.env.BACKEND_API_PASSWORD;
+    if (!username || !password) throw new Error("Backend credentials are not configured");
+    const response = await fetch(
+      `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/analyses/recommendations/guest?${query}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}` },
+        body: JSON.stringify(answers), cache: "no-store",
+      },
+    );
+    const body = await response.json().catch(() => null);
+    if (!response.ok) return failed(response.status, typeof body?.detail === "string" ? body.detail : "ข้อมูลผิวไม่ครบถ้วนหรือโหลดคำแนะนำไม่สำเร็จ");
     return NextResponse.json(body, { headers: { "Cache-Control": "private, no-store" } });
   } catch {
     return failed(502, "ยังเชื่อมต่อบริการคำแนะนำไม่ได้");

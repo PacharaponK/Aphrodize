@@ -147,7 +147,7 @@ def pipeline(tracking_uri=None, *, refresh_data=True):
     mlflow.set_tracking_uri(
         tracking_uri
         or os.environ.get("MLFLOW_TRACKING_URI")
-        or (lifecycle.ARTIFACTS / "mlruns").resolve().as_uri()
+        or "http://localhost:5000"
     )
     mlflow.set_experiment("uv-clear-sky")
     with mlflow.start_run(run_name=bundle.name) as run:

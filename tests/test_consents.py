@@ -168,3 +168,19 @@ async def test_saved_consent_routes_reject_unknown_user(route) -> None:
     with pytest.raises(HTTPException) as error:
         await route(uuid4(), Session())
     assert error.value.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "key,project,available",
+    [("", 0, False), ("token", 0, False), ("", 7, False), ("token", 7, True)],
+)
+async def test_annotation_capability_requires_token_and_project(
+    monkeypatch, key, project, available
+):
+    from backend.api.v1.routes.health import capabilities
+    from backend.core.config import settings
+
+    monkeypatch.setattr(settings, "label_studio_api_key", key)
+    monkeypatch.setattr(settings, "label_studio_project_id", project)
+    assert await capabilities() == {"annotation_review_available": available}

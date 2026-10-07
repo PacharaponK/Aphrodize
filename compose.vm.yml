@@ -24,6 +24,9 @@ x-environment: &environment
   JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Required}
   JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
   MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+  LABEL_STUDIO_URL: ${LABEL_STUDIO_URL:-http://label-studio:8080}
+  LABEL_STUDIO_API_KEY: ${LABEL_STUDIO_API_KEY:-}
+  LABEL_STUDIO_PROJECT_ID: ${LABEL_STUDIO_PROJECT_ID:-0}
 
 services:
   postgres:
@@ -115,6 +118,25 @@ services:
       retries: 20
     logging: *logging
 
+  # Keep forecasts fresh using the existing approved UV models.
+  uv-refresh:
+    image: aphrodize-api:vm
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    user: "${UV_REFRESH_UID:-1000}:${UV_REFRESH_GID:-1000}"
+    command: ["sh", "-c", "while true; do if python /app/scripts/refresh_uv_forecast.py; then sleep 21600; else sleep 1800; fi; done"]
+    environment:
+      APP_ENV: production
+      PYTHONPATH: /app
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./storage/data/uv:/app/storage/data/uv
+      - ./storage/models/uv:/app/storage/models/uv
+      - ./storage/artifacts/uv:/app/storage/artifacts/uv
+    logging: *logging
+
   frontend:
     image: aphrodize-frontend:vm
     build:
@@ -130,6 +152,8 @@ services:
       BACKEND_API_PASSWORD: ${API_PASSWORD:?Required}
       ANALYSIS_SESSION_SECRET: ${ANALYSIS_SESSION_SECRET:?Required}
       SITE_URL: https://${VM_HOST:?Set VM_HOST}
+      PORTAL_MINIO_URL: ${PORTAL_MINIO_URL:-}
+      PORTAL_MLFLOW_URL: ${PORTAL_MLFLOW_URL:-}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:

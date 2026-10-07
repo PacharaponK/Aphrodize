@@ -140,6 +140,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       cache: "no-store",
     });
     if (!analysisConsent.ok) return backendError(analysisConsent);
+    let annotationReviewUnavailable = false;
     if (wantsAnnotation) {
       // Grant the separate human-review consent before queuing the image.
       const reviewConsent = await fetch(backendUrl(`/consents/users/${user_id}/annotations`), {
@@ -147,7 +148,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         headers: userHeaders,
         cache: "no-store",
       });
-      if (!reviewConsent.ok) return backendError(reviewConsent);
+      if (!reviewConsent.ok) {
+        const failure = await reviewConsent.json().catch(() => null);
+        // An unconfigured optional integration must not block image analysis.
+        // Authentication and other review failures still require attention.
+        if (reviewConsent.status === 503 && failure?.detail === "Annotation review is not configured") {
+          annotationReviewUnavailable = true;
+        } else {
+          return failed(reviewConsent.status, typeof failure?.detail === "string" ? failure.detail : "Backend request failed");
+        }
+      }
     }
     // Forward only the image to the protected analysis endpoint.
     const upload = new FormData();
@@ -162,7 +172,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const data = await analysis.json();
     if (typeof data.id !== "string" || !UUID.test(data.id)) throw new Error("Invalid analysis id");
     // Return the queued/rejected row immediately; inference continues in Redis.
-    const response = NextResponse.json(data, { status: 202, headers: { "Cache-Control": "no-store" } });
+    const response = NextResponse.json({ ...data, annotation_review_unavailable: annotationReviewUnavailable }, { status: 202, headers: { "Cache-Control": "no-store" } });
     if (anonymous && !anonymousSession(request)) {
       response.cookies.set(ANONYMOUS_COOKIE, `${anonymous.userId}:${anonymous.token}`, {
         httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production",
@@ -178,7 +188,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: "/api/analysis",
       maxAge: DAY_MS / 1000,
     });
-    if (wantsAnnotation) {
+    if (wantsAnnotation && !annotationReviewUnavailable) {
       // Retain user IDs for browser-initiated review revocation during 30 days.
       const reviewExpiry = Date.now() + REVIEW_MS;
       const encoded = Buffer.from(reviewUsers.join(",")).toString("base64url");
@@ -242,9 +252,14 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     if (request.nextUrl.searchParams.get("consents") === "1") {
+      // Optional review fails closed without preventing consent to analysis.
+      const capabilities = await fetch(backendUrl("/capabilities"), { cache: "no-store", signal: AbortSignal.timeout(5000) })
+        .then(async (response) => response.ok ? response.json() : null)
+        .catch(() => null);
+      const annotation_review_available = capabilities?.annotation_review_available === true;
       const owner = await accountSession(request) ?? anonymousSession(request);
       if (!owner) {
-        return NextResponse.json({ analysis: false, annotations: false }, {
+        return NextResponse.json({ analysis: false, annotations: false, annotation_review_available }, {
           headers: { "Cache-Control": "no-store" },
         });
       }
@@ -253,7 +268,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         cache: "no-store",
       });
       if (!response.ok) return backendError(response);
-      return NextResponse.json(await response.json(), { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ ...await response.json(), annotation_review_available }, { headers: { "Cache-Control": "no-store" } });
     }
     // A valid signed cookie authorizes reading this browser's latest analysis.
     const id = currentAnalysis(request);

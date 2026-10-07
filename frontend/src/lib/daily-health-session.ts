@@ -19,6 +19,7 @@ export async function accountSession(request: NextRequest): Promise<{ userId: st
   const response = await fetch(backendUrl("/auth/profile"), {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
+    signal: AbortSignal.timeout(5000),
   });
   if (response.status === 401 || response.status === 403) return null;
   if (!response.ok) throw new Error("Could not verify account session");

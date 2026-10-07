@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
@@ -16,6 +17,26 @@ from backend.libs.redis_client import get_arq_pool
 from backend.libs.wrinkle_area import AREA_BAND_VERSION, assess_visible_area
 
 ANALYSIS_CONSENT_VERSION = "1.0"
+
+
+async def require_inference_worker() -> None:
+    """Fail promptly if the inference queue has no live ARQ worker."""
+    try:
+        async with asyncio.timeout(5):
+            redis = await get_arq_pool()
+            try:
+                # ARQ expires this key when the worker stops reporting health.
+                available = bool(await redis.exists("inference:health-check"))
+            finally:
+                await redis.aclose()
+    except Exception:
+        available = False
+    if not available:
+        raise HTTPException(
+            status_code=503,
+            detail="Image analysis is temporarily unavailable. Please try again later.",
+            headers={"Retry-After": "30"},
+        )
 
 RECOMMENDATION_RULE_VERSION = "2026-10-05.1"
 RECOMMENDATION_KNOWLEDGE_ID = "aphrodize-category-baseline"
@@ -711,6 +732,8 @@ async def create_analysis(session: AsyncSession, user_id: UUID, image: UploadFil
     # Reserve a unique private key; rejected uploads never write to this key.
     object_key = f"users/{user_id}/original/{uuid.uuid4()}"
     if not quality_flags:
+        # Do not retain new uploads when no worker can process or delete them.
+        await require_inference_worker()
         put_bytes(object_key, payload, image.content_type)
     # Record either a terminal preflight rejection or a queued analysis.
     analysis = Analysis(

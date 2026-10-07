@@ -1,0 +1,16 @@
+# Proposed optional public Console route; enable only after operator approval.
+# Add to the DuckDNS Caddyfile and set PORTAL_MINIO_URL to the HTTPS URL below.
+# The existing MinIO account protects the Console. This exposes an admin login
+# to the internet; the S3 API at port 9000 remains private.
+minio.{$VM_HOST} {
+    tls {
+        issuer acme {
+            dns duckdns {env.DUCKDNS_API_TOKEN} {
+                resolver 127.0.0.11:53
+            }
+            resolvers 127.0.0.11:53
+        }
+    }
+    encode zstd gzip
+    reverse_proxy minio:9001
+}

@@ -74,3 +74,18 @@ class ProductRead(ProductInput):
     reviewed_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class GuestSkinProfile(BaseModel):
+    """Transient reported inputs; never creates or reads an account profile."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    skin_type: Literal["dry", "normal", "combination", "oily", "unknown"]
+    skin_sensitivity: Literal["low", "medium", "high", "unknown"]
+    known_product_allergy: Literal["yes", "no", "unknown"]
+    severe_irritation: Literal["yes", "no", "unknown"]
+    sunscreen_frequency: Literal["never", "sometimes", "every_day", "unknown"]
+    age_group: Literal[
+        "under_13", "13_17", "18_24", "25_34", "35_44", "45_54", "55_plus", "unknown"
+    ]

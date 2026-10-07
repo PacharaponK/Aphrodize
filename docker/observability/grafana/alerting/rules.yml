@@ -1,0 +1,757 @@
+apiVersion: 1
+groups:
+- orgId: 1
+  name: operations
+  folder: Aphrodize
+  interval: 30s
+  rules:
+  - uid: secondary-failed
+    title: Retention or annotation staging failed
+    condition: C
+    for: 0s
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Inspect the named operation and reconcile retained artifacts or annotation
+        staging.
+      __dashboardUid__: aphrodize-jobs
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: sum by(operation) (increase(aphrodize_secondary_failures_total[5m]))
+          > bool 0
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: api-down
+    title: API scrape unavailable
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: critical
+    annotations:
+      summary: Check API process, scrape credentials and network.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 1 - (up{job="api"} or on() vector(0))
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: probe-down
+    title: HTTP probe failed
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: critical
+    annotations:
+      summary: Check frontend/API routing and dependency readiness.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 1 - probe_success
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: dependency-down
+    title: Required dependency unavailable
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: critical
+    annotations:
+      summary: Check the named dependency; preserve volumes while recovering.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (aphrodize_dependency_up == bool 0) * on(dependency) aphrodize_dependency_required
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: worker-down
+    title: Expected worker heartbeat missing
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: critical
+    annotations:
+      summary: Check worker process, Redis connectivity and approved model readiness.
+      __dashboardUid__: aphrodize-jobs
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: 1 - aphrodize_worker_up
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: queue-stuck
+    title: Inference queue waiting too long
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Check worker heartbeat and processing errors. Do not discard queued
+        jobs.
+      __dashboardUid__: aphrodize-jobs
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: aphrodize_queue_oldest_seconds{queue="inference"} > bool 300
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: training-stuck
+    title: Training queue waiting too long
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Check trainer availability and training schedule.
+      __dashboardUid__: aphrodize-jobs
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: aphrodize_queue_oldest_seconds{queue="training"} > bool 3600
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: running-stuck
+    title: Inference running row overdue
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Inspect job logs; age is since submission, not execution start. Reconcile
+        state before retrying.
+      __dashboardUid__: aphrodize-jobs
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: aphrodize_running_oldest_seconds{queue="inference"} > bool 900
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: api-errors
+    title: API 5xx rate elevated
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Find failing routes and request IDs in logs.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (sum(rate(aphrodize_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(aphrodize_http_requests_total[5m])),
+          0.001) > bool 0.05) * (sum(increase(aphrodize_http_requests_total[5m]))
+          >= bool 20)
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: frontend-errors
+    title: Frontend 5xx rate elevated
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Inspect frontend backend_request and request_error logs.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (sum(rate(caddy_http_request_duration_seconds_count{handler="reverse_proxy",code=~"5.."}[5m]))
+          / clamp_min(sum(rate(caddy_http_request_duration_seconds_count{handler="reverse_proxy"}[5m])),
+          0.001) > bool 0.05) * (sum(increase(caddy_http_request_duration_seconds_count{handler="reverse_proxy"}[5m]))
+          >= bool 20)
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: disk-low
+    title: Host disk below 15 percent
+    condition: C
+    for: 10m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Check log and artifact usage; follow retention policy before deleting
+        data.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes
+          < bool 0.15) * on(instance,device,mountpoint) (node_filesystem_readonly
+          == bool 0)
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: collector-failed
+    title: Operational collector failing
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Inspect collector_failed events and SQL/Redis connectivity.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: clamp_max((aphrodize_collector_success == bool 0) + (time() - aphrodize_collector_timestamp_seconds
+          > bool 120), 1)
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: optional-scrape
+    title: Configured exporter unavailable
+    condition: C
+    for: 2m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Check exporter process, private tunnels and target configuration.
+      __dashboardUid__: aphrodize-system
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: up{job=~"optional-workers|optional-gpu|optional-caddy|node|loki|alloy"}
+          == bool 0
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: uv-stale
+    title: UV forecast unavailable or stale
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Inspect uv-refresh; validate snapshot and serving-version pointer.
+      __dashboardUid__: aphrodize-uv
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (aphrodize_uv_forecast_ready == bool 0) * aphrodize_uv_monitoring_enabled
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query
+  - uid: uv-quality
+    title: UV quality monitoring requires attention
+    condition: C
+    for: 5m
+    noDataState: OK
+    execErrState: Alerting
+    isPaused: false
+    labels:
+      severity: warning
+    annotations:
+      summary: Inspect monitoring.json and UV quality gate. Do not auto-promote a
+        model.
+      __dashboardUid__: aphrodize-uv
+      __panelId__: '1'
+      runbook: docs/observability.md
+    data:
+    - refId: A
+      relativeTimeRange:
+        from: 300
+        to: 0
+      datasourceUid: prometheus
+      model:
+        refId: A
+        expr: (aphrodize_uv_quality_ready == bool 0) * aphrodize_uv_monitoring_enabled
+        instant: true
+        intervalMs: 1000
+        maxDataPoints: 43200
+    - refId: C
+      relativeTimeRange:
+        from: 0
+        to: 0
+      datasourceUid: __expr__
+      model:
+        refId: C
+        type: threshold
+        expression: A
+        conditions:
+        - evaluator:
+            type: gt
+            params:
+            - 0
+          operator:
+            type: and
+          query:
+            params:
+            - C
+          reducer:
+            type: last
+            params: []
+          type: query

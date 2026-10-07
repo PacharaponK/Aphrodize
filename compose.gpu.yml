@@ -11,8 +11,6 @@ services:
       APHRODIZE_WRINKLE_REVIEWED_POLICY: /app/ai/ffhq_wrinkle/reviewed_policy.json
       APHRODIZE_WRINKLE_APPROVED_MANIFEST: ""
       APHRODIZE_WRINKLE_POLICY_BUNDLE: ""
-      LABEL_STUDIO_API_KEY: ""
-      LABEL_STUDIO_PROJECT_ID: "0"
     gpus: all
     volumes:
       - type: bind

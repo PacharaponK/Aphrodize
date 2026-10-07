@@ -8,8 +8,9 @@ from minio.error import S3Error
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import require_matching_user, require_user_token
+from backend.api.deps import require_api_credentials, require_matching_user, require_user_token
 from backend.api.schemas.analysis import AnalysisRead
+from backend.api.schemas.product import GuestSkinProfile
 from backend.core.db.models import (
     Analysis,
     AnalysisStatus,
@@ -27,6 +28,7 @@ from backend.services.analysis_service import (
     attach_catalog_products,
     create_analysis,
     recommendations_for,
+    require_inference_worker,
 )
 
 DAILY_HEALTH_CONSENT_VERSION = "daily-health-v1"
@@ -147,6 +149,12 @@ async def recommendation_response(
     response["questionnaire_context"] = questionnaire_context(questionnaire)
     if response.get("profile_context") is not None:
         response["profile_context"]["source"] = "user_profile" if profile else "questionnaire"
+    return await catalog_recommendation_response(session, response, market, max_price_satang)
+
+
+async def catalog_recommendation_response(
+    session: AsyncSession, response: dict, market: str, max_price_satang: int | None,
+) -> dict:
     products = []
     if response["status"] == "ready" and not response["allergy_context"]["reported"]:
         # ponytail: scan at most 500 reviewed catalog entries; paginate if the catalog grows.
@@ -192,6 +200,21 @@ async def submit_analysis(
     return serialize(analysis)
 
 
+@router.post("/recommendations/guest", dependencies=[Depends(require_api_credentials)])
+async def get_guest_recommendations(
+    payload: GuestSkinProfile,
+    session: AsyncSession = Depends(get_session),
+    market: Literal["TH", "all"] = "TH",
+    max_price_satang: Annotated[int | None, Query(ge=0, le=100_000_000)] = None,
+) -> dict:
+    """Use transient answers and the reviewed catalog, without reading personal records."""
+    response = recommendations_for(None, payload.model_dump())
+    response["questionnaire_context"] = {"status": "available", "revision_id": None}
+    if response.get("profile_context") is not None:
+        response["profile_context"]["source"] = "guest"
+    return await catalog_recommendation_response(session, response, market, max_price_satang)
+
+
 @router.get("/recommendations")
 async def get_profile_recommendations(
     user_id: UUID = Depends(require_user_token),
@@ -215,6 +238,9 @@ async def get_analysis(
     analysis = await session.get(Analysis, analysis_id)
     if analysis is None or analysis.user_id != caller_id:
         raise HTTPException(status_code=404, detail="Analysis not found")
+    if analysis.status in (AnalysisStatus.queued, AnalysisStatus.running):
+        # Preserve the queued row for recovery, but stop the browser's endless loader.
+        await require_inference_worker()
     return serialize(analysis)
 
 

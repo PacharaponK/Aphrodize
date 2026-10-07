@@ -36,6 +36,7 @@ export default function CapturePage() {
   const captureView = useRef<HTMLElement>(null);
   const stepsView = useRef<HTMLOListElement>(null);
   const previousStage = useRef(1);
+  const [annotationAvailable, setAnnotationAvailable] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -76,6 +77,7 @@ export default function CapturePage() {
         const data = await response.json();
         if (!active) return;
         const saved = { analysis: data.analysis === true, annotations: data.annotations === true };
+        setAnnotationAvailable(data.annotation_review_available === true);
         setSavedConsents(saved);
         setConsent(saved.analysis);
         setAnnotationConsent(saved.annotations);
@@ -158,11 +160,12 @@ export default function CapturePage() {
     if (!file || !consent) return setError(t("เลือกภาพและยอมรับการวิเคราะห์ก่อนดำเนินการ", "Choose an image and consent to analysis before continuing."));
     setBusy(true);
     setError("");
+    setNotice("");
     // FormData carries the image and the two consent decisions to the Next.js route.
     const form = new FormData();
     form.set("image", file);
     form.set("consent", "yes");
-    if (annotationConsent) form.set("annotation_consent", "yes");
+    if (annotationConsent && annotationAvailable) form.set("annotation_consent", "yes");
     try {
       // The route returns after queueing analysis, before inference finishes.
       const response = await fetch("/api/analysis", { method: "POST", body: form });
@@ -171,8 +174,14 @@ export default function CapturePage() {
         throw new Error(typeof body?.detail === "string" ? body.detail : t("ส่งภาพไม่สำเร็จ", "Could not submit the image."));
       }
       // Show and poll the result in this page using the signed browser cookie.
+      const data = await response.json();
       stopCamera();
-      setSavedConsents({ analysis: true, annotations: annotationConsent });
+      if (data.annotation_review_unavailable === true) {
+        setAnnotationAvailable(false);
+        setAnnotationConsent(savedConsents.annotations);
+        setNotice(t("ระบบตรวจป้ายกำกับภาพยังไม่พร้อมใช้งาน ส่งภาพวิเคราะห์แล้วโดยไม่ได้เพิ่มความยินยอมส่วนนี้", "Image-label review is unavailable. Your image was submitted for analysis without adding review consent."));
+      }
+      setSavedConsents({ analysis: true, annotations: savedConsents.annotations || (annotationConsent && annotationAvailable && data.annotation_review_unavailable !== true) });
       setBusy(false);
       setResultsReady(false);
       setAnalysisVersion((current) => current + 1);
@@ -207,6 +216,7 @@ export default function CapturePage() {
   return (
     <div className="capture-page">
       <WorkspaceShell eyebrow="" title={t("วิเคราะห์ภาพใบหน้า", "Analyze your face image")}>
+        {notice && <p className="capture-notice" role="status">{notice}</p>}
         <p className="capture-intro">{t("เตรียมภาพ ดูผลวิเคราะห์ แล้วเลือกดูผลิตภัณฑ์ที่แนะนำ", "Prepare your image, explore the analysis, then view recommended products.")}</p>
         <ol ref={stepsView} className="capture-steps" aria-label={t("ขั้นตอนการวิเคราะห์", "Analysis steps")}>
           {[t("เตรียมภาพ", "Prepare image"), t("ดูผลวิเคราะห์", "View results"), t("ผลิตภัณฑ์ที่แนะนำ", "Recommended products")].map((label, index) => (
@@ -268,15 +278,15 @@ export default function CapturePage() {
             <label className="capture-consent-row"><input type="checkbox" checked={consent} disabled={busy || loadingConsents} onChange={(event) => { if (!event.target.checked && savedConsents.analysis) void revokeConsent("analysis"); else setConsent(event.target.checked); }} />
               <span><span className="capture-consent-heading"><strong>{t("ยินยอมให้วิเคราะห์ภาพ", "Consent to image analysis")}</strong><small>{t("จำเป็น", "Required")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมให้วิเคราะห์ภาพใบหน้าเพื่อแสดงคะแนนทดลองและภาพ mask โดยภาพผลจะถูกลบภายใน 24 ชั่วโมง ผลนี้ยังไม่ผ่านการตรวจสอบทางคลินิก", "I consent to face-image analysis for experimental scores and a mask preview. Result images are deleted within 24 hours. This system has not been clinically validated.")}</span></span>
             </label>
-            <label className="capture-consent-row"><input type="checkbox" checked={annotationConsent} disabled={busy || loadingConsents} onChange={(event) => { if (!event.target.checked && savedConsents.annotations) void revokeConsent("annotations"); else setAnnotationConsent(event.target.checked); }} />
+            <label className="capture-consent-row"><input type="checkbox" checked={annotationConsent} disabled={busy || loadingConsents || (!annotationAvailable && !savedConsents.annotations)} onChange={(event) => { if (!event.target.checked && savedConsents.annotations) void revokeConsent("annotations"); else setAnnotationConsent(event.target.checked); }} />
               <span><span className="capture-consent-heading"><strong>{t("อนุญาตให้ผู้ตรวจทบทวนป้ายกำกับภาพ", "Allow human image-label review")}</strong><small>{t("ไม่บังคับ", "Optional")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมเพิ่มเติมให้เก็บภาพใบหน้าที่จัดแนวแล้วเพื่อให้ผู้ตรวจแก้ป้ายกำกับริ้วรอยใน Label Studio โดยกำหนดลบหลัง 30 วัน และไม่นำไปฝึกโมเดลอัตโนมัติ", "I separately consent to retain an aligned face image for human wrinkle-label review in Label Studio. It will be deleted after 30 days and will not be used for automated model training.")}</span></span>
             </label>
+            {!loadingConsents && !annotationAvailable && <p className="capture-consent-copy" role="status">{t("ระบบตรวจป้ายกำกับภาพยังไม่พร้อมใช้งาน คุณยังวิเคราะห์ริ้วรอยได้ตามปกติ", "Image-label review is currently unavailable. You can still analyze wrinkles.")}</p>}
             <details className="capture-privacy">
               <summary>{t("การเก็บภาพและถอนความยินยอม", "Image retention and consent withdrawal")}</summary>
               <p>{t("ภาพผลทั่วไปลบภายใน 24 ชั่วโมง หากเลือกให้ตรวจป้ายกำกับ ภาพที่จัดแนวแล้วจะถูกลบหลัง 30 วันหรือเมื่อถอนความยินยอม", "Standard result images are deleted within 24 hours. If you opt into label review, the aligned image is deleted after 30 days or when consent is withdrawn.")}</p>
               <button type="button" className="secondary-button" disabled={busy || loadingConsents} onClick={() => void revokeConsent("annotations")}>{t("ถอนความยินยอมตรวจป้ายกำกับภาพที่ส่งจากเบราว์เซอร์นี้", "Revoke image-label review consent for this browser")}</button>
             </details>
-            {notice && <p className="capture-notice" role="status">{notice}</p>}
             {error && <p className="capture-error" role="alert">{error}</p>}
             <div className="capture-submit-area">
               <div><button type="button" className="primary-button" aria-describedby="capture-submit-hint" disabled={busy || !file || !consent} onClick={submit}>{busy ? t("กำลังส่งภาพ…", "Submitting image…") : t("วิเคราะห์ภาพ", "Analyze image")}<ArrowRight size={18} aria-hidden="true" /></button>

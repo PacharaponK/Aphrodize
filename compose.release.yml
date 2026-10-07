@@ -6,3 +6,5 @@ services:
     image: ${FRONTEND_IMAGE:?Set immutable FRONTEND_IMAGE}
   minio-init:
     image: ${API_IMAGE:?Set immutable API_IMAGE}
+  uv-refresh:
+    image: ${API_IMAGE:?Set immutable API_IMAGE}

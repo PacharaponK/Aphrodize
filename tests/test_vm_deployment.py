@@ -27,6 +27,7 @@ if 'config' in args:
  'target':'/app/storage/artifacts/uv'}]},
  'frontend': {'image':os.environ.get('FRONTEND_IMAGE','old-web'), 'environment':{'SITE_URL':'https://aphrodize.duckdns.org'}},
  'minio-init': {'image':os.environ.get('API_IMAGE','old-api')},
+ 'uv-refresh': {'image':os.environ.get('API_IMAGE','old-api')},
  'postgres': {'image':'postgres:16-alpine'},
  'caddy': {'image':'caddy:2-alpine', 'volumes':[{'type':'bind','source':root+'/docker/Caddyfile.vm',
  'target':'/etc/caddy/Caddyfile'}]},
@@ -121,6 +122,13 @@ class VmDeploymentTests(unittest.TestCase):
         candidate = json.loads(Path(current["config"]).read_text())
         self.assertEqual(candidate["services"]["api"]["image"], self.data["images"]["api"])
         self.assertEqual(
+            candidate["services"]["uv-refresh"]["image"], self.data["images"]["api"]
+        )
+        self.assertEqual(config["services"]["uv-refresh"]["image"], "sha256:" + "a" * 64)
+        updates = [command for command in self.commands() if "up" in command]
+        self.assertTrue(updates)
+        self.assertTrue(all("uv-refresh" in command for command in updates))
+        self.assertEqual(
             candidate["services"]["api"]["volumes"][0]["source"],
             str(self.deploy / "storage/artifacts/uv"),
         )
@@ -154,6 +162,8 @@ class VmDeploymentTests(unittest.TestCase):
                 current = json.loads((self.deploy / ".releases/current-release.json").read_text())
                 self.assertEqual(current["manifest"], None)
                 self.assertEqual(counter.read_text(), "2")
+                updates = [command for command in self.commands() if "up" in command]
+                self.assertTrue(all("uv-refresh" in command for command in updates))
 
     def test_failed_rollback_preserves_baseline_and_pending_state(self):
         result = self.run_deploy("rollback-fail")

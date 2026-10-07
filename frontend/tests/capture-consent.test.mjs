@@ -19,7 +19,7 @@ function load(file, overrides) {
   return evaluated.exports;
 }
 
-test("recommendations always require a session and forward backend data, even with demo=1", async (context) => {
+test("recommendations allow the guest form and forward account data, even with demo=1", async (context) => {
   const route = load("../src/app/api/analysis/recommendations/route.ts", {});
   const url = "http://localhost/api/analysis/recommendations?scope=profile&demo=1";
   const calls = [];
@@ -29,7 +29,8 @@ test("recommendations always require a session and forward backend data, even wi
     return Response.json(backendBody);
   });
   const signedOut = await route.GET(new NextRequest(url));
-  assert.equal(signedOut.status, 401);
+  assert.equal(signedOut.status, 200);
+  assert.deepEqual(await signedOut.json(), { guest_profile_required: true });
   assert.equal(calls.length, 0);
   const request = new NextRequest(url, { headers: { cookie: "aphrodize_session=test-token" } });
   const response = await route.GET(request);
@@ -113,13 +114,13 @@ test("saved consent uses the current account without a latest-analysis cookie; w
     calls.push({ url, options });
     return options.method === "DELETE"
       ? new Response(null, { status: 204 })
-      : Response.json({ analysis: true, annotations: true });
+      : Response.json({ analysis: true, annotations: true, annotation_review_available: true });
   });
   const response = await route.GET(new NextRequest("http://localhost/api/analysis?consents=1"));
-  assert.deepEqual(await response.json(), { analysis: true, annotations: true });
+  assert.deepEqual(await response.json(), { analysis: true, annotations: true, annotation_review_available: true });
   assert.equal(response.headers.get("cache-control"), "no-store");
-  assert.ok(calls[0].url.endsWith(`/consents/users/${owner.userId}`));
-  assert.deepEqual(calls[0].options.headers, { Authorization: `Bearer ${owner.token}` });
+  assert.ok(calls[1].url.endsWith(`/consents/users/${owner.userId}`));
+  assert.deepEqual(calls[1].options.headers, { Authorization: `Bearer ${owner.token}` });
   for (const scope of ["analysis", "annotations"]) {
     const result = await route.DELETE(new NextRequest(`http://localhost/api/analysis?scope=${scope}`, { method: "DELETE" }));
     assert.equal(result.status, 204);
@@ -129,15 +130,16 @@ test("saved consent uses the current account without a latest-analysis cookie; w
     method: "DELETE", headers: { origin: "http://elsewhere", host: "localhost" },
   }));
   assert.equal(forbidden.status, 403);
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 4);
 });
 
-test("new visitors have no implicit consent", async () => {
+test("new visitors have no implicit consent", async (context) => {
+  context.mock.method(globalThis, "fetch", async () => Response.json({ annotation_review_available: false }));
   const route = load("../src/app/api/analysis/route.ts", {
     "@/lib/daily-health-session": { accountSession: async () => null },
   });
   const response = await route.GET(new NextRequest("http://localhost/api/analysis?consents=1"));
-  assert.deepEqual(await response.json(), { analysis: false, annotations: false });
+  assert.deepEqual(await response.json(), { analysis: false, annotations: false, annotation_review_available: false });
 });
 
 test("repeated review consent does not fill the browser's 50-user limit", async (context) => {
@@ -480,7 +482,7 @@ test("return visits restore both choices; failed withdrawal keeps consent checke
   context.mock.method(globalThis, "fetch", async (url, options) => {
     requests.push({ url, options });
     if (options?.method === "DELETE") return new Response(null, { status: withdrawalFails ? 503 : 204 });
-    return Response.json({ analysis: true, annotations: true });
+    return Response.json({ analysis: true, annotations: true, annotation_review_available: true });
   });
   const render = pageHarness();
   assert.ok(render().every((input) => input.disabled && !input.checked));
@@ -506,5 +508,106 @@ test("unverified saved consent remains unchecked", async (context) => {
   const render = pageHarness();
   render();
   await settle();
-  assert.ok(render().every((input) => !input.checked && !input.disabled));
+  assert.ok(render().every((input) => !input.checked));
+  assert.equal(render()[0].disabled, false);
+  assert.equal(render()[1].disabled, true);
+});
+
+
+test("unconfigured optional review still queues analysis without granting review consent", async (context) => {
+  const owner = { userId: "d4e251fd-0f48-42b1-89df-42cf727cd43d", token: "test-token" };
+  const previous = process.env.ANALYSIS_SESSION_SECRET;
+  process.env.ANALYSIS_SESSION_SECRET = "review-unavailable-test";
+  context.after(() => {
+    if (previous === undefined) delete process.env.ANALYSIS_SESSION_SECRET;
+    else process.env.ANALYSIS_SESSION_SECRET = previous;
+  });
+  const route = load("../src/app/api/analysis/route.ts", {
+    "@/lib/daily-health-session": { accountSession: async () => owner },
+  });
+  const calls = [];
+  context.mock.method(globalThis, "fetch", async (url) => {
+    calls.push(url);
+    if (url.endsWith("/annotations")) return Response.json({ detail: "Annotation review is not configured" }, { status: 503 });
+    return Response.json({ id: owner.userId, status: "queued" });
+  });
+  const body = new FormData();
+  body.set("image", new File(["test-image"], "image.jpg", { type: "image/jpeg" }));
+  body.set("consent", "yes");
+  body.set("annotation_consent", "yes");
+  const response = await route.POST(new NextRequest("http://localhost/api/analysis", { method: "POST", body }));
+  assert.equal(response.status, 202);
+  assert.equal((await response.json()).annotation_review_unavailable, true);
+  assert.ok(calls.at(-1).endsWith(`/analyses/users/${owner.userId}`));
+  assert.equal(response.cookies.get("aphrodize_annotations"), undefined);
+  assert.ok(response.cookies.get("aphrodize_analysis"));
+});
+
+test("other review errors stop upload and are not silently ignored", async (context) => {
+  const owner = { userId: "d4e251fd-0f48-42b1-89df-42cf727cd43d", token: "test-token" };
+  const route = load("../src/app/api/analysis/route.ts", {
+    "@/lib/daily-health-session": { accountSession: async () => owner },
+  });
+  for (const [status, detail] of [[403, "Forbidden"], [503, "Review service unavailable"]]) {
+    let uploaded = false;
+    context.mock.method(globalThis, "fetch", async (url) => {
+      if (url.endsWith("/annotations")) return Response.json({ detail }, { status });
+      if (url.includes("/analyses/")) uploaded = true;
+      return Response.json({ status: "granted" });
+    });
+    const body = new FormData();
+    body.set("image", new File(["test-image"], "image.jpg", { type: "image/jpeg" }));
+    body.set("consent", "yes");
+    body.set("annotation_consent", "yes");
+    const response = await route.POST(new NextRequest("http://localhost/api/analysis", { method: "POST", body }));
+    assert.equal(response.status, status);
+    assert.equal(uploaded, false);
+  }
+});
+
+test("unconfigured review is disabled while analysis remains available", async (context) => {
+  context.mock.method(globalThis, "fetch", async () => Response.json({ analysis: false, annotations: false, annotation_review_available: false }));
+  const render = pageHarness();
+  render();
+  await settle();
+  assert.equal(render()[0].disabled, false);
+  assert.equal(render()[1].disabled, true);
+  assert.ok(render().nodes.some(node => node.props.role === "status" && String(node.props.children).includes("Image-label review is currently unavailable")));
+});
+
+test("existing review consent can still be withdrawn when review is unavailable", async (context) => {
+  context.mock.method(globalThis, "fetch", async (_url, options) => options?.method === "DELETE"
+    ? new Response(null, { status: 204 })
+    : Response.json({ analysis: true, annotations: true, annotation_review_available: false }));
+  const render = pageHarness();
+  render();
+  await settle();
+  assert.equal(render()[1].checked, true);
+  assert.equal(render()[1].disabled, false);
+  render()[1].onChange({ target: { checked: false } });
+  await settle();
+  assert.equal(render()[1].checked, false);
+  assert.equal(render()[1].disabled, true);
+});
+
+
+test("review becoming unavailable during upload keeps results accessible and does not invent saved consent", async (context) => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { location: { hash: "", pathname: "/capture", search: "" }, addEventListener() {}, removeEventListener() {}, history: { state: {}, pushState() {} } };
+  context.after(() => { if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow; });
+  context.mock.method(URL, "createObjectURL", () => "blob:synthetic");
+  context.mock.method(globalThis, "fetch", async (_url, options) => options?.method === "POST"
+    ? Response.json({ status: "queued", annotation_review_unavailable: true }, { status: 202 })
+    : Response.json({ analysis: false, annotations: false, annotation_review_available: true }));
+  const render = pageHarness();
+  render();
+  await settle();
+  render().nodes.find(node => node.type === "input" && node.props.type === "file").props.onChange({ target: { files: [new File(["image"], "face.png", { type: "image/png" })] } });
+  render()[0].onChange({ target: { checked: true } });
+  render()[1].onChange({ target: { checked: true } });
+  await render().nodes.find(node => node.props["aria-describedby"] === "capture-submit-hint").props.onClick();
+  assert.equal(render()[1].checked, false);
+  assert.equal(render()[1].disabled, true);
+  assert.ok(render().nodes.some(node => node.type === "analysis-result"));
+  assert.ok(render().nodes.some(node => node.props.role === "status" && String(node.props.children).includes("without adding review consent")));
 });

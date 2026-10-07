@@ -17,6 +17,10 @@ SOURCE = Path(__file__).resolve().parents[1]
 OVERLAYS = {"compose.duckdns.yml", "compose.vm-worker-access.yml"}
 
 
+class DeploymentError(RuntimeError):
+    """An authored diagnostic safe to show in public Actions logs."""
+
+
 def run(command, *, env=None, input_text=None, timeout=60):
     """Suppress tool output: Compose configuration can contain runtime secrets."""
     try:
@@ -132,6 +136,8 @@ class Deployment:
                 raise ValueError(f"Baseline {service} is unhealthy")
             config["services"][service]["image"] = inspected["Image"]
         config["services"]["minio-init"]["image"] = config["services"]["api"]["image"]
+        if "uv-refresh" in config["services"]:
+            config["services"]["uv-refresh"]["image"] = config["services"]["api"]["image"]
         site_url = validate_site_url(config["services"]["frontend"]["environment"]["SITE_URL"])
         path = self.state / f"baseline-{time.time_ns()}.json"
         write_json(path, config)
@@ -166,6 +172,9 @@ class Deployment:
 
     def update(self, record):
         command = self.compose([record["config"]])
+        services = ["api", "frontend"]
+        if "uv-refresh" in json.loads(Path(record["config"]).read_text())["services"]:
+            services.append("uv-refresh")
         run(command + ["run", "--rm", "--no-deps", "--pull", "never", "minio-init"], timeout=180)
         run(
             command
@@ -177,8 +186,7 @@ class Deployment:
                 "--wait",
                 "--wait-timeout",
                 "180",
-                "api",
-                "frontend",
+                *services,
             ],
             timeout=240,
         )
@@ -225,8 +233,19 @@ class Deployment:
         for service in ("postgres", "redis", "minio", "caddy"):
             if config["services"].get(service) != old_config["services"].get(service):
                 raise ValueError(f"Infrastructure change in {service} needs a separate deployment")
-        if config.get("volumes") != old_config.get("volumes"):
-            raise ValueError("Persistent volume configuration changed")
+        # Optional VM services can declare volumes absent from the release source.
+        # Keep their declarations, but reject new or changed release volume mappings.
+        old_volumes = old_config.get("volumes", {})
+        release_volumes = config.get("volumes", {})
+        if any(
+            name not in old_volumes or value != old_volumes[name]
+            for name, value in release_volumes.items()
+        ):
+            raise DeploymentError(
+                "Persistent volume configuration changed; explicit migration required"
+            )
+        if old_volumes:
+            config["volumes"] = {**old_volumes, **release_volumes}
         for service in ("api", "frontend"):
             if config["services"][service].get("volumes") != old_config["services"][service].get(
                 "volumes"
@@ -325,6 +344,9 @@ def main():
             deployment.recover()
         else:
             deployment.rollback()
+    except DeploymentError as exc:
+        print(f"Deployment failed: {exc}", file=sys.stderr)
+        return 1
     except (Exception, KeyboardInterrupt):
         # Keep exception chains/config content out of public Actions logs.
         print(
