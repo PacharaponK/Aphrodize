@@ -11,27 +11,45 @@ const compiled = ts.transpileModule(fs.readFileSync("src/app/portal/page.tsx", "
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
 }).outputText;
 
-test("portal renders both languages with the Compose destinations and safe external links", () => {
-  for (const language of ["th", "en"]) {
-    const exports = {};
-    const load = (name) => {
-      if (name.endsWith(".css")) return {};
-      if (name === "@/components/language-provider") return { useLanguage: () => ({ language }), LanguageToggle: () => React.createElement("button", {}, "Language") };
-      if (name === "@/components/theme-toggle") return { ThemeToggle: () => React.createElement("button", {}, "Theme") };
-      if (name === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
-      return require(name);
-    };
-    new Function("require", "exports", compiled)(load, exports);
-    const html = renderToStaticMarkup(React.createElement(exports.default));
-    for (const href of ["/#dashboard", "/capture", "/clients", "/uv-map", "/admin/products", "http://localhost:8000/docs", "http://localhost:8080", "http://localhost:5000", "http://localhost:9001"]) {
-      assert.ok(html.includes(`href="${href}"`), href);
-    }
-    for (const href of ["http://localhost:3001/d/aphrodize-system", "http://localhost:3001/alerting/notifications", "http://localhost:9090/targets"]) {
-      assert.ok(html.includes(`href="${href}"`), href);
-    }
-    assert.equal((html.match(/target="_blank" rel="noopener noreferrer"/g) ?? []).length, 7);
-    assert.ok(html.includes(language === "th" ? "ติดตามระบบและการแจ้งเตือน" : "Monitoring and alerts"));
-    assert.ok(html.includes(language === "th" ? "ทุกเซอร์วิส ในที่เดียว" : "Every service. One place."));
+function renderPortal(env = {}) {
+  const exports = {};
+  const load = (name) => {
+    if (name.endsWith(".css")) return {};
+    if (name === "@/lib/page-metadata") return { pageMetadata: () => ({}) };
+    if (name === "next/link") return { default: ({ children, ...props }) => React.createElement("a", props, children) };
+    return require(name);
+  };
+  new Function("require", "exports", "process", compiled)(load, exports, { env });
+  return renderToStaticMarkup(React.createElement(exports.default));
+}
+
+test("portal uses VM proxy destinations and marks unconfigured services unavailable", () => {
+  const html = renderPortal();
+  for (const href of ["/", "/label-studio/", "/grafana/", "/admin/products"]) {
+    assert.ok(html.includes(`href="${href}"`), href);
+  }
+  for (const href of ["http://localhost:8080", "http://localhost:5000", "http://localhost:9001", "http://localhost:3001"]) {
+    assert.ok(!html.includes(`href="${href}"`), href);
+  }
+  assert.ok(html.includes("ยังไม่ได้ตั้งค่าทางเข้า Console"));
+  assert.ok(html.includes("ยังไม่ได้เปิดทางเข้า MLflow บน VM"));
+  assert.ok(html.includes("<details>"));
+  assert.ok(!html.includes("<nav"));
+});
+
+test("optional service URLs accept web destinations and exclude unsafe or credential-bearing URLs", () => {
+  const configured = renderPortal({
+    PORTAL_MINIO_URL: "https://minio.example.org",
+    PORTAL_MLFLOW_URL: "http://localhost:5000",
+  });
+  assert.ok(configured.includes('href="https://minio.example.org/"'));
+  assert.ok(configured.includes('href="http://localhost:5000/"'));
+  assert.ok(!configured.includes('class="portal-unavailable"'));
+  for (const value of ["javascript:alert(1)", "not a URL", "https://user:password@example.org"]) {
+    const html = renderPortal({ PORTAL_MINIO_URL: value, PORTAL_MLFLOW_URL: value });
+    assert.ok(html.includes("ยังไม่ได้ตั้งค่าทางเข้า Console"));
+    assert.ok(html.includes("ยังไม่ได้เปิดทางเข้า MLflow บน VM"));
+    assert.ok(!html.includes(value));
   }
 });
 
