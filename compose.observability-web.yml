@@ -1,0 +1,7 @@
+# Add after compose.observability.yml on the HTTPS VM deployment.
+services:
+  grafana:
+    environment:
+      GF_SERVER_ROOT_URL: https://${VM_HOST:?Set VM_HOST}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SECURITY_COOKIE_SECURE: "true"

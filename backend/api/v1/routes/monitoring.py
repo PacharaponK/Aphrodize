@@ -4,6 +4,8 @@ from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +15,28 @@ from backend.services.uv_lifecycle import ARTIFACTS, read_json
 from backend.services.uv_service import load_recommendation
 
 router = APIRouter()
+
+
+@router.get("/ready", summary="Dependency and capability readiness")
+async def ready():
+    from backend.services.observability import readiness
+
+    value = await readiness()
+    return JSONResponse(
+        value,
+        status_code=200 if value["capabilities"]["accounts"] else 503,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get("/metrics", include_in_schema=False)
+async def prometheus_metrics():
+    from backend.core.observability import registry
+
+    return Response(
+        generate_latest(registry),
+        headers={"Content-Type": CONTENT_TYPE_LATEST, "Cache-Control": "no-store"},
+    )
 
 
 @router.get("/uv")

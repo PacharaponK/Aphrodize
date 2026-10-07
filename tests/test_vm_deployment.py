@@ -29,7 +29,7 @@ if 'config' in args:
   volumes['postgres_data']['name'] = 'private-not-for-logs'
  if mode == 'new-volume' and candidate:
   volumes['new_data'] = {'name':'new_data'}
- print(json.dumps({'name':'aphrodize', 'services': {
+ config = {'name':'aphrodize', 'services': {
  'api': {'image':os.environ.get('API_IMAGE','old-api'),
  'volumes':[{'type':'bind','source':root+'/storage/artifacts/uv',
  'target':'/app/storage/artifacts/uv'}]},
@@ -38,7 +38,18 @@ if 'config' in args:
  'postgres': {'image':'postgres:16-alpine'},
  'caddy': {'image':'caddy:2-alpine', 'volumes':[{'type':'bind','source':root+'/docker/Caddyfile.vm',
  'target':'/etc/caddy/Caddyfile'}]},
- }, 'volumes':volumes}))
+ }, 'volumes':volumes}
+ if mode.startswith('monitoring'):
+  config['services']['api']['environment'] = {'OBSERVABILITY_ENABLED':'true'}
+  config['services']['grafana'] = {'image':'grafana-pinned',
+   'environment':{'GF_SERVER_SERVE_FROM_SUB_PATH':'true'}}
+  config['services']['prometheus'] = {'image':'prometheus-pinned'}
+  volumes['grafana_data'] = {'name':'aphrodize_grafana_data'}
+  if candidate and mode == 'monitoring-disabled':
+   config['services']['api']['environment'] = {}
+  if candidate and mode == 'monitoring-removed':
+   del config['services']['prometheus']
+ print(json.dumps(config))
 if 'run' in args and '--no-build' in args: sys.exit(64)
 if 'ps' in args: print('container-'+args[-1])
 if args[:1] == ['pull'] and mode == 'pull-fail': sys.exit(1)
@@ -48,6 +59,9 @@ if 'up' in args:
  if mode in ('update-fail','rollback-fail') and (count == 0 or mode == 'rollback-fail'): sys.exit(1)
 if 'exec' in args and mode == 'readiness-fail':
  if (state/'up-count').read_text() == '1': sys.exit(1)
+if 'exec' in args and mode == 'monitoring-metrics-fail':
+ if 'Check authenticated API telemetry' in sys.stdin.read():
+  if (state/'up-count').read_text() == '1': sys.exit(1)
 """
 FAKE_CURL = """#!/usr/bin/env python3
 import os, sys
@@ -55,6 +69,9 @@ from pathlib import Path
 state = Path(os.environ['FAKE_STATE'])
 if os.environ.get('FAKE_MODE') == 'https-fail':
  if (state/'up-count').read_text() == '1': sys.exit(1)
+if os.environ.get('FAKE_MODE') == 'monitoring-grafana-fail':
+ if sys.argv[-1].endswith('/grafana/api/health') and (state/'up-count').read_text() == '1':
+  sys.exit(1)
 """
 
 
@@ -147,6 +164,45 @@ class VmDeploymentTests(unittest.TestCase):
             candidate["volumes"]["label_studio_data"],
             {"name": "aphrodize_label_studio_data"},
         )
+
+    def test_monitoring_overlays_preserve_services_and_volumes_without_restarting_them(self):
+        overlays = "compose.observability.yml,compose.observability-web.yml"
+        for name in overlays.split(","):
+            (self.deploy / name).write_text("services: {}\n")
+        result = self.run_deploy("monitoring", "--overlays", overlays)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        config = json.loads(Path(current["config"]).read_text())
+        self.assertEqual(config["services"]["api"]["environment"]["OBSERVABILITY_ENABLED"], "true")
+        self.assertIn("grafana", config["services"])
+        self.assertIn("prometheus", config["services"])
+        self.assertEqual(config["volumes"]["grafana_data"]["name"], "aphrodize_grafana_data")
+        updates = [command for command in self.commands() if "up" in command]
+        self.assertEqual(len(updates), 1)
+        self.assertEqual(updates[0][-2:], ["api", "frontend"])
+
+    def test_monitoring_removal_is_rejected_before_container_updates(self):
+        for mode in ("monitoring-disabled", "monitoring-removed"):
+            with self.subTest(mode=mode):
+                result = self.run_deploy(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(any("up" in c or "run" in c for c in self.commands()))
+                self.assertFalse((self.deploy / ".releases/current-release.json").exists())
+
+    def test_failed_metrics_or_grafana_check_rolls_back_monitoring_configuration(self):
+        for mode in ("monitoring-metrics-fail", "monitoring-grafana-fail"):
+            with self.subTest(mode=mode):
+                (self.state / "up-count").unlink(missing_ok=True)
+                result = self.run_deploy(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Rollback succeeded", result.stderr)
+                current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+                config = json.loads(Path(current["config"]).read_text())
+                self.assertIsNone(current["manifest"])
+                self.assertIn("grafana", config["services"])
+                self.assertEqual(
+                    config["services"]["api"]["environment"]["OBSERVABILITY_ENABLED"], "true"
+                )
 
     def test_volume_changes_rejected_with_safe_diagnostic_before_mutation(self):
         for mode in ("changed-volume", "new-volume"):
