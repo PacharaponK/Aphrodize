@@ -215,18 +215,16 @@ Public UV data → local raw data → SARIMAX candidate/evaluation → quality g
 | Training experiments | MLflow parameters/metrics/tags/artifact links | Smoke/metadata-only runs ไม่พิสูจน์ความแม่นยำโมเดลจริง |
 | Deployment decisions | PostgreSQL Daily Health events; UV lifecycle audit | ต้องมี reviewer และเหตุผล ไม่อาศัย run status อย่างเดียว |
 
-## 10. สถานะที่ตรวจล่าสุดและส่วนที่ยังต้องเชื่อม
+## 10. Deployment readiness (source review: 6 October 2026)
 
-หลัง rebuild/recreate เมื่อ 6 ตุลาคม 2026: API, PostgreSQL, Redis, MinIO, MLflow และ Label Studio container healthy; inference/trainer มี heartbeat และ rebuilt trainer ติดต่อ MLflow ได้ สถานะนี้เป็น snapshot ไม่ใช่ live monitor
+This document describes code-supported flows, not live container health. Before using a deployment, verify:
 
-ส่วนที่ยังไม่ควรสรุปว่าครบวงจร:
-
-1. **Label Studio auth:** การตรวจ SDK ก่อนหน้านี้ได้ 401; container healthy ไม่ได้แก้ token/project permissions ต้องทดสอบใหม่หลังตั้งค่า instance ให้ถูกต้อง
-2. **Daily Health approval:** API container ล่าสุดยังไม่ได้รับ admin credentials ที่ valid; approval endpoint ตอบ 503 แบบ fail closed
-3. **Human-review ingestion:** ยังไม่มี accepted annotation → versioned training dataset bridge
-4. **UV readiness:** refresh/training services ยังไม่ได้เปิดในการ restart ล่าสุด และการตรวจ snapshot ก่อนหน้านี้ไม่พร้อม; ต้องสร้าง/refresh snapshot แล้วทดสอบใหม่
-5. **Generic trainer/inference:** ยังเป็น placeholder ตามข้อ 7 ไม่ใช่ production model serving
-6. **Observability:** มี logs/healthchecks/aggregate monitoring แต่ยังไม่มี centralized alerting หรือ distributed tracing ใน Compose นี้
+1. Label Studio API key, project and task permissions; a healthy container does not prove SDK authentication.
+2. Separate admin credentials for Daily Health model review; missing/invalid configuration fails closed.
+3. Image worker, checksum-pinned model files and private storage; annotation tasks do not imply an accepted training dataset.
+4. UV refresh/training profiles and valid fresh snapshots; a missing snapshot remains unavailable.
+5. Generic metadata-only training and model_not_deployed inference boundaries.
+6. Logs and aggregate monitoring; centralized alerts/distributed tracing are not included.
 
 ## 11. Source map สำหรับตรวจรายละเอียด
 

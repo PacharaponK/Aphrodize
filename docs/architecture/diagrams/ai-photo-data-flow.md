@@ -26,7 +26,7 @@ flowchart TD
     ART --> DONE[(PostgreSQL: completed<br/>public result, artifacts_expires_at)]
     W -->|finally: ลบ original| O
     N -->|HTTP 202 + signed HttpOnly cookie<br/>เก็บ analysis id ล่าสุด 24 ชั่วโมง| U
-    U -->|/result-detail: GET /api/analysis<br/>poll ทุก 2.5 วินาทีขณะ queued/running| N
+    U -->|/capture#results: GET /api/analysis<br/>poll ทุก 2.5 วินาทีขณะ queued/running| N
     N -->|GET /api/v1/analyses/:analysis_id| API
     API --> RJ
     API --> R2
@@ -43,7 +43,7 @@ Next.js route ตรวจ origin, consent จากฟอร์ม, MIME แล
 
 Worker อ่าน original และเรียก service ใน thread แยกจาก event loop เมื่อได้ผล จะเก็บเฉพาะ `overlay.png` กับ `wrinkle_mask.png` (ชื่อ object `mask.png`) ใน MinIO, นัดงานลบหลัง 24 ชั่วโมง และบันทึก public response กับ `artifacts_expires_at` ลง PostgreSQL ไม่เก็บ logits/probability ดิบใน MinIO ไม่ว่าผลสำเร็จ ถูกปฏิเสธ หรือผิดพลาด worker พยายามลบ original ใน `finally`; หากอัปโหลดภาพผลได้บางส่วนแล้วเกิดข้อผิดพลาด จะพยายามลบส่วนที่อัปโหลดด้วย
 
-API ภาพผลตอบเฉพาะ `overlay`/`mask` เมื่อยังไม่หมดอายุจากเวลาใน result และอ่าน object private จาก MinIO หลังหมดอายุคืน HTTP 410; งาน ARQ ลบ object ทั้งสองเมื่อถึงกำหนด หน้า `/result-detail` แสดงคะแนนและภาพผลผ่าน Next.js proxy
+API ภาพผลตอบเฉพาะ `overlay`/`mask` เมื่อยังไม่หมดอายุจากเวลาใน result และอ่าน object private จาก MinIO หลังหมดอายุคืน HTTP 410; งาน ARQ ลบ object ทั้งสองเมื่อถึงกำหนด หน้า `/capture#results` แสดงคะแนนและภาพผลผ่าน Next.js proxy
 
 ## 2. การประมวลผลภาพใน FFHQ-Wrinkle
 
@@ -147,7 +147,7 @@ flowchart TD
 
 | ทางเรียก | พฤติกรรม |
 |---|---|
-| เว็บ `/capture` → `/api/analysis` | เส้นทางหลักตามข้อ 1; หน้า `/result-detail` poll สถานะและขอภาพผลผ่าน cookie ที่ลงลายเซ็น |
+| เว็บ `/capture` → `/api/analysis` | เส้นทางหลักตามข้อ 1; หน้า `/capture#results` poll สถานะและขอภาพผลผ่าน cookie ที่ลงลายเซ็น |
 | `backend/wrinkle/api.py` | FastAPI adapter แยกที่ `POST /v1/wrinkle/analyze`; ต้องส่ง `consent_accepted=true`, จำกัด 10 MiB, quality fail คืน HTTP 422; **ไม่ได้ mount ใน `backend/main.py` หรือ Compose ปัจจุบัน** และไม่เก็บภาพผลใน MinIO |
 | `ai/scripts/predict_wrinkle.py` | CLI เรียก `predict_image()` โดยตรง ไม่ผ่าน confidence/scoring service; artifacts คงอยู่ใน `--output`, quality fail exit code 2 |
 | `POST /api/v1/inference/runs` | เส้นทาง generic สำหรับโมเดลชนิดอื่น; `run_model_inference` ปัจจุบันคืน `model_not_deployed` ไม่ใช่เส้นทางวิเคราะห์ภาพนี้ |
@@ -161,25 +161,6 @@ flowchart TD
 
 ผล segmentation และคะแนนพื้นที่เป็นผลทดลอง ไม่ใช่การวินิจฉัยทางการแพทย์ ภาพอัปโหลดของผู้ใช้ไม่ถูกนำไป train อัตโนมัติ
 
-## 5. แหล่งข้อมูลการนอนจาก Zepp OS (ข้อเสนอสำหรับการเชื่อมต่อในอนาคต)
+## Future integrations
 
-> สถานะ: **ยังไม่ได้ implement ใน repository นี้** ส่วนนี้เป็นแบบออกแบบเพื่อเชื่อมข้อมูลจากอุปกรณ์ Zepp/Amazfit โดยไม่เปลี่ยนเส้นทางวิเคราะห์ภาพในข้อ 1
-
-Zepp OS Device App API มี `Sleep` sensor ตั้งแต่ API level 2.0 และต้องประกาศ permission `data:user.hd.sleep` ในแอปอุปกรณ์ ข้อมูลอ่านได้บน **Zepp Device App** เท่านั้น ดังนั้น backend ของ Aphrodize ไม่ควรเรียก API นี้โดยตรง แต่ให้ Device App ส่งข้อมูลที่ผู้ใช้ยินยอมผ่าน companion/mobile app หรือช่องทาง sync ที่พิสูจน์ตัวตนแล้วเข้าสู่ Platform API
-
-```mermaid
-flowchart LR
-    Z[Zepp / Amazfit device] --> D[Zepp Device App\nSleep sensor]
-    D -->|ข้อมูลที่ผู้ใช้ยินยอม| M[Companion / mobile sync]
-    M -->|HTTPS + user access token| H[Platform API\nSleep import endpoint]
-    H --> C{ตรวจ consent\nและ schema}
-    C -->|ผ่าน| S[(PostgreSQL\nwellness sleep records)]
-    C -->|ไม่ผ่าน| X[HTTP 403 / 422]
-    S --> A[หน้าสรุปสุขภาพ\nและ correlation แบบ informational]
-```
-
-ข้อมูลขั้นต่ำที่ควรนำเข้าเป็นรายคืนคือ `score`, `deepTime`, `totalTime`, `startTime` และ `endTime`; เวลามีหน่วยเป็นนาที และเวลาเริ่ม/สิ้นสุดนับจาก 00:00 ของวัน อาจนำ `getStage()` มาเก็บช่วง Awake / REM / Light / Deep และ API level 3.0 เพิ่มสถานะกำลังหลับกับ nap ได้ ควรเก็บ `device_source`, `api_level`, timezone และเวลาที่ sync เพื่ออธิบายที่มาของข้อมูลและป้องกันการตีความข้ามเขตเวลา
-
-ไม่ควรใช้ sleep score หรือ stage เพื่อวินิจฉัยโรค หรือสรุปเหตุ–ผลกับริ้วรอย/รอบเดือน ให้แสดงเป็นข้อมูลติดตามสุขภาพเท่านั้น ผู้ใช้ควรเลือกยินยอมแยกจาก consent ภาพ, ถอนการเชื่อมต่อได้ และลบข้อมูล sleep ได้โดยไม่กระทบการใช้งานวิเคราะห์ภาพ
-
-อ้างอิง: [Zepp OS Sleep sensor documentation](https://docs.zepp.com/docs/reference/device-app-api/newAPI/sensor/Sleep/)
+Zepp/Amazfit sleep sync is not implemented. Current daily input is user-reported; a device integration needs a separate source/consent contract and does not replace the image pipeline.

@@ -21,7 +21,7 @@ Reproduce locally from the repository root:
 
 ```bash
 uv sync --locked --no-default-groups --group ci --no-install-package opencv-python
-uv run --no-sync ruff check backend tests
+uv run --no-sync ruff check backend tests scripts/release_manifest.py scripts/deploy_vm.py scripts/check-vm-readiness.py
 uv run --no-sync python -m pytest
 cd frontend
 pnpm install --frozen-lockfile --ignore-scripts
