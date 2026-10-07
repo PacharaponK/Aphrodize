@@ -1,37 +1,27 @@
-# Observability operations
+# การปฏิบัติงานด้าน observability
 
-The optional stack adds Prometheus, Loki, Alloy, Grafana Alerting (Discord), host metrics,
-HTTP probes and optional GPU metrics. The application keeps Docker's local log driver.
-Default application startup does not depend on these services. No private image, health
-payload, cookie, authorization header, raw URL/query, SQL or exception message belongs in
-telemetry. Request/job IDs are correlation metadata, not metric labels.
+stack เสริมเพิ่ม Prometheus, Loki, Alloy, Grafana Alerting (Discord), metric ของโฮสต์, HTTP probe และ metric ของ GPU แบบเลือกเปิด แอปยังใช้ local log driver ของ Docker การเริ่มแอปตามปกติไม่ขึ้นกับบริการเหล่านี้
+ห้ามนำภาพส่วนตัว payload สุขภาพ cookie, authorization header, URL/query ดิบ, SQL หรือข้อความ exception เข้า telemetry request/job ID เป็น metadata สำหรับเชื่อมโยงเหตุการณ์ ไม่ใช่ label ของ metric
 
-## Deployment configuration
+## การตั้งค่า deployment
 
-Copy the settings from `docker/observability/.env.example` into the deployment's private
-`.env`. Generate a unique `OBS_GRAFANA_PASSWORD`. Put the Discord channel webhook in
-`DISCORD_WEBHOOK_URL` **in the private file**, never in Git or chat. Grafana uses the native
-[Discord contact point](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-discord/).
-Until a webhook is supplied, the contact points intentionally fail against local loopback;
-dashboard/alert evaluation works but recipient delivery is unverified.
+คัดลอกค่าจาก `docker/observability/.env.example` ไป `.env` ส่วนตัวของ deployment สร้าง `OBS_GRAFANA_PASSWORD` ที่ไม่ซ้ำ ใส่ webhook ของช่อง Discord ใน `DISCORD_WEBHOOK_URL` **ในไฟล์ส่วนตัว** ห้ามใส่ใน Git หรือแชต Grafana ใช้
+[Discord contact point ในตัว](https://grafana.com/docs/grafana/latest/alerting/configure-notifications/manage-contact-points/integrations/configure-discord/).
+จนกว่าจะมี webhook ระบบจงใจให้ contact point ล้มเหลวที่ local loopback; dashboard/การประเมิน alert ทำงาน แต่ยังไม่ยืนยันการส่งถึงผู้รับ
 
-Set deployment features explicitly:
+ตั้งฟีเจอร์ deployment อย่างชัดเจน:
 
-| Setting | VM without workers | Local AI stack | VM with GPU worker |
+| การตั้งค่า | VM ที่ไม่มี worker | stack AI ในเครื่อง | VM ที่มี GPU worker |
 | --- | --- | --- | --- |
-| `OBS_EXPECTED_QUEUES` | empty | `inference,training` | `inference` |
+| `OBS_EXPECTED_QUEUES` | เว้นว่าง | `inference,training` | `inference` |
 | `OBS_MINIO_REQUIRED` | `true` | `true` | `true` |
-| `OBS_UV_ENABLED` | `true` if UV snapshots are served | depends on workload | depends on workload |
+| `OBS_UV_ENABLED` | `true` หากให้บริการ UV snapshot | ขึ้นกับงาน | ขึ้นกับงาน |
 | `OBS_CADDY_ENABLED` | `true` | `false` | `true` |
-| `OBS_FRONTEND_ENABLED` | `true` | `false` unless frontend joins Compose | `true` |
+| `OBS_FRONTEND_ENABLED` | `true` | `false` เว้นแต่ frontend อยู่ใน Compose | `true` |
 
-For a minimal local stack without MinIO, set `OBS_MINIO_REQUIRED=false` and disable UV,
-Caddy and frontend flags unless present. Expected-but-stopped workers should alert; an
-intentionally disabled worker should not. Worker target files are generated only for expected
-queues. GPU/DCGM targets are opt-in. Caddy's private port 9100 exposes metrics without
-opening its administration API.
+สำหรับ stack ขั้นต่ำในเครื่องที่ไม่มี MinIO ให้ตั้ง `OBS_MINIO_REQUIRED=false` และปิด flag ของ UV, Caddy และ frontend หากไม่มีบริการนั้น worker ที่ควรทำงานแต่หยุดต้องแจ้งเตือน ส่วน worker ที่ตั้งใจปิดไม่ควรแจ้งเตือน สร้างไฟล์ target ของ worker เฉพาะคิวที่คาดว่าจะใช้งาน GPU/DCGM target ต้องเลือกเปิด พอร์ตส่วนตัว 9100 ของ Caddy เผยแพร่ metric โดยไม่เปิด administration API
 
-Render scrape configuration from the same environment file used by Compose:
+render การตั้งค่า scrape จาก environment file เดียวกับที่ Compose ใช้:
 
 ```powershell
 uv run --locked python scripts/configure_observability.py --env-file .env
@@ -39,151 +29,113 @@ docker compose --env-file .env -f compose.vm.yml -f compose.observability.yml co
 docker compose --env-file .env -f compose.vm.yml -f compose.observability.yml up -d --build
 ```
 
-If using release or DuckDNS overlays, keep them in the same Compose command, in the existing
-order, then add the observability overlay. Release image digests must contain this code;
-adding the overlay to an old API image does not implement instrumentation. Re-render and
-restart Prometheus after changing API credentials/targets. The rendered `.observability/`
-directory is ignored by Git. Its directory is mode 0700 on Linux; the mounted password file
-must be readable by Prometheus's container user. Protect the equivalent Windows directory
-with the owner's ACL. Do not print rendered Compose config containing environment secrets.
+หากใช้ release หรือ DuckDNS overlay ให้คงไว้ในคำสั่ง Compose เดียวกันตามลำดับเดิม แล้วเพิ่ม observability overlay อิมเมจ digest ของ release ต้องมีโค้ดนี้ด้วย การเพิ่ม overlay กับ API image เก่าไม่ได้เพิ่ม instrumentation
+หลังเปลี่ยนข้อมูลรับรอง/target ของ API ให้ render ใหม่และ restart Prometheus ไดเรกทอรี `.observability/` ที่ render ถูก Git ละเว้น บน Linux ไดเรกทอรีมีสิทธิ์ 0700; ผู้ใช้คอนเทนเนอร์ Prometheus ต้องอ่านไฟล์รหัสผ่านที่ mount ได้ บน Windows ให้ป้องกันไดเรกทอรีเทียบเท่าด้วย ACL ของเจ้าของ ห้ามพิมพ์ Compose config ที่ render แล้วและมี environment secrets
 
-For the local AI stack:
+สำหรับ stack AI ในเครื่อง:
 
 ```powershell
 docker compose --profile ai --profile background -f compose.yml -f compose.observability.yml -f compose.observability-workers.yml up -d --build
 ```
 
-Deploy updated workers **before** updated API producers: older workers do not accept the
-new correlation metadata. Cron and old queued jobs without metadata remain supported.
-Each instrumented worker exposes port 9101 only internally, and uses ARQ's native Redis
-health key every 30 seconds. For scale-out, assign distinct worker targets/heartbeat keys;
-the current heartbeat represents one worker pool per queue, not every replica.
+deploy worker ที่อัปเดต **ก่อน** API producer ที่อัปเดต: worker รุ่นเก่าไม่รับ correlation metadata ใหม่ ยังรองรับ cron และ job เก่าในคิวที่ไม่มี metadata worker ที่ติด instrumentation แต่ละตัวเปิดพอร์ต 9101 ภายในเท่านั้น และใช้ Redis health key ของ ARQ ทุก 30 วินาที หากเพิ่มจำนวน worker ให้กำหนด target/heartbeat key แยกกัน ปัจจุบัน heartbeat แทน worker pool หนึ่งชุดต่อคิว ไม่ใช่ทุก replica
 
-## Access and budgets
+## การเข้าถึงและงบทรัพยากร
 
-Use `ssh -N -L 3001:127.0.0.1:3001 operator@vm` and open
-`http://localhost:3001` to log in to Grafana. Prometheus (9090) and Loki (3100) bind to
-host loopback for administration/tunnels. No unauthenticated monitoring port should be
-published to the internet. Grafana anonymous access and signup are disabled. API metrics
-and readiness use the existing service Basic authentication.
+หากต้องการเข้าผ่านเบราว์เซอร์ด้วยชื่อโฮสต์ HTTPS เดิมของ VM ให้เพิ่ม `compose.observability-web.yml` หลัง monitoring overlay ตัวอย่างเมื่อใช้ DuckDNS:
 
-Metrics retain 15 days with a 2 GB TSDB cap; Loki retains 7 days. Persistent named volumes
-retain dashboards/state through restarts. Loki ingestion is limited to 2 MB/s, with a 64 MB
-embedded cache. The stack's memory limits total about 2 GB; measure actual headroom before
-deploying alongside inference. Docker Desktop host metrics describe its Linux VM, not the
-Windows machine. Loki has time retention, **not a hard disk quota**: budget a dedicated
-filesystem/quota for logs and monitor that filesystem. Never delete application or database
-volumes to clear a monitoring alert. Retention deletes are asynchronous.
+```bash
+docker compose --env-file .env -f compose.vm.yml -f compose.duckdns.yml -f compose.observability.yml -f compose.observability-web.yml up -d --build
+```
 
-The Docker socket proxy accepts GET container/network metadata and logs, and denies POST. It is reachable
-only by Alloy on an internal collector network; no Docker socket is mounted in Alloy. GET
-access still reveals container metadata, so restrict access to both services. Alloy collects
-only the configured Compose project and instrumented application services, drops non-JSON
-library records, and reconstructs allowlisted fields before sending logs to Loki.
+เปิด `https://<VM_HOST>/grafana/` และเข้าสู่ระบบด้วย `OBS_GRAFANA_USER` และ `OBS_GRAFANA_PASSWORD` จาก `.env` ส่วนตัวของ VM Caddy คง subpath ไว้ และ Grafana ให้บริการผ่าน
+[การตั้งค่า subpath ในตัว](https://grafana.com/tutorials/run-grafana-behind-a-proxy/).
+ยังต้องอยู่ในเครือข่ายมหาวิทยาลัย/VPN ตามข้อกำหนดเดิม ตรวจ routing, login, asset และการป้องกัน API ที่ยังไม่ยืนยันตัวตนด้วย `python scripts/check_observability_web.py --url https://<VM_HOST>/grafana/`
+สำหรับ release อัตโนมัติ ให้เพิ่ม monitoring overlay ทั้งสองใน `VM_COMPOSE_OVERLAYS` หลัง overlay เดิม เพื่อให้ release API ถัดไปคง telemetry ไว้ deploy `scripts/deploy_vm.py` และซอร์ส monitoring ที่อัปเดตก่อนเปลี่ยนตัวแปรนั้น เพราะ deployer เก่าบน main ปฏิเสธชื่อ overlay เหล่านี้
 
-## GPU worker on another machine
+deployment บน VM วันที่ 2026-10-07 ให้บริการ `/grafana/` พร้อม dashboard System, Jobs และ UV การตรวจจริงผ่านทั้ง scrape target แปดรายการ การเก็บข้อมูล API และการรับข้อมูล Loki อิมเมจ API `aphrodize-api:observability-web` ต่อยอดอิมเมจที่รันอยู่ด้วย HTTP/readiness/UV instrumentation โดยคงการเปลี่ยนแปลงแอปเดิม
+GPU และ worker instrumentation ยังไม่ได้เชื่อมต่อ และยังไม่ตั้งการส่ง Discord แผง Jobs ที่ต้องใช้ metric ของ worker จึงไม่มีข้อมูลจริง release อัตโนมัติยังใช้ overlay เดิม ให้เปิด monitoring overlay หลังรวมโค้ดนี้ และอัปเดต worker ก่อน API producer
 
-Merge `compose.gpu.yml` with `compose.gpu-observability.yml`, using the existing private
-`.env.gpu`. Enable profile `gpu-metrics` only after NVIDIA toolkit/DCGM preflight passes.
-The existing inference `restart: no` safety rule is preserved. Set `LOKI_URL` for GPU Alloy;
-keep all communication inside private SSH tunnels or an authenticated TLS network.
+ใช้ `ssh -N -L 3001:127.0.0.1:3001 operator@vm` แล้วเปิด `http://localhost:3001` เพื่อเข้าสู่ Grafana Prometheus (9090) และ Loki (3100) bind กับ loopback ของโฮสต์เพื่อดูแลระบบ/ทำ tunnel ห้ามเผยแพร่พอร์ต monitoring ที่ไม่มีการยืนยันตัวตนสู่อินเทอร์เน็ต ปิด anonymous access และ signup ของ Grafana ไว้ metric และ readiness ของ API ใช้ Basic authentication ของบริการเดิม
 
-One Linux tunnel arrangement (replace addresses/user; use approved SSH keys):
+metric เก็บ 15 วัน จำกัด TSDB 2 GB; Loki เก็บ 7 วัน named volume ถาวรเก็บ dashboard/สถานะข้ามการ restart การรับข้อมูลของ Loki จำกัด 2 MB/s พร้อม embedded cache 64 MB ขีดจำกัดหน่วยความจำรวมของ stack ประมาณ 2 GB; วัดทรัพยากรที่เหลือจริงก่อน deploy ร่วมกับ inference metric โฮสต์ของ Docker Desktop อธิบาย Linux VM ของมัน ไม่ใช่เครื่อง Windows
+Loki มีระยะเวลาเก็บข้อมูล **ไม่ใช่โควตาดิสก์แบบตายตัว** จึงต้องจัด filesystem/โควตาสำหรับ log และติดตาม filesystem นั้น ห้ามลบ volume ของแอปหรือฐานข้อมูลเพื่อแก้ monitoring alert การลบตาม retention ทำงานแบบ asynchronous
 
-1. On the VM, find Docker's host gateway with
+Docker socket proxy ยอมรับ GET สำหรับ metadata ของคอนเทนเนอร์/เครือข่ายและ log แต่ปฏิเสธ POST เข้าถึงได้เฉพาะ Alloy บนเครือข่าย collector ภายใน โดยไม่ mount Docker socket ใน Alloy สิทธิ์ GET ยังเผย metadata ของคอนเทนเนอร์ จึงจำกัดการเข้าถึงทั้งสองบริการ Alloy เก็บเฉพาะ Compose project และบริการแอปที่ติด instrumentation ตามที่ตั้งไว้ ทิ้ง record จากไลบรารีที่ไม่ใช่ JSON และสร้างข้อมูลใหม่จาก field ที่อนุญาตก่อนส่ง log ไป Loki
+
+## GPU worker บนอีกเครื่อง
+
+รวม `compose.gpu.yml` กับ `compose.gpu-observability.yml` โดยใช้ `.env.gpu` ส่วนตัวเดิม เปิด profile `gpu-metrics` เฉพาะเมื่อการตรวจ NVIDIA toolkit/DCGM ก่อนใช้งานผ่านแล้ว คงกฎความปลอดภัย `restart: no` ของ inference ไว้ ตั้ง `LOKI_URL` สำหรับ GPU Alloy; ให้การสื่อสารทั้งหมดอยู่ใน SSH tunnel ส่วนตัวหรือเครือข่าย TLS ที่ยืนยันตัวตน
+
+ตัวอย่าง tunnel บน Linux (เปลี่ยน address/ผู้ใช้ และใช้ SSH key ที่อนุมัติแล้ว):
+
+1. บน VM หา host gateway ของ Docker ด้วย
    `docker network inspect bridge --format '{{(index .IPAM.Config 0).Gateway}}'`.
-   Bind SSH's local forwards to **that gateway only**:
+   bind local forward ของ SSH กับ **gateway นั้นเท่านั้น**:
    `ssh -N -L <VM_DOCKER_GATEWAY>:19101:127.0.0.1:9101 -L <VM_DOCKER_GATEWAY>:19400:127.0.0.1:9400 operator@gpu`.
-   Firewall these listeners to the monitoring network.
-2. Set `OBS_INFERENCE_TARGET=host.docker.internal:19101` and, if DCGM is enabled,
-   `OBS_GPU_TARGET=host.docker.internal:19400` on the VM; re-render and restart Prometheus.
-3. On the GPU host, create the opposite outbound tunnel:
+   จำกัด listener เหล่านี้ด้วย firewall ให้เฉพาะเครือข่าย monitoring
+2. ตั้ง `OBS_INFERENCE_TARGET=host.docker.internal:19101` และหากเปิด DCGM ให้ตั้ง
+   `OBS_GPU_TARGET=host.docker.internal:19400` บน VM แล้ว render ใหม่และ restart Prometheus
+3. บนโฮสต์ GPU สร้าง outbound tunnel ในทิศทางกลับกัน:
    `ssh -N -L <GPU_DOCKER_GATEWAY>:13100:127.0.0.1:3100 operator@vm`.
-   Set `LOKI_URL=http://host.docker.internal:13100/loki/api/v1/push` in `.env.gpu`.
-   Firewall this listener to GPU Alloy. Supervise the SSH processes; tunnel loss should
-   produce exporter/heartbeat or log-delivery alerts.
+   ตั้ง `LOKI_URL=http://host.docker.internal:13100/loki/api/v1/push` ใน `.env.gpu`.
+   จำกัด listener นี้ด้วย firewall ให้เฉพาะ GPU Alloy ดูแลโปรเซส SSH; เมื่อ tunnel หายควรมี alert ของ exporter/heartbeat หรือการส่ง log
 
-No SSH credentials or GPU access are provisioned automatically. If Docker has a customized
-host-gateway address, use that actual address consistently for both listener and target.
+ไม่มีการเตรียมข้อมูลรับรอง SSH หรือสิทธิ์เข้าถึง GPU ให้อัตโนมัติ หาก Docker ตั้ง host-gateway เอง ให้ใช้ address จริงนั้นให้ตรงกันทั้ง listener และ target
 
-## Semantics and dashboards
+## ความหมายของสถานะและ dashboard
 
-`/api/v1/health` is liveness only. `/api/v1/monitoring/ready` checks `SELECT 1`, Redis PING,
-and authenticated MinIO bucket existence with short timeouts. It returns capabilities and
-dependency status, with HTTP 503 when account/database service is unavailable. Storage/queue
-failure yields `degraded` while account service remains available. Job submission readiness
-does not prove that a worker/model is ready; consult the expected worker heartbeat metrics.
-Readiness is independent of Prometheus/Grafana.
+`/api/v1/health` ตรวจ liveness เท่านั้น `/api/v1/monitoring/ready` ตรวจ `SELECT 1`, Redis PING และการมีอยู่ของ MinIO bucket โดยยืนยันตัวตน พร้อม timeout สั้น ส่งคืน capability และสถานะ dependency โดยตอบ HTTP 503 เมื่อบริการบัญชี/ฐานข้อมูลไม่พร้อม
+เมื่อ storage/queue ล้มเหลวแต่บริการบัญชียังพร้อม จะได้ `degraded` ความพร้อมส่ง job ไม่ยืนยันว่า worker/โมเดลพร้อม ให้ดู metric heartbeat ของ worker ที่คาดว่าจะใช้งาน readiness ทำงานแยกจาก Prometheus/Grafana
 
-| Dashboard | What to inspect |
+| Dashboard | สิ่งที่ควรตรวจ |
 | --- | --- |
-| System | API/frontend probes, route metrics, dependency checks, CPU/RAM/disk, telemetry freshness |
-| Jobs | Expected heartbeat, queued main workflow rows, wait/processing p95, outcomes, GPU memory |
-| UV | Forecast usability, snapshot age, quality report freshness/alerts |
+| System | probe ของ API/frontend, metric ของ route, การตรวจ dependency, CPU/RAM/ดิสก์, ความสดของ telemetry |
+| Jobs | heartbeat ที่คาดหวัง, แถว workflow หลักที่เข้าคิว, p95 ของเวลารอ/ประมวลผล, ผลงาน, หน่วยความจำ GPU |
+| UV | ความพร้อมใช้พยากรณ์, อายุ snapshot, ความสด/alert ของรายงานคุณภาพ |
 
-Queue gauges aggregate `queued` rows from Analysis, InferenceRun and TrainingRun without
-fetching payloads. They detect persisted orphaned rows even if the Redis job disappeared.
-Deferred cleanup/annotation jobs and the cohort-training singleton are not included in these
-gauges; they still emit job metrics/logs when run. Running-row age starts at submission,
-because the current schema has no execution-start timestamp. Processing histograms measure
-actual execution separately. Add indexed status/creation queries if collection exceeds its
-3-second timeout at larger volumes.
+gauge ของคิวรวมแถว `queued` จาก Analysis, InferenceRun และ TrainingRun โดยไม่ดึง payload จึงตรวจแถวตกค้างที่บันทึกไว้ได้แม้ Redis job หายไปแล้ว ไม่รวม job ล้างข้อมูล/annotation แบบเลื่อนเวลา และ singleton ฝึก cohort ใน gauge เหล่านี้ แต่ยังส่ง metric/log ของ job เมื่อรัน
+อายุแถวที่กำลังรันนับจากเวลาส่ง เพราะ schema ปัจจุบันไม่มี timestamp เริ่มประมวลผล histogram ของการประมวลผลวัดเวลาทำงานจริงแยกต่างหาก เพิ่ม query สถานะ/เวลาสร้างที่มี index หากการเก็บข้อมูลใช้เวลาเกิน timeout 3 วินาทีเมื่อข้อมูลมากขึ้น
 
-Job `failed` is separate from image `rejected`; swallowed business failures explicitly mark
-the job outcome. Job counters measure attempts, including retries/cancellations, not unique
-user analyses. UV freshness reuses the existing validated snapshot and monitoring report;
-disabled UV monitoring suppresses its alerts. Model quality reporting remains in MLflow and
-existing monitoring APIs; operational telemetry does not validate model accuracy.
+job `failed` แยกจากภาพ `rejected`; ความล้มเหลวทางธุรกิจที่จัดการภายในต้องระบุผล job อย่างชัดเจน counter ของ job นับความพยายาม รวม retry/ยกเลิก ไม่ใช่จำนวนการวิเคราะห์ผู้ใช้ที่ไม่ซ้ำ ความสด UV ใช้ snapshot และรายงาน monitoring เดิมที่ตรวจแล้ว การปิด UV monitoring ระงับ alert ของมัน
+การรายงานคุณภาพโมเดลยังอยู่ใน MLflow และ monitoring API เดิม telemetry สำหรับปฏิบัติการไม่ได้ยืนยันความแม่นยำโมเดล
 
-In Grafana Explore select Loki and query:
+ใน Grafana Explore เลือก Loki แล้ว query:
 
 ```text
 {service=~"api|frontend|inference-worker|trainer-worker"} | json | request_id="<32-hex-id>"
 ```
 
-Find `job_enqueued`, then follow `job_id` to `job_started`/`job_finished`. Exception logs keep
-type and safe code locations while discarding messages, SQL parameters and locals.
+หา `job_enqueued` แล้วตาม `job_id` ไป `job_started`/`job_finished` log ของ exception เก็บชนิดและตำแหน่งโค้ดที่ปลอดภัย โดยทิ้งข้อความ พารามิเตอร์ SQL และตัวแปร local
 
-## Alerts and response
+## alert และการตอบสนอง
 
-Rules are provisioned from `docker/observability/grafana/alerting/rules.yml`. Edit pilot
-thresholds in `scripts/generate_observability_dashboards.py`, then run that script to regenerate
-dashboards/rules and restart Grafana. Provisioned resources are deliberately read-only in UI.
+เตรียมกฎจาก `docker/observability/grafana/alerting/rules.yml` แก้ threshold ทดลองใน `scripts/generate_observability_dashboards.py` แล้วรันสคริปต์เพื่อสร้าง dashboard/กฎใหม่และ restart Grafana ทรัพยากรที่ provision จงใจให้อ่านอย่างเดียวใน UI
 
-| Alert | Pilot threshold | Response and recovery check |
+| alert | threshold ทดลอง | การตอบสนองและตรวจการกู้คืน |
 | --- | --- | --- |
-| API/probe down | 2 minutes | Check process/network, then verify liveness and readiness |
-| Required dependency down | 2 minutes | Inspect named service/auth; recover without removing volumes |
-| Expected worker/exporter missing | 2 minutes | Check process, Redis, private tunnel, reviewed model configuration |
-| Inference queue stuck | oldest queued >5 minutes, held 2 minutes | Find job logs; reconcile DB/Redis before any retry |
-| Training queue stuck | oldest queued >1 hour, held 5 minutes | Check trainer and workload duration |
-| Inference running overdue | row age >15 minutes, held 2 minutes | Distinguish long queue wait from execution; reconcile crash state |
-| Retention/annotation staging failed | any failure in 5 minutes | Inspect named operation; reconcile artifacts or annotation staging even if inference succeeded |
-| API/frontend errors | >5% 5xx with ≥20 requests in 5 minutes, held 5 minutes | Identify route/request, recover upstream and verify error rate drops |
-| Disk low | <15% free for 10 minutes | Check log/artifact growth and approved retention; verify headroom |
-| Collector failing/stale | failure or >120 seconds stale, held 2 minutes | Check `collector_failed`, SQL/Redis; confirm timestamp advances |
-| UV unavailable/stale | >8 hours or invalid dates, held 5 minutes | Inspect refresh logs, snapshot and serving pointer |
-| UV quality attention | stale/missing/alert quality report, held 5 minutes | Inspect monitoring report; preserve manual model approval |
+| API/probe หยุด | 2 นาที | ตรวจโปรเซส/เครือข่าย แล้วตรวจ liveness และ readiness |
+| dependency ที่จำเป็นหยุด | 2 นาที | ตรวจบริการ/การยืนยันตัวตนที่ระบุ กู้คืนโดยไม่ลบ volume |
+| worker/exporter ที่คาดหวังหาย | 2 นาที | ตรวจโปรเซส Redis, tunnel ส่วนตัว และการตั้งค่าโมเดลที่ผ่านการตรวจ |
+| คิว inference ค้าง | งานเก่าสุดรอ >5 นาที ต่อเนื่อง 2 นาที | หา log ของ job; ตรวจ DB/Redis ให้ตรงกันก่อน retry |
+| คิว training ค้าง | งานเก่าสุดรอ >1 ชั่วโมง ต่อเนื่อง 5 นาที | ตรวจ trainer และระยะเวลาของงาน |
+| inference รันเกินเวลา | อายุแถว >15 นาที ต่อเนื่อง 2 นาที | แยกเวลารอคิวจากเวลาประมวลผล และตรวจแก้สถานะหลัง crash |
+| retention/annotation staging ล้มเหลว | มีความล้มเหลวใน 5 นาที | ตรวจงานที่ระบุและแก้ artifact หรือ annotation staging แม้ inference สำเร็จ |
+| API/frontend ผิดพลาด | 5xx >5% เมื่อมี ≥20 request ใน 5 นาที ต่อเนื่อง 5 นาที | ระบุ route/request กู้ upstream และตรวจว่าอัตราผิดพลาดลดลง |
+| ดิสก์ใกล้เต็ม | ว่าง <15% นาน 10 นาที | ตรวจการโตของ log/artifact และ retention ที่อนุมัติ ยืนยันพื้นที่เหลือ |
+| collector ล้มเหลว/ข้อมูลเก่า | ล้มเหลวหรือเก่า >120 วินาที ต่อเนื่อง 2 นาที | ตรวจ `collector_failed`, SQL/Redis; ยืนยันว่า timestamp เดินต่อ |
+| UV ไม่พร้อม/ข้อมูลเก่า | >8 ชั่วโมงหรือวันที่ไม่ถูกต้อง ต่อเนื่อง 5 นาที | ตรวจ log รีเฟรช snapshot และ pointer ที่ใช้ให้บริการ |
+| คุณภาพ UV ต้องตรวจ | รายงานคุณภาพเก่า/หาย/มี alert ต่อเนื่อง 5 นาที | ตรวจรายงาน monitoring และคงการอนุมัติโมเดลด้วยตนเอง |
 
-Notifications group by alert/dependency/queue, wait 30 seconds, group updates every 5 minutes,
-and repeat unresolved alerts every 4 hours. Discord receives firing and resolved messages with
-dashboard links and response hints. Set `OBS_GRAFANA_URL` to the URL operators can actually
-access; links to localhost require the operator's SSH tunnel. Use Grafana Contact points →
-operations → Test to verify **the actual channel**, then perform a controlled staging fault
-and recovery drill. Merely saving a webhook does not verify delivery.
+notification จัดกลุ่มตาม alert/dependency/queue รอ 30 วินาที อัปเดตกลุ่มทุก 5 นาที และส่ง alert ที่ยังไม่แก้ซ้ำทุก 4 ชั่วโมง Discord รับข้อความ firing และ resolved พร้อมลิงก์ dashboard และแนวทางตอบสนอง ตั้ง `OBS_GRAFANA_URL` เป็น URL ที่ผู้ปฏิบัติการเข้าถึงได้จริง; ลิงก์ localhost ต้องใช้ SSH tunnel ของผู้ปฏิบัติการ
+ใช้ Grafana Contact points → operations → Test เพื่อตรวจ **ช่องจริง** แล้วซ้อมความล้มเหลวและกู้คืนแบบควบคุมใน staging การบันทึก webhook อย่างเดียวไม่ยืนยันการส่ง
 
-## Independent probe limitation
+## ข้อจำกัดของ probe อิสระ
 
-There is currently **no independent machine** for the external probe. Monitoring on the VM
-cannot send an alert when the entire VM/network/power fails. This remains an operational gap.
-When another host/provider is available, run `compose.external-probe.yml` there with
-`PROBE_URL=https://<domain>/api/health` and its Discord webhook. It verifies HTTPS and JSON
-liveness, persists state, sends one outage/recovery transition and retries failed deliveries.
-Four failed 30-second probes represent about two minutes. This probes frontend liveness;
-internal API probes/dependency alerts cover backend failures. It is not a synthetic login or
-image-inference test. Protect the probe's webhook file and supervise the probe itself.
+ปัจจุบัน **ไม่มีเครื่องอิสระ** สำหรับ external probe monitoring บน VM ส่ง alert ไม่ได้เมื่อ VM/เครือข่าย/ไฟฟ้าล้มเหลวทั้งระบบ นี่เป็นช่องว่างด้านปฏิบัติการที่ยังเหลืออยู่ เมื่อมีโฮสต์/provider อื่น ให้รัน `compose.external-probe.yml` ที่นั่นด้วย `PROBE_URL=https://<domain>/api/health` และ Discord webhook ของมัน
+probe ตรวจ HTTPS และ JSON liveness เก็บสถานะ ส่งครั้งเดียวเมื่อเปลี่ยนเป็นล่ม/กู้คืน และ retry การส่งที่ล้มเหลว การตรวจทุก 30 วินาทีล้มเหลวสี่ครั้งเท่ากับประมาณสองนาที ขั้นตอนนี้ตรวจ liveness ของ frontend; probe API ภายใน/alert ของ dependency ครอบคลุม backend ไม่ใช่การทดสอบ login จำลองหรือ image inference ป้องกันไฟล์ webhook และดูแลตัว probe ด้วย
 
-## Verification and rollback
+## การตรวจสอบและ rollback
 
 ```powershell
 uv run --locked python -m pytest tests/test_observability.py
@@ -191,20 +143,10 @@ uv run --locked python -m scripts.test_observability_stack
 .\scripts\check-health.ps1 -ComposeFiles compose.vm.yml,compose.observability.yml
 ```
 
-The Docker check creates only `aphrodize-observability-check`, uses synthetic metrics and a
-local Discord-compatible receiver, verifies Grafana provisioning, Prometheus scrape,
-Docker local-driver → Alloy → Loki privacy filtering, firing/recovery delivery and restart
-persistence, then removes that test project's disposable containers/volumes. It does not
-test production GPU hardware, real Discord, or actual VM reachability.
+การตรวจ Docker สร้างเฉพาะ `aphrodize-observability-check` ใช้ metric สังเคราะห์และตัวรับในเครื่องที่เข้ากับ Discord ตรวจการ provision Grafana, scrape Prometheus, การกรองข้อมูลส่วนตัวจาก Docker local-driver → Alloy → Loki, การส่ง firing/recovery และการเก็บสถานะข้าม restart แล้วลบคอนเทนเนอร์/volume ชั่วคราวของโครงการทดสอบนั้น
+ไม่ได้ทดสอบฮาร์ดแวร์ GPU ของ production, Discord จริง หรือการเข้าถึง VM จริง
 
-In staging also stop a worker, interrupt Redis, make a UV snapshot stale, stop Alloy, and
-confirm matching alerts and resolved notifications. Never perform these drills against live
-user workloads without scheduling the interruption. Observe baseline for seven days before
-setting production latency/availability objectives. The seven-day baseline cannot be claimed
-from a development run.
+ใน staging ให้ลองหยุด worker, ขัดจังหวะ Redis, ทำ UV snapshot ให้เก่า และหยุด Alloy แล้วตรวจ alert และ notification ว่าแก้ไขแล้วให้ตรงกัน ห้ามซ้อมกับงานผู้ใช้จริงโดยไม่กำหนดเวลาขัดจังหวะ เก็บ baseline เจ็ดวันก่อนตั้งเป้าหมาย latency/availability ของ production ไม่สามารถอ้าง baseline เจ็ดวันจากการรันเพื่อพัฒนา
 
-To disable collection, set `OBSERVABILITY_ENABLED=false` and stop only the monitoring
-services. Keep monitoring volumes if history is needed. Restore the prior application images
-if rolling back instrumentation; do not remove PostgreSQL, Redis or MinIO data. No distributed
-tracing store is deployed in this first version; correlation IDs already connect the critical
-request/job flow and can later become trace context when needed.
+หากต้องการปิดการเก็บข้อมูล ให้ตั้ง `OBSERVABILITY_ENABLED=false` และหยุดเฉพาะบริการ monitoring เก็บ volume monitoring หากต้องการประวัติ หาก rollback instrumentation ให้คืนอิมเมจแอปก่อนหน้า ห้ามลบข้อมูล PostgreSQL, Redis หรือ MinIO
+รุ่นแรกนี้ยังไม่ deploy ที่เก็บ distributed tracing; correlation ID เชื่อม request/job สำคัญอยู่แล้ว และต่อยอดเป็น trace context ได้เมื่อจำเป็น

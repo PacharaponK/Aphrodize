@@ -1,67 +1,39 @@
-# CI/CD in the existing Aphrodize repository
+# CI/CD ใน repository Aphrodize เดิม
 
-Everything lives in PacharaponK/Aphrodize. CI and image builds run on GitHub-hosted
-runners. Deployment runs on the repository's self-hosted runner on the VM. The
-owner explicitly accepted using a public repository with a self-hosted runner.
-No second repository or cross-repository token is needed.
+ทุกส่วนอยู่ใน PacharaponK/Aphrodize โดย CI และการ build อิมเมจรันบน runner ที่ GitHub จัดให้ ส่วน deployment รันบน self-hosted runner ของ repository บน VM เจ้าของยอมรับอย่างชัดเจนให้ใช้ repository สาธารณะกับ self-hosted runner ไม่ต้องมี repository ที่สองหรือ token ข้าม repository
 
-## Release flow
+## ขั้นตอน release
 
-Merge dev into protected main → Backend/Frontend CI pass for that commit → Release
-workflow builds API, frontend and MinIO → GHCR digest manifest is uploaded →
-production runner applies API/frontend → health/readiness/HTTPS checks → success.
+merge dev เข้า main ที่มีการป้องกัน → Backend/Frontend CI ของ commit นั้นผ่าน → workflow Release build API, frontend และ MinIO → อัปโหลด manifest ของ GHCR digest → runner ของ production อัปเดต API/frontend → ตรวจ health/readiness/HTTPS → สำเร็จ
 
-Failed CI, PR/dev/fork runs and superseded main candidates cannot enter our
-production release path. Publishing all images is required before a manifest is
-available. A disabled deploy job does not prevent publishing. MinIO is published
-for bootstrap/infrastructure use, but routine application releases never update
-PostgreSQL, Redis, MinIO or Caddy.
+CI ที่ล้มเหลว การรันจาก PR/dev/fork และ candidate ของ main ที่ถูกแทนที่แล้วไม่สามารถเข้าสู่ขั้นตอน release ของ production ได้ ต้องเผยแพร่อิมเมจทั้งหมดก่อนจึงมี manifest การปิด deploy job ไม่ขัดขวางการเผยแพร่ MinIO ถูกเผยแพร่สำหรับ bootstrap/โครงสร้างพื้นฐาน แต่ release แอปตามปกติไม่อัปเดต PostgreSQL, Redis, MinIO หรือ Caddy
 
-The manifest records schema_version=1, source_sha, run_id, site_url and images.
-Deployment uses image@sha256 references. SHA tags are only for finding images.
-Artifacts retain complete manifests for 90 days; the VM retains private current,
-previous and historical configuration regardless of artifact expiration.
+manifest บันทึก schema_version=1, source_sha, run_id, site_url และ images การ deploy ใช้การอ้างอิง image@sha256 ส่วน SHA tag ใช้ค้นหาอิมเมจเท่านั้น artifact เก็บ manifest ครบ 90 วัน; VM เก็บการตั้งค่าปัจจุบัน ก่อนหน้า และประวัติไว้เป็นส่วนตัวโดยไม่ขึ้นกับการหมดอายุของ artifact
 
-## Repository configuration (owner)
+## การตั้งค่า repository (เจ้าของ)
 
-In Settings → Secrets and variables → Actions → Variables, set:
+ใน Settings → Secrets and variables → Actions → Variables ให้ตั้งค่า:
 
-| Variable | Value |
+| ตัวแปร | ค่า |
 | --- | --- |
-| SITE_URL | `https://aphrodize.duckdns.org` (must match production VM_HOST) |
-| VM_DEPLOY_ENABLED | `false` initially; `true` enables automatic production deployment |
-| VM_DEPLOY_DIR | Stable absolute production directory, e.g. `/home/aphrodize/Aphrodize` |
-| VM_COMPOSE_OVERLAYS | `compose.duckdns.yml` if using DuckDNS; append `,compose.vm-worker-access.yml` only if already active |
-| VM_TLS_CA_FILE | Absolute public CA certificate file if using internal Caddy TLS; otherwise unset |
+| SITE_URL | `https://aphrodize.duckdns.org` (ต้องตรงกับ VM_HOST ของ production) |
+| VM_DEPLOY_ENABLED | เริ่มด้วย `false`; `true` เปิด deployment ของ production อัตโนมัติ |
+| VM_DEPLOY_DIR | ไดเรกทอรี production แบบ absolute ที่คงที่ เช่น `/home/aphrodize/Aphrodize` |
+| VM_COMPOSE_OVERLAYS | `compose.duckdns.yml` หากใช้ DuckDNS; ต่อท้าย `,compose.vm-worker-access.yml` เฉพาะเมื่อใช้อยู่แล้ว |
+| VM_TLS_CA_FILE | path แบบ absolute ของไฟล์ใบรับรอง CA สาธารณะ หากใช้ TLS ภายในของ Caddy; มิฉะนั้นไม่ต้องตั้ง |
 
-VM_DEPLOY_ENABLED must be a **repository variable** because GitHub checks it before
-scheduling the production job. Other VM variables may be repository variables or
-production environment variables. Do not place runtime passwords in variables.
+VM_DEPLOY_ENABLED ต้องเป็น **ตัวแปรระดับ repository** เพราะ GitHub ตรวจค่าก่อนจัดตาราง job ของ production ตัวแปร VM อื่นเป็นตัวแปรระดับ repository หรือ environment ของ production ได้ ห้ามใส่รหัสผ่าน runtime ใน variables
 
-Create Settings → Environments → production. Restrict deployment branches to
-main. Existing main protection and required CI checks remain in place. Approval
-reviewers are optional and would pause automatic deployment until approved.
-Review which collaborators can modify workflows and approve fork workflow runs.
-Runner labels are routing, not an isolation boundary; the accepted public-runner
-risk remains. This workflow's event guards cannot constrain another workflow.
+สร้าง Settings → Environments → production และจำกัดสาขา deployment เป็น main รักษาการป้องกัน main และการตรวจ CI ที่บังคับไว้ การกำหนด reviewer อนุมัติเป็นทางเลือก และจะพัก deployment อัตโนมัติจนได้รับอนุมัติ ตรวจว่าผู้ร่วมงานคนใดแก้ workflow และอนุมัติการรัน workflow จาก fork ได้ label ของ runner ใช้กำหนดเส้นทางงาน ไม่ใช่ขอบเขตแยกสิทธิ์ ความเสี่ยงของ runner ใน repository สาธารณะที่ยอมรับไว้ยังคงอยู่ เงื่อนไข event ของ workflow นี้ไม่สามารถจำกัด workflow อื่นได้
 
-Workflow jobs use GITHUB_TOKEN for GHCR: packages:write only during publishing,
-packages:read during deployment. No new PAT is required for packages created by
-this repository's workflow. If a pre-existing GHCR package denies access, grant
-this repository Actions access in that package's settings. Keep package visibility
-private unless the owner deliberately publishes the image contents; a public source
-repository does not require public images.
+job ของ workflow ใช้ GITHUB_TOKEN สำหรับ GHCR: packages:write เฉพาะตอนเผยแพร่ และ packages:read ตอน deploy ไม่ต้องมี PAT ใหม่สำหรับ package ที่ workflow ของ repository นี้สร้าง หาก package GHCR เดิมปฏิเสธการเข้าถึง ให้ให้สิทธิ์ Actions ของ repository นี้ใน settings ของ package
+คง visibility ของ package เป็น private เว้นแต่เจ้าของตั้งใจเผยแพร่เนื้อหาอิมเมจ repository ซอร์สสาธารณะไม่ได้บังคับให้อิมเมจเป็นสาธารณะ
 
-## Runner setup on VM (owner)
+## ติดตั้ง runner บน VM (เจ้าของ)
 
-The runner is installed on the existing VM so the deploy job can use Docker locally.
-Use a dedicated runner account with read access to production configuration and
-write access to the production `.releases` directory, not the application's .env
-contents in source. Its access to the Docker daemon effectively gives host-level
-privileges. Do not mix its workspace with the stable production directory.
+ติดตั้ง runner บน VM เดิมเพื่อให้ deploy job ใช้ Docker ในเครื่องได้ ใช้บัญชี runner เฉพาะที่อ่านการตั้งค่า production และเขียนไดเรกทอรี `.releases` ของ production ได้ อย่าเก็บเนื้อหา .env ของแอปในซอร์ส การเข้าถึง Docker daemon เทียบเท่าสิทธิ์ระดับโฮสต์ อย่าปะปน workspace ของ runner กับไดเรกทอรี production ที่คงที่
 
-Prerequisites: Linux x64, Docker, Compose v2 supporting `--wait` and JSON config,
-Bash, Python 3, curl, flock, Git and GitHub runner dependencies. Check:
+สิ่งที่ต้องมี: Linux x64, Docker, Compose v2 ที่รองรับ `--wait` และ JSON config, Bash, Python 3, curl, flock, Git และ dependency ของ GitHub runner ตรวจด้วย:
 
 ```bash
 docker version
@@ -71,127 +43,68 @@ curl --version
 command -v flock
 ```
 
-Docker must work without an interactive sudo prompt **as the runner account**.
-Manage its Docker/account permissions explicitly. Do not put `sudo` into workflow
-commands as a substitute for provisioning. Runner outbound HTTPS needs GitHub,
-Actions artifact services, GHCR and the production hostname. Inbound public SSH
-or a public VM address is not required.
+Docker ต้องทำงานโดยไม่ถามรหัสผ่าน sudo **เมื่อใช้บัญชี runner** จัดการสิทธิ์ Docker/บัญชีอย่างชัดเจน อย่าใส่ `sudo` ในคำสั่ง workflow แทนการเตรียมสิทธิ์ runner ต้องเข้าถึง GitHub, บริการ artifact ของ Actions, GHCR และชื่อโฮสต์ production ผ่าน HTTPS ขาออกได้ ไม่ต้องเปิด SSH ขาเข้าสาธารณะหรือมี public address ของ VM
 
-Open Settings → Actions → Runners → New self-hosted runner → Linux → x64. Follow
-the current download/checksum/install instructions shown by GitHub in a dedicated
-directory, such as `/opt/aphrodize-runner`. Register it with:
+เปิด Settings → Actions → Runners → New self-hosted runner → Linux → x64 ทำตามคำแนะนำดาวน์โหลด/ตรวจ checksum/ติดตั้งที่ GitHub แสดงในปัจจุบัน โดยใช้ไดเรกทอรีเฉพาะ เช่น `/opt/aphrodize-runner` ลงทะเบียนด้วย:
 
-- Repository URL: https://github.com/PacharaponK/Aphrodize
-- Name: aphrodize-vm
-- Additional label: aphrodize-deploy
-- Work directory: `_work` inside the dedicated runner directory
+- URL ของ repository: https://github.com/PacharaponK/Aphrodize
+- ชื่อ: aphrodize-vm
+- label เพิ่มเติม: aphrodize-deploy
+- ไดเรกทอรีทำงาน: `_work` ภายในไดเรกทอรี runner เฉพาะ
 
-Use the short-lived registration token only on the VM. Do not paste it into chat,
-commit it or save it in `.env`. Install the runner as a service using GitHub's
-provided `svc.sh`, configured to run under the dedicated runner account. Keep
-runner automatic updates enabled. Confirm it shows Online/Idle in repository
-settings before enabling deployment.
+ใช้ registration token อายุสั้นเฉพาะบน VM ห้ามวางในแชต commit หรือบันทึกใน `.env` ติดตั้ง runner เป็น service ด้วย `svc.sh` ที่ GitHub ให้ โดยรันภายใต้บัญชี runner เฉพาะ เปิดการอัปเดต runner อัตโนมัติไว้ ยืนยันว่าแสดง Online/Idle ใน settings ของ repository ก่อนเปิด deployment
 
-## Production directory and first baseline
+## ไดเรกทอรี production และสถานะตั้งต้นครั้งแรก
 
-VM_DEPLOY_DIR points to the directory already used for compose.vm.yml. Keep the
-existing `.env` (mode 600), Compose overlays, docker/Caddyfile files and mounted
-storage/artifacts/uv in place. Give the runner account only the filesystem access
-needed for these existing files and private release state. Do not copy .env into
-its Actions checkout or artifacts. Set VM_COMPOSE_OVERLAYS to the actual active
-selection, so DuckDNS certificates and worker ports are preserved.
+VM_DEPLOY_DIR ชี้ไปไดเรกทอรีที่ใช้ compose.vm.yml อยู่แล้ว คง `.env` เดิม (สิทธิ์ 600), Compose overlay, ไฟล์ docker/Caddyfile และ storage/artifacts/uv ที่ mount ไว้ ให้บัญชี runner เข้าถึงไฟล์เดิมและสถานะ release ส่วนตัวเท่าที่จำเป็นเท่านั้น อย่าคัดลอก .env ไป checkout ของ Actions หรือ artifact ตั้ง VM_COMPOSE_OVERLAYS ตาม overlay ที่ใช้งานจริง เพื่อรักษาใบรับรอง DuckDNS และพอร์ต worker
 
-The first deploy captures healthy running api/frontend image IDs and the fully
-rendered current Compose configuration before any update. This includes local
-`aphrodize-api:vm`/`aphrodize-frontend:vm` images, so initial rollback does not need
-old registry tags. A missing/unhealthy service prevents bootstrap.
+การ deploy ครั้งแรกบันทึก image ID ของ api/frontend ที่กำลังทำงานและ healthy พร้อม Compose configuration ปัจจุบันที่ render ครบก่อนอัปเดต รวมถึงอิมเมจในเครื่อง `aphrodize-api:vm`/`aphrodize-frontend:vm` จึง rollback ครั้งแรกได้โดยไม่ต้องใช้ registry tag เก่า หากไม่มีบริการหรือบริการไม่ healthy จะ bootstrap ไม่ได้
 
-Rendered configuration contains runtime credentials and is deliberately written
-only to VM_DEPLOY_DIR/.releases (mode 700; files mode 600). Never upload or paste
-these files into Actions logs, issues or chat. Release-manifest.json contains
-image references and source provenance only; it has no production credentials.
+การตั้งค่าที่ render มีข้อมูลรับรอง runtime จึงจงใจเขียนเฉพาะ VM_DEPLOY_DIR/.releases (ไดเรกทอรีสิทธิ์ 700; ไฟล์สิทธิ์ 600) ห้ามอัปโหลดหรือวางไฟล์เหล่านี้ใน log ของ Actions, issue หรือแชต Release-manifest.json มีเฉพาะการอ้างอิงอิมเมจและที่มาของซอร์ส ไม่มีข้อมูลรับรอง production
 
-Candidate Compose rendering uses the stable production directory explicitly for
-all host paths. Persistent volume names and infrastructure configurations must
-match the saved current configuration; changes require a separate reviewed
-infrastructure operation. Caddy configuration files in the stable directory remain
-operator-managed, because routine releases do not recreate Caddy.
+การ render Compose ของ candidate ใช้ไดเรกทอรี production ที่คงที่อย่างชัดเจนสำหรับทุก host path ชื่อ persistent volume และการตั้งค่าโครงสร้างพื้นฐานต้องตรงกับการตั้งค่าปัจจุบันที่บันทึกไว้ หากเปลี่ยนต้องเป็นงานโครงสร้างพื้นฐานแยกที่ผ่านการตรวจ ไฟล์ Caddy configuration ในไดเรกทอรีคงที่ยังจัดการโดยผู้ปฏิบัติการ เพราะ release ตามปกติไม่สร้าง Caddy ใหม่
 
-Verify the external `/login` URL first. For internal TLS, provide the public CA
-certificate via VM_TLS_CA_FILE. Do not disable certificate verification. The deploy
-script additionally checks PostgreSQL SELECT 1, Redis PING and both required MinIO
-buckets using the API's runtime settings; liveness alone is insufficient.
+ตรวจ URL `/login` ภายนอกก่อน สำหรับ TLS ภายใน ให้ส่งใบรับรอง CA สาธารณะผ่าน VM_TLS_CA_FILE ห้ามปิดการตรวจใบรับรอง สคริปต์ deploy ยังตรวจ PostgreSQL SELECT 1, Redis PING และ MinIO bucket ที่จำเป็นทั้งสอง โดยใช้ runtime settings ของ API; การตรวจ liveness เพียงอย่างเดียวไม่พอ
 
-## First deployment and subsequent automatic releases
+## deployment ครั้งแรกและ release อัตโนมัติหลังจากนั้น
 
-1. Merge the reviewed implementation into main, with deployment still disabled.
-2. Wait for main CI and all three release image builds. Inspect the Release run's
-   `release-manifest-<SHA>` artifact; source SHA and run ID must match that run.
-3. Confirm the VM runner is idle, the active overlay selection/origin/CA are correct,
-   and existing API/frontend are healthy. Back up production data independently.
-4. Review the first candidate before setting VM_DEPLOY_ENABLED=true. This is the
-   activation step: future eligible main releases will change production services.
-5. Re-run **all jobs** of the eligible Release run on current main, or merge a new
-   reviewed commit. If main moved, the old run is rejected as superseded.
-6. Confirm the deployment job passes, then test login/logout/profile from an
-   authorized client in the VM network. Verify published/deployed source SHA.
-7. Exercise a controlled failure and rollback in a disposable stack first. Any
-   deliberate production failure test needs explicit approval of the candidate.
+1. merge implementation ที่ตรวจแล้วเข้า main โดยยังปิด deployment ไว้
+2. รอ CI ของ main และ build อิมเมจ release ทั้งสาม ตรวจ artifact `release-manifest-<SHA>` ของการรัน Release; source SHA และ run ID ต้องตรงกับการรันนั้น
+3. ยืนยันว่า runner ของ VM ว่าง การเลือก overlay/origin/CA ถูกต้อง และ API/frontend เดิม healthy สำรองข้อมูล production แยกต่างหาก
+4. ตรวจ candidate แรกก่อนตั้ง VM_DEPLOY_ENABLED=true นี่คือขั้นตอนเปิดใช้งาน: release ของ main ที่ผ่านเงื่อนไขหลังจากนี้จะเปลี่ยนบริการ production
+5. รัน **ทุก job** ใหม่ของ Release ที่ผ่านเงื่อนไขบน main ปัจจุบัน หรือ merge commit ใหม่ที่ตรวจแล้ว หาก main เปลี่ยนไป การรันเก่าจะถูกปฏิเสธเพราะถูกแทนที่
+6. ยืนยันว่า deployment job ผ่าน แล้วทดสอบเข้าสู่ระบบ/ออกจากระบบ/โปรไฟล์จากลูกข่ายที่ได้รับอนุญาตในเครือข่าย VM ตรวจ source SHA ที่เผยแพร่และ deploy
+7. ทดลองความล้มเหลวที่ควบคุมได้และ rollback ใน stack ชั่วคราวก่อน การจงใจทดสอบให้ production ล้มเหลวต้องได้รับอนุมัติ candidate อย่างชัดเจน
 
-Updates pull images first, initialise required buckets, replace only API/frontend
-and wait for health. No build occurs on the VM. No `compose down`, volume deletion
-or image pruning is part of deployment. Single-VM recreation may briefly interrupt
-requests. API startup currently performs schema additions; review migration/backward
-compatibility before a release, because image rollback cannot undo schema/data changes.
+การอัปเดตดึงอิมเมจก่อน เตรียม bucket ที่จำเป็น แทนที่เฉพาะ API/frontend และรอ health ไม่มีการ build บน VM ไม่มี `compose down`, การลบ volume หรือการ prune อิมเมจใน deployment การสร้างบริการใหม่บน VM เดียวอาจขัดจังหวะ request ชั่วครู่ ปัจจุบัน API เพิ่ม schema ตอนเริ่มระบบ จึงต้องตรวจ migration/ความเข้ากันได้ย้อนหลังก่อน release เพราะ rollback อิมเมจย้อนการเปลี่ยน schema/ข้อมูลไม่ได้
 
-## Rollback and recovery
+## rollback และการกู้คืน
 
-Use the checked-out scripts from a reviewed release, with absolute deployment paths.
-For manual rollback to the saved previous release:
+ใช้สคริปต์จาก checkout ของ release ที่ตรวจแล้ว พร้อม path deployment แบบ absolute หากต้องการ rollback ด้วยตนเองไป release ก่อนหน้าที่บันทึกไว้:
 
 ```bash
 bash scripts/deploy-vm.sh --rollback --deploy-dir /home/aphrodize/Aphrodize
 ```
 
-Add `--ca-file /absolute/path/to/public-root.crt` for internal TLS. Overlays are
-already included in stored configuration, so rollback uses the exact saved bundle.
-The host lock prevents overlapping deployment or rollback commands.
+เพิ่ม `--ca-file /absolute/path/to/public-root.crt` สำหรับ TLS ภายใน overlay รวมอยู่ในการตั้งค่าที่บันทึกแล้ว rollback จึงใช้ bundle เดิมทุกประการ lock บนโฮสต์ป้องกันคำสั่ง deploy หรือ rollback ซ้อนกัน
 
-A failed candidate automatically restores the previous image/configuration and
-checks health again. Even when restoration succeeds, the deployment job is red.
-The failed candidate remains in private release history and is never promoted.
+candidate ที่ล้มเหลวจะคืนอิมเมจ/การตั้งค่าก่อนหน้าอัตโนมัติ แล้วตรวจ health อีกครั้ง แม้คืนสำเร็จ deployment job ยังคงเป็นสีแดง candidate ที่ล้มเหลวอยู่ในประวัติ release ส่วนตัวและไม่ถูกเลื่อนเป็นตัวใช้งาน
 
-If the job is killed or restoration fails, pending-release.json is retained and a
-new deployment is refused. After inspecting Docker/service health locally, retry
-recovery with:
+หาก job ถูกยุติหรือคืนสถานะไม่สำเร็จ ระบบเก็บ pending-release.json และปฏิเสธ deployment ใหม่ หลังตรวจ Docker/health ของบริการในเครื่องแล้ว ลองกู้คืนอีกครั้งด้วย:
 
 ```bash
 bash scripts/deploy-vm.sh --recover --deploy-dir /home/aphrodize/Aphrodize
 ```
 
-Use the same CA option when needed. Retain previous images and release state; do
-not run `docker image prune -a`. If previous images are gone, restore them from the
-saved registry digest or your independently saved baseline image before recovery.
-A recovery failure needs operator intervention; do not delete pending state merely
-to make a later job green. Keep database/storage backups separate from image rollback.
+ใช้ตัวเลือก CA เดิมเมื่อจำเป็น เก็บอิมเมจก่อนหน้าและสถานะ release ไว้ ห้ามรัน `docker image prune -a` หากอิมเมจก่อนหน้าหายไป ให้คืนจาก registry digest ที่บันทึกหรืออิมเมจตั้งต้นที่สำรองแยกไว้ก่อนกู้คืน หากกู้คืนล้มเหลว ผู้ปฏิบัติการต้องเข้าแก้ไข ห้ามลบ pending state เพียงเพื่อให้ job ถัดไปเป็นสีเขียว เก็บ backup ฐานข้อมูล/ที่เก็บข้อมูลแยกจาก rollback อิมเมจ
 
-## Validation evidence and remaining setup
+## หลักฐานการตรวจสอบและการตั้งค่าที่ยังเหลือ
 
-Local implementation tests use temporary directories and fake Docker/curl commands;
-they never update the live VM stack. Production image smoke tests and normal CI
-also run in disposable environments. Settings, runner registration and the first
-live publication/deployment are administrator actions. A passing dev CI cannot prove
-that GHCR publishing or production deployment has already run on main.
+การทดสอบ implementation ในเครื่องใช้ไดเรกทอรีชั่วคราวและคำสั่ง Docker/curl จำลอง ไม่อัปเดต stack จริงบน VM การ smoke test อิมเมจ production และ CI ปกติก็รันในสภาพแวดล้อมชั่วคราว การตั้งค่า ลงทะเบียน runner และเผยแพร่/deploy จริงครั้งแรกเป็นหน้าที่ผู้ดูแล CI ของ dev ที่ผ่านไม่ยืนยันว่าการเผยแพร่ GHCR หรือ deployment ของ production บน main เกิดขึ้นแล้ว
 
-References: [workflow_run](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run),
-[image publishing](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images),
-[runner registration](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners).
+แหล่งอ้างอิง: [workflow_run](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run),
+[การเผยแพร่อิมเมจ](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images),
+[การลงทะเบียน runner](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners).
 
-Implementation verification (2026-10-06): Python 3.11 full suite 350 passed,
-frontend 76 passed, ESLint/TypeScript/production build passed, all three production
-images built, API smoke imports passed, actionlint and ShellCheck passed. A fresh
-review found and fixed rollback history preservation, with a regression test.
-Real Compose configuration checks cover base, DuckDNS and worker overlays; a
-separate real Docker stack passed readiness and failed correctly with Redis stopped.
-Registry publishing and live deployment remain unverified until the owner merges
-and completes the setup steps above.
+ผลตรวจ implementation (2026-10-06): ชุดทดสอบ Python 3.11 ทั้งหมดผ่าน 350 รายการ, frontend ผ่าน 76 รายการ, ESLint/TypeScript/production build ผ่าน, build อิมเมจ production ทั้งสามสำเร็จ, API smoke imports ผ่าน, actionlint และ ShellCheck ผ่าน การตรวจรอบใหม่พบและแก้การรักษาประวัติ rollback พร้อม regression test
+การตรวจ Compose configuration จริงครอบคลุม base, DuckDNS และ worker overlay; stack Docker จริงแยกต่างหากผ่าน readiness และล้มเหลวตามคาดเมื่อหยุด Redis การเผยแพร่ registry และ deploy จริงยังไม่ยืนยันจนกว่าเจ้าของจะ merge และทำขั้นตอนตั้งค่าข้างต้นครบ
