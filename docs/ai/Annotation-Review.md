@@ -1,20 +1,21 @@
-# Wrinkle annotation review
+# การตรวจ annotation ริ้วรอย
 
-This workflow is for human review of consented, aligned face images. It does not train a model or treat model masks as ground truth.
+workflow นี้ให้มนุษย์ตรวจภาพใบหน้าที่จัดแนวแล้วและได้รับความยินยอม ไม่ได้ฝึกโมเดลหรือถือ mask ของโมเดลเป็นข้อมูลจริงอ้างอิง
 
-## Set up once
+## ตั้งค่าครั้งแรก
 
-1. Start the Compose stack and create a Label Studio API token. Put it in `.env` as `LABEL_STUDIO_API_KEY` and restart `api` and `inference-worker` so they receive it.
-2. Run `docker compose exec api python -m backend.scripts.setup_annotation_project`. Copy the printed `LABEL_STUDIO_PROJECT_ID` to `.env`, then restart `api` and `inference-worker` again.
-3. Test one task in the labeling UI before collecting user images. The worker puts each consented image in the private `aphrodize-annotation` MinIO bucket, then sends it directly to the Label Studio task as an inline image. No S3 source storage connection or private-network exception is needed. This is intended for a small review pilot; move task images to external storage if task volume makes the Label Studio project slow.
+1. เริ่ม Compose stack และสร้าง Label Studio API token ใส่ใน `.env` เป็น `LABEL_STUDIO_API_KEY` แล้ว restart `api` และ `inference-worker` เพื่อให้รับค่า
+2. รัน `docker compose exec api python -m backend.scripts.setup_annotation_project` คัดลอก `LABEL_STUDIO_PROJECT_ID` ที่แสดงไป `.env` แล้ว restart `api` และ `inference-worker` อีกครั้ง
+3. ทดสอบหนึ่ง task ใน UI ติดป้ายก่อนเก็บภาพผู้ใช้ worker ใส่ภาพที่ได้รับความยินยอมใน MinIO bucket ส่วนตัว `aphrodize-annotation` แล้วส่งไป task ของ Label Studio โดยตรงเป็นภาพ inline ไม่ต้องเชื่อม S3 source storage หรือยกเว้นข้อจำกัดเครือข่ายส่วนตัว วิธีนี้เหมาะกับการทดลองตรวจขนาดเล็ก หากจำนวน task ทำให้โครงการ Label Studio ช้า ให้ย้ายภาพ task ไป external storage
 
-## Review rules
+## กฎการตรวจ
 
-- The image is the aligned face used by the wrinkle model. Mark visible wrinkle pixels with the `Wrinkle` brush; leave other pixels unmarked.
-- Skip an image if it is blurry, occluded, incorrectly aligned, or cannot be labeled reliably. Do not infer a clinical diagnosis.
-- A model-generated mask, if added later, is only a suggestion. Human annotations are the review result.
-- Do not copy images, names, or answers into comments or logs.
+- ภาพคือใบหน้าที่จัดแนวแล้วซึ่งโมเดลริ้วรอยใช้ ระบายพิกเซลริ้วรอยที่มองเห็นด้วยแปรง `Wrinkle`; เว้นพิกเซลอื่นไว้
+- ข้ามภาพที่เบลอ ถูกบดบัง จัดแนวผิด หรือระบุ annotation อย่างน่าเชื่อถือไม่ได้ ห้ามอนุมานการวินิจฉัยทางคลินิก
+- หากเพิ่ม mask จากโมเดลภายหลัง ให้ถือเป็นคำแนะนำเท่านั้น annotation ของมนุษย์คือผลตรวจ
+- ห้ามคัดลอกภาพ ชื่อ หรือคำตอบเข้า comment หรือ log
 
-The optional capture checkbox creates a separate `image-annotation-v1` consent for that upload. Only successful analyses with active annotation consent are staged. The aligned image and Label Studio task are scheduled for deletion after 30 days. The capture page can revoke review consent for images submitted from the same browser during that period. `DELETE /api/v1/consents/users/{user_id}/annotations` revokes one user's review consent and removes review data; `DELETE /api/v1/users/{user_id}/images` includes the same cleanup. If Label Studio is unavailable during deletion, the image is removed first and the API returns 503; retry the request after Label Studio recovers. The worker also retries pending cleanup hourly. This browser-only revocation control is provisional until the app has user accounts.
+checkbox ทางเลือกในหน้าถ่ายภาพสร้างความยินยอม `image-annotation-v1` แยกสำหรับการอัปโหลดนั้น จัดเตรียมเฉพาะการวิเคราะห์ที่สำเร็จและยังมีความยินยอม annotation ที่ใช้งานอยู่ ภาพที่จัดแนวและ task ของ Label Studio ถูกกำหนดให้ลบหลัง 30 วัน
+หน้าถ่ายภาพเพิกถอนความยินยอมตรวจภาพที่ส่งจากเบราว์เซอร์เดียวกันในช่วงนั้นได้ `DELETE /api/v1/consents/users/{user_id}/annotations` เพิกถอนความยินยอมของผู้ใช้หนึ่งคนและลบข้อมูลตรวจ; `DELETE /api/v1/users/{user_id}/images` รวมการล้างข้อมูลเดียวกัน หาก Label Studio ไม่พร้อมตอนลบ จะลบภาพก่อนและ API ตอบ 503 ให้ retry หลัง Label Studio กลับมาทำงาน worker ยัง retry การล้างข้อมูลค้างทุกชั่วโมง การเพิกถอนผ่านเบราว์เซอร์เท่านั้นนี้เป็นวิธีชั่วคราวจนแอปมีบัญชีผู้ใช้
 
-No annotation is automatically exported or used for training. Export and dataset approval belong to the next development phase.
+ไม่มี annotation ใดถูก export หรือใช้ฝึกอัตโนมัติ การ export และอนุมัติ dataset อยู่ในระยะพัฒนาถัดไป
