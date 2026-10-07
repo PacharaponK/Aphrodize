@@ -1,12 +1,11 @@
 # Portal surface
-Mode: Operate. Scope: /portal. Local Docker application, system tool and monitoring directory. Uses current Aphrodize system; service links do not imply live health status.
+Mode: Operate. Scope: /portal. VM service directory using the current Aphrodize system.
 
 ## Direction contract
-THESIS: One starting point for existing application tasks and system tools, with explicit destinations.
-OWN-WORLD: Inherit frontend/DESIGN.md coral actions, prominent white application surface, supporting tool list, shared Thai/English fonts and dark tokens.
-STORY: Choose an application task or open a local tool in a new tab with its own authentication.
-FIRST VIEWPORT: Standalone page with language/theme controls, clear page title, application links in a framed two-column directory. System tools below as rows with names, purpose and destination. Direct /portal access only; no incoming link or navbar from the main site.
-FORM: Task directory and service rows. Narrow utility extension; no random concept seed applies.
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+THESIS: Direct gateways to existing tools, with unavailable endpoints explicit.
+OWN-WORLD: Existing fonts, pink/coffee theme tokens and focus treatment.
+STORY: Open a deployed service with its own authentication; disclose infrastructure access separately.
+FIRST VIEWPORT: Standalone title and flat service rows. No navbar or incoming navigation link. Current copy is Thai; saved site theme is retained.
+FORM: Responsive service rows and native infrastructure disclosure. No new assets or motion.
 
-Quality bar: actual documented service ports; Thai/English parity; focus and native links; no mobile horizontal overflow; preserve themes and authentication. No raster assets ship.
+Quality bar: correct proxy destinations; missing URLs have no links; no inferred health; 44px actions; no mobile overflow; credentials remain server-side. Desktop/mobile light/dark review: ship.

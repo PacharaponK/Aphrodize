@@ -1,98 +1,77 @@
-"use client";
-
 import Link from "next/link";
-import { ArrowRight, ExternalLink } from "lucide-react";
-import { LanguageToggle, useLanguage } from "@/components/language-provider";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ArrowUpRight, Database, FlaskConical, FolderOpen, Gauge, House, PencilRuler, Server, Store } from "lucide-react";
+import { pageMetadata } from "@/lib/page-metadata";
 import "./portal.css";
 
-const applications = [
-  { href: "/#dashboard", name: ["ภาพรวม", "Overview"], detail: ["รวมข้อมูลผิวและสุขภาพรายวัน", "Your skin and daily health at a glance"] },
-  { href: "/capture", name: ["วิเคราะห์ภาพ", "Analyze image"], detail: ["ส่งภาพเพื่อตรวจคุณภาพและวิเคราะห์ผิว", "Upload a photo for quality checks and skin analysis"] },
-  { href: "/clients", name: ["สุขภาพรายวัน", "Daily health"], detail: ["บันทึกการนอน การดื่มน้ำ และกิจวัตร", "Record sleep, water intake and daily habits"] },
-  { href: "/uv-map", name: ["แผนที่ UV", "UV map"], detail: ["ดูค่าประมาณ UV รายจังหวัดในประเทศไทย", "Explore estimated UV across Thailand"] },
-];
+export const dynamic = "force-dynamic";
+export const metadata = pageMetadata("Services portal", "รวมทางเข้า Label Studio, MinIO, MLflow, Grafana และเครื่องมือจัดการของ Aphrodize", "/portal", false, "th_TH");
 
-const services = [
-  { href: "http://localhost:8000/docs", name: "FastAPI Docs", detail: ["เอกสาร API และทดลองเรียก endpoint", "Read API documentation and try endpoints"] },
-  { href: "http://localhost:8080", name: "Label Studio", detail: ["จัดการงาน annotation และตรวจทานภาพ", "Annotate data and review images"] },
-  { href: "http://localhost:5000", name: "MLflow", detail: ["ดู training runs, metrics และ model artifacts", "Explore training runs, metrics and model artifacts"] },
-  { href: "http://localhost:9001", name: "MinIO Console", detail: ["จัดการ buckets และไฟล์ของระบบ", "Manage system buckets and stored files"] },
-];
-
-const monitoring = [
-  { href: "http://localhost:3001/d/aphrodize-system", name: "Grafana", detail: ["ดูภาพรวมระบบ งานประมวลผล และ UV พร้อมค้นหา logs ใน Explore", "Inspect system, job and UV dashboards; search logs in Explore"] },
-  { href: "http://localhost:3001/alerting/notifications", name: ["ทดสอบ Discord alert", "Test Discord alerts"], detail: ["เลือก operations แล้วกด Test เพื่อทดสอบส่งข้อความเข้าห้อง Discord", "Select operations, then Test to verify delivery to your Discord channel"] },
-  { href: "http://localhost:9090/targets", name: "Prometheus", detail: ["ตรวจ targets ที่เก็บ metrics และดูข้อผิดพลาดการเชื่อมต่อ", "Check metric scrape targets and connection errors"] },
-];
+function serviceUrl(value: string | undefined) {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export default function PortalPage() {
-  const { language } = useLanguage();
-  const locale = language === "th" ? 0 : 1;
+  const services = [
+    { name: "Aphrodize", description: "ภาพรวม วิเคราะห์ภาพ และบันทึกสุขภาพรายวัน", href: "/", Icon: House },
+    { name: "Label Studio", description: "ตรวจทานภาพและวาด annotation สำหรับชุดข้อมูล", href: "/label-studio/", Icon: PencilRuler },
+    { name: "MinIO Console", description: "จัดการ buckets ภาพ และไฟล์ artifacts", href: serviceUrl(process.env.PORTAL_MINIO_URL), Icon: FolderOpen, unavailable: "ยังไม่ได้ตั้งค่าทางเข้า Console" },
+    { name: "MLflow", description: "ดู experiments, training runs และ model artifacts", href: serviceUrl(process.env.PORTAL_MLFLOW_URL), Icon: FlaskConical, unavailable: "ยังไม่ได้เปิดทางเข้า MLflow บน VM" },
+    { name: "Grafana", description: "ดูสถานะระบบ metrics, logs และการแจ้งเตือน", href: "/grafana/", Icon: Gauge },
+    { name: "Product admin", description: "ตรวจทานและจัดการแคตตาล็อกผลิตภัณฑ์", href: "/admin", Icon: Store },
+  ];
 
   return (
-    <main className="portal-page" data-color-system="hierarchical">
-      <header className="portal-header">
-        <div className="portal-controls"><LanguageToggle /><ThemeToggle /></div>
-        <h1>{locale === 0 ? "ทุกเซอร์วิส ในที่เดียว" : "Every service. One place."}</h1>
-        <p>{locale === 0 ? "เลือกทางเข้าใช้งาน Aphrodize และเครื่องมือของระบบ" : "Your starting point for Aphrodize and its system tools."}</p>
+    <main className="service-portal" lang="th">
+      <header className="portal-intro">
+        <h1>Services portal</h1>
+        <p>เครื่องมือของ Aphrodize รวมไว้ในที่เดียว เลือกบริการที่ต้องการเข้าใช้งาน</p>
       </header>
 
-      <section className="portal-applications" aria-labelledby="portal-apps-title">
-        <div className="portal-section-intro">
-          <h2 id="portal-apps-title">{locale === 0 ? "ใช้งาน Aphrodize" : "Use Aphrodize"}</h2>
-          <p>{locale === 0 ? "เริ่มจากสิ่งที่คุณอยากทำวันนี้" : "Start with what you want to do today."}</p>
-        </div>
-        <div className="portal-app-links">
-          {applications.map((app) => (
-            <Link key={app.href} href={app.href} className="portal-app-link">
-              <span><strong>{app.name[locale]}</strong><span>{app.detail[locale]}</span></span>
-              <ArrowRight size={22} aria-hidden="true" />
-            </Link>
+      <section aria-labelledby="portal-tools-heading">
+        <h2 id="portal-tools-heading">ทางเข้าใช้งาน</h2>
+        <p className="portal-help">แต่ละบริการใช้บัญชีของตัวเอง ลิงก์ที่เปิดได้ยังไม่ได้หมายความว่าบริการออนไลน์อยู่</p>
+        <ul className="portal-services">
+          {services.map(({ name, description, href, Icon, unavailable }) => (
+            <li className="portal-service" key={name}>
+              <Icon className="portal-service-icon" size={24} aria-hidden="true" />
+              <div className="portal-service-copy"><h3>{name}</h3><p>{description}</p></div>
+              {href ? (
+                href.startsWith("/") && !["/label-studio/", "/grafana/"].includes(href) ? (
+                  <Link className="portal-open" href={href}>เปิด {name}<ArrowUpRight size={18} aria-hidden="true" /></Link>
+                ) : (
+                  <a className="portal-open" href={href}>เปิด {name}<ArrowUpRight size={18} aria-hidden="true" /></a>
+                )
+              ) : <span className="portal-unavailable">{unavailable}</span>}
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
-      <section className="portal-tools portal-monitoring" aria-labelledby="portal-monitoring-title">
-        <div className="portal-section-intro">
-          <h2 id="portal-monitoring-title">{locale === 0 ? "ติดตามระบบและการแจ้งเตือน" : "Monitoring and alerts"}</h2>
-          <p>{locale === 0 ? "ดู metrics, logs และทดสอบการแจ้งเตือนผ่าน UI" : "Explore metrics, logs and test notification delivery."}</p>
-        </div>
-        <div className="portal-service-list">
-          {monitoring.map((service) => (
-            <a key={service.href} href={service.href} target="_blank" rel="noopener noreferrer" className="portal-service-link">
-              <strong>{typeof service.name === "string" ? service.name : service.name[locale]}</strong>
-              <span className="portal-service-detail">{service.detail[locale]}</span>
-              <span className="portal-service-address">{service.href}</span>
-              <ExternalLink size={18} aria-hidden="true" />
-            </a>
-          ))}
-        </div>
-        <p className="portal-note">{locale === 0 ? "ต้องเริ่มชุด observability ก่อน เปิดจากเครื่องที่รัน Docker หรือเชื่อม SSH tunnel ไปยัง VM การทดสอบ Discord ต้องตั้ง webhook ของห้องไว้ก่อน" : "Start the observability stack first. Open from the Docker host or through an SSH tunnel to the VM. Discord testing requires your channel webhook."}</p>
-      </section>
-
-      <section className="portal-tools" aria-labelledby="portal-tools-title">
-        <div className="portal-section-intro">
-          <h2 id="portal-tools-title">{locale === 0 ? "เครื่องมือของระบบ" : "System tools"}</h2>
-          <p>{locale === 0 ? "Local Docker · เปิดในแท็บใหม่" : "Local Docker · Opens in a new tab"}</p>
-        </div>
-        <div className="portal-service-list">
-          {services.map((service) => (
-            <a key={service.name} href={service.href} target="_blank" rel="noopener noreferrer" className="portal-service-link">
-              <strong>{service.name}</strong>
-              <span className="portal-service-detail">{service.detail[locale]}</span>
-              <span className="portal-service-address">{service.href}</span>
-              <ExternalLink size={18} aria-hidden="true" />
-            </a>
-          ))}
-          <Link href="/admin" className="portal-service-link portal-admin-link">
-            <strong>{locale === 0 ? "จัดการผลิตภัณฑ์" : "Product catalog"}</strong>
-            <span className="portal-service-detail">{locale === 0 ? "ตรวจทานและจัดการแคตตาล็อกผลิตภัณฑ์" : "Review and manage the product catalog"}</span>
-            <span className="portal-service-address">/admin</span>
-            <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-        </div>
-        <p className="portal-note">{locale === 0 ? "ลิงก์ localhost ใช้กับเครื่องที่รัน Docker เท่านั้น แต่ละเครื่องมือใช้บัญชีของตัวเอง และต้องเริ่มเซอร์วิสก่อนใช้งาน" : "Localhost links work on the computer running Docker. Start the services first; each tool uses its own sign-in."}</p>
+      <section className="portal-infrastructure" aria-labelledby="portal-infra-heading">
+        <h2 id="portal-infra-heading"><Server size={22} aria-hidden="true" /> บริการเบื้องหลัง</h2>
+        <p>บริการเหล่านี้ทำงานให้แอปและเครื่องมือด้านบน ใช้ Grafana ดูภาพรวม หรือเชื่อมต่อผ่านเครื่องมือของผู้ดูแลระบบ</p>
+        <details>
+          <summary>ดูบริการและวิธีเชื่อมต่อ</summary>
+          <dl className="portal-infra-list">
+            <div><dt><Database size={18} aria-hidden="true" /> PostgreSQL</dt><dd>ฐานข้อมูล · ใช้ database client ผ่าน SSH tunnel ที่พอร์ต 5432</dd></div>
+            <div><dt>Redis</dt><dd>คิวและ cache · ใช้ Redis client ผ่าน SSH tunnel ที่พอร์ต 6379</dd></div>
+            <div><dt>MinIO API</dt><dd>S3 API · ใช้ S3 client ผ่าน SSH tunnel ที่พอร์ต 9000; หน้าเว็บจัดการอยู่ที่ MinIO Console</dd></div>
+            <div><dt>Prometheus</dt><dd>Metrics · ดูผ่าน Grafana หรือ SSH tunnel ที่พอร์ต 9090</dd></div>
+            <div><dt>Loki</dt><dd>Logs · เปิด Grafana แล้วเลือก Explore และ Loki</dd></div>
+            <div><dt>Alloy / exporters</dt><dd>เก็บ logs, host metrics และผลตรวจ endpoints · ดูผ่าน Grafana</dd></div>
+            <div><dt>API / workers</dt><dd>ให้บริการแอปและประมวลผลงาน · ดูสถานะและ logs ผ่าน Grafana</dd></div>
+            <div><dt>Caddy</dt><dd>HTTPS และ routing · ดูสถานะและ logs ผ่าน Grafana</dd></div>
+          </dl>
+          <p className="portal-help">ตัวอย่างเปิด Prometheus จากคอมพิวเตอร์ของคุณ:</p>
+          <pre><code>ssh -N -L 9090:127.0.0.1:9090 aphrodize@172.30.81.237</code></pre>
+          <p className="portal-help">เมื่อเชื่อมต่อ SSH แล้ว เปิด <a href="http://localhost:9090">http://localhost:9090</a> ในเบราว์เซอร์บนเครื่องเดียวกัน</p>
+        </details>
       </section>
     </main>
   );
