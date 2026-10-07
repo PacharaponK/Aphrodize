@@ -18,7 +18,8 @@ export default function CapturePage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [consent, setConsent] = useState(false);
   const [annotationConsent, setAnnotationConsent] = useState(false);
-  const [savedConsents, setSavedConsents] = useState({ analysis: false, annotations: false });
+  const [trainingConsent, setTrainingConsent] = useState(false);
+  const [savedConsents, setSavedConsents] = useState({ analysis: false, annotations: false, training: false });
   const [loadingConsents, setLoadingConsents] = useState(true);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -75,10 +76,11 @@ export default function CapturePage() {
         if (!response.ok) throw new Error("Could not load consent");
         const data = await response.json();
         if (!active) return;
-        const saved = { analysis: data.analysis === true, annotations: data.annotations === true };
+        const saved = { analysis: data.analysis === true, annotations: data.annotations === true, training: data.training === true };
         setSavedConsents(saved);
         setConsent(saved.analysis);
         setAnnotationConsent(saved.annotations);
+        setTrainingConsent(saved.training);
       })
       .catch(() => { /* Leave consent unchecked if its saved status cannot be verified. */ })
       .finally(() => { if (active) setLoadingConsents(false); });
@@ -163,6 +165,7 @@ export default function CapturePage() {
     form.set("image", file);
     form.set("consent", "yes");
     if (annotationConsent) form.set("annotation_consent", "yes");
+    if (trainingConsent && annotationConsent) form.set("training_consent", "yes");
     try {
       // The route returns after queueing analysis, before inference finishes.
       const response = await fetch("/api/analysis", { method: "POST", body: form });
@@ -172,7 +175,7 @@ export default function CapturePage() {
       }
       // Show and poll the result in this page using the signed browser cookie.
       stopCamera();
-      setSavedConsents({ analysis: true, annotations: annotationConsent });
+      setSavedConsents({ analysis: true, annotations: annotationConsent, training: trainingConsent && annotationConsent });
       setBusy(false);
       setResultsReady(false);
       setAnalysisVersion((current) => current + 1);
@@ -184,7 +187,7 @@ export default function CapturePage() {
     }
   }
 
-  async function revokeConsent(scope: "analysis" | "annotations") {
+  async function revokeConsent(scope: "analysis" | "annotations" | "training") {
     setBusy(true);
     setError("");
     setNotice("");
@@ -192,11 +195,12 @@ export default function CapturePage() {
       const response = await fetch(`/api/analysis?scope=${scope}`, { method: "DELETE" });
       if (!response.ok) throw new Error(t("ถอนความยินยอมไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not revoke consent. Please try again."));
       if (scope === "analysis") setConsent(false);
-      else setAnnotationConsent(false);
-      setSavedConsents((current) => ({ ...current, [scope]: false }));
+      else if (scope === "training") setTrainingConsent(false);
+      else { setAnnotationConsent(false); setTrainingConsent(false); }
+      setSavedConsents((current) => ({ ...current, [scope]: false, ...(scope === "annotations" ? { training: false } : {}) }));
       setNotice(scope === "analysis"
         ? t("ถอนความยินยอมวิเคราะห์ภาพแล้ว ต้องยินยอมใหม่ก่อนวิเคราะห์ครั้งถัดไป", "Image-analysis consent withdrawn. Give consent again before your next analysis.")
-        : t("ถอนความยินยอมตรวจป้ายกำกับภาพแล้ว", "Image-label review consent withdrawn."));
+        : scope === "training" ? t("ถอนความยินยอมฝึกโมเดลแล้ว", "Model-training consent withdrawn.") : t("ถอนความยินยอมตรวจป้ายกำกับภาพแล้ว", "Image-label review consent withdrawn."));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("ถอนความยินยอมไม่สำเร็จ", "Could not revoke consent."));
     } finally {
@@ -268,13 +272,17 @@ export default function CapturePage() {
             <label className="capture-consent-row"><input type="checkbox" checked={consent} disabled={busy || loadingConsents} onChange={(event) => { if (!event.target.checked && savedConsents.analysis) void revokeConsent("analysis"); else setConsent(event.target.checked); }} />
               <span><span className="capture-consent-heading"><strong>{t("ยินยอมให้วิเคราะห์ภาพ", "Consent to image analysis")}</strong><small>{t("จำเป็น", "Required")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมให้วิเคราะห์ภาพใบหน้าเพื่อแสดงคะแนนทดลองและภาพ mask โดยภาพผลจะถูกลบภายใน 24 ชั่วโมง ผลนี้ยังไม่ผ่านการตรวจสอบทางคลินิก", "I consent to face-image analysis for experimental scores and a mask preview. Result images are deleted within 24 hours. This system has not been clinically validated.")}</span></span>
             </label>
-            <label className="capture-consent-row"><input type="checkbox" checked={annotationConsent} disabled={busy || loadingConsents} onChange={(event) => { if (!event.target.checked && savedConsents.annotations) void revokeConsent("annotations"); else setAnnotationConsent(event.target.checked); }} />
+            <label className="capture-consent-row"><input type="checkbox" checked={annotationConsent} disabled={busy || loadingConsents} onChange={(event) => { if (!event.target.checked && savedConsents.annotations) void revokeConsent("annotations"); else { setAnnotationConsent(event.target.checked); if (!event.target.checked) setTrainingConsent(false); } }} />
               <span><span className="capture-consent-heading"><strong>{t("อนุญาตให้ผู้ตรวจทบทวนป้ายกำกับภาพ", "Allow human image-label review")}</strong><small>{t("ไม่บังคับ", "Optional")}</small></span><span className="capture-consent-copy">{t("ฉันยินยอมเพิ่มเติมให้เก็บภาพใบหน้าที่จัดแนวแล้วเพื่อให้ผู้ตรวจแก้ป้ายกำกับริ้วรอยใน Label Studio โดยกำหนดลบหลัง 30 วัน และไม่นำไปฝึกโมเดลอัตโนมัติ", "I separately consent to retain an aligned face image for human wrinkle-label review in Label Studio. It will be deleted after 30 days and will not be used for automated model training.")}</span></span>
             </label>
+              <label className="capture-consent-row"><input type="checkbox" checked={trainingConsent} disabled={busy || loadingConsents || !annotationConsent} onChange={(event) => { if (!event.target.checked && savedConsents.training) void revokeConsent("training"); else setTrainingConsent(event.target.checked); }} />
+                <span><span className="capture-consent-heading"><strong>{t("อนุญาตให้นำภาพและป้ายกำกับที่ตรวจแล้วไปฝึกและประเมินโมเดลริ้วรอย", "Allow reviewed images and labels for wrinkle model training and evaluation")}</strong><small>{t("ไม่บังคับ", "Optional")}</small></span><span className="capture-consent-copy">{t("แยกจากการวิเคราะห์และการตรวจภาพ ผู้ดูแลต้องอนุมัติชุดข้อมูลก่อนสั่งฝึก เก็บข้อมูลฝึกไม่เกิน 30 วันจากวันส่งภาพ ถอนสิทธิ์ได้ทุกเมื่อ ระบบจะลบชุดข้อมูลและหยุดใช้รุ่นที่อาศัยข้อมูลนั้นเมื่อรับงานถัดไป แต่ไม่สามารถลบสิ่งที่โมเดลเรียนรู้แล้วออกจากน้ำหนักได้โดยตรง", "Separate from analysis and human review. An admin must approve the dataset before training. Training data is retained for at most 30 days from upload. You can withdraw at any time; datasets are deleted and affected versions are retired before the next analysis. Learned information cannot be directly erased from model weights.")}</span></span>
+              </label>
             <details className="capture-privacy">
               <summary>{t("การเก็บภาพและถอนความยินยอม", "Image retention and consent withdrawal")}</summary>
               <p>{t("ภาพผลทั่วไปลบภายใน 24 ชั่วโมง หากเลือกให้ตรวจป้ายกำกับ ภาพที่จัดแนวแล้วจะถูกลบหลัง 30 วันหรือเมื่อถอนความยินยอม", "Standard result images are deleted within 24 hours. If you opt into label review, the aligned image is deleted after 30 days or when consent is withdrawn.")}</p>
               <button type="button" className="secondary-button" disabled={busy || loadingConsents} onClick={() => void revokeConsent("annotations")}>{t("ถอนความยินยอมตรวจป้ายกำกับภาพที่ส่งจากเบราว์เซอร์นี้", "Revoke image-label review consent for this browser")}</button>
+              <button type="button" className="secondary-button" disabled={busy || loadingConsents} onClick={() => void revokeConsent("training")}>{t("ถอนความยินยอมฝึกโมเดล", "Revoke model-training consent")}</button>
             </details>
             {notice && <p className="capture-notice" role="status">{notice}</p>}
             {error && <p className="capture-error" role="alert">{error}</p>}

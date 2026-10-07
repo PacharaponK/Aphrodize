@@ -475,18 +475,28 @@ test("capture keeps upload errors, results and another analysis on the same page
   assert.equal(productLink().nodes.find((node) => node.type === "analysis-result").props.view, "products");
 });
 
-test("return visits restore both choices; failed withdrawal keeps consent checked", async (context) => {
+test("return visits restore three choices; failed withdrawal keeps consent checked", async (context) => {
   const requests = [];
   let withdrawalFails = false;
   context.mock.method(globalThis, "fetch", async (url, options) => {
     requests.push({ url, options });
     if (options?.method === "DELETE") return new Response(null, { status: withdrawalFails ? 503 : 204 });
-    return Response.json({ analysis: true, annotations: true });
+    return Response.json({ analysis: true, annotations: true, training: true });
   });
   const render = pageHarness();
   assert.ok(render().every((input) => input.disabled && !input.checked));
   await settle();
   assert.ok(render().every((input) => input.checked && !input.disabled));
+  withdrawalFails = true;
+  render()[2].onChange({ target: { checked: false } });
+  await settle();
+  assert.equal(render()[2].checked, true);
+  assert.equal(requests.at(-1).url, "/api/analysis?scope=training");
+  withdrawalFails = false;
+  render()[2].onChange({ target: { checked: false } });
+  await settle();
+  assert.equal(render()[2].checked, false);
+  assert.equal(render()[1].checked, true);
   render()[0].onChange({ target: { checked: false } });
   await settle();
   assert.equal(render()[0].checked, false);
@@ -507,5 +517,8 @@ test("unverified saved consent remains unchecked", async (context) => {
   const render = pageHarness();
   render();
   await settle();
-  assert.ok(render().every((input) => !input.checked && !input.disabled));
+  const choices = render();
+  assert.ok(choices.every((input) => !input.checked));
+  assert.ok(choices.slice(0, 2).every((input) => !input.disabled));
+  assert.equal(choices[2].disabled, true, "training requires a separate review choice");
 });

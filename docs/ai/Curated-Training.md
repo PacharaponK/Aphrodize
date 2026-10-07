@@ -1,6 +1,21 @@
 # การฝึกโมเดลริ้วรอยแบบควบคุม
 
-ปัจจุบันการฝึกรับ **เฉพาะข้อมูลภายนอกที่อนุมัติแล้ว** ภาพที่รอใน Label Studio ใช้ให้มนุษย์ตรวจและเข้า dataset นี้ไม่ได้ เพราะความยินยอม annotation เดิมไม่อนุญาตให้ใช้ฝึก โมเดลยังใช้ checkpoint ปัจจุบันจนกว่าผู้ปฏิบัติการจะอนุมัติและเลือก candidate
+หน้า `/admin` สั่ง fine-tune U-Net จากรุ่นที่ใช้งานอยู่ได้ ผ่านคิว ARQ `training` และ MLflow รับข้อมูลภายนอกที่อนุมัติ หรือ snapshot ที่ผู้ดูแลส่งออกจาก annotation ของมนุษย์และมีความยินยอมฝึกแยกต่างหาก ความยินยอม annotation เดิมอย่างเดียวใช้ฝึกไม่ได้ โมเดลที่ฝึกสำเร็จยังไม่เปิดใช้จนกว่าผู้ดูแลอนุมัติ
+
+## เปิดใช้และทำงานผ่าน admin
+
+1. ตั้งค่า admin credentials, PostgreSQL, Redis, MinIO, MLflow และ Label Studio ตาม Compose เดิม เริ่ม stack ด้วย `docker compose --profile ai up -d --build` ระบบสร้างตาราง `wrinkle_deployments` ผ่านขั้นตอนสร้าง schema เดิม
+2. เครื่องที่มี NVIDIA GPU ใช้ `docker compose -f compose.yml -f compose.wrinkle-gpu.yml --profile ai up -d --build` เพื่อให้ trainer และ inference ใช้ CUDA ต้องมี driver/container GPU runtime พร้อม หากแยกเครื่อง ต้องจัดให้ `storage/data/approved` และ `storage/models/ffhq-wrinkle` อยู่บน storage ที่ทุก worker อ่านได้เหมือนกัน
+3. รัน `docker compose exec api python -m backend.scripts.setup_annotation_project` เพื่อสร้างหรืออัปเดต label config ของโครงการ และตั้ง `LABEL_STUDIO_PROJECT_ID` ตาม [คู่มือ annotation](Annotation-Review.md)
+4. ผู้ใช้เลือกยินยอมตรวจภาพและยินยอมฝึกในหน้าถ่ายภาพก่อนส่งภาพ ระบบเก็บ tensor ที่ผ่าน preprocessing จริงไว้คู่กับภาพจัดแนวใน bucket ส่วนตัวตามอายุ annotation 30 วัน ไม่ย้อนเก็บภาพเก่าที่มีเพียงความยินยอมตรวจ
+5. ผู้ตรวจระบาย `Wrinkle` ใน Label Studio หรือเลือก `No visible wrinkles` สำหรับภาพที่ไม่มีริ้วรอย ส่ง annotation แล้วนำ ID ของ annotation มาระบุในส่วน “สร้างชุดข้อมูลจากภาพที่ตรวจแล้ว” บน `/admin` เลือก task ของครบทั้งสาม split และยืนยันการตรวจ ก่อนส่งออก snapshot
+6. เลือกชุดข้อมูลและจำนวน epochs (1–20) แล้วกด “สั่ง Retrain” หน้า admin แสดงสถานะ epoch, loss, MLflow run และผลเปรียบเทียบรุ่นเดิม/candidate บน validation/test ชุดเดียวกัน ฝึกเฉพาะ train; split ภาพผู้ใช้ผูกกับบัญชีแบบคงที่ข้าม snapshot จึงต้องมีบัญชีหลายบัญชีให้ครบ split และถือบัญชีเป็นหน่วยแยกข้อมูล ไม่รับประกันว่าบุคคลที่ใช้หลายบัญชีจะไม่ซ้ำ
+7. ตรวจผลแล้วกด “อนุมัติใช้ Candidate” ได้เมื่อ Dice ของ validation/test ≥ 0.60, Dice/IoU/mean Dice ไม่ต่ำกว่ารุ่นเดิม และแต่ละ held-out split มีตัวอย่างริ้วรอยจริงอย่างน้อยหนึ่งภาพ เซิร์ฟเวอร์ตรวจรุ่นฐาน สิทธิ์ แฮช และ smoke inference ซ้ำก่อนเปลี่ยน pointer หากล้มเหลวคงรุ่นเดิม
+8. Inference worker โหลดรุ่นใหม่ก่อนงานวิเคราะห์ถัดไป ไม่ต้อง restart ดู “การโหลดของ inference worker ล่าสุด” เพื่อแยก pointer ที่เลือกกับรุ่นที่ worker โหลดแล้ว ปุ่ม rollback เลือกรุ่นก่อนหน้าจากประวัติ โดยตรวจไฟล์และความยินยอมซ้ำ
+
+API สำหรับผู้ดูแลคือ `GET/POST /api/v1/admin/wrinkle`; frontend ใช้ proxy `/api/admin/wrinkle` พร้อม session/origin guard ไม่ส่ง backend credentials ไป browser งาน export/retrain/deploy เข้าคิวเดิมและมีประวัติบัญชีผู้สั่งงาน ห้ามแก้ threshold ผ่าน request
+
+การถอนความยินยอมหรือหมดอายุทำให้ snapshot ใช้ต่อไม่ได้และถูกล้าง ระบบตรวจทั้ง dataset ของรุ่นและบรรพบุรุษก่อน inference; รุ่นที่อาศัยข้อมูลนั้นจะถูกถอดและกลับสู่รุ่นเริ่มต้น การลบข้อมูลไม่ได้ลบอิทธิพลจากน้ำหนักโดยตรง จึงต้องฝึกใหม่จากข้อมูลที่ยังใช้ได้ ข้อมูลที่หมดอายุไม่ใช้ rollback
 
 ## เตรียม dataset
 
@@ -35,10 +50,10 @@
 
 ต้องมีอย่างน้อยหนึ่ง sample ในแต่ละ split `train`, `validation` และ `test` คนหนึ่งต้องอยู่ใน split เดียวเท่านั้น trainer ตรวจแฮช manifest และทุกไฟล์ก่อนแตะโมเดล
 
-## รันและตรวจ
+## รันและตรวจผ่าน API เดิม
 
 เริ่ม `mlflow` และ `trainer-worker` ด้วย Compose คำนวณ SHA-256 ของ manifest แล้วส่ง `POST /api/v1/training/runs` ด้วย `model_family: "image_segmentation"`, `dataset_uri: "approved://<dataset-id>@<manifest-sha256>"` และ `config: {"epochs": 1}` ติดตามด้วย `GET /api/v1/training/runs/{run_id}`
-MLflow run ที่ได้บันทึก train loss, Dice และ IoU ของ validation/test, แฮช dataset และ `model/candidate_unet.pth` สถานะเป็น `awaiting_approval`
+MLflow run ที่ได้บันทึก train loss, Dice/IoU/precision/recall ของ validation/test, แฮช dataset/รุ่นฐาน และ `model/candidate_unet.pth` สถานะเป็น `awaiting_approval` เส้นทางนี้เหมาะกับสคริปต์เดิม งานที่สั่งจาก admin จะบันทึก package และรุ่นฐานสำหรับปุ่ม deploy/rollback ด้วย
 
 การฝึกไม่เผยแพร่ checkpoint หลังตรวจผลชุดกันไว้และกลุ่มย่อย การปรับเทียบ สิทธิ์ใช้งาน และหลักฐาน rollout แล้ว ให้วาง candidate checkpoint ในไดเรกทอรีใหม่ใต้ `storage/models/ffhq-wrinkle/` และสร้าง `approved.json` ข้างกัน:
 
@@ -55,6 +70,8 @@ MLflow run ที่ได้บันทึก train loss, Dice และ IoU �
 ```
 
 ตั้ง `APHRODIZE_WRINKLE_APPROVED_MANIFEST` เป็น path ของ manifest นี้ในคอนเทนเนอร์ แล้ว restart `inference-worker` worker ตรวจการอนุมัติและแฮช checkpoint ก่อนโหลด เก็บ manifest/checkpoint ที่อนุมัติก่อนหน้าไว้ การ rollback คือคืน path เดิมและ restart worker
-หากไม่ตั้งค่านี้ checkpoint ต้นฉบับที่ตรวจแล้วจะยัง active candidate ที่ยังไม่ปรับเทียบจะงดคำแนะนำจนกว่าจะมี confidence policy ที่เผยแพร่และเข้ากันได้
+ตัวแปรนี้กำหนดเฉพาะรุ่นเริ่มต้น (`initial`); pointer ที่ผู้ดูแลเลือกมีผลเหนือกว่า หากไม่ตั้งค่านี้ใช้ checkpoint ต้นฉบับที่ตรวจแล้ว รุ่นใหม่ที่ยังไม่ปรับเทียบจะงดคำแนะนำ แม้ผ่าน segmentation gate แล้ว หากมี confidence policy ที่ตรวจและเผยแพร่สำหรับ checkpoint นั้น ให้วาง bundle ใน `storage/models/ffhq-wrinkle/candidates/<run-id>/policy/` ก่อนอนุมัติ worker ใช้ validator เดิม ตรวจ checkpoint digest และ pin แฮชไฟล์ policy ไม่คัดลอก policy ของรุ่นเดิมมาใช้กับน้ำหนักใหม่
+
+ตรวจการเทรนจริงโดยใช้ข้อมูลสังเคราะห์และไม่ต่อบริการด้วย `scripts/check_wrinkle_training.py` ภายใน trainer image (ตั้ง `PYTHONPATH=/app` และ mount `scripts` ที่ `/app/scripts`) ผลนี้ยืนยันกลไก fine-tune ไม่ยืนยันคุณภาพบนภาพผู้ใช้จริง ต้องมี annotation และผลประเมินจริงก่อนอนุมัติรุ่น
 
 ใช้ `GET /api/v1/monitoring/analyses?hours=24` ดูจำนวน อัตราล้มเหลว quality flag และ p95 ของเวลาจนเสร็จแยกตาม checkpoint endpoint รายงานการวิเคราะห์ล่าสุดไม่เกิน 5,000 รายการ และไม่ส่งภาพหรือตัวระบุผู้ใช้
