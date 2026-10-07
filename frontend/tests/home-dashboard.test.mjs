@@ -180,6 +180,7 @@ test("shared navigation defaults to English with visible account controls and a 
   assert.match(english, />Daily health</);
   assert.match(english, /href="\/login"/);
   assert.match(english, />Sign in</);
+  assert.doesNotMatch(english, /href="\/portal"/);
   assert.match(english, /aria-label="เปลี่ยนภาษาเป็นไทย"/);
   assert.match(english, /aria-label="Switch to dark theme"/);
   assert.match(english, />Dark</);

@@ -17,6 +17,13 @@ pnpm dev
 
 Open `http://localhost:3000`. The dashboard is at `/`; the other visible routes are `/login`, `/capture`, `/quality-rejected`, `/result-detail`, `/recommendation`, and `/showcase`. `/trend` and `/profile` redirect to the dashboard while those views are hidden.
 
+The service portal is at `/portal`, accessible by direct URL without a navbar link.
+It links to the application, product administration, FastAPI Docs, Label Studio,
+MLflow and MinIO Console. External links use the local Compose ports and open in
+new tabs; they work on the computer running Docker. Start the relevant services
+first (`docker compose --profile ai up -d --build`); each tool keeps its own login.
+The portal is a directory and does not check service health.
+
 Every page has a dedicated title, description, Open Graph and Twitter summary.
 Metadata follows the default rendered language (English, or Thai for Thai-only pages).
 Personal wellness pages, admin tools and UI previews use `noindex`; sign-in,
