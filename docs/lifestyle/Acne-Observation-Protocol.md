@@ -1,27 +1,27 @@
-# Acne: ขอบเขตหลังถอด forecast และ UI
+# สิว: ขอบเขตหลังถอดพยากรณ์และ UI
 
-ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 Forecast pipeline, offline training/pilot runner, collection form และ dashboard history summary ถูกถอดออกตามขอบเขตงานวันที่ 5 ตุลาคม 2026 Prediction ใหม่ไม่คืน `acne_flare_signal`; UI ไม่ใช้ field นี้จาก payload เก่า และไม่รวมสิวใน unassessed counts
+ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 ถอดขั้นตอนพยากรณ์ การฝึกแบบ offline/ตัวรันทดลอง ฟอร์มเก็บข้อมูล และสรุปประวัติบน dashboard ตามขอบเขตงานวันที่ 5 ตุลาคม 2026 แล้ว การทำนายใหม่ไม่คืน `acne_flare_signal`; UI ไม่ใช้ field นี้จาก payload เก่า และไม่นับสิวรวมในจำนวนที่ยังไม่ประเมิน
 
-## Backend ที่ยังคงอยู่
+## backend ที่ยังคงอยู่
 
-[Acne routes](../../backend/api/v1/routes/acne.py) และ `acne_observations`/consent records ยังคงอยู่ ไม่ลบข้อมูลเดิมด้วยการถอด UI
+[route สิว](../../backend/api/v1/routes/acne.py) และ `acne_observations`/รายการความยินยอมยังอยู่ การถอด UI ไม่ลบข้อมูลเดิม
 
 ทุก route ใต้ `/api/v1/acne/users/{user_id}` ตรวจ Bearer token และเจ้าของ:
 
-| Method / suffix | พฤติกรรม |
+| วิธี HTTP / ส่วนท้าย path | พฤติกรรม |
 | --- | --- |
-| GET (base) | State และ history; flag ปิดตอบ enabled=false/items ว่าง |
-| PUT `/consent` | Separate storage opt-in; ต้องเปิด collection flag |
-| PUT `/observations` | Save/correct dated self-report; ต้องเปิด flag และ consent |
+| GET (path หลัก) | สถานะและประวัติ; เมื่อปิด flag ตอบ enabled=false และ items ว่าง |
+| PUT `/consent` | ความยินยอมเก็บข้อมูลแยก; ต้องเปิด flag เก็บข้อมูล |
+| PUT `/observations` | บันทึก/แก้รายงานผู้ใช้พร้อมวันที่; ต้องเปิด flag และมีความยินยอม |
 | DELETE `/observations/{local_date}` | ลบหนึ่งรายงาน |
-| DELETE `/consent` | ถอน storage/training scopes ของสิวและ purge acne observations |
-| PUT `/training-consent` | HTTP 410: acne model training removed |
-| DELETE `/training-consent` | ถอน legacy training consent โดยไม่ลบ observations |
+| DELETE `/consent` | ถอนสิทธิ์เก็บ/ฝึกข้อมูลสิว และล้างข้อมูลสังเกตสิว |
+| PUT `/training-consent` | HTTP 410: ถอดการฝึกโมเดลสิวแล้ว |
+| DELETE `/training-consent` | ถอนความยินยอมฝึกเดิมโดยไม่ลบข้อมูลสังเกต |
 
-`ACNE_TRACKING_ENABLED` default false; cleanup/withdrawal ไม่ต้องเปิด collection ก่อน Backend flag ไม่ได้ทำให้ UI กลับมา และไม่ยืนยันว่า deployment ปัจจุบันเปิด flag
+`ACNE_TRACKING_ENABLED` มีค่าเริ่มต้น false; การล้างข้อมูล/ถอนความยินยอมไม่ต้องเปิดการเก็บข้อมูลก่อน flag ของ backend ไม่ทำให้ UI กลับมา และไม่ยืนยันว่า deployment ปัจจุบันเปิด flag
 
-## Schema เดิม
+## โครงสร้างข้อมูลเดิม
 
-Self-report บอก yes/no/not sure ว่าพบสิวใหม่ในวันนั้นหรือไม่ พร้อม optional face regions ไม่ใช่ detector output หรือ diagnosis หนึ่งเจ้าของต่อวันที่ Asia/Bangkok; ไม่รับวันอนาคต Skipping/unknown ไม่กลายเป็น negative ไม่เก็บ counts, photos หรือ free-text medication ใน protocol นี้
+ผู้ใช้รายงานว่าใช่/ไม่ใช่/ไม่แน่ใจว่าพบสิวใหม่ในวันนั้นหรือไม่ พร้อมเลือกบริเวณใบหน้าได้ ไม่ใช่ผลตัวตรวจหรือการวินิจฉัย มีหนึ่งรายการต่อเจ้าของต่อวันที่ Asia/Bangkok และไม่รับวันอนาคต การข้าม/ไม่ทราบไม่กลายเป็นผลลบ แนวทางนี้ไม่เก็บจำนวน ภาพถ่าย หรือข้อความยาแบบอิสระ
 
-`acne-tracking-v1` เป็น storage consent แยกจาก image, annotation และ Daily Health consent การนำ collection/forecast กลับมาทำต้องกำหนดขอบเขตและอนุมัติใหม่ ดู [Roadmap](../roadmap.md)
+`acne-tracking-v1` เป็นความยินยอมเก็บข้อมูลแยกจากภาพ annotation และ Daily Health การนำการเก็บข้อมูล/พยากรณ์กลับมาต้องกำหนดขอบเขตและอนุมัติใหม่ ดู [งานคงเหลือ](../roadmap.md)

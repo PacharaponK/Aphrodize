@@ -1,40 +1,40 @@
-# AI and Data
+# AI และข้อมูล
 
-ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 Pipeline ภาพปัจจุบันคือ FFHQ-Wrinkle ไม่มี acne detection ใน runtime
+ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 ขั้นตอนภาพปัจจุบันใช้ FFHQ-Wrinkle ไม่มีการตรวจสิวขณะรัน
 
-## Image pipeline
+## ขั้นตอนประมวลผลภาพ
 
-1. API ตรวจ consent, file type/size และภาพก่อนเก็บ original ใน private MinIO แล้ว enqueue ARQ
-2. Worker เรียก `backend/wrinkle/service.py` และ `ai/ffhq_wrinkle/prediction.py`
-3. YuNet ตรวจหนึ่งหน้าและ source quality: ความคม แสง ขนาดและ pose; alignment และ face parsing เตรียม RGB+texture tensor สี่ช่อง ไม่ใช่ face recognition
-4. U-Net สร้าง probability/mask; landmark ROI ช่วยคำนวณพื้นที่ริ้วรอยรายบริเวณและ experimental score
-5. Release policy ตรวจ checkpoint/pipeline lineage ก่อนปล่อย derived score และ recommendation
-6. Worker เก็บผลใน PostgreSQL, mask/overlay ใน MinIO และพยายามลบ original หลังจบงานทุกสถานะ
+1. API ตรวจความยินยอม ชนิด/ขนาดไฟล์ และภาพ ก่อนเก็บต้นฉบับใน MinIO ส่วนตัวแล้วเข้าคิว ARQ
+2. worker เรียก `backend/wrinkle/service.py` และ `ai/ffhq_wrinkle/prediction.py`
+3. YuNet ตรวจว่ามีหนึ่งหน้าและตรวจคุณภาพต้นทาง: ความคม แสง ขนาด และท่าทางใบหน้า การจัดแนวและ face parsing เตรียม RGB+texture tensor สี่ช่อง ไม่ใช่การจดจำเพื่อระบุตัวตน
+4. U-Net สร้าง probability/mask; landmark ROI ช่วยคำนวณพื้นที่ริ้วรอยรายบริเวณและคะแนนทดลอง
+5. นโยบายเผยแพร่ตรวจลำดับที่มา checkpoint/pipeline ก่อนปล่อยคะแนนที่คำนวณต่อและคำแนะนำ
+6. worker เก็บผลใน PostgreSQL, mask/overlay ใน MinIO และพยายามลบต้นฉบับหลังจบงานทุกสถานะ
 
-Capture protocol แนะนำกล้อง/ระยะเดิม แสงกระจาย หันตรง สีหน้าเป็นกลาง และไม่ใช้ beauty filter ข้อแนะนำนี้ไม่ได้หมายความว่า quality gate ตรวจ filter หรือสิ่งกีดขวางทุกชนิดได้
+แนวทางถ่ายภาพแนะนำกล้อง/ระยะเดิม แสงกระจาย หันตรง สีหน้าเป็นกลาง และไม่ใช้ฟิลเตอร์ความงาม ข้อแนะนำนี้ไม่ได้หมายความว่าเกณฑ์คุณภาพตรวจฟิลเตอร์หรือสิ่งกีดขวางทุกชนิดได้
 
-Display artifacts มีอายุ 24 ชั่วโมง API ปฏิเสธของหมดอายุแม้งานลบยังไม่รัน ดู retention และลำดับโค้ดใน [Photo flow](../architecture/diagrams/ai-photo-data-flow.md)
+ไฟล์ผลสำหรับแสดงมีอายุ 24 ชั่วโมง API ปฏิเสธไฟล์หมดอายุแม้งานลบยังไม่รัน ดูการเก็บรักษาและลำดับโค้ดใน [เส้นทางภาพ](../architecture/diagrams/ai-photo-data-flow.md)
 
-## Score และ release
+## คะแนนและการเผยแพร่
 
-Default confidence policy เป็น `not_calibrated` และ abstain จาก derived score/คำแนะนำ แม้ pipeline สำเร็จและ analysis job เป็น `completed` เลือก `APHRODIZE_WRINKLE_REVIEWED_POLICY` เพื่อใช้ owner-reviewed prototype หรือ `APHRODIZE_WRINKLE_POLICY_BUNDLE` สำหรับ calibrated release ได้เพียงแหล่งเดียว Manual policy ตรวจ hash/lineage แต่ไม่อ้าง statistical calibration หรือ target-user validation
+นโยบายความมั่นใจเริ่มต้นเป็น `not_calibrated` และงดคะแนนที่คำนวณต่อ/คำแนะนำ แม้ pipeline สำเร็จและงานวิเคราะห์เป็น `completed` เลือก `APHRODIZE_WRINKLE_REVIEWED_POLICY` สำหรับต้นแบบที่เจ้าของตรวจแล้ว หรือ `APHRODIZE_WRINKLE_POLICY_BUNDLE` สำหรับรุ่นที่ปรับเทียบได้เพียงแหล่งเดียว นโยบายด้วยตนเองตรวจแฮช/ที่มา แต่ไม่อ้างการปรับเทียบทางสถิติหรือการตรวจผู้ใช้เป้าหมาย
 
-พื้นที่ริ้วรอยเป็น measurement/provisional category ไม่ใช่ความรุนแรงทางคลินิก ขอบระดับและ heuristic recommendation อยู่ใน [Wrinkle area](implementation/Wrinkle-Area-Implementation.md); pixel lineage อยู่ใน [Landmark ROIs](../architecture/face-landmark-rois.md)
+พื้นที่ริ้วรอยเป็นค่าที่วัด/หมวดชั่วคราว ไม่ใช่ความรุนแรงทางคลินิก ขอบระดับและกฎประมาณคำแนะนำอยู่ใน [พื้นที่ริ้วรอย](implementation/Wrinkle-Area-Implementation.md); ที่มาพิกเซลอยู่ใน [ROI จาก landmark](../architecture/face-landmark-rois.md)
 
-## Data และ training
+## ข้อมูลและการฝึก
 
-- ภาพผู้ใช้ใช้ inference; annotation ต้องมี consent แยก การมี task ไม่อนุญาต training
-- Image trainer รับเฉพาะ approved `external_licensed` datasets ที่มี manifest, file hashes, aligned tensor/mask และ subject-disjoint splits ดู [Curated Training](Curated-Training.md)
-- FFHQ-Wrinkle provenance/license และ checkpoint dependencies ดู [THIRD_PARTY](../../ai/ffhq_wrinkle/THIRD_PARTY.md) ผล official test set ใน [FFHQ summary](implementation/FFHQ-Wrinkle-Implementation-Summary.md) ไม่ยืนยันความแม่นยำกับภาพผู้ใช้จริง
-- Daily Health ใช้ outcomes ที่ผู้ใช้รายงานจริงภายใต้ training consent ไม่ใช้ภาพหรือ prediction เป็น label ดู [Training Pipeline](../lifestyle/Daily-Health-Training-Pipeline.md)
-- Acne forecast และ collection UI ถูกถอดออก ดู [ขอบเขต API เดิม](../lifestyle/Acne-Observation-Protocol.md)
+- ภาพผู้ใช้ใช้ inference; annotation ต้องมีความยินยอมแยก การมี task ไม่อนุญาตให้ฝึก
+- ตัวฝึกภาพรับเฉพาะ dataset `external_licensed` ที่อนุมัติ มี manifest, แฮชไฟล์ tensor/mask ที่จัดแนว และชุดที่ไม่ซ้ำบุคคล ดู [การฝึกด้วยข้อมูลที่คัดกรอง](Curated-Training.md)
+- ที่มา/สัญญาอนุญาต FFHQ-Wrinkle และ dependency ของ checkpoint ดู [THIRD_PARTY](../../ai/ffhq_wrinkle/THIRD_PARTY.md) ผลชุดทดสอบทางการใน [สรุป FFHQ](implementation/FFHQ-Wrinkle-Implementation-Summary.md) ไม่ยืนยันความแม่นยำกับภาพผู้ใช้จริง
+- Daily Health ใช้ผลที่ผู้ใช้รายงานจริงภายใต้ความยินยอมฝึก ไม่ใช้ภาพหรือค่าทำนายเป็นป้ายกำกับ ดู [ขั้นตอนฝึกโมเดล](../lifestyle/Daily-Health-Training-Pipeline.md)
+- ถอดพยากรณ์สิวและ UI เก็บข้อมูลแล้ว ดู [ขอบเขต API เดิม](../lifestyle/Acne-Observation-Protocol.md)
 
-## Recommendation
+## คำแนะนำ
 
-`backend/libs/model_loader.py` รวม released wrinkle regions, self-reported profile/consented context และ reviewed product catalog โดยตรวจ allergy, irritation, age, label/application area, market และ shopping metadata กฎไม่ใช้ภาพเพื่อยืนยันสาเหตุหรือรับรองผลสินค้า; ไม่มี match ให้แสดงข้อจำกัด
+`backend/libs/model_loader.py` รวมผลบริเวณริ้วรอยที่เผยแพร่แล้ว โปรไฟล์/บริบทที่ผู้ใช้รายงานและยินยอม และรายการผลิตภัณฑ์ที่ตรวจแล้ว โดยตรวจการแพ้ การระคายเคือง อายุ ฉลาก/บริเวณใช้ ตลาด และ metadata การซื้อ กฎไม่ใช้ภาพยืนยันสาเหตุหรือรับรองผลสินค้า หากไม่มีรายการตรงให้แสดงข้อจำกัด
 
-คำแนะนำปัจจุบันรองรับชื่อสินค้าและ purchase link ที่ตรวจแล้ว ไม่ได้จำกัดเฉพาะหมวด/สาร ดู catalog provenance ใน [บันทึกสินค้า](../research/thai-product-catalog-2026-10-01.md) และข้อกำหนดใน [Safety and Governance](../project/Safety%20and%20Governance.md)
+คำแนะนำปัจจุบันรองรับชื่อสินค้าและลิงก์ซื้อที่ตรวจแล้ว ไม่จำกัดเฉพาะหมวด/สาร ดูที่มารายการใน [บันทึกสินค้า](../research/thai-product-catalog-2026-10-01.md) และข้อกำหนดใน [ความปลอดภัยและการกำกับดูแล](../project/Safety%20and%20Governance.md)
 
-## Evaluation boundary
+## ขอบเขตการประเมิน
 
-Dice/IoU ของ segmentation, repeatability ของ score/ROI, subgroup errors และ human-reviewed thresholds ต้องรายงานแยกกัน Quality gate, release metadata และ unsafe-output tests เป็น engineering checks ไม่ใช่ clinical validation งานที่ยังเหลืออยู่ใน [Roadmap](../roadmap.md); วิธีรัน/checksum อยู่ใน [AI README](../../ai/README.md)
+ต้องรายงาน Dice/IoU ของ segmentation, ความคงเส้นคงวาของคะแนน/ROI, ข้อผิดพลาดกลุ่มย่อย และ threshold ที่มนุษย์ตรวจ แยกกัน เกณฑ์คุณภาพ metadata การเผยแพร่ และการทดสอบผลที่ไม่ปลอดภัยเป็นการตรวจวิศวกรรม ไม่ใช่การตรวจสอบทางคลินิก งานที่เหลืออยู่ใน [งานคงเหลือ](../roadmap.md); วิธีรัน/checksum อยู่ใน [README ของ AI](../../ai/README.md)

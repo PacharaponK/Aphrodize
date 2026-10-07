@@ -141,7 +141,7 @@ flowchart TD
 | `wrinkle_probability.npy`, `wrinkle_probability.png` | `predict_image()` | probability ของ class ริ้วรอยแบบตัวเลขดิบและภาพสำหรับตรวจดู; confidence ใช้ array `PredictionResult.probability` โดยตรง |
 | `wrinkle_mask.png` | `predict_image()` | mask หลัง threshold; service คัดลอก bytes ให้ worker เก็บเป็น `derived/<analysis_id>/mask.png` |
 | `overlay.png` | `predict_image()` | แสดง mask ซ้อนบนใบหน้าที่จัดแนว; service คัดลอก bytes ให้ worker เก็บเป็น `derived/<analysis_id>/overlay.png` |
-| `result.json` | `preprocess_image()` แล้ว `predict_image()` เขียนทับ | metadata ของแต่ละช่วงและชื่อ artifacts; หาก quality gate ไม่ผ่าน `_reject()` เขียนสถานะ `rejected` แทน และไม่สร้าง tensor |
+| `result.json` | `preprocess_image()` แล้ว `predict_image()` เขียนทับ | metadata ของแต่ละช่วงและชื่อ artifacts; หาก เกณฑ์คุณภาพ ไม่ผ่าน `_reject()` เขียนสถานะ `rejected` แทน และไม่สร้าง tensor |
 
 ## 4. จุดเรียกแยกและสถานะผลลัพธ์
 
@@ -154,13 +154,13 @@ flowchart TD
 
 | เงื่อนไขในเส้นทางหลัก | สถานะ analysis / ผลที่ผู้ใช้เห็น |
 |---|---|
-| Preflight หรือ quality gate ของ pipeline ไม่ผ่าน | `rejected`, `error_category: image_quality`, พร้อม `quality_flags` |
+| Preflight หรือ เกณฑ์คุณภาพ ของ pipeline ไม่ผ่าน | `rejected`, `error_category: image_quality`, พร้อม `quality_flags` |
 | Pipeline ผ่าน แต่ confidence policy ไม่ผ่าน | analysis `completed`, result `status: abstained`, มี `experimental_score` และภาพผล; ไม่มีคำแนะนำ |
 | Pipeline และ confidence policy ผ่าน | analysis `completed`, result `status: completed`, มี `derived_score`; คำแนะนำยังขึ้นกับ provider และ safety gate |
 | Worker หรือ model ล้มเหลว | `failed`, `error_category: inference_failed` |
 
 ผล segmentation และคะแนนพื้นที่เป็นผลทดลอง ไม่ใช่การวินิจฉัยทางการแพทย์ ภาพอัปโหลดของผู้ใช้ไม่ถูกนำไป train อัตโนมัติ
 
-## Future integrations
+## การเชื่อมระบบในอนาคต
 
-Zepp/Amazfit sleep sync is not implemented. Current daily input is user-reported; a device integration needs a separate source/consent contract and does not replace the image pipeline.
+ยังไม่มีการซิงก์ข้อมูลการนอนจาก Zepp/Amazfit ข้อมูลรายวันปัจจุบันเป็นข้อมูลที่ผู้ใช้รายงาน การเชื่อมอุปกรณ์ต้องมีข้อกำหนดแหล่งข้อมูล/ความยินยอมแยก และไม่แทนที่ขั้นตอนประมวลผลภาพ

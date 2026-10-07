@@ -1,8 +1,8 @@
-# Aphrodize — Component and Service Flows
+# Aphrodize — เส้นทางองค์ประกอบและบริการ
 
 สรุปจากโค้ดและ Compose ปัจจุบัน ณ **6 ตุลาคม 2026** สำหรับอธิบายระบบและใช้ประกอบรายงานโครงการ ไม่ใช่การรับรองว่าทุก integration พร้อมใช้งานจริง
 
-ดูภาพรวมแบบเต็มใน [Full Input → Retraining → Output Flow](diagrams/full-input-retraining-output-flow.md)
+ดูภาพรวมแบบเต็มใน [ข้อมูลเข้า → การฝึกใหม่ → ผลลัพธ์ทั้งหมด](diagrams/full-input-retraining-output-flow.md)
 
 ## 1. ภาพรวมระบบ
 
@@ -32,33 +32,33 @@ flowchart LR
 
 **ข้อควรอ่านใน diagram:** ลูกศรเป็นเส้นทางที่โค้ดรองรับ ไม่ใช่หลักฐานว่า integration นั้นผ่านการทดสอบครบแล้ว ส่วน Label Studio → training ยังไม่มี bridge อัตโนมัติ และ Daily Health ไม่ส่ง model artifact หรือข้อมูลรายบุคคลไป MLflow
 
-## 2. บทบาทแต่ละ component
+## 2. บทบาทแต่ละองค์ประกอบ
 
-| Component | หน้าที่และข้อมูลที่รับ/ส่ง | จุดเข้าถึง / ข้อจำกัด |
+| องค์ประกอบ | หน้าที่และข้อมูลที่รับ/ส่ง | จุดเข้าถึง / ข้อจำกัด |
 | --- | --- | --- |
-| Browser / React UI | รับภาพและข้อมูลสุขภาพ แสดงสถานะ ผลวิเคราะห์ กราฟ ประวัติ และแผนที่ UV | `localhost:3000`; frontend รันแยกจาก Compose นี้ |
-| Next.js server routes | เป็นตัวกลางระหว่าง browser กับ backend อ่าน session cookie และแนบ authentication ที่เหมาะสม | `/api/*`; service credentials อยู่ฝั่ง server ไม่ใช่ browser |
+| เบราว์เซอร์ / React UI | รับภาพและข้อมูลสุขภาพ แสดงสถานะ ผลวิเคราะห์ กราฟ ประวัติ และแผนที่ UV | `localhost:3000`; frontend รันแยกจาก Compose นี้ |
+| route ฝั่ง server ของ Next.js | เป็นตัวกลางระหว่าง browser กับ backend อ่าน session cookie และแนบ authentication ที่เหมาะสม | `/api/*`; service credentials อยู่ฝั่ง server ไม่ใช่ browser |
 | FastAPI | ตรวจรูปแบบข้อมูล สิทธิ์เจ้าของบัญชี consent และเงื่อนไขฟีเจอร์; บันทึก DB และส่งงานหนักเข้าคิว | `localhost:8000`; endpoints หลักอยู่ใต้ `/api/v1` |
 | PostgreSQL | เก็บบัญชี session consent profile บันทึกรายวัน actual outcomes ผลวิเคราะห์ JSON และข้อมูล run/model/deployment audit | service `postgres:5432`; Compose ไม่ publish port นี้สู่ host |
 | Redis + ARQ | คิว `inference` และ `training`, job state, heartbeat และ delayed cleanup | service `redis:6379`; ต้องมี password; ไม่ใช่แหล่งเก็บประวัติสุขภาพหลัก |
 | MinIO | เก็บไฟล์ต้นฉบับชั่วคราว ภาพผลลัพธ์ ภาพสำหรับ review และ artifacts ของ experiments | API `localhost:9000`, console `localhost:9001`; image access ของผู้ใช้ผ่าน API ที่ตรวจสิทธิ์ |
-| Inference worker | โหลด FFHQ-Wrinkle service, ดึงภาพจาก MinIO, วิเคราะห์และบันทึกผล; จัดการ annotation และ cleanup | ARQ queue `inference`; `max_jobs=1` |
-| Trainer worker | ฝึก candidate จากข้อมูลที่ผ่านเงื่อนไข บันทึก metrics และตรวจ readiness ของ Daily Health ตาม schedule | ARQ queue `training`; ต้อง rebuild เมื่อโค้ดที่ bake ใน image เปลี่ยน |
+| worker วิเคราะห์ | โหลด FFHQ-Wrinkle service, ดึงภาพจาก MinIO, วิเคราะห์และบันทึกผล; จัดการ annotation และ cleanup | ARQ queue `inference`; `max_jobs=1` |
+| worker ฝึก | ฝึก candidate จากข้อมูลที่ผ่านเงื่อนไข บันทึก metrics และตรวจ readiness ของ Daily Health ตาม schedule | ARQ queue `training`; ต้อง rebuild เมื่อโค้ดที่ bake ใน image เปลี่ยน |
 | MLflow | เก็บ parameters, metrics, tags และ run lineage; image/UV experiments มี artifact tracking | `localhost:5000`; ไม่ใช่ระบบอนุมัติหรือ deploy โมเดลโดยอัตโนมัติ |
 | Label Studio + SDK | สร้าง task ให้มนุษย์ review ภาพภายใต้ consent แยก; SDK ติดต่อ project ผ่าน URL/token | `localhost:8080`; ข้อมูลของ Label Studio อยู่ใน volume ของตัวเอง ไม่ได้ชี้ไป PostgreSQL แอปใน Compose นี้ |
-| UV refresh / training | สร้าง snapshot พยากรณ์และ candidate จากข้อมูล UV; ใช้ local model/artifact directories | profiles `background` / `uv-training`; ไม่ผ่าน ARQ queue |
-| Operator / reviewer | ตรวจคุณภาพ ความยินยอม provenance และ metrics ก่อนอนุมัติหรือ rollback | Daily Health ใช้ admin credentials แยกจาก service API; UV ใช้คำสั่ง operator |
-| Monitoring routes / Docker logs | สรุป failure, latency, quality flags, UV freshness และสถานะ container/worker | เป็น observability ขั้นต้น ยังไม่มี Prometheus/Grafana/distributed tracing ใน Compose นี้ |
+| การรีเฟรช / ฝึก UV | สร้าง snapshot พยากรณ์และ candidate จากข้อมูล UV; ใช้ local model/artifact directories | profiles `background` / `uv-training`; ไม่ผ่าน ARQ queue |
+| ผู้ปฏิบัติการ / ผู้ตรวจ | ตรวจคุณภาพ ความยินยอม provenance และ metrics ก่อนอนุมัติหรือ rollback | Daily Health ใช้ admin credentials แยกจาก service API; UV ใช้คำสั่ง operator |
+| route monitoring / log Docker | สรุป failure, latency, quality flags, UV freshness และสถานะ container/worker | เป็น observability ขั้นต้น ยังไม่มี Prometheus/Grafana/distributed tracing ใน Compose นี้ |
 
 ### แบ่งข้อมูลตามที่เก็บ
 
 - **PostgreSQL:** structured records และ metadata ไม่ใช่ไฟล์ภาพจำนวนมาก
 - **Redis:** งานและการประสาน worker ไม่ใช่ source of truth ของ actual outcomes
 - **MinIO:** binary objects; buckets ได้แก่ `aphrodize-private`, annotation bucket และ `mlflow`
-- **Local mounted directories:** Daily Health candidate models ใต้ `models/`; UV data/models/snapshots ใต้ `storage/`
+- **ไดเรกทอรีในเครื่องที่ mount:** Daily Health candidate models ใต้ `models/`; UV data/models/snapshots ใต้ `storage/`
 - **MLflow:** experiment metadata อยู่ในฐานข้อมูล `mlflow` บน PostgreSQL; artifact root เป็น `s3://mlflow` และ client ใช้ MinIO endpoint สำหรับ upload
 
-## 3. Flow: สมัครสมาชิกและเข้าสู่ระบบ
+## 3. เส้นทาง: สมัครสมาชิกและเข้าสู่ระบบ
 
 ```mermaid
 sequenceDiagram
@@ -76,15 +76,15 @@ sequenceDiagram
     FE-->>UI: HttpOnly session cookie and account response
 ```
 
-Browser ใช้ session cookie สำหรับคำขอถัดไป จากนั้น Next.js ส่ง bearer token ให้ backend ตรวจเจ้าของข้อมูล ไม่ส่ง service/admin secrets ไปยัง client ส่วน profile, consent และประวัติข้อมูลเชื่อมกับบัญชีใน PostgreSQL
+เบราว์เซอร์ใช้ session cookie สำหรับคำขอถัดไป จากนั้น Next.js ส่ง bearer token ให้ backend ตรวจเจ้าของข้อมูล ไม่ส่ง service/admin secrets ไปยัง client ส่วน profile, consent และประวัติข้อมูลเชื่อมกับบัญชีใน PostgreSQL
 
-## 4. Flow: อัปโหลดภาพ → วิเคราะห์ริ้วรอย → แสดงผล
+## 4. เส้นทาง: อัปโหลดภาพ → วิเคราะห์ริ้วรอย → แสดงผล
 
 1. ผู้ใช้เตรียมภาพและให้ consent สำหรับ image analysis
 2. Next.js ส่งคำขอไป FastAPI; backend ตรวจเจ้าของบัญชี consent ชนิดไฟล์ ขนาด และ preflight
 3. Backend เก็บภาพต้นฉบับใน MinIO และสร้าง `Analysis` ใน PostgreSQL; ภาพที่ผ่าน preflight ถูกตั้งเป็น `queued`
 4. ส่ง `run_inference(analysis_id)` เข้า Redis queue `inference` โดยไม่ใส่ภาพทั้งไฟล์ใน job payload
-5. Inference worker โหลด metadata จาก DB เปลี่ยนสถานะเป็น `running` และดึงภาพจาก MinIO
+5. worker วิเคราะห์ โหลด metadata จาก DB เปลี่ยนสถานะเป็น `running` และดึงภาพจาก MinIO
 6. Wrinkle pipeline ทำ quality/face checks, alignment, segmentation และ ROI measurements ตามผล landmarks; สร้าง display artifacts รวม overlay, mask, regions และ outline เมื่อมีผลรองรับ
 7. Worker เก็บ result JSON และ model lineage ใน PostgreSQL และเก็บ display artifacts ใน MinIO
 8. UI poll ผลผ่าน API; artifact request ต้องผ่านการตรวจเจ้าของบัญชีและวันหมดอายุ
@@ -122,7 +122,7 @@ sequenceDiagram
 - `completed` หมายถึง inference จบ ไม่ได้หมายถึงผลผ่าน human review; confidence abstention อาจเป็น completed ได้
 - Marked-area percentage เป็นสัดส่วนพื้นที่ที่โมเดลระบุ ไม่ใช่ skin grade หรือการวินิจฉัย
 
-## 5. Flow: Human review ผ่าน Label Studio
+## 5. เส้นทาง: การตรวจโดยมนุษย์ผ่าน Label Studio
 
 ```mermaid
 flowchart LR
@@ -143,7 +143,7 @@ Analysis result ถูก commit **ก่อน**เริ่ม review จึ�
 
 **ยังไม่ครบวงจร:** ไม่มีขั้นรับ annotation กลับมา ตรวจรับคุณภาพ และสร้าง dataset version ที่เชื่อมสู่ trainer อัตโนมัติ การมี task ไม่ได้อนุญาตนำข้อมูลผู้ใช้ไปฝึก และ image trainer ปัจจุบันรับเฉพาะ dataset แบบ `external_licensed` ที่อนุมัติแล้ว
 
-## 6. Flow: Daily Health, actual data และ forecast
+## 6. เส้นทาง: Daily Health ข้อมูลจริง และพยากรณ์
 
 ### 6.1 บันทึกและพยากรณ์เฉพาะบัญชี
 
@@ -185,7 +185,7 @@ flowchart TD
 - Admin อนุมัติ/rollback แบบ explicit และมี actor/reason audit; MLflow run สำเร็จไม่ได้แปลว่า deployment สำเร็จ
 - หากยังไม่มี approved candidate ระบบมี baseline เส้นทางเดิม ต้องแยกที่มาจาก next-day self-report model ไม่อ้างว่า baseline เป็นผล actual
 
-## 7. Flow: Image training และ generic training
+## 7. เส้นทาง: การฝึกโมเดลภาพและการฝึกทั่วไป
 
 Approved dataset manifest → training API → `TrainingRun` ใน PostgreSQL → Redis `training` → trainer → MLflow metrics/checkpoint → `awaiting_approval`
 
@@ -193,9 +193,9 @@ Image trainer ตรวจ `approved://<id>@<manifest_sha256>` ภายใต�
 
 **Generic `time_series` / `tabular` training เป็น metadata-only:** log parameters/tags และคงสถานะ `awaiting_model_package`; API ระบุ `execution_kind=metadata_only` ไม่ใช่โมเดลที่ fit แล้ว ส่วน generic model-URI inference fail closed ด้วย `model_not_deployed` จนมี deployment support ไม่ควรสับสนกับ wrinkle inference หรือ Daily Health pipeline ที่ทำงานเฉพาะทาง
 
-## 8. Flow: UV ecosystem
+## 8. เส้นทาง: ระบบ UV
 
-Public UV data → local raw data → SARIMAX candidate/evaluation → quality gate + MLflow run → operator promotion → local active model bundle → UV refresh → forecast snapshot → FastAPI → Next.js → UV map
+ข้อมูล UV สาธารณะ → ข้อมูลดิบในเครื่อง → candidate SARIMAX/การประเมิน → เกณฑ์คุณภาพ + MLflow run → ผู้ปฏิบัติการเลื่อนรุ่น → bundle โมเดลที่ใช้งานในเครื่อง → รีเฟรช UV → snapshot พยากรณ์ → FastAPI → Next.js → แผนที่ UV
 
 - UV ใช้ local directories `storage/data/uv`, `storage/models/uv`, `storage/artifacts/uv` ไม่ใช่ PostgreSQL เป็นแหล่ง snapshot และไม่ผ่าน Redis
 - `uv-refresh` รัน refresh เมื่อเปิด service จากนั้นทุก **6 ชั่วโมง** หากสำเร็จ หรือ retry **30 นาที** หากล้มเหลว
@@ -204,42 +204,42 @@ Public UV data → local raw data → SARIMAX candidate/evaluation → quality g
 - Candidate ไม่ promote อัตโนมัติ; operator ใช้คำสั่ง promote/rollback และบันทึก audit
 - API ตรวจ snapshot/freshness; snapshot ไม่พร้อมต้องแสดง unavailable ไม่เติม forecast ปลอม
 
-## 9. Monitoring และ failure boundaries
+## 9. การติดตามระบบและขอบเขตความล้มเหลว
 
 | สิ่งที่ตรวจ | เครื่องมือ / หลักฐาน | ข้อจำกัด |
 | --- | --- | --- |
-| Container / API availability | Docker healthchecks; `/api/v1/health` | Healthy ไม่รับรองว่าทุก endpoint, token หรือ model artifact ใช้ได้ |
-| Worker availability | Redis ARQ heartbeat และ queue state | Queue ว่างอาจหมายถึงไม่มีงาน ไม่ใช่หลักฐานว่า inference ผ่าน |
-| Image outcomes | `/api/v1/monitoring/analyses`: counts, failures, quality flags, p95 | p95 จาก created → completed รวมเวลารอคิว; ไม่ใช่เวลา GPU/CPU อย่างเดียว |
-| UV operation | `/api/v1/monitoring/uv`: freshness/quality/pipeline status | Snapshot หาย/ไม่ valid ตอบ 503 |
-| Training experiments | MLflow parameters/metrics/tags/artifact links | Smoke/metadata-only runs ไม่พิสูจน์ความแม่นยำโมเดลจริง |
-| Deployment decisions | PostgreSQL Daily Health events; UV lifecycle audit | ต้องมี reviewer และเหตุผล ไม่อาศัย run status อย่างเดียว |
+| ความพร้อมคอนเทนเนอร์ / API | Docker healthchecks; `/api/v1/health` | Healthy ไม่รับรองว่าทุก endpoint, token หรือ model artifact ใช้ได้ |
+| ความพร้อม worker | Redis ARQ heartbeat และ queue state | Queue ว่างอาจหมายถึงไม่มีงาน ไม่ใช่หลักฐานว่า inference ผ่าน |
+| ผลภาพ | `/api/v1/monitoring/analyses`: counts, failures, quality flags, p95 | p95 จาก created → completed รวมเวลารอคิว; ไม่ใช่เวลา GPU/CPU อย่างเดียว |
+| การปฏิบัติงาน UV | `/api/v1/monitoring/uv`: freshness/quality/pipeline status | Snapshot หาย/ไม่ valid ตอบ 503 |
+| การทดลองฝึก | MLflow parameters/metrics/tags/artifact links | Smoke/metadata-only runs ไม่พิสูจน์ความแม่นยำโมเดลจริง |
+| การตัดสินใจ deploy | PostgreSQL Daily Health events; วงจรโมเดล UV audit | ต้องมี reviewer และเหตุผล ไม่อาศัย run status อย่างเดียว |
 
-## 10. Deployment readiness (source review: 6 October 2026)
+## 10. ความพร้อม deployment (ตรวจซอร์ส: 6 ตุลาคม 2026)
 
-This document describes code-supported flows, not live container health. Before using a deployment, verify:
+เอกสารนี้อธิบายเส้นทางที่โค้ดรองรับ ไม่ใช่สุขภาพคอนเทนเนอร์จริง ก่อนใช้ deployment ให้ตรวจ:
 
-1. Label Studio API key, project and task permissions; a healthy container does not prove SDK authentication.
-2. Separate admin credentials for Daily Health model review; missing/invalid configuration fails closed.
-3. Image worker, checksum-pinned model files and private storage; annotation tasks do not imply an accepted training dataset.
-4. UV refresh/training profiles and valid fresh snapshots; a missing snapshot remains unavailable.
-5. Generic metadata-only training and model_not_deployed inference boundaries.
-6. Logs and aggregate monitoring; centralized alerts/distributed tracing are not included.
+1. API key ของ Label Studio และสิทธิ์โครงการ/task; คอนเทนเนอร์ที่ healthy ไม่ยืนยันการยืนยันตัวตนของ SDK
+2. ข้อมูลรับรองผู้ดูแลแยกสำหรับตรวจโมเดล Daily Health; การตั้งค่าที่หาย/ไม่ถูกต้องต้องปฏิเสธการเข้าถึง
+3. worker ภาพ ไฟล์โมเดลที่ตรึง checksum และที่เก็บส่วนตัว; การมี annotation task ไม่ได้หมายความว่ามี dataset ฝึกที่ตรวจรับแล้ว
+4. profile รีเฟรช/ฝึก UV และ snapshot สดที่ถูกต้อง; หากไม่มี snapshot ต้องแสดงว่าไม่พร้อม
+5. ขอบเขตการฝึกทั่วไปที่มีเฉพาะ metadata และ inference ที่ยังมีสถานะ model_not_deployed
+6. log และการติดตามภาพรวม; ยังไม่รวมระบบแจ้งเตือนส่วนกลาง/การติดตามข้ามบริการ
 
-## 11. Source map สำหรับตรวจรายละเอียด
+## 11. แผนผังซอร์สสำหรับตรวจรายละเอียด
 
 | ส่วน | โค้ด / เอกสาร |
 | --- | --- |
-| Services, networks, volumes, profiles | [compose.yml](../../compose.yml) |
-| Frontend session proxy | [auth login route](../../frontend/src/app/api/auth/login/route.ts), [analysis route](../../frontend/src/app/api/analysis/route.ts) |
-| Upload/result/artifact access | [analysis service](../../backend/services/analysis_service.py), [analysis routes](../../backend/api/v1/routes/analyses.py) |
-| Inference and cleanup | [inference worker](../../backend/workers/inference_worker.py) |
-| Annotation consent and remote tasks | [annotation service](../../backend/services/annotation_service.py), [Label Studio client](../../backend/libs/labelstudio_client.py) |
-| Training worker and schedule | [trainer worker](../../backend/workers/trainer_worker.py), [curated training](../../backend/services/curated_training.py) |
-| Account-only forecast | [personal forecast](../../backend/services/daily_health_personal_forecast.py) |
-| Outcome training / release / tracking | [training](../../backend/services/daily_health_training.py), [registry](../../backend/services/daily_health_model_registry.py), [tracking](../../backend/services/daily_health_tracking.py) |
-| Human-review boundaries | [Human Review](../ai/Human-Review.md) |
-| UV lifecycle | [uv_mlops.py](../../scripts/uv_mlops.py), [UV lifecycle](../../backend/services/uv_lifecycle.py), [refresh script](../../scripts/refresh_uv_forecast.py) |
-| Monitoring and MLflow storage | [monitoring routes](../../backend/api/v1/routes/monitoring.py), [MLflow startup](../../docker/mlflow-start.sh) |
+| บริการ เครือข่าย volume และ profile | [compose.yml](../../compose.yml) |
+| proxy session ของ frontend | [route เข้าสู่ระบบ](../../frontend/src/app/api/auth/login/route.ts), [route วิเคราะห์](../../frontend/src/app/api/analysis/route.ts) |
+| การอัปโหลด/เข้าถึงผลและ artifact | [บริการวิเคราะห์](../../backend/services/analysis_service.py), [route วิเคราะห์s](../../backend/api/v1/routes/analyses.py) |
+| inference และการล้างข้อมูล | [worker วิเคราะห์](../../backend/workers/inference_worker.py) |
+| ความยินยอม annotation และ task ระยะไกล | [บริการ annotation](../../backend/services/annotation_service.py), [client ของ Label Studio](../../backend/libs/labelstudio_client.py) |
+| worker ฝึกและตารางรัน | [worker ฝึก](../../backend/workers/trainer_worker.py), [การฝึกด้วยข้อมูลคัดกรอง](../../backend/services/curated_training.py) |
+| พยากรณ์เฉพาะบัญชี | [พยากรณ์เฉพาะบุคคล](../../backend/services/daily_health_personal_forecast.py) |
+| การฝึกผลที่รายงาน / เผยแพร่ / ติดตาม | [การฝึก](../../backend/services/daily_health_training.py), [registry](../../backend/services/daily_health_model_registry.py), [tracking](../../backend/services/daily_health_tracking.py) |
+| ขอบเขตการตรวจโดยมนุษย์ | [การตรวจโดยมนุษย์](../ai/Human-Review.md) |
+| วงจรโมเดล UV | [uv_mlops.py](../../scripts/uv_mlops.py), [วงจรโมเดล UV](../../backend/services/uv_lifecycle.py), [สคริปต์รีเฟรช](../../scripts/refresh_uv_forecast.py) |
+| monitoring และที่เก็บ MLflow | [route monitoring](../../backend/api/v1/routes/monitoring.py), [การเริ่ม MLflow](../../docker/mlflow-start.sh) |
 
 **ข้อควรระวัง:** เก็บ credentials ใน local environment ตาม service ที่ใช้ ไม่ใส่ secrets, private images หรือ health records ในเอกสาร/Git และไม่ใช้ `docker compose down -v` หากต้องการรักษาข้อมูลเดิม

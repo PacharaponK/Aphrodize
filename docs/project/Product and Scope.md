@@ -1,4 +1,4 @@
-# Product and Scope
+# ผลิตภัณฑ์และขอบเขต
 
 ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 (Asia/Bangkok) เอกสารนี้ระบุความสามารถที่โค้ดรองรับ ไม่ใช่ผลตรวจ deployment สด
 
@@ -7,9 +7,9 @@ Aphrodize เป็นเว็บต้นแบบ wellness สำหรับ
 | ส่วน | ความสามารถปัจจุบัน | เงื่อนไขและข้อจำกัด |
 | --- | --- | --- |
 | บัญชี | สมัคร เข้าสู่ระบบ ออกจากระบบ โปรไฟล์ และ consent แยกวัตถุประสงค์ | ข้อมูลรายบุคคลใช้ Bearer token และตรวจเจ้าของ |
-| ภาพ | Quality gate → ARQ worker → FFHQ-Wrinkle → mask/overlay/พื้นที่รายบริเวณ | ต้องมี MinIO, worker และ checkpoint; ไม่มี acne detector |
-| การปล่อยผล | Default policy งด derived score/คำแนะนำ; เลือก reviewed policy หรือ calibrated bundle | Manual approval ไม่ใช่ statistical calibration; เลือก release source เพียงหนึ่งแบบ |
-| คำแนะนำ | ผลและสินค้าอยู่ที่ `/capture`; กรองฉลาก ตำแหน่งใช้ อายุ allergy ตลาด และราคา | ไม่มีรายการที่ผ่านเกณฑ์ก็ไม่สร้างสินค้าทดแทน; ไม่รับรองผลสินค้า |
+| ภาพ | เกณฑ์คุณภาพ → ARQ worker → FFHQ-Wrinkle → mask/overlay/พื้นที่รายบริเวณ | ต้องมี MinIO, worker และ checkpoint; ไม่มี acne detector |
+| การปล่อยผล | Default policy งด derived score/คำแนะนำ; เลือก reviewed policy หรือ calibrated bundle | การอนุมัติด้วยตนเอง ไม่ใช่ การปรับเทียบทางสถิติ; เลือก release source เพียงหนึ่งแบบ |
+| คำแนะนำ | ผลและสินค้าอยู่ที่ `/capture`; กรองฉลาก ตำแหน่งใช้ อายุ การแพ้ ตลาด และราคา | ไม่มีรายการที่ผ่านเกณฑ์ก็ไม่สร้างสินค้าทดแทน; ไม่รับรองผลสินค้า |
 | Daily Health | `/clients` บันทึก sleep/water/outdoor; `/trend` แสดงประวัติ; outcomes แยกจาก predictions | Preview ผ่าน Next.js proxy ได้; การเก็บ/ลบต้องมีบัญชีและ consent |
 | Shared next-day model | Random Forest candidate จาก real self-reports ที่ opt-in; promotion/rollback โดย operator | ต้องผ่าน cohort, provenance, holdout และ artifact gate; ไม่ auto-promote |
 | Personal forecast | Sleep/water จากประวัติบัญชีเดียว | Consent และ readiness แยกจาก shared outcome model |
@@ -20,8 +20,8 @@ Aphrodize เป็นเว็บต้นแบบ wellness สำหรับ
 
 ## ขอบเขต
 
-Acne forecast, collection UI และ dashboard summary ถูกถอดออก Backend observation/consent/cleanup ยังอยู่เพื่อดูแลข้อมูลเดิม Collection API มี flag ค่าเริ่มต้นปิด ดู [Acne protocol](../lifestyle/Acne-Observation-Protocol.md)
+Acne forecast, collection UI และ dashboard summary ถูกถอดออก Backend observation/consent/cleanup ยังอยู่เพื่อดูแลข้อมูลเดิม Collection API มี flag ค่าเริ่มต้นปิด ดู [แนวทางรายงานสิว](../lifestyle/Acne-Observation-Protocol.md)
 
-ระบบไม่ทำนายอายุ ไม่ทำ face recognition ไม่วินิจฉัยโรค ไม่ยืนยันสาเหตุ และไม่รับรองผลการรักษา สูตรคำนวณ ผลโมเดล และ self-report ต้องแสดงแยกกัน การมี pipeline หรือ approval ไม่ใช่ clinical validation
+ระบบไม่ทำนายอายุ ไม่ทำ การจดจำใบหน้าเพื่อระบุตัวตน ไม่วินิจฉัยโรค ไม่ยืนยันสาเหตุ และไม่รับรองผลการรักษา สูตรคำนวณ ผลโมเดล และ self-report ต้องแสดงแยกกัน การมี pipeline หรือ approval ไม่ใช่ การตรวจสอบทางคลินิก
 
-เริ่มระบบจาก [README](../../README.md); flow จาก [Component Flows](../architecture/Component-Flows.md); privacy จาก [Safety and Governance](Safety%20and%20Governance.md); งานคงเหลือจาก [Roadmap](../roadmap.md)
+เริ่มระบบจาก [README](../../README.md); flow จาก [เส้นทางองค์ประกอบระบบ](../architecture/Component-Flows.md); ความเป็นส่วนตัว จาก [ความปลอดภัยและการกำกับดูแล](Safety%20and%20Governance.md); งานคงเหลือจาก [งานคงเหลือ](../roadmap.md)

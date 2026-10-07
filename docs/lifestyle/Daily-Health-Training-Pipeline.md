@@ -1,67 +1,68 @@
-# Daily Health: data, training และ release
+# Daily Health: ข้อมูล การฝึก และการเผยแพร่
 
-ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 ใช้ [Input Flow](Daily-Health-Input-Flow.md) สำหรับเว็บ และ [Model Summary](Lifestyle-Model-Summary.md) เพื่อแยกสูตร/baseline/forecast
+ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 ใช้ [ขั้นตอนกรอกข้อมูล](Daily-Health-Input-Flow.md) สำหรับเว็บ และ [สรุปโมเดล](Lifestyle-Model-Summary.md) เพื่อแยกสูตร/โมเดลอ้างอิง/พยากรณ์
 
-## ข้อมูลและ import
+## ข้อมูลและการนำเข้า
 
-`daily_health_entries` เก็บ input, สูตร และ prediction แยกกัน; `daily_health_outcomes` เก็บ self-reported thirst/dryness/energy 0–10; `daily_health_dataset_records` เก็บ CSV snapshot พร้อม provenance/fingerprint/row number และ participant alias ภายใน dataset Imported rows ทั้งหมดไม่เข้า shared user-model training; importer ไม่แปลง categorical labels หรือ synthetic scores เป็น actual outcomes และ reject columns นอก allowlist
+`daily_health_entries` เก็บข้อมูลเข้า สูตร และค่าทำนายแยกกัน; `daily_health_outcomes` เก็บความกระหาย/ผิวแห้ง/พลังงานที่ผู้ใช้รายงาน 0–10; `daily_health_dataset_records` เก็บ CSV snapshot พร้อมที่มา fingerprint, เลขแถว และชื่อแทนผู้เข้าร่วมภายใน dataset
+แถวที่นำเข้าทั้งหมดไม่เข้าการฝึกโมเดลร่วมจากผู้ใช้ importer ไม่แปลงป้ายกำกับหมวดหมู่หรือคะแนนสังเคราะห์เป็นผลจริง และปฏิเสธ column นอกรายการที่อนุญาต
 
-Import ไฟล์ที่ตรวจ rights/provenance แล้วจาก repository root โดยแทน path ด้วยไฟล์จริง:
+นำเข้าไฟล์ที่ตรวจสิทธิ์/ที่มาแล้วจากราก repository โดยแทน path ด้วยไฟล์จริง:
 
 ```powershell
 $datasetPath = (Resolve-Path './path/to/reviewed.csv').Path
 docker compose run --rm --no-deps --volume "${datasetPath}:/app/seed.csv:ro" api python -m backend.scripts.import_daily_health_dataset /app/seed.csv
 ```
 
-ต้องมี PostgreSQL พร้อม ไฟล์ fingerprint เดิม import ซ้ำไม่เพิ่ม snapshot; CSV ที่เปลี่ยนสร้าง snapshot ใหม่ ลบทั้ง snapshot ด้วย `python -m backend.scripts.delete_daily_health_dataset_snapshot <sha256> --confirm` ใน environment ที่เข้าถึง DB ได้ ไม่ใช่ per-account erasure
+ต้องมี PostgreSQL พร้อม การนำเข้าไฟล์ fingerprint เดิมซ้ำไม่เพิ่ม snapshot; CSV ที่เปลี่ยนสร้าง snapshot ใหม่ ลบทั้ง snapshot ด้วย `python -m backend.scripts.delete_daily_health_dataset_snapshot <sha256> --confirm` ใน environment ที่เข้าถึง DB ได้ ขั้นตอนนี้ไม่ใช่การลบข้อมูลรายบัญชี
 
-Template: [daily health CSV](user_daily_health_tracker_template.csv) ไม่ต้องมี sandbox CSV เฉพาะเครื่องเพื่อรันระบบ
+แบบฟอร์ม: [CSV สุขภาพรายวัน](user_daily_health_tracker_template.csv) ไม่ต้องมี sandbox CSV เฉพาะเครื่องเพื่อรันระบบ
 
-## Training cohort และ consent
+## กลุ่มข้อมูลฝึกและความยินยอม
 
-Storage และ training เป็น consent แยก v1 (`daily-health-model-training-v1`) ครอบคลุม thirst/dryness; v2 (`daily-health-model-training-v2`) รวม energy ห้าม upgrade v1 เงียบ ๆ
+การเก็บและการฝึกใช้ความยินยอมแยก v1 (`daily-health-model-training-v1`) ครอบคลุมความกระหาย/ผิวแห้ง; v2 (`daily-health-model-training-v2`) รวมพลังงาน ห้ามอัปเกรด v1 โดยไม่แจ้ง
 
-จับคู่ user-reported input วัน D กับ outcomes ของเจ้าของเดียววัน D+1 เฉพาะ active opt-in ใช้ sleep/water/outdoor เป็น features; ไม่ใช้ prediction, fixture, imported/synthetic rows หรือ hydration formula เป็น labels Missing energy ไม่แทนศูนย์
+จับคู่ข้อมูลเข้าที่ผู้ใช้รายงานวัน D กับผลของเจ้าของเดียววัน D+1 เฉพาะที่ยังยินยอม ใช้เวลานอน/น้ำ/กลางแจ้งเป็นตัวแปรนำเข้า ไม่ใช้ค่าทำนาย fixture, แถวที่นำเข้า/สังเคราะห์ หรือสูตรน้ำดื่มเป็นป้ายกำกับ ค่าพลังงานที่ขาดไม่แทนศูนย์
 
-`created_at` และ `updated_at` ของ input ต้อง timezone-aware, เรียงถูกต้องและก่อนเริ่มวัน target ใน Asia/Bangkok Backfill/late correction จึงไม่เข้า training โค้ดยังไม่มี immutable historical input/outcome snapshots
+`created_at` และ `updated_at` ของข้อมูลเข้าต้องมีเขตเวลา เรียงถูกต้อง และก่อนเริ่มวันเป้าหมายใน Asia/Bangkok การเติมย้อนหลัง/แก้ช้าจึงไม่เข้าการฝึก โค้ดยังไม่มี snapshot ประวัติข้อมูลเข้า/ผลที่แก้ไขไม่ได้
 
-Readiness: อย่างน้อย 100 complete matched days จาก 5 participants; candidate รุ่นต่อไปต้องมีอย่างน้อย 25 วันเพิ่ม หรือ cohort ลดหลังถอน consent; target-family/fingerprint เดิมมี guards กันซ้ำ Three-target cohort ต้องถึงเกณฑ์เอง ไม่ใช้จำนวนสอง-target cohort แทน
+ความพร้อมขั้นต่ำคือวันที่จับคู่ครบ 100 วันจากผู้เข้าร่วม 5 คน candidate ถัดไปต้องมีเพิ่มอย่างน้อย 25 วัน หรือกลุ่มลดหลังถอนความยินยอม มีตัวป้องกันกลุ่มเป้าหมาย/fingerprint เดิมซ้ำ กลุ่มสามเป้าหมายต้องถึงเกณฑ์เอง ห้ามใช้จำนวนกลุ่มสองเป้าหมายแทน
 
-Trainer ตรวจทุกจันทร์ 02:00 UTC (**09:00 Asia/Bangkok**) ไม่รัน check ตอน startup และการบันทึก outcome ไม่ train ทันที ต้องเปิด `trainer-worker`/Redis/DB ให้พร้อม
+trainer ตรวจทุกจันทร์ 02:00 UTC (**09:00 Asia/Bangkok**) ไม่ตรวจตอนเริ่มระบบ และการบันทึกผลไม่ฝึกทันที ต้องเปิด `trainer-worker`/Redis/DB ให้พร้อม
 
-## Candidate และ gate
+## candidate และเกณฑ์ตรวจ
 
-1. อ่าน active-consent cohort แล้ว split participant 60/20/20
-2. Fit multi-output RandomForestRegressor บน train users; validation/test users แยกกัน
-3. ประเมินอีกมุมด้วย model แยก: train วันที่ก่อน cutoff และ hold out 20% ของ distinct dates สุดท้าย ไม่ใช่ joint participant/time split
-4. รายงาน per-target MAE/RMSE/R² และ training-mean baselines ของ participant/temporal tests
-5. Re-read consent/snapshot ก่อนเผยแพร่; เก็บ `model.joblib`/`manifest.json` พร้อม checksum, target/consent/availability policy ใน `models/time-series/non-linear-model/artifacts/user-candidates/<version-id>/`
-6. เก็บ registry ใน PostgreSQL; ARQ worker ส่ง aggregate metrics/cohort counts ไป experiment `daily-health-next-day` และบันทึก `mlflow_run_id` ไม่ส่งรายบุคคลหรือ health model artifacts ไป MLflow
+1. อ่านกลุ่มที่ยังยินยอม แล้วแบ่งผู้เข้าร่วม 60/20/20
+2. fit multi-output RandomForestRegressor บนผู้ใช้ชุด train; แยกผู้ใช้ validation/test จากกัน
+3. ประเมินอีกมุมด้วยโมเดลแยก: train วันที่ก่อน cutoff และกัน 20% ของวันที่ไม่ซ้ำช่วงสุดท้ายไว้ ไม่ใช่การแบ่งผู้เข้าร่วม/เวลาร่วมกัน
+4. รายงาน MAE/RMSE/R² รายเป้าหมาย และค่าอ้างอิงจากค่าเฉลี่ยชุด train ของการทดสอบแยกผู้เข้าร่วม/เวลา
+5. อ่านความยินยอม/snapshot ซ้ำก่อนเผยแพร่ เก็บ `model.joblib`/`manifest.json` พร้อม checksum และนโยบายเป้าหมาย/ความยินยอม/ความพร้อมใน `models/time-series/non-linear-model/artifacts/user-candidates/<version-id>/`
+6. เก็บ registry ใน PostgreSQL; ARQ worker ส่งตัวชี้วัดรวม/จำนวนกลุ่มไป experiment `daily-health-next-day` และบันทึก `mlflow_run_id` ไม่ส่งรายบุคคลหรือไฟล์โมเดลสุขภาพไป MLflow
 
-ทุก target ต้องมี finite nonnegative MAE ที่ดีกว่า mean baseline อย่างเคร่งครัดในทั้งสอง holdouts Missing/equal/worse metrics หรือ temporal coverage ไม่พอ block promotion Artifact/manifest/provenance gate และ human review ยังจำเป็น Engineering gate ไม่ใช่ clinical validation
+ทุกเป้าหมายต้องมี MAE ที่เป็นค่าจำกัดและไม่ติดลบ ดีกว่าค่าเฉลี่ยอ้างอิงอย่างเคร่งครัดในชุดกันไว้ทั้งสองแบบ ตัวชี้วัดที่หาย/เท่ากัน/แย่กว่า หรือขอบเขตเวลาไม่พอจะบล็อกการเลื่อนรุ่น ยังต้องผ่านเกณฑ์ artifact/manifest/ที่มาและการตรวจโดยมนุษย์ เกณฑ์วิศวกรรมไม่ใช่การตรวจสอบทางคลินิก
 
-MLflow ล่ม: candidate ยังอยู่, worker job แสดง failure และ run link ว่าง; operator คืน tracking แล้ว retry job รุ่นเก่าไม่ backfill อัตโนมัติ
+หาก MLflow ล่ม candidate ยังคงอยู่ worker job แสดงความล้มเหลว และลิงก์ run ว่าง ผู้ปฏิบัติการต้องคืน tracking แล้ว retry job ไม่เติมข้อมูลรุ่นเก่าย้อนหลังอัตโนมัติ
 
-## Operator API
+## API ผู้ปฏิบัติการ
 
-Model-review routes ใช้ **admin Basic credentials ที่ตั้งค่าและแยกจาก service API pair** ตาม [Human Review](../ai/Human-Review.md):
+route ตรวจโมเดลใช้ **ข้อมูลรับรอง admin Basic ที่ตั้งค่าและแยกจากคู่ service API** ตาม [การตรวจโดยมนุษย์](../ai/Human-Review.md):
 
-| Method | Path ใต้ `/api/v1/daily-health` |
+| วิธี HTTP | path ใต้ `/api/v1/daily-health` |
 | --- | --- |
 | GET | `/model-versions` |
 | GET | `/model-deployment` |
 | GET | `/model-deployment/events` |
-| PUT | `/model-deployment` พร้อม version/reason |
+| PUT | `/model-deployment` พร้อมรุ่น/เหตุผล |
 | POST | `/model-deployment/rollback` |
 
-ไม่ auto-promote; actor มาจาก authenticated operator ไม่ใช่ payload Legacy/system events มี actor null Approved next-day estimates ระบุ model/horizon; ไม่มี candidate ใช้ baseline เส้นทางเดิมและ next-day cards ให้ model_not_ready Active artifact เสียคืน unavailable แทน fallback เงียบ ๆ
+ไม่เลื่อนรุ่นอัตโนมัติ actor มาจากผู้ปฏิบัติการที่ยืนยันตัวตน ไม่ใช่ payload event เก่า/ระบบมี actor null ค่าประมาณวันถัดไปที่อนุมัติระบุโมเดล/ระยะพยากรณ์; หากไม่มี candidate ใช้โมเดลอ้างอิงเส้นทางเดิม และการ์ดวันถัดไปให้ model_not_ready หาก artifact ที่ใช้อยู่เสีย ต้องตอบไม่พร้อมแทนการใช้ค่าทดแทนเงียบ ๆ
 
-## Withdrawal และ erasure
+## การถอนความยินยอมและลบข้อมูล
 
-Training withdrawal ปิดทั้ง v1/v2 และทำ training/candidate ที่ไม่ active ให้ stale; daily history คงอยู่ Active approved model ไม่ unlearn ย้อนหลังด้วย opt-out อย่างเดียว
+การถอนความยินยอมฝึกปิดทั้ง v1/v2 และทำให้งานฝึก/candidate ที่ไม่ได้ใช้อยู่เป็นข้อมูลเก่า ประวัติรายวันคงอยู่ โมเดลที่อนุมัติและใช้อยู่ไม่ได้ย้อนการเรียนรู้ด้วยการถอนความยินยอมเพียงอย่างเดียว
 
-`DELETE /api/v1/daily-health/users/{user_id}/data` ลบ entries/outcomes/profile/age/menstrual context และ revoke scopes ที่ route ระบุ ถ้าบัญชีอาจเคยเป็น training contributor (มี training consent, user-reported entry และ complete outcome) ระบบ reset shared registry/deployment/version-bearing events และ purge generated candidate artifacts เพราะไม่มี per-model participant lineage บัญชีที่ไม่เข้าเงื่อนไขนี้ไม่ reset shared models
+`DELETE /api/v1/daily-health/users/{user_id}/data` ลบรายการ/ผล/โปรไฟล์/อายุ/บริบทประจำเดือน และเพิกถอนสิทธิ์ที่ route ระบุ หากบัญชีอาจเคยร่วมฝึก (มีความยินยอมฝึก รายการที่ผู้ใช้รายงาน และผลครบ) ระบบรีเซ็ต registry/deployment/event ที่มีรุ่นของโมเดลร่วม และล้าง artifact candidate ที่สร้าง เพราะไม่มีที่มาผู้เข้าร่วมรายโมเดล บัญชีที่ไม่เข้าเงื่อนไขไม่รีเซ็ตโมเดลร่วม
 
-Cleanup จำกัด known files/version directories; unexpected files/symlinks ต้อง operator review Imported snapshots แยกจาก account-linked data ไม่มี automatic retention period; ต้องกำหนดร่วมกับ product/privacy owner อย่าใช้ `docker compose down -v` หากต้องเก็บ DB เดิม
+การล้างจำกัดไฟล์/ไดเรกทอรีรุ่นที่รู้จัก ไฟล์/symlink ที่ไม่คาดต้องให้ผู้ปฏิบัติการตรวจ snapshot ที่นำเข้าแยกจากข้อมูลผูกบัญชี ไม่มีระยะเวลาเก็บอัตโนมัติ ต้องกำหนดกับเจ้าของผลิตภัณฑ์/ความเป็นส่วนตัว ห้ามใช้ `docker compose down -v` หากต้องเก็บ DB เดิม
 
-Source: [training](../../backend/services/daily_health_training.py), [registry](../../backend/services/daily_health_model_registry.py), [routes](../../backend/api/v1/routes/daily_health.py), [worker](../../backend/workers/trainer_worker.py)
+แหล่งอ้างอิง: [การฝึก](../../backend/services/daily_health_training.py), [registry](../../backend/services/daily_health_model_registry.py), [route](../../backend/api/v1/routes/daily_health.py), [worker](../../backend/workers/trainer_worker.py)
