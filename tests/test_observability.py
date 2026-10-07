@@ -133,9 +133,34 @@ async def test_collection_failure_does_not_escape(monkeypatch):
         raise ConnectionError("secret")
 
     monkeypatch.setattr(probes, "readiness", failed)
+    obs.collector_success.set(1)
     await probes.collect_once()
     assert obs.collector_success._value.get() == 0
     assert obs.collector_at._value.get() > time.time() - 10
+
+
+@pytest.mark.asyncio
+async def test_collection_keeps_last_result_while_probes_are_running(monkeypatch):
+    started, release = asyncio.Event(), asyncio.Event()
+
+    async def readiness():
+        started.set()
+        await release.wait()
+
+    async def queues():
+        pass
+
+    monkeypatch.setattr(probes, "readiness", readiness)
+    monkeypatch.setattr(probes, "collect_queues", queues)
+    monkeypatch.setattr(probes.settings, "observability_uv_enabled", False)
+    obs.collector_success.set(1)
+    task = asyncio.create_task(probes.collect_once())
+    try:
+        await started.wait()
+        assert obs.collector_success._value.get() == 1
+    finally:
+        release.set()
+        await task
 
 
 @pytest.mark.asyncio

@@ -156,7 +156,6 @@ def collect_uv():
 
 
 async def collect_once():
-    metrics.collector_success.set(0)
     metrics.uv_enabled.set(settings.observability_uv_enabled)
     try:
         await readiness()
@@ -165,6 +164,7 @@ async def collect_once():
             await asyncio.to_thread(collect_uv)
         metrics.collector_success.set(1)
     except Exception:
+        metrics.collector_success.set(0)
         logging.getLogger(__name__).exception("", extra={"event": "collector_failed"})
     finally:
         metrics.collector_at.set(datetime.now(UTC).timestamp())
