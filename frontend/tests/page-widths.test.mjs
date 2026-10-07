@@ -45,5 +45,5 @@ test("recovery, Profile, Auth, onboarding, UV and admin share the page frame", (
   assert.match(shared, /\.auth-page,\s*main.onboarding-page,\s*main.admin-products-page \{\s*width: min\(100%, var\(--page-frame-max\)\)/);
   assert.match(read("../src/app/profile/profile.css"), /workspace-topbar \{\s*width: 100%;\s*max-width: none/);
   assert.match(read("../src/components/uv/uv-map.css"), /\.uv-map-page \{ width: min\(100%, var\(--page-frame-max\)\)/);
-  assert.match(read("../src/app/admin/products/products.css"), /\.admin-products-container \{ width: 100%; max-width: none/);
+  assert.match(read("../src/app/admin/products.css"), /\.admin-products-container \{ width: 100%; max-width: none/);
 });

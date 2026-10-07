@@ -26,7 +26,7 @@ function load(relative) {
   }, exports);
   return exports;
 }
-const { UvModelPanel } = load("src/app/admin/products/uv-model-panel.tsx");
+const { UvModelPanel } = load("src/app/admin/uv-model-panel.tsx");
 const { GET, POST } = load("src/app/api/admin/uv/route.ts");
 const { adminSessionValue } = load("src/lib/admin-auth.ts");
 const { NextRequest } = require("next/server");

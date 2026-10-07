@@ -85,10 +85,10 @@ export default function PortalPage() {
               <ExternalLink size={18} aria-hidden="true" />
             </a>
           ))}
-          <Link href="/admin/products" className="portal-service-link portal-admin-link">
+          <Link href="/admin" className="portal-service-link portal-admin-link">
             <strong>{locale === 0 ? "จัดการผลิตภัณฑ์" : "Product catalog"}</strong>
             <span className="portal-service-detail">{locale === 0 ? "ตรวจทานและจัดการแคตตาล็อกผลิตภัณฑ์" : "Review and manage the product catalog"}</span>
-            <span className="portal-service-address">/admin/products</span>
+            <span className="portal-service-address">/admin</span>
             <ArrowRight size={18} aria-hidden="true" />
           </Link>
         </div>

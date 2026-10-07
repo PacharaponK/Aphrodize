@@ -23,7 +23,7 @@ test("portal renders both languages with the Compose destinations and safe exter
     };
     new Function("require", "exports", compiled)(load, exports);
     const html = renderToStaticMarkup(React.createElement(exports.default));
-    for (const href of ["/#dashboard", "/capture", "/clients", "/uv-map", "/admin/products", "http://localhost:8000/docs", "http://localhost:8080", "http://localhost:5000", "http://localhost:9001"]) {
+    for (const href of ["/#dashboard", "/capture", "/clients", "/uv-map", "/admin", "http://localhost:8000/docs", "http://localhost:8080", "http://localhost:5000", "http://localhost:9001"]) {
       assert.ok(html.includes(`href="${href}"`), href);
     }
     for (const href of ["http://localhost:3001/d/aphrodize-system", "http://localhost:3001/alerting/notifications", "http://localhost:9090/targets"]) {

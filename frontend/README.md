@@ -52,7 +52,7 @@ processing, and private mask/overlay images are scheduled for removal after
 24 hours. Results are experimental, not clinically validated. Design
 references are in `design/`.
 
-The admin product catalog is at `/admin/products`. Set `ADMIN_USERNAME` and
+The admin product catalog is at `/admin`. Set `ADMIN_USERNAME` and
 `ADMIN_PASSWORD` in both root `.env` and `frontend/.env.local` to enable it.
 Catalog edits stay separate from user profiles and recommendations.
 
