@@ -16,6 +16,13 @@ from sqlalchemy import select
 
 from backend.core.db.models import Analysis, AnalysisStatus, AnnotationTask, InferenceRun
 from backend.core.db.session import SessionLocal, close_database
+from backend.core.observability import (
+    enqueue_job,
+    observed_job,
+    secondary_failures,
+    start_worker_metrics,
+    stop_worker_metrics,
+)
 from backend.libs.minio_client import (
     analysis_artifact_key,
     get_bytes,
@@ -49,13 +56,16 @@ async def startup(ctx: dict) -> None:
         released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None,
         approved_model_manifest=os.environ.get("APHRODIZE_WRINKLE_APPROVED_MANIFEST") or None,
     )
+    await start_worker_metrics(ctx)
 
 
-async def shutdown(_: dict) -> None:
+async def shutdown(ctx: dict) -> None:
     # Release database connections when ARQ stops this worker process.
+    await stop_worker_metrics(ctx)
     await close_database()
 
 
+@observed_job
 async def run_inference(ctx: dict, analysis_id: str) -> None:
     """Turn a queued Analysis into a terminal result.
 
@@ -68,6 +78,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
         analysis = await session.get(Analysis, UUID(analysis_id))
         # Ignore missing jobs and jobs already handled by another worker.
         if analysis is None or analysis.status != AnalysisStatus.queued:
+            ctx["telemetry_outcome"] = "skipped"
             return
         # Persist 'running' so API polling can show that work has started.
         analysis.status = AnalysisStatus.running
@@ -107,7 +118,8 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                 # Both derived images have a 24-hour viewing lifetime.
                 expires_at = datetime.now(UTC) + timedelta(hours=24)
                 # The API also checks this timestamp, even if the delete job runs late.
-                job = await ctx["redis"].enqueue_job(
+                job = await enqueue_job(
+                    ctx["redis"],
                     "expire_analysis_artifacts",
                     str(analysis.user_id),
                     str(analysis.id),
@@ -126,6 +138,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                         # Roll back images already uploaded before the error.
                         await asyncio.to_thread(remove_objects, uploaded)
                     except Exception:
+                        secondary_failures.labels("incomplete_artifact_cleanup").inc()
                         logger.exception(
                             "Could not remove incomplete artifacts for %s", analysis.id
                         )
@@ -159,6 +172,11 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
 
             # Both successful and failed jobs receive a completion timestamp.
             analysis.completed_at = datetime.now(UTC)
+            ctx["telemetry_outcome"] = {
+                AnalysisStatus.completed: "succeeded",
+                AnalysisStatus.failed: "failed",
+                AnalysisStatus.rejected: "rejected",
+            }[analysis.status]
             # Persist the user-facing result before starting optional review work.
             await session.commit()
             if analysis.status == AnalysisStatus.completed:
@@ -168,15 +186,18 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                         session, analysis, artifacts.get("aligned_face"), ctx["redis"]
                     )
                 except Exception:
+                    secondary_failures.labels("annotation_staging").inc()
                     logger.exception("Could not queue annotation review for %s", analysis.id)
         finally:
             try:
                 # The original upload is deleted regardless of outcome.
                 await asyncio.to_thread(remove_objects, [analysis.object_key])
             except Exception:
+                secondary_failures.labels("source_cleanup").inc()
                 logger.exception("Could not remove source image for %s", analysis.id)
 
 
+@observed_job
 async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> None:
     """Delete the two derived PNGs after their 24-hour viewing window."""
     # Reconstruct both private object keys from the IDs in the delayed job.
@@ -187,6 +208,7 @@ async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> 
     await asyncio.to_thread(remove_objects, keys)
 
 
+@observed_job
 async def publish_annotation_task(_: dict, task_id: str) -> None:
     # Resolve the staged row; annotation_service handles consent and remote idempotency.
     async with SessionLocal() as session:
@@ -195,6 +217,7 @@ async def publish_annotation_task(_: dict, task_id: str) -> None:
             await publish_annotation(session, row)
 
 
+@observed_job
 async def expire_annotation_task(_: dict, task_id: str) -> None:
     # Ignore an early delayed job; delete only after the stored deadline.
     async with SessionLocal() as session:
@@ -203,6 +226,7 @@ async def expire_annotation_task(_: dict, task_id: str) -> None:
             await delete_annotation(session, row)
 
 
+@observed_job
 async def delete_annotation_task(_: dict, task_id: str) -> None:
     # A revoke job deletes only rows whose review consent is no longer active.
     async with SessionLocal() as session:
@@ -211,7 +235,8 @@ async def delete_annotation_task(_: dict, task_id: str) -> None:
             await delete_annotation(session, row)
 
 
-async def reconcile_annotation_tasks(_: dict) -> None:
+@observed_job
+async def reconcile_annotation_tasks(ctx: dict) -> None:
     # Recover unpublished tasks and pending deletions after worker or Label Studio outages.
     async with SessionLocal() as session:
         # Inspect every staged row because a queue job may have been lost.
@@ -227,16 +252,20 @@ async def reconcile_annotation_tasks(_: dict) -> None:
                     # Retry only work without a recorded remote task ID.
                     await publish_annotation(session, row)
             except Exception:
+                ctx["telemetry_outcome"] = "failed"
                 logger.exception("Could not reconcile annotation task %s", row.id)
 
 
-async def run_model_inference(_: dict, inference_run_id: str) -> None:
+@observed_job
+async def run_model_inference(ctx: dict, inference_run_id: str) -> None:
     """Fail closed until model loading, signature validation, and approval policy exist."""
     async with SessionLocal() as session:
         run = await session.get(InferenceRun, UUID(inference_run_id))
         if run is None or run.status != "queued":
+            ctx["telemetry_outcome"] = "skipped"
             return
         run.status = "failed"
+        ctx["telemetry_outcome"] = "failed"
         run.error_category = "model_not_deployed"
         run.result = {"message": "No approved model deployment is available for this model URI."}
         run.completed_at = datetime.now(UTC)
@@ -261,3 +290,4 @@ class WorkerSettings:
     queue_name = "inference"
     # ponytail: one model job at a time; raise after measuring worker memory and latency.
     max_jobs = 1
+    health_check_interval = 30

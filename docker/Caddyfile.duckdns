@@ -1,3 +1,11 @@
+{
+    metrics
+}
+
+:9100 {
+    metrics
+}
+
 {$VM_HOST} {
 	tls {
 		issuer acme {

@@ -1,0 +1,22 @@
+# Run on another host/provider. On the primary VM this cannot detect VM failure.
+name: aphrodize-external-probe
+services:
+  probe:
+    image: python:3.11-alpine
+    restart: unless-stopped
+    command: python /app/external_probe.py
+    environment:
+      PROBE_URL: ${PROBE_URL:?HTTPS URL ending in /api/health}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:?Set Discord webhook}
+    volumes:
+      - ./scripts/external_probe.py:/app/external_probe.py:ro
+      - probe_state:/state
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    logging:
+      driver: local
+      options: {max-size: "5m", max-file: "2"}
+volumes:
+  probe_state:

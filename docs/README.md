@@ -20,6 +20,7 @@
 | Deploy VM และ GPU worker | [VM](deploy-vm.md), [GPU](deploy-gpu.md) |
 | ตั้งค่า CI, main protection และ release | [CI and protection](ci-main-protection.md), [CI/CD VM](cicd-vm.md) |
 | ดูงานที่ยังเหลือ | [Roadmap](roadmap.md) |
+| ตั้ง metrics, logs, dashboard และ Discord alerts | [Observability operations](observability.md) |
 
 ## รายละเอียดเฉพาะทางและหลักฐานเดิม
 
