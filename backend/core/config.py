@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     mlflow_tracking_uri: str = "http://localhost:5000"
     model_version: str = "unconfigured"
     max_upload_bytes: int = 10 * 1024 * 1024
+    observability_enabled: bool = False
+    observability_expected_queues: str = ""
+    observability_uv_enabled: bool = False
+    observability_minio_required: bool = False
 
     @property
     def resolved_database_url(self) -> str:

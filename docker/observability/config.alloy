@@ -1,0 +1,59 @@
+logging { level = "warn" }
+
+discovery.docker "services" {
+  host = "tcp://docker-socket-proxy:2375"
+  refresh_interval = "30s"
+}
+discovery.relabel "services" {
+  targets = discovery.docker.services.targets
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    regex = sys.env("OBS_PROJECT")
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex = "api|frontend|inference-worker|trainer-worker"
+    action = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label = "service"
+  }
+  rule {
+    target_label = "environment"
+    replacement = sys.env("OBS_ENVIRONMENT")
+  }
+  rule {
+    target_label = "host"
+    replacement = sys.env("OBS_HOST")
+  }
+}
+loki.source.docker "services" {
+  host = "tcp://docker-socket-proxy:2375"
+  targets = discovery.relabel.services.output
+  forward_to = [loki.process.safe.receiver]
+}
+loki.process "safe" {
+  // Plain text/library logs may contain private exception details.
+  stage.match {
+    selector = "{service=~\".+\"} !~ \"\\\"event\\\":\""
+    action = "drop"
+  }
+  stage.json {
+    expressions = { timestamp = "timestamp", event = "event", level = "level",
+      request_id = "request_id", job_id = "job_id", route = "route", method = "method",
+      status = "status", function = "function", outcome = "outcome",
+      duration_seconds = "duration_seconds", error_type = "error_type", location = "location" }
+    drop_malformed = true
+  }
+  stage.template {
+    source = "safe"
+    template = "{\"timestamp\":{{ .timestamp | toJson }},\"event\":{{ .event | toJson }},\"level\":{{ .level | toJson }},\"request_id\":{{ .request_id | toJson }},\"job_id\":{{ .job_id | toJson }},\"route\":{{ .route | toJson }},\"method\":{{ .method | toJson }},\"status\":{{ .status | toJson }},\"function\":{{ .function | toJson }},\"outcome\":{{ .outcome | toJson }},\"duration_seconds\":{{ .duration_seconds | toJson }},\"error_type\":{{ .error_type | toJson }},\"location\":{{ .location | toJson }}}"
+  }
+  stage.output { source = "safe" }
+  forward_to = [loki.write.central.receiver]
+}
+loki.write "central" {
+  endpoint { url = sys.env("LOKI_URL") }
+}

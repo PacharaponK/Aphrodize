@@ -1,6 +1,7 @@
+import asyncio
 import logging
 import socket
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.v1.router import api_router
 from backend.core.config import settings
 from backend.core.db.session import close_database, create_database_schema
+from backend.core.observability import ObserveHTTP, configure_logging
 from backend.libs.minio_client import ensure_bucket
+from backend.services.observability import collect_forever, expected_queues
+
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +36,24 @@ def _ensure_storage_buckets_when_reachable() -> None:
     except Exception:
         # Account and health APIs should remain available while optional image
         # storage is recovering; image-dependent endpoints still require MinIO.
-        logger.exception(
-            "Object storage bucket setup failed; continuing with account APIs only"
-        )
+        logger.exception("Object storage bucket setup failed; continuing with account APIs only")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await create_database_schema()
     _ensure_storage_buckets_when_reachable()
+    collector = None
+    if settings.observability_enabled:
+        expected_queues()
+        collector = asyncio.create_task(collect_forever())
     try:
         yield
     finally:
+        if collector:
+            collector.cancel()
+            with suppress(asyncio.CancelledError):
+                await collector
         await close_database()
 
 
@@ -62,3 +73,4 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 app.include_router(api_router, prefix="/api/v1")
+app.add_middleware(ObserveHTTP)

@@ -1,0 +1,100 @@
+# Merge with compose.yml or compose.vm.yml after rendering credentials.
+services:
+  api:
+    environment:
+      OBSERVABILITY_ENABLED: "true"
+      OBSERVABILITY_EXPECTED_QUEUES: ${OBS_EXPECTED_QUEUES:-}
+      OBSERVABILITY_UV_ENABLED: ${OBS_UV_ENABLED:-false}
+      OBSERVABILITY_MINIO_REQUIRED: ${OBS_MINIO_REQUIRED:-false}
+      SERVICE_NAME: api
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=15d, --storage.tsdb.retention.size=2GB]
+    volumes:
+      - ./.observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./.observability/api-password:/run/secrets/api-password:ro
+      - ./.observability/targets:/etc/prometheus/targets:ro
+      - prometheus_data:/prometheus
+    ports: ["127.0.0.1:9090:9090"]
+    mem_limit: 512m
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    logging: &obs-logging
+      driver: local
+      options: {max-size: "10m", max-file: "3"}
+  loki:
+    image: grafana/loki:3.5.0
+    restart: unless-stopped
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./docker/observability/loki.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    mem_limit: 512m
+    ports: ["127.0.0.1:3100:3100"]
+    logging: *obs-logging
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment: {CONTAINERS: "1", POST: "0", INFO: "0", NETWORKS: "1", SERVICES: "0"}
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [collector]
+    mem_limit: 64m
+    logging: *obs-logging
+  alloy:
+    image: grafana/alloy:v1.10.0
+    restart: unless-stopped
+    command: [run, --server.http.listen-addr=0.0.0.0:12345, --storage.path=/var/lib/alloy, /etc/alloy/config.alloy]
+    environment:
+      OBS_ENVIRONMENT: ${APP_ENV:-production}
+      OBS_HOST: ${OBS_HOST:-vm}
+      OBS_PROJECT: ${OBS_PROJECT:-aphrodize}
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+    volumes:
+      - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy
+    networks: [default, collector]
+    depends_on: [loki, docker-socket-proxy]
+    mem_limit: 256m
+    logging: *obs-logging
+  grafana:
+    image: grafana/grafana:12.1.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${OBS_GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${OBS_GRAFANA_PASSWORD:?Set a unique Grafana password}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SERVER_ROOT_URL: ${OBS_GRAFANA_URL:-http://localhost:3001}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-http://127.0.0.1:9/unconfigured}
+    volumes:
+      - ./docker/observability/grafana:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports: ["127.0.0.1:3001:3000"]
+    depends_on: [prometheus, loki]
+    mem_limit: 512m
+    logging: *obs-logging
+  # Linux host metrics (Docker Desktop reports its Linux VM, not Windows).
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    restart: unless-stopped
+    command: [--path.rootfs=/host, --collector.filesystem.mount-points-exclude=^/(dev|proc|sys)($$|/)]
+    volumes: ["/:/host:ro"]
+    pid: host
+    mem_limit: 64m
+    logging: *obs-logging
+  blackbox:
+    image: prom/blackbox-exporter:v0.27.0
+    restart: unless-stopped
+    command: --config.file=/etc/blackbox/config.yml
+    volumes: ["./docker/observability/blackbox.yml:/etc/blackbox/config.yml:ro"]
+    mem_limit: 64m
+    logging: *obs-logging
+networks:
+  collector: {internal: true}
+volumes:
+  prometheus_data:
+  loki_data:
+  alloy_data:
+  grafana_data:

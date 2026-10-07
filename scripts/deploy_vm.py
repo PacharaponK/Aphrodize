@@ -14,7 +14,15 @@ from pathlib import Path
 from release_manifest import validate_manifest, validate_site_url
 
 SOURCE = Path(__file__).resolve().parents[1]
-OVERLAYS = {"compose.duckdns.yml", "compose.vm-worker-access.yml"}
+OVERLAYS = {
+    "compose.duckdns.yml",
+    "compose.vm-worker-access.yml",
+    "compose.observability.yml",
+    "compose.observability-web.yml",
+}
+MONITORING_SERVICES = {
+    "prometheus", "loki", "alloy", "grafana", "docker-socket-proxy", "node-exporter", "blackbox"
+}
 
 
 class DeploymentError(RuntimeError):
@@ -167,6 +175,13 @@ class Deployment:
         if self.ca_file:
             curl += ["--cacert", str(self.ca_file)]
         run(curl + [record["site_url"].rstrip("/") + "/login"], timeout=35)
+        config = json.loads(Path(record["config"]).read_text())
+        if config["services"]["api"].get("environment", {}).get("OBSERVABILITY_ENABLED") == "true":
+            probe = (SOURCE / "scripts/check-observability-readiness.py").read_text()
+            run(command + ["exec", "-T", "api", "python", "-"], input_text=probe, timeout=20)
+        grafana = config["services"].get("grafana", {}).get("environment", {})
+        if grafana.get("GF_SERVER_SERVE_FROM_SUB_PATH") == "true":
+            run(curl + [record["site_url"].rstrip("/") + "/grafana/api/health"], timeout=35)
 
     def update(self, record):
         command = self.compose([record["config"]])
@@ -226,9 +241,17 @@ class Deployment:
         }
         config = json.loads(run(self.compose(files) + ["config", "--format", "json"], env=env))
         old_config = json.loads(Path(previous["config"]).read_text())
-        for service in ("postgres", "redis", "minio", "caddy"):
+        for service in {"postgres", "redis", "minio", "caddy"} | (
+            MONITORING_SERVICES & old_config["services"].keys()
+        ):
             if config["services"].get(service) != old_config["services"].get(service):
                 raise ValueError(f"Infrastructure change in {service} needs a separate deployment")
+        old_observability = old_config["services"]["api"].get("environment", {})
+        new_observability = config["services"]["api"].get("environment", {})
+        if old_observability.get("OBSERVABILITY_ENABLED") == "true" and (
+            new_observability.get("OBSERVABILITY_ENABLED") != "true"
+        ):
+            raise DeploymentError("Release would disable API observability; no services updated")
         # Optional VM services can declare volumes absent from the release source.
         # Keep their declarations, but reject new or changed release volume mappings.
         old_volumes = old_config.get("volumes", {})
