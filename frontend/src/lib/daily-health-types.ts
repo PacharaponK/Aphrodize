@@ -89,6 +89,8 @@ export type PredictionResponse = {
 };
 
 export type DailyHealthHistoryItem = {
+  /** Rule-based guidance returned with the saved record; optional for older APIs. */
+  guidance?: string[];
   local_date: string;
   prediction_target_date: string | null;
   prediction_status: string;

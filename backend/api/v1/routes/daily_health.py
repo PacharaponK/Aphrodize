@@ -534,9 +534,25 @@ async def list_daily_health_entries(
             ),
             thirst_is_calculated=thirst_is_calculated,
         )
+        # Rebuild rule-based advice from the saved inputs, without running inference.
+        # As with interpretation above, withdrawn profile consent is respected.
+        age_band = age_record.age_band if age_record is not None else None
+        guidance = model.make_guidance(
+            sleep_minutes, None, dryness_score if inside_training_domain else None,
+            entry.outdoor_exposure_choice, age_band,
+        )
+        if thirst_is_calculated:
+            water_guidance = model.hydration_guidance(
+                model.calculate_hydration(entry.water_intake_ml, entry.weight_kg, age_band),
+                entry.water_intake_ml,
+            )
+            if water_guidance:
+                guidance.append(water_guidance)
+        guidance.extend(item["message"] for item in interpretation["profile_guidance"])
         items.append(
             {
                 "local_date": entry.local_date.isoformat(),
+                "guidance": list(dict.fromkeys(guidance)),
                 "prediction_target_date": (
                     entry.prediction_target_date.isoformat()
                     if entry.prediction_target_date is not None

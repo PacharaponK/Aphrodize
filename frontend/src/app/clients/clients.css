@@ -161,6 +161,34 @@ html[data-theme="black"] .clients-page .score-method-content code{background:var
 .clients-page .daily-risk-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
+.clients-page .daily-risk-grid > .health-signal-card:first-child { grid-column: auto; }
+.clients-page .daily-risk-current,
+.clients-page .daily-risk-outlook { display: grid; gap: 12px; min-width: 0; }
+.clients-page .daily-risk-current > h3,
+.clients-page .daily-risk-outlook > h3 { margin: 0; font-size: var(--text-card-title, 18px); }
+.clients-page .daily-risk-current time { color: var(--muted); font-size: 14px; font-weight: 400; }
+.clients-page .daily-risk-outlook { border-top: 1px solid var(--line); padding-top: 18px; }
+.clients-page .health-signal-card { min-width: 0; }
+.clients-page .health-signal-heading { flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; }
+.clients-page .health-signal-heading h4 { margin: 0; font-size: 16px; line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
+.clients-page .health-signal-heading .health-signal-level { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.clients-page .daily-risk-unavailable { padding: 14px; background: var(--surface-soft); border-radius: 12px; }
+.clients-page .daily-risk-unavailable dl,
+.clients-page .daily-risk-provenance dl { display: grid; gap: 12px; margin: 0; }
+.clients-page .daily-risk-unavailable dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; }
+.clients-page .daily-risk-unavailable dt,
+.clients-page .daily-risk-provenance dt { font-weight: 700; }
+.clients-page .daily-risk-unavailable dd,
+.clients-page .daily-risk-provenance dd { margin: 0; overflow-wrap: anywhere; color: var(--muted); }
+.clients-page .daily-risk-unavailable dd ~ dd { grid-column: 1 / -1; }
+.clients-page .daily-risk-unavailable .text-button { display: inline-flex; align-items: center; min-height: 44px; }
+.clients-page :is(.daily-risk-guidance, .daily-risk-provenance) { border-top: 1px solid var(--line); min-width: 0; }
+.clients-page :is(.daily-risk-guidance, .daily-risk-provenance) summary { min-height: 44px; padding: 12px 0; cursor: pointer; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+.clients-page :is(.daily-risk-guidance, .daily-risk-provenance) summary:focus-visible { outline: 3px solid var(--primary-deep); outline-offset: 3px; }
+.clients-page .daily-risk-guidance ul { display: grid; gap: 10px; padding-left: 20px; margin: 8px 0 12px; color: var(--ink-soft); }
+.clients-page .daily-risk-provenance dl { padding-bottom: 12px; }
+.clients-page .daily-risk-provenance .health-signal-note { overflow-wrap: anywhere; }
+.clients-page .daily-risk-disclaimer { font-size: 14px; }
 .clients-page .profile-weight-form {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
 }
