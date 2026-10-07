@@ -31,6 +31,10 @@ if 'config' in args:
   volumes['new_data'] = {'name':'new_data'}
  config = {'name':'aphrodize', 'services': {
  'api': {'image':os.environ.get('API_IMAGE','old-api'),
+ 'environment': ({'LABEL_STUDIO_URL':'http://label-studio:8080',
+ 'LABEL_STUDIO_API_KEY':'private-review-token','LABEL_STUDIO_PROJECT_ID':'1'}
+ if mode.startswith('annotation-')
+ and not (mode == 'annotation-dropped' and 'API_IMAGE' in os.environ) else {}),
  'volumes':[{'type':'bind','source':root+'/storage/artifacts/uv',
  'target':'/app/storage/artifacts/uv'}]},
  'frontend': {'image':os.environ.get('FRONTEND_IMAGE','old-web'), 'environment':{'SITE_URL':'https://aphrodize.duckdns.org'}},
@@ -213,6 +217,24 @@ class VmDeploymentTests(unittest.TestCase):
                 self.assertNotIn("private-not-for-logs", result.stdout + result.stderr)
                 self.assertFalse(any("up" in c or "run" in c for c in self.commands()))
                 self.assertFalse((self.deploy / ".releases/current-release.json").exists())
+
+    def test_configured_annotation_survives_release(self):
+        result = self.run_deploy("annotation-preserved")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        candidate = json.loads(Path(current["config"]).read_text())
+        self.assertEqual(
+            candidate["services"]["api"]["environment"]["LABEL_STUDIO_PROJECT_ID"], "1"
+        )
+        self.assertNotIn("private-review-token", result.stdout + result.stderr)
+
+    def test_dropped_annotation_rejected_before_services_update(self):
+        result = self.run_deploy("annotation-dropped")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("annotation review configuration", result.stderr)
+        self.assertNotIn("private-review-token", result.stdout + result.stderr)
+        self.assertFalse(any("up" in command or "run" in command for command in self.commands()))
+        self.assertFalse((self.deploy / ".releases/current-release.json").exists())
 
     def test_pull_failure_does_not_update_services(self):
         result = self.run_deploy("pull-fail")
