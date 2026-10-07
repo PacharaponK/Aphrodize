@@ -1,16 +1,27 @@
-# Acne observation protocol v1
+# Acne: ขอบเขตหลังถอด forecast และ UI
 
-Local-development collection protocol confirmed by user on 5 October 2026.
+ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 Forecast pipeline, offline training/pilot runner, collection form และ dashboard history summary ถูกถอดออกตามขอบเขตงานวันที่ 5 ตุลาคม 2026 Prediction ใหม่ไม่คืน `acne_flare_signal`; UI ไม่ใช้ field นี้จาก payload เก่า และไม่รวมสิวใน unassessed counts
 
-- Date is the observation day in Asia/Bangkok; no future observations. Each owner has at most one report per date, updated on correction.
-- Question: “Did you notice new pimples that day?” / “วันนี้สังเกตเห็นสิวใหม่หรือไม่?” Existing lesions are not new lesions. Yes, No and Not sure are explicit choices. Skipping creates no observation, never a negative.
-- Optional regions for Yes: forehead, left cheek, right cheek (person's own left/right), nose and chin. No counts, photos, medications or free-text fields.
-- Separate `acne-tracking-v1` storage opt-in defaults off per account. Store only for observed history, not training. Image-analysis, annotation, daily-health and shared-training consents do not authorize acne storage.
-- Retain reports until owner deletes them, withdraws this consent or account deletion cascades. Withdrawal revokes only acne consent and deletes only acne observations in the same transaction. Regrant does not restore erased observations. No acne datasets/candidates exist in this phase.
-- Existing image-deletion consent revocation excludes the new acne scope so removing images does not silently withdraw acne consent without its separate purge workflow.
-- Collection is deployment-gated by `ACNE_TRACKING_ENABLED` (default false). Enabled locally after user's confirmation; users still must actively grant acne consent themselves. Disabling collection does not disable deletion/withdrawal endpoints.
-- API `/api/v1/acne/users/{user_id}` is bearer-authenticated and owner-matched. GET returns enabled/consent state and latest 30 reports (bounded limit 1–90). PUT `/consent` explicitly grants; DELETE `/consent` withdraws and purges. PUT `/observations` saves/corrects; DELETE `/observations/{date}` deletes one.
-- Frontend uses server-only `/api/acne` proxy, signed account session, mutation origin checks and no-store responses. No private account identifiers or model probabilities displayed in observation responses.
-- New `acne_observations` table is created through the repository's existing `Base.metadata.create_all` startup schema mechanism. No legacy rows are rewritten; no destructive migration is run.
-- `/clients` contains optional bilingual record/history/edit/delete controls. Dashboard includes a quiet self-reported observation when active and available. Acne forecast signal remains `not_supported`, not an inferred risk grade.
-- Before production rollout: review retention/deletion policy against backup behavior, exact consent wording, user comprehension and deployment approval. Phase 2 dataset, forecasting, cohort thresholds and model promotion require separate approval and are not enabled.
+## Backend ที่ยังคงอยู่
+
+[Acne routes](../../backend/api/v1/routes/acne.py) และ `acne_observations`/consent records ยังคงอยู่ ไม่ลบข้อมูลเดิมด้วยการถอด UI
+
+ทุก route ใต้ `/api/v1/acne/users/{user_id}` ตรวจ Bearer token และเจ้าของ:
+
+| Method / suffix | พฤติกรรม |
+| --- | --- |
+| GET (base) | State และ history; flag ปิดตอบ enabled=false/items ว่าง |
+| PUT `/consent` | Separate storage opt-in; ต้องเปิด collection flag |
+| PUT `/observations` | Save/correct dated self-report; ต้องเปิด flag และ consent |
+| DELETE `/observations/{local_date}` | ลบหนึ่งรายงาน |
+| DELETE `/consent` | ถอน storage/training scopes ของสิวและ purge acne observations |
+| PUT `/training-consent` | HTTP 410: acne model training removed |
+| DELETE `/training-consent` | ถอน legacy training consent โดยไม่ลบ observations |
+
+`ACNE_TRACKING_ENABLED` default false; cleanup/withdrawal ไม่ต้องเปิด collection ก่อน Backend flag ไม่ได้ทำให้ UI กลับมา และไม่ยืนยันว่า deployment ปัจจุบันเปิด flag
+
+## Schema เดิม
+
+Self-report บอก yes/no/not sure ว่าพบสิวใหม่ในวันนั้นหรือไม่ พร้อม optional face regions ไม่ใช่ detector output หรือ diagnosis หนึ่งเจ้าของต่อวันที่ Asia/Bangkok; ไม่รับวันอนาคต Skipping/unknown ไม่กลายเป็น negative ไม่เก็บ counts, photos หรือ free-text medication ใน protocol นี้
+
+`acne-tracking-v1` เป็น storage consent แยกจาก image, annotation และ Daily Health consent การนำ collection/forecast กลับมาทำต้องกำหนดขอบเขตและอนุมัติใหม่ ดู [Roadmap](../roadmap.md)

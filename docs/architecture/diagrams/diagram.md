@@ -1,149 +1,42 @@
-# Aphrodize architecture overview
+# Runtime architecture
 
-This is the project architecture in text form. The `.dio` file remains the original object diagram; this Markdown file is the editable overview for discussing structure and direction.
+ตรวจเทียบ Compose และ `backend/api/v1/router.py` วันที่ 6 ตุลาคม 2026 รายละเอียดอยู่ใน [Component Flows](../Component-Flows.md)
 
-## Runtime tree
-
-```text
-Aphrodize
-├── Web interface
-│   ├── consent
-│   ├── skin-health questionnaire
-│   ├── standardized face-image upload
-│   ├── analysis result
-│   └── history and trend view
-│
-├── FastAPI central API
-│   ├── consent and access control
-│   ├── questionnaire API
-│   ├── image upload and validation
-│   ├── analysis orchestration
-│   ├── rule-based possible-factor explanation
-│   ├── recommendation safety checks
-│   ├── history and trend API
-│   ├── deletion API
-│   └── health check / OpenAPI
-│
-├── Image-analysis pipeline
-│   ├── image-quality gate
-│   │   ├── one face
-│   │   ├── frontal pose
-│   │   ├── neutral expression
-│   │   ├── acceptable exposure and resolution
-│   │   ├── low blur
-│   │   └── no beauty filter
-│   ├── face detection and landmarks
-│   ├── face alignment and crop
-│   ├── region mapping
-│   ├── wrinkle segmentation
-│   ├── regional wrinkle score
-│   └── confidence and model-version metadata
-│
-├── Rule and safety layer
-│   ├── possible factors from questionnaire answers only
-│   ├── rule ID and rule version
-│   ├── product category / active ingredient recommendation
-│   ├── source and rationale
-│   ├── allergy and irritation check
-│   ├── contraindication check
-│   └── low-quality / low-confidence blocking
-│
-├── PostgreSQL
-│   ├── pseudonymous users
-│   ├── consents
-│   ├── user_profiles
-│   ├── image metadata
-│   ├── analyses and model versions
-│   ├── regional wrinkle results
-│   ├── possible-factor results
-│   ├── recommendations
-│   └── longitudinal observations
-│
-├── MinIO object storage
-│   ├── original image
-│   ├── normalized image
-│   ├── wrinkle mask
-│   └── model artifact
-│
-└── Deployment controls
-    ├── administrator health checks
-    ├── model approval metadata
-    └── deletion / retention controls
+```mermaid
+flowchart LR
+    B[Browser] --> N[Next.js server proxies]
+    N --> A[FastAPI /api/v1]
+    A --> P[(PostgreSQL)]
+    A --> M[(Private MinIO)]
+    A --> R[(Redis / ARQ)]
+    R --> I[Inference worker]
+    R --> T[Trainer worker]
+    I --> P
+    I --> M
+    I --> L[Label Studio: separate consent]
+    T --> F[MLflow]
+    F --> P
+    F --> M
+    U[UV refresh / training scripts] --> S[Local UV bundles and snapshots]
+    U --> F
+    A --> S
 ```
 
-## Runtime direction
+Inference เป็น asynchronous ตั้งแต่รับภาพ Browser อ่านสถานะและ artifacts ผ่าน proxy ที่ตรวจ session; API ตรวจเจ้าของด้วย Bearer token Inference/training ใช้คิว Redis แยกกัน ส่วน UV เป็น script/service ที่อ่านเขียนไฟล์ ไม่ผ่าน ARQ
 
-```text
-Web interface
-  → FastAPI
-  → image-quality gate
-  → face alignment and region mapping
-  → wrinkle segmentation
-  → regional scores and confidence
-  → rule engine and safety checks
-  → result API
-  → user result and history/trend
-```
+| Compose | หน้าที่ |
+| --- | --- |
+| `compose.yml` | API/PostgreSQL/Redis; frontend local รันแยกด้วย pnpm |
+| Profile `ai` | MinIO, initializer, inference/trainer, MLflow, Label Studio |
+| Profile `background` | UV refresh ทุก 6 ชั่วโมง; retry 30 นาที |
+| Profile `uv-training` | Candidate pipeline เมื่อเริ่ม service แล้วเว้น 30 วัน; ไม่ auto-promote |
+| Profile `demo` | Fixture loader แบบเรียกเอง |
+| `compose.vm.yml` | VM รวม frontend/reverse proxy; [คู่มือ VM](../../deploy-vm.md) |
+| `compose.gpu.yml` | Worker แยกเครื่อง; [คู่มือ GPU](../../deploy-gpu.md) |
+| `compose.release.yml` | Immutable registry image overlay; [CI/CD](../../cicd-vm.md) |
 
-Storage direction:
+PostgreSQL เก็บ account/consent/health/job/results/registry; MinIO เก็บภาพและ MLflow artifacts; Daily Health candidates และ UV bundles ใช้ local model directories ตามโค้ด ไม่ถือว่าทุก artifact อยู่ใน MinIO
 
-```text
-FastAPI
-  → PostgreSQL       consent, questionnaire, metadata, results, observations
-  → MinIO            original/normalized images, masks, model artifacts
-```
+Image trainer รับเฉพาะ approved external licensed data ไม่มีการนำภาพผู้ใช้ไปฝึกอัตโนมัติ Generic training เป็น metadata-only และ generic inference ยังไม่ deploy โมเดล Container healthy ไม่ยืนยัน model/credentials/snapshot readiness
 
-If GPU inference becomes slow, use the optional asynchronous path:
-
-```text
-FastAPI
-  → Redis queue
-  → analysis worker
-  → GPU inference
-  → PostgreSQL + MinIO
-  → result API
-```
-
-For the MVP, keep the worker inside the modular-monolith deployment until GPU latency or concurrency requires a separate process.
-
-## Offline model direction
-
-```text
-FFHQ-Wrinkle dataset
-  → person-level train/validation/test split
-  → preprocessing
-  → manual mask review when needed
-  → segmentation training
-  → Dice / IoU / precision / recall
-  → subgroup and image-quality evaluation
-  → MLflow model + metrics + config
-  → approved model version
-  → GPU inference deployment
-```
-
-User images are for inference and tracking only; they are not added to training automatically.
-
-## Safety boundary
-
-The system may report:
-
-- what was detected from the image;
-- wrinkle score and confidence;
-- possible factors based on the user’s reported answers;
-- product categories or active ingredients that pass safety rules;
-- qualified longitudinal observations.
-
-The system must not provide age prediction, face recognition, biometric identity embeddings, disease diagnosis, causal confirmation, prescriptions, treatment claims, or product guarantees.
-
-## Open-source / local-first tool choices
-
-| Concern | Suggested tool |
-|---|---|
-| API | FastAPI, Pydantic |
-| Database access | SQLAlchemy, Alembic, PostgreSQL |
-| Vision model | PyTorch, U-Net-style segmentation |
-| Face landmarks | MediaPipe Face Landmarker |
-| Object storage | MinIO |
-| Model tracking | MLflow |
-| Packaging | Docker Compose |
-| Testing | pytest, HTTPX, Testcontainers |
+Schema จริง: [Database ER](database-er.md) ไฟล์ `.dio`/PNG ข้างเอกสารเป็นภาพออกแบบเดิม ใช้ Mermaid และโค้ดตรวจ runtime ปัจจุบัน

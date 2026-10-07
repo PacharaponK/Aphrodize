@@ -1,49 +1,67 @@
-# Daily-health data and model-versioning flow
+# Daily Health: data, training และ release
 
-## Persisted data
+ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 ใช้ [Input Flow](Daily-Health-Input-Flow.md) สำหรับเว็บ และ [Model Summary](Lifestyle-Model-Summary.md) เพื่อแยกสูตร/baseline/forecast
 
-- `daily_health_entries` stores the user's daily input, calculated sleep-duration score, and a separate copy of prediction output. A `(user_id, local_date)` upsert keeps one current entry per user and date.
-- `daily_health_outcomes` stores values the user reports they actually observed (energy, thirst, and skin-dryness scores). These are kept separate from predictions.
-- `daily_health_dataset_records` is a provenance-tagged archive for imported CSV snapshots. It keeps a file fingerprint and row number, replaces external identifiers with dataset-local participant aliases, and marks every imported row ineligible for user-model training. The CSV importer accepts an explicit field allowlist and rejects unknown columns so arbitrary PII headers cannot be archived.
-- `daily_health_model_versions` is the registry for user-trained candidate artifacts and their validation/test metrics. `daily_health_model_deployments` stores the explicitly approved active/previous version, while `daily_health_model_deployment_events` records promotion, rollback, and erasure actions.
+## ข้อมูลและ import
 
-The PostgreSQL data volume is the durable database. Do not run `docker compose down -v` unless you intentionally want to erase all local application data.
+`daily_health_entries` เก็บ input, สูตร และ prediction แยกกัน; `daily_health_outcomes` เก็บ self-reported thirst/dryness/energy 0–10; `daily_health_dataset_records` เก็บ CSV snapshot พร้อม provenance/fingerprint/row number และ participant alias ภายใน dataset Imported rows ทั้งหมดไม่เข้า shared user-model training; importer ไม่แปลง categorical labels หรือ synthetic scores เป็น actual outcomes และ reject columns นอก allowlist
 
-## Initial dataset snapshot
-
-The selected CSV is `sandboxes/datamake/output/lifestyle_medically_cautious_sleepmax540_forecast_with_real_user.csv`. It currently contains 1,234 rows: 14 rows attributed to `real_user_tracker_xlsx` and 1,220 synthetic rows. The observed rows have a categorical/decimal `skin_dryness_level` field and skin-feeling labels, but no numeric thirst/dryness scores on the model's 0–10 scale. The synthetic 0–10 values were generated from rules. The importer therefore retains all of the data and its provenance but excludes every imported row from model training; it does not infer or convert target scores.
-
-Once the PostgreSQL service is running, import this snapshot with:
+Import ไฟล์ที่ตรวจ rights/provenance แล้วจาก repository root โดยแทน path ด้วยไฟล์จริง:
 
 ```powershell
-docker compose run --rm --no-deps `
-  --volume 'C:/Users/ACER/Desktop/Projects/Aphrodize/sandboxes/datamake/output/lifestyle_medically_cautious_sleepmax540_forecast_with_real_user.csv:/app/seed.csv:ro' `
-  api python -m backend.scripts.import_daily_health_dataset /app/seed.csv
+$datasetPath = (Resolve-Path './path/to/reviewed.csv').Path
+docker compose run --rm --no-deps --volume "${datasetPath}:/app/seed.csv:ro" api python -m backend.scripts.import_daily_health_dataset /app/seed.csv
 ```
 
-The import is idempotent for an unchanged file fingerprint. Editing the CSV creates a new snapshot instead of overwriting the previous one. To remove one complete imported snapshot, use `python -m backend.scripts.delete_daily_health_dataset_snapshot <sha256> --confirm` after verifying its exact fingerprint. Imported snapshots are not linked to an authenticated account, so this is whole-snapshot deletion rather than per-person deletion.
+ต้องมี PostgreSQL พร้อม ไฟล์ fingerprint เดิม import ซ้ำไม่เพิ่ม snapshot; CSV ที่เปลี่ยนสร้าง snapshot ใหม่ ลบทั้ง snapshot ด้วย `python -m backend.scripts.delete_daily_health_dataset_snapshot <sha256> --confirm` ใน environment ที่เข้าถึง DB ได้ ไม่ใช่ per-account erasure
 
-## Consent and labels
+Template: [daily health CSV](user_daily_health_tracker_template.csv) ไม่ต้องมี sandbox CSV เฉพาะเครื่องเพื่อรันระบบ
 
-Saving a daily entry requires the existing consent to store daily health data. Model training is a separate, optional consent (`daily-health-model-training-v1`). The user can revoke it; daily history remains stored, the consent becomes inactive, unapproved candidates are marked stale, and no further data from the user enters training. An already-approved model is not retroactively unlearned by opt-out alone. Users who have not opted in are excluded from the training query.
+## Training cohort และ consent
 
-The self-report form records numeric 0–10 thirst and dryness scores separately from predictions. A training example is created only when both are supplied, a previous day's user-reported lifestyle entry exists, and the user has active model-training consent. The target day's actual reports are paired with that user's previous-day inputs, so the candidate predicts next-day thirst/dryness. Predicted scores, synthetic rows, and imported categorical observations are never used as ground truth.
+Storage และ training เป็น consent แยก v1 (`daily-health-model-training-v1`) ครอบคลุม thirst/dryness; v2 (`daily-health-model-training-v2`) รวม energy ห้าม upgrade v1 เงียบ ๆ
 
-## Candidate training and versioning
+จับคู่ user-reported input วัน D กับ outcomes ของเจ้าของเดียววัน D+1 เฉพาะ active opt-in ใช้ sleep/water/outdoor เป็น features; ไม่ใช้ prediction, fixture, imported/synthetic rows หรือ hydration formula เป็น labels Missing energy ไม่แทนศูนย์
 
-The trainer worker checks readiness every Monday at 02:00 UTC (09:00 `Asia/Bangkok`). Saving an outcome only persists the user's report; it does not start training immediately. On the weekly check, the worker queues training only when there are at least 100 complete next-day examples from at least 5 opted-in participants, and at least 25 additional examples since the latest candidate (or when consent withdrawal produces a smaller eligible snapshot). If the checks fail, it waits for the next weekly run; no candidate is created. Redis or database outages may cause that scheduled check to fail and require operator monitoring/retry.
+`created_at` และ `updated_at` ของ input ต้อง timezone-aware, เรียงถูกต้องและก่อนเริ่มวัน target ใน Asia/Bangkok Backfill/late correction จึงไม่เข้า training โค้ดยังไม่มี immutable historical input/outcome snapshots
 
-The worker:
+Readiness: อย่างน้อย 100 complete matched days จาก 5 participants; candidate รุ่นต่อไปต้องมีอย่างน้อย 25 วันเพิ่ม หรือ cohort ลดหลังถอน consent; target-family/fingerprint เดิมมี guards กันซ้ำ Three-target cohort ต้องถึงเกณฑ์เอง ไม่ใช้จำนวนสอง-target cohort แทน
 
-1. Re-reads the current active-consent cohort from PostgreSQL.
-2. Splits by participant (60/20/20 train/validation/test), preventing a person's days from leaking across partitions.
-3. Fits a multi-output `RandomForestRegressor` only on the train partition and reports MAE, RMSE, and R² where defined for validation and untouched test users.
-4. Writes a model and manifest under `models/time-series/non-linear-model/artifacts/user-candidates/<version-id>/` and stores the candidate status, data fingerprint, sample counts, and metrics in `daily_health_model_versions`.
+Trainer ตรวจทุกจันทร์ 02:00 UTC (**09:00 Asia/Bangkok**) ไม่รัน check ตอน startup และการบันทึก outcome ไม่ train ทันที ต้องเปิด `trainer-worker`/Redis/DB ให้พร้อม
 
-Candidate versions are not automatically promoted. Review recent versions with `GET /api/v1/daily-health/model-versions`, inspect the active pointer with `GET /api/v1/daily-health/model-deployment`, and explicitly promote a candidate with `PUT /api/v1/daily-health/model-deployment` plus a written reason. The endpoint validates the artifact checksum and manifest before changing the active pointer. Inference uses the approved one-day-ahead candidate and identifies its version and target date; when no candidate is active, the source-controlled same-day baseline remains active. A broken active artifact returns unavailable rather than silently falling back. Rollback is explicit via `POST /api/v1/daily-health/model-deployment/rollback`; promotion, rollback, and erasure events can be inspected with `GET /api/v1/daily-health/model-deployment/events`. Metrics describe agreement with self-reported scores, not clinical accuracy or diagnosis. There is no candidate yet from the imported snapshot because it is excluded and the required volume of consented numeric outcomes has not been reached.
+## Candidate และ gate
 
-## User-requested erasure and retention
+1. อ่าน active-consent cohort แล้ว split participant 60/20/20
+2. Fit multi-output RandomForestRegressor บน train users; validation/test users แยกกัน
+3. ประเมินอีกมุมด้วย model แยก: train วันที่ก่อน cutoff และ hold out 20% ของ distinct dates สุดท้าย ไม่ใช่ joint participant/time split
+4. รายงาน per-target MAE/RMSE/R² และ training-mean baselines ของ participant/temporal tests
+5. Re-read consent/snapshot ก่อนเผยแพร่; เก็บ `model.joblib`/`manifest.json` พร้อม checksum, target/consent/availability policy ใน `models/time-series/non-linear-model/artifacts/user-candidates/<version-id>/`
+6. เก็บ registry ใน PostgreSQL; ARQ worker ส่ง aggregate metrics/cohort counts ไป experiment `daily-health-next-day` และบันทึก `mlflow_run_id` ไม่ส่งรายบุคคลหรือ health model artifacts ไป MLflow
 
-The explicit `DELETE /api/v1/daily-health/users/{user_id}/data` action deletes that account's daily entries, self-reported outcomes, profile/age/menstrual context, and revokes the associated consents. Since model-version records do not retain per-user cohort membership, erasure removes the user-trained model registry and version-bearing deployment history, clears the active pointer, and removes generated user-candidate artifacts from the exact allowlisted model directory. A single erasure audit event without a user or model-version ID remains. This conservatively resets serving to the baseline. Artifact cleanup only unlinks the known `model.joblib` and `manifest.json` files in generated direct-child version folders; unexpected files or symlinks stop cleanup for operator review. The browser clears its daily-health session so the user can start again only after a new storage consent.
+ทุก target ต้องมี finite nonnegative MAE ที่ดีกว่า mean baseline อย่างเคร่งครัดในทั้งสอง holdouts Missing/equal/worse metrics หรือ temporal coverage ไม่พอ block promotion Artifact/manifest/provenance gate และ human review ยังจำเป็น Engineering gate ไม่ใช่ clinical validation
 
-No automatic retention period is configured. Operators should define a retention duration with the product/privacy owner rather than assume a default. Imported snapshots are separate from account-linked records and require whole-snapshot deletion by fingerprint.
+MLflow ล่ม: candidate ยังอยู่, worker job แสดง failure และ run link ว่าง; operator คืน tracking แล้ว retry job รุ่นเก่าไม่ backfill อัตโนมัติ
+
+## Operator API
+
+Model-review routes ใช้ **admin Basic credentials ที่ตั้งค่าและแยกจาก service API pair** ตาม [Human Review](../ai/Human-Review.md):
+
+| Method | Path ใต้ `/api/v1/daily-health` |
+| --- | --- |
+| GET | `/model-versions` |
+| GET | `/model-deployment` |
+| GET | `/model-deployment/events` |
+| PUT | `/model-deployment` พร้อม version/reason |
+| POST | `/model-deployment/rollback` |
+
+ไม่ auto-promote; actor มาจาก authenticated operator ไม่ใช่ payload Legacy/system events มี actor null Approved next-day estimates ระบุ model/horizon; ไม่มี candidate ใช้ baseline เส้นทางเดิมและ next-day cards ให้ model_not_ready Active artifact เสียคืน unavailable แทน fallback เงียบ ๆ
+
+## Withdrawal และ erasure
+
+Training withdrawal ปิดทั้ง v1/v2 และทำ training/candidate ที่ไม่ active ให้ stale; daily history คงอยู่ Active approved model ไม่ unlearn ย้อนหลังด้วย opt-out อย่างเดียว
+
+`DELETE /api/v1/daily-health/users/{user_id}/data` ลบ entries/outcomes/profile/age/menstrual context และ revoke scopes ที่ route ระบุ ถ้าบัญชีอาจเคยเป็น training contributor (มี training consent, user-reported entry และ complete outcome) ระบบ reset shared registry/deployment/version-bearing events และ purge generated candidate artifacts เพราะไม่มี per-model participant lineage บัญชีที่ไม่เข้าเงื่อนไขนี้ไม่ reset shared models
+
+Cleanup จำกัด known files/version directories; unexpected files/symlinks ต้อง operator review Imported snapshots แยกจาก account-linked data ไม่มี automatic retention period; ต้องกำหนดร่วมกับ product/privacy owner อย่าใช้ `docker compose down -v` หากต้องเก็บ DB เดิม
+
+Source: [training](../../backend/services/daily_health_training.py), [registry](../../backend/services/daily_health_model_registry.py), [routes](../../backend/api/v1/routes/daily_health.py), [worker](../../backend/workers/trainer_worker.py)

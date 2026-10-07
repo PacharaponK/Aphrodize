@@ -1,10 +1,11 @@
 # Safety and Governance
 
+> Checked against code on 6 October 2026. This file defines governance requirements; it does not certify that every requirement has been validated. Current image runtime supports wrinkles, not acne detection. Acne forecasts and collection UI are removed; legacy cleanup APIs remain. Named reviewed products are supported, subject to safety and shopping-data gates. See [current scope](Product%20and%20Scope.md) and [AI and Data](../ai/AI%20and%20Data.md).
 > ข้อกำหนดด้าน consent, privacy, fairness และขอบเขตการกล่าวอ้างของ [Product and Scope](Product%20and%20Scope.md)
 
 ## Product boundary
 
-Aphrodize เป็น wellness/educational system สำหรับตรวจและติดตาม visible acne-like spots และ wrinkles จากภาพ แล้วใช้ผลลัพธ์ร่วมกับ concern และบริบทที่ผู้ใช้รายงานเพื่อประกอบคำแนะนำผลิตภัณฑ์ ไม่ใช้แทน dermatologist หรือการตัดสินใจทางคลินิกของผู้เชี่ยวชาญ
+Aphrodize เป็น wellness/educational system สำหรับตรวจและติดตาม wrinkles จากภาพ แล้วใช้ผลลัพธ์ร่วมกับ concern และบริบทที่ผู้ใช้รายงานเพื่อประกอบคำแนะนำผลิตภัณฑ์ ไม่ใช้แทน dermatologist หรือการตัดสินใจทางคลินิกของผู้เชี่ยวชาญ
 
 ระบบไม่ทำนายอายุหรือ apparent age จากใบหน้า เพราะศัลยกรรม หัตถการ พันธุกรรม และปัจจัยแวดล้อมทำให้ลักษณะใบหน้าไม่จำเป็นต้องสอดคล้องกับอายุจริง อีกทั้งผลลัพธ์ดังกล่าวอาจก่อให้เกิดการตีความและผลกระทบทางจิตใจที่ไม่จำเป็น
 
@@ -13,7 +14,7 @@ Aphrodize เป็น wellness/educational system สำหรับตรว�
 ## Required wording
 
 - ใช้ **ตรวจพบจากภาพ** ไม่ใช้ถ้อยคำวินิจฉัย
-- ใช้ **ลักษณะคล้ายสิวที่ตรวจพบจากภาพ** ไม่ระบุชนิดสิวหรือโรค
+- ข้อมูลสิวเดิมเป็น **ผู้ใช้รายงาน** ไม่อ้างว่าตรวจพบจากภาพ เพราะ runtime ไม่มี acne detector
 - ใช้ **wrinkle score** และอธิบายว่าเป็นค่าจากโมเดล ไม่ใช่คะแนนสุขภาพหรือความงาม
 - แยก **ผู้ใช้รายงาน** ออกจากผลที่โมเดลตรวจพบ และแสดง source ของ signal
 - ใช้ **แนวโน้ม** เฉพาะการเปรียบเทียบภาพที่ผ่าน capture protocol และ quality gate
@@ -41,11 +42,11 @@ Aphrodize เป็น wellness/educational system สำหรับตรว�
 
 วัด error แยกตาม skin tone, sex/gender representation, face region และ image quality เท่าที่ label อนุญาต รายงาน sample size และ limitation เมื่อข้อมูลบางกลุ่มน้อย ไม่สรุปว่าระบบ fair จาก aggregate metric เพียงค่าเดียว
 
-Dataset split ต้องป้องกัน identity leakage ตาม [AI and Data](../ai/AI%20and%20Data.md) และเก็บรายงานผลแยกตาม subgroup พร้อม model artifact ใน MLflow ตาม [System and MLOps](../architecture/System%20and%20MLOps.md)
+Dataset split ต้องป้องกัน identity leakage ตาม [AI and Data](../ai/AI%20and%20Data.md) และรายงานผลแยกตาม subgroup ตามข้อมูลที่มี Image/UV tracking ใช้ MLflow ตาม flow ของแต่ละระบบ; Daily Health ส่งเฉพาะ aggregate metrics/cohort counts ไม่ส่งรายบุคคลหรือสำเนา health model artifacts ดู [Component Flows](../architecture/Component-Flows.md)
 
 ## Recommendation safety
 
-- แนะนำเฉพาะ product category หรือ active ingredient ที่มี source และ rationale
+- แนะนำ product category, active ingredient หรือสินค้าที่ตรวจทานแล้วและมี source/rationale ตาม safety gates
 - ตรวจ allergy, irritation, sensitivity, routine เดิม และ contraindication ก่อนแสดงทุกครั้ง
 - Recommendation ที่อ้างผลภาพต้องไม่แสดงเมื่อ image quality/confidence ต่ำ
 - Recommendation จาก concern ที่ผู้ใช้รายงานต้องระบุว่าไม่ได้เป็นผลตรวจจากภาพ

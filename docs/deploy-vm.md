@@ -120,6 +120,55 @@ the excluded model/data/snapshot assets; do not expect them to be populated yet.
 The worker connection and a VM-side retention worker remain future work. Database,
 Redis and MinIO have no host ports yet; a restricted network path will be added later.
 
+## Enable UV forecast refresh with existing models
+
+Copy the complete `storage/models/uv`, `storage/data/uv` and
+`storage/artifacts/uv` directories from the training machine to the same paths
+under `~/Aphrodize` on the VM. Preserve `active.json` and its referenced
+`versions/<version>` bundle, including `manifest.json`, `dataset.csv`, the three
+city models and evaluation artifacts. Do not copy a transient `deployment.lock`
+from a running job. Stop any existing UV writer before replacing these files.
+An existing active registry does not need bootstrap or retraining.
+
+The optional `background` profile runs `uv-refresh` immediately, then every six
+hours after success or retries after 30 minutes on failure. It downloads TEMIS
+and Open-Meteo data and uses the existing model parameters without retraining.
+The API reads the resulting shared snapshots without needing a restart.
+
+On the VM, set these values in the private `.env` to the output of `id -u` and
+`id -g` for the account that owns the uploaded UV files (both default to 1000):
+
+```dotenv
+UV_REFRESH_UID=1000
+UV_REFRESH_GID=1000
+```
+
+That account needs write access to all three UV directories; models require
+write access for the deployment lock even though refresh does not modify model
+bundles. If previous containers created root-owned files, correct ownership of
+these directories to the deployment account before starting the service.
+
+Run from the VM project root, after the assets have been uploaded:
+
+```bash
+cd ~/Aphrodize
+docker compose -f compose.vm.yml --profile background config --quiet
+docker compose -f compose.vm.yml --profile background run --rm --no-deps --build uv-refresh python /app/scripts/refresh_uv_forecast.py
+docker compose -f compose.vm.yml --profile background up -d --no-deps uv-refresh
+docker compose -f compose.vm.yml logs --tail 100 uv-refresh
+```
+
+Only start the recurring job after the one-off refresh succeeds. A failed refresh
+reports the cause in logs, including missing models, changed TEMIS history,
+stale observations or incompatible model libraries; do not retrain automatically
+to bypass these checks. A snapshot older than eight hours is rejected by the API.
+
+This service uses the locally built API image and read-only scripts from the VM
+checkout. After updating that checkout or dependencies, rebuild and recreate
+`uv-refresh` explicitly with `up -d --no-deps --build uv-refresh`; the registry
+release deploy currently updates only API/frontend. Include any existing Compose
+overlays in commands that also update web services so their TLS settings persist.
+
 ## Updates and data
 
 Review and commit deployment files explicitly; avoid `git add .` for unreviewed data.

@@ -1,137 +1,52 @@
 # Daily Health Input Flow
 
-เอกสารนี้สรุปลำดับการกรอกข้อมูลสุขภาพรายวัน การเรียกผลประเมิน และวงจรเก็บผลที่ผู้ใช้รายงานจริง ตาม implementation ปัจจุบัน
+ตรวจเทียบ routes, services และ frontend วันที่ 6 ตุลาคม 2026
 
-## 1. กรอกข้อมูลรายวันและดูผล
+## กรอกและบันทึก
 
-```mermaid
-flowchart TD
-    A[ผู้ใช้เปิดหน้า /clients] --> A1[อ่านน้ำหนักจากโปรไฟล์ ถ้ามี consent]
-    A1 --> B[เปิดฟอร์มบันทึกประจำวัน]
-    B --> C[วันที่: ค่าเริ่มต้นเป็นวันที่ปัจจุบัน]
-    C --> D[เวลานอน: กรอกชั่วโมงและนาที]
-    D --> E[ปริมาณน้ำดื่ม: กรอกเป็น ml]
-    E --> F[เวลาอยู่กลางแจ้ง: เลือก 1 ใน 4 ระดับ]
-    F --> G[ยินยอมให้บันทึกข้อมูลรายวัน]
-    G --> H{ข้อมูลครบและผ่าน validation หรือไม่?}
-    H -- ไม่ผ่าน --> B
-    H -- ผ่าน --> I[POST /api/daily-health/predict]
-
-    I --> J{prediction สำเร็จหรือไม่?}
-    J -- สำเร็จ --> K[โมเดลประเมิน thirst และ skin dryness]
-    J -- ไม่สำเร็จ --> L[ข้ามผล prediction แต่เก็บข้อมูลประจำวันที่กรอกได้]
-    K --> M[คำนวณ sleep score จากระยะเวลานอน]
-    L --> M
-    M --> N[แสดงผลและคำแนะนำบนหน้าเว็บ]
-    N --> O[POST /api/daily-health/entries]
-    O --> P[บันทึก input และ metadata ของ prediction แยกจากกัน]
-```
-
-### ข้อมูลและกติกาของฟอร์ม
-
-| ข้อมูล | วิธีกรอก/การตรวจสอบ |
-|---|---|
-| วันที่ | เริ่มต้นเป็นวันที่ปัจจุบัน และไม่อนุญาตวันที่ในอนาคต |
-| เวลานอน | แยกช่องชั่วโมงและนาที; ระยะเวลารวมสูงสุด 600 นาที (10 ชั่วโมง) |
-| น้ำดื่ม | ปริมาณหน่วย ml |
-| น้ำหนัก | ไม่มีช่องในฟอร์มรายวัน; อ่านจากน้ำหนักที่ผู้ใช้บันทึกในโปรไฟล์ภายใต้ consent แยก และเก็บเป็น snapshot ในรายการของวันนั้น; ถ้าไม่มีน้ำหนักที่ยินยอม ระบบจะไม่คำนวณ thirst score |
-| เวลาอยู่กลางแจ้ง | เลือกหมวด 1–4; ส่งรหัสตัวเลขให้ API |
-| ความยินยอมบันทึก | ต้องยินยอมก่อนส่งข้อมูล |
-| Personalization / skin-type guidance / age guidance / model training | ความยินยอมแยกกันและเป็นตัวเลือก; ส่งเฉพาะข้อมูลที่ผู้ใช้ยินยอม ชนิดผิวที่เลือกเองใช้สร้างคำแนะนำดูแลผิวทั่วไป ไม่เป็น feature หรือ target ของโมเดล |
-
-ส่วนสูงและน้ำหนักกำหนดหรือแก้ไขได้ที่หน้า `/profile` ไม่ต้องกรอกซ้ำในฟอร์มรายวัน; แต่ละค่าใช้ consent แยกกัน (`daily-health-height-profile-v1` และ `daily-health-weight-profile-v1`). น้ำหนักใช้คำนวณเกณฑ์น้ำดื่มและ thirst score พร้อม snapshot ต่อวัน; เมื่อถอน consent น้ำหนัก ระบบลบน้ำหนักและคะแนน thirst ตามสูตรที่คำนวณจากค่านั้น ส่วนสูงเก็บไว้ในโปรไฟล์เท่านั้น ไม่ใช้คำนวณคะแนน
-
-ตัวเลือก outdoor ที่ฟอร์มและ backend ใช้อยู่ปัจจุบันคือ 1: น้อยกว่า 60 นาที, 2: 60 ถึงน้อยกว่า 180 นาที, 3: 180 ถึงน้อยกว่า 240 นาที และ 4: ตั้งแต่ 240 นาทีขึ้นไป โดยส่งเป็นรหัส `1–4` ไม่ใช่จำนวนนาทีจริง ข้อควรระวัง: หน้าแนวโน้มปัจจุบันย่อ label ของตัวเลือก 2 เป็น “1–2 ชั่วโมง” ซึ่งไม่ตรงกับช่วงที่ฟอร์มรับจริง (“1–น้อยกว่า 3 ชั่วโมง”); ควรทำให้ label สองหน้าตรงกันก่อนใช้ค่ากลางแจ้งเพื่ออธิบายแนวโน้ม
-
-### ผลที่คำนวณและ prediction
-
-- `sleep_score_0_100` คำนวณจากระยะเวลานอน: `round(min(100, sleep_duration_minutes / 540 * 100), 1)` โดยใช้ 9 ชั่วโมงเป็นเพดานคะแนน 100; เป็นคะแนนจากระยะเวลา ไม่ใช่คุณภาพการนอน
-- `thirst_score_0_10` คำนวณจากน้ำดื่มเทียบกับน้ำหนักในโปรไฟล์ที่ยังได้รับ consent; daily form ไม่รับน้ำหนักซ้ำ และฐานข้อมูลเก็บค่าที่ใช้เป็น snapshot ต่อวัน
-- โมเดลประเมิน `thirst_score_0_10` และ `skin_dryness_score_0_10` พร้อมผลตีความ/คำแนะนำตาม response ของระบบ
-- serving จะใช้ candidate ที่ได้รับอนุมัติเมื่อมี deployment ที่ active; หากไม่มี ระบบใช้โมเดลพื้นฐาน
-- หาก prediction ล้มเหลว frontend ยังพยายามบันทึก daily entry โดยไม่มี prediction scores
-- การบันทึก entry เป็น upsert ตามผู้ใช้และวันที่ท้องถิ่น จึงมีรายการรายวันได้หนึ่งรายการต่อผู้ใช้ต่อวัน
-- ค่าที่โมเดลทำนายเป็นเพียง prediction ไม่ใช่ผลที่ผู้ใช้รายงานจริง และไม่ถูกนำไปใช้เป็น training label
-
-### การตีความความเสี่ยงในผลรายวัน
-
-หลังคำนวณคะแนน ระบบสร้าง `interpretation` สำหรับแสดงความเสี่ยงและคำแนะนำ โดยแยกสัญญาณที่ประเมินได้ออกจากสัญญาณที่ยังมีข้อมูลไม่พอ:
-
-| สัญญาณบนหน้าเว็บ | วิธีแสดง/ข้อจำกัดปัจจุบัน |
-|---|---|
-| สุขภาพโดยรวม (`daily_health_summary`) | ระดับต่ำ/ปานกลาง/สูง พร้อมปัจจัยและคำแนะนำจากเวลานอนและคะแนน thirst/dryness; หาก input อยู่นอกช่วงฝึกจะไม่จัดระดับ |
-| ผิวแห้งและการดูแลผิว (`skin_care_attention_level`) | ระดับความใส่ใจจากคะแนน dryness และ thirst ที่บันทึกไว้; ไม่ใช่การวินิจฉัย |
-| สัญญาณสิว (`acne_flare_signal`) | ยังไม่จัดระดับ (`insufficient_data`) เพราะยังไม่มีป้ายผลสิวที่ผู้ใช้รายงานจริง |
-| พลังงานวันถัดไป (`low_energy_signal`) และกระหายน้ำวันถัดไป (`thirst_attention`) | ปัจจุบันยังแสดง `insufficient_history` เสมอ แม้มีช่อง self-report พลังงาน เพราะ training targets ของโมเดลมีเฉพาะ thirst และ skin dryness และยังไม่มี logic ใช้ประวัติ outcome เพื่อให้สองสัญญาณนี้เป็นระดับความเสี่ยง |
-| คำแนะนำตามข้อมูลส่วนตัว (`profile_guidance`) | แสดงเมื่อมี consent แยกที่เกี่ยวข้อง เช่น บุหรี่ ประจำเดือน หรือชนิดผิวที่ผู้ใช้เลือกเอง; ข้อมูลช่วงวัยใช้ปรับแนวทางเวลานอนเมื่อได้รับ age-guidance consent; ชนิดผิวเปลี่ยนเฉพาะข้อความคำแนะนำ ไม่เปลี่ยนคะแนนหรือระดับความเสี่ยง |
-
-ผู้ใช้สามารถเลือกประเภทผิวที่รายงานด้วยตนเองได้หนึ่งแบบ: ธรรมดา, แห้ง, มัน, ผสม, แพ้ง่าย หรือไม่ระบุ ภายใต้ skin-type guidance consent แยกต่างหาก; API เก็บชนิดผิวปัจจุบันใน `daily_health_profiles` และสร้าง `profile_guidance` พร้อมลิงก์คำแนะนำจาก American Academy of Dermatology ตามประเภทที่เลือก ข้อความเป็นแนวทางดูแลทั่วไป ไม่ใช่ผลตรวจผิวหรือคำวินิจฉัย และไม่นำชนิดผิวไปคิดคะแนนหรือใช้เป็น feature ของโมเดล
-
-หากสัญญาณไม่มีระดับ ระบบแสดงสถานะข้อมูลไม่พอ/ประเมินไม่ได้แทนการใส่ระดับต่ำ กลาง หรือสูงโดยคาดเดา ความเสี่ยงและคำแนะนำเป็นแนวทางทั่วไป ไม่ใช่การวินิจฉัยโรค
-
-### การอ่านผลบนหน้า Overview และ Trend
+หน้า `/clients` ส่งวันท้องถิ่น เวลานอน น้ำดื่ม และตัวเลือกกลางแจ้งไป Next.js `/api/daily-health/predict` แล้ว proxy ไป `POST /api/v1/daily-health/predict` ด้วย service Basic credentials ผู้ใช้ preview ได้โดยไม่เข้าสู่ระบบ แต่การบันทึกต้องมี signed account session, Bearer token ที่ตรงเจ้าของ และ daily-health storage consent
 
 ```mermaid
 flowchart TD
-    A[ผู้ใช้บันทึกข้อมูลรายวัน] --> B[POST /api/daily-health/predict]
-    B --> C[คำนวณคะแนน thirst และ skin dryness]
-    C --> D[คำนวณ sleep score และ interpretation]
-    D --> E[แสดงผลล่าสุดในฟอร์ม]
-    E --> F[POST /api/daily-health/entries]
-    F --> G[(บันทึก daily entry และ prediction scores)]
-    G --> H[หน้า Overview: GET /api/daily-health/entries ช่วง 7 วันปฏิทินล่าสุด]
-    G --> I[หน้า Trend: GET /api/daily-health/entries?limit=30]
-    H --> J[ยืนยัน session และ daily-health consent]
-    I --> J
-    J --> K[อ่าน scores ที่บันทึกไว้และสร้าง interpretation]
-    K --> L[แสดงการ์ดความเสี่ยงและคำแนะนำ]
-    J -- ไม่มี session/consent/รายการ --> M[แสดงสถานะยังไม่มีข้อมูล]
+    A[Daily input: sleep / water / outdoor] --> B[Next.js prediction proxy]
+    B --> C[API: formulas + model + interpretation]
+    C --> D[Display estimates and provenance]
+    D --> E{Account and storage consent?}
+    E -- yes --> F[Owner-matched entry upsert]
+    E -- no --> G[Preview only]
+    F --> H[(Input / calculated / prediction stored separately)]
+    O[Observed thirst / dryness / energy] --> P[Separate outcomes API]
+    P --> Q[(Self-reports: possible training labels)]
 ```
 
-- `GET /api/daily-health/entries` ใช้ session cookie ของผู้ใช้; Next.js ส่งต่อคำขอไป backend โดยเก็บ Basic credentials ไว้ฝั่ง server
-- Backend ตรวจว่าผู้ใช้และ daily-health consent ยังใช้งานได้ก่อนคืนประวัติ; หากไม่มี consent หรือไม่มีรายการ จะคืน `items: []`
-- Overview ขอข้อมูล 7 วันปฏิทินล่าสุดตาม `Asia/Bangkok`; Trend ขอรายการย้อนหลังไม่เกิน 30 รายการ
-- Overview แสดงรายการรายวันในช่วงนั้น พร้อมค่าเฉลี่ย sleep duration, sleep score, น้ำดื่ม, thirst score และ dryness score; แต่ละค่าเฉลี่ยคำนวณจากค่าที่มีจริงเท่านั้นและแสดงจำนวนวันที่มีข้อมูล จึงไม่นับวันที่ไม่มีบันทึกเป็นศูนย์
-- หน้าเหล่านี้ใช้ thirst/dryness scores ที่บันทึกไว้เพื่อสร้างคำอธิบายความเสี่ยงใหม่ แต่ **ไม่เรียกโมเดลทำนายซ้ำ** และไม่สร้างข้อมูลแทนวันที่ไม่มีรายการ
-- ประวัติ smoking, age band, skin type และ menstrual check-in จะนำมาใช้เฉพาะเมื่อ consent ของข้อมูลประเภทนั้นยัง active; skin type เก็บเป็นค่าปัจจุบันใน `daily_health_profiles` ส่วน menstruation เป็น check-in แยกตามวัน
-- Risk cards ทั้งสองหน้าใช้ชุดสัญญาณเดียวกัน: สุขภาพโดยรวม, การดูแลผิว/ผิวแห้ง, สัญญาณสิว, พลังงานวันถัดไป และความกระหายน้ำวันถัดไป พร้อมคำแนะนำตามข้อมูลส่วนตัวเมื่อมีสิทธิ์ใช้ข้อมูล
+Entry เป็น upsert `(user_id, local_date)` หนึ่งรายการต่อบัญชีต่อวัน Prediction ไม่สำเร็จยังเก็บ input ได้ การบันทึกไม่ทำให้ prediction กลายเป็น observed outcome
 
-## 2. ผลที่ผู้ใช้รายงานจริงและการฝึกโมเดล
+## ผลที่ต้องแยกกัน
 
-```mermaid
-flowchart TD
-    A[ผู้ใช้สังเกตผลจริงในวันเป้าหมาย] --> B[กรอกพลังงาน / ความกระหาย / ความแห้งที่รู้สึก]
-    B --> C[POST /api/daily-health/outcomes]
-    C --> D[จัดเก็บเป็น outcome แยกจาก prediction]
-    D --> E[ARQ ตรวจ readiness ทุกวันจันทร์ 09:00 เวลา Asia/Bangkok]
-    E --> F{มีข้อมูลจริงที่ยินยอมและผ่านเกณฑ์หรือไม่?}
-    F -- ไม่ผ่าน --> G[รอรอบตรวจประจำสัปดาห์ถัดไป]
-    F -- ผ่าน --> H[เข้าคิว ARQ worker เพื่อฝึก candidate]
-    H --> I[ฝึก RandomForestRegressor และประเมินแบบแบ่งกลุ่มตามผู้ใช้ 60/20/20]
-    I --> J[บันทึก metrics และ artifact เป็น candidate]
-    J --> K{ผู้ดูแลตรวจและอนุมัติหรือไม่?}
-    K -- อนุมัติ --> L[ตั้ง candidate เป็นโมเดลที่ให้บริการ]
-    K -- ไม่อนุมัติ --> M[คงโมเดลที่ใช้อยู่เดิม]
-```
+| ผล | ที่มา / ข้อจำกัด |
+| --- | --- |
+| Sleep score | สูตรเวลานอนเต็มที่ 540 นาที; ไม่ใช่ sleep-quality model |
+| Hydration / thirst field เดิม | สูตร shortfall เทียบกับน้ำหนักที่ consent active; ไม่ใช่ perceived thirst forecast |
+| Dryness | Synthetic baseline หรือ approved real-outcome candidate; แสดง model ID, horizon และ domain |
+| Next-day thirst / energy | Experimental numeric self-report estimates จาก approved intact candidate เท่านั้น; ไม่มีโมเดลให้ `model_not_ready`; OOD งดผล; two-target candidate ไม่มี energy |
+| Personal sleep/water forecast | ประวัติบัญชีเดียวและ forecast consent แยก; ไม่ใช่ shared outcome model |
+| Profile guidance | Self-reported age/smoking/menstrual/skin type ภายใต้ consent ของส่วนนั้น; ไม่ใช่ผลตรวจจากภาพ |
+| Acne | ถูกถอดออกจาก prediction/UI; ไม่แสดง legacy field ในประวัติ |
 
-เงื่อนไขการจับคู่และฝึก:
+Next-day result มี signed receipt อายุสองชั่วโมงผูกกับวันและ input Server ตรวจ receipt ก่อนเก็บใน `next_day_forecasts` ไม่เชื่อ forecast numbers จาก browser ไม่คำนวณทับ historical rows
 
-1. บันทึกผลจริงผ่านฟอร์ม optional self-report; วันเป้าหมายต้องไม่อยู่ในอนาคต
-2. การจับคู่ใช้ lifestyle input ของวันก่อนหน้า กับ thirst และ dryness ที่ผู้ใช้รายงานสำหรับวันเป้าหมายเดียวกัน และต้องเป็นผู้ใช้คนเดียวกัน
-3. ต้องมีความยินยอมฝึกโมเดลที่ยัง active; ต้องมีตัวอย่างที่จับคู่ได้อย่างน้อย 100 รายการจากผู้ใช้อย่างน้อย 5 คนก่อนเข้าฝึก
-4. ARQ ตรวจความพร้อมทุกวันจันทร์ เวลา 09:00 น. `Asia/Bangkok`; การส่ง outcome จะไม่เริ่มฝึกทันที
-5. ต้องมีอย่างน้อย 100 คู่จากผู้ใช้อย่างน้อย 5 คน และ candidate รุ่นถัดไปจะพิจารณาเมื่อมีตัวอย่างใหม่เพิ่มอย่างน้อย 25 รายการจาก candidate ก่อนหน้า
-6. การฝึกทำงานแบบ asynchronous ผ่าน ARQ; ผลที่ได้เป็น candidate เพื่อให้ผู้ดูแลตรวจสอบและอนุมัติ ไม่ถูก deploy อัตโนมัติ และจะไม่มี candidate ใหม่หากข้อมูลยังไม่ถึงเกณฑ์
-7. train/validation/test แบ่งตามผู้ใช้เพื่อไม่ให้คนเดียวกันกระจายข้ามชุด; prediction score ไม่ใช้เป็น label และ synthetic data ไม่อยู่ในชุดฝึกของ user candidate
+## Outcomes, consent และประวัติ
 
-## 3. เส้นทาง API
+ผู้ใช้บันทึก self-reported thirst/dryness/energy 0–10 ผ่าน `/api/daily-health/outcomes` ค่าที่ไม่มีไม่แทนด้วยศูนย์ Training opt-in แยกจาก storage: v1 รองรับ thirst/dryness, v2 รวม energy; UI เสนอ v2 แบบไม่ติ๊กให้เอง การบันทึก outcome ไม่สั่ง train ทันที
 
-| การทำงาน | API ที่หน้าเว็บเรียก | API ภายใน backend |
-|---|---|---|
-| Prediction | `POST /api/daily-health/predict` | `POST /api/v1/daily-health/predict` |
-| บันทึก daily entry | `POST /api/daily-health/entries` | `PUT /api/v1/daily-health/users/{user_id}/entries` |
-| อ่านสรุป 7 วันสำหรับ Overview | `GET /api/daily-health/entries?limit=7&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD` | `GET /api/v1/daily-health/users/{user_id}/entries?limit=7&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD` |
-| อ่านประวัติสำหรับ Trend | `GET /api/daily-health/entries?limit=30` | `GET /api/v1/daily-health/users/{user_id}/entries?limit=30` |
-| บันทึกผลจริง | `POST /api/daily-health/outcomes` | `PUT /api/v1/daily-health/users/{user_id}/outcomes` |
+Dashboard และ `/trend` อ่าน entries ของบัญชีเดียว ผลที่บันทึกไว้ต้องคง provenance และไม่เปลี่ยน prediction เป็น actual Withdrawal ของ training ไม่ลบ daily history; explicit data deletion ลบ health data และ reset user-trained registry/artifacts ตาม [Training Pipeline](Daily-Health-Training-Pipeline.md)
 
-API route ฝั่ง frontend ใช้ session ของผู้ใช้และส่งต่อไปยัง backend; credentials สำหรับ backend ไม่ได้ส่งจาก browser โดยตรง
+น้ำหนัก/ส่วนสูง, age guidance, personalization, skin type, menstrual check-ins และ personal forecast มี consent/cleanup ตาม route ของแต่ละส่วน ไม่ใช้ image/annotation consent แทน
+
+## Source map
+
+- [API routes](../../backend/api/v1/routes/daily_health.py)
+- [Next.js prediction proxy](../../frontend/src/app/api/daily-health/predict/route.ts)
+- [Daily model](../../models/time-series/non-linear-model/daily_score_model.py)
+- [Personal forecast](../../backend/services/daily_health_personal_forecast.py)
+- [Model summary](Lifestyle-Model-Summary.md), [Training Pipeline](Daily-Health-Training-Pipeline.md)
