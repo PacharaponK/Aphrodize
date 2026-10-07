@@ -58,7 +58,7 @@ test("personal forecast API is scoped to the signed-in account and never cached"
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(calls[1].url, `http://127.0.0.1:8000/api/v1/daily-health/users/${accountId}/personal-forecast`);
-  assert.equal(calls[1].init.headers.Authorization, "Bearer private-session-token");
+  assert.equal(new Headers(calls[1].init.headers).get("authorization"), "Bearer private-session-token");
 });
 
 test("personal forecast consent changes reject cross-origin requests before session lookup", async (t) => {

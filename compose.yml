@@ -182,7 +182,9 @@ services:
       - ./backend:/app/backend
       - ./models:/app/models
       - ./scripts:/app/scripts:ro
-      - ./storage/artifacts/uv:/app/storage/artifacts/uv:ro
+      - ./storage/artifacts/uv:/app/storage/artifacts/uv
+      - ./storage/models/uv:/app/storage/models/uv
+      - ./storage/data/uv:/app/storage/data/uv:ro
     depends_on:
       postgres:
         condition: service_healthy

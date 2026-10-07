@@ -1,20 +1,20 @@
 # งานคงเหลือ
 
-ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 (Asia/Bangkok) รวมประเด็นที่ยังมีผลจากแผน AI, Daily Health, UV, schema และ CI/CD เดิม รายการนี้ไม่ใช่คำสั่งเปิดใช้หรืออนุมัติข้อมูลเพิ่มเติม
+ตรวจเทียบโค้ดวันที่ 6 ตุลาคม 2026 (Asia/Bangkok) รวมประเด็นที่ยังมีผลจากแผน AI, Daily Health, UV, โครงสร้างข้อมูล และ CI/CD เดิม รายการนี้ไม่ใช่คำสั่งเปิดใช้หรืออนุมัติข้อมูลเพิ่มเติม
 
 | ส่วน | โค้ดรองรับแล้ว | งานคงเหลือ / เกณฑ์ก่อนขยาย |
 | --- | --- | --- |
-| Wrinkle | Quality gate, segmentation, provisional area, checksum, manual release | Held-out target-user validation ที่มี consent/provenance; subgroup/repeatability/human area labels ก่อนอ้าง calibration หรือความแม่นยำกับผู้ใช้จริง |
-| Image release | Reviewed policy และเครื่องมือ calibration | ตรวจ rights, compatibility และ validation report ก่อน calibrated release; manual approval ไม่แทน statistical validation |
-| Annotation | Task จาก consent แยกและ curated external training | Accepted annotation export → versioned dataset ยังไม่มี; ต้องกำหนด training-use consent, rights และ quality contract |
-| Products | Catalog, safety/shopping filters และ admin API | เพิ่ม coverage เฉพาะ SKU/formula ที่ตรวจได้; บาง skin/category ไม่มี match; ไม่อนุมานสูตรแรงขึ้นจากพื้นที่ริ้วรอย |
-| Daily Health | Real outcomes, shared candidate/registry, holdout gates, operator audit, personal forecast | Cohort จริงต้องพร้อม; candidate ทุก target ต้องชนะ baseline และผ่าน manual review; imported/synthetic rows ไม่เติมเกณฑ์ |
-| Dataset import | Allowlist, fingerprint/provenance archive, snapshot deletion | Rights/retention ของชุดใหม่; import ไม่ใช่การอนุญาตใช้เป็น training labels |
-| Device integration | Daily inputs จากผู้ใช้; ยังไม่มี Zepp/Amazfit sync | ต้องกำหนด source, time alignment, authorization และ consent ของ device data ก่อนเชื่อม; ไม่ถือข้อเสนอเดิมเป็น integration ที่ทำแล้ว |
-| Acne | Legacy observation/consent/cleanup APIs | Forecast และ UI ถูกถอดออก; การนำกลับมาทำเป็นขอบเขตใหม่ ไม่ถือแผนเก่าเป็นอนุมัติ |
-| UV | Clear-sky สามเมือง, API map 77 พื้นที่, candidate/promotion/rollback | All-sky/cloud correction ยังขาด target observations เหมาะสมครบสามเมือง; ต้องมี unseen-time evaluation และ baseline; API forecast ไม่ใช่ ground truth |
-| Generic jobs | Metadata-only training และ fail-closed inference | Approved model package/deployment support ก่อนอ้างว่า fit/serve time-series หรือ tabular ผ่าน generic routes ได้ |
-| Operations | Healthchecks, logs, aggregate monitoring และ runbooks | ตรวจ credentials/project access, mounts, queue, snapshots, backup deletion และ rollback ณเครื่องจริง; centralized alerts/tracing ยังไม่มี |
-| CI/CD | CI, GHCR digest releases, manifest validation/recovery | Owner ตั้ง protection, environment/runner/variables และ baseline readiness; workflow ใน repo ไม่ยืนยันว่า deploy เปิดอยู่ |
+| ริ้วรอย | เกณฑ์คุณภาพ การแบ่งส่วนภาพ พื้นที่ชั่วคราว checksum และการเผยแพร่ด้วยตนเอง | ตรวจชุดผู้ใช้เป้าหมายที่กันไว้และมีความยินยอม/ที่มา ประเมินกลุ่มย่อย ความคงเส้นคงวา และป้ายกำกับพื้นที่จากมนุษย์ ก่อนอ้างการปรับเทียบหรือความแม่นยำผู้ใช้จริง |
+| การเผยแพร่ผลภาพ | นโยบายที่ตรวจแล้วและเครื่องมือปรับเทียบ | ตรวจสิทธิ์ ความเข้ากันได้ และรายงานตรวจสอบก่อนเผยแพร่รุ่นปรับเทียบ การอนุมัติด้วยตนเองไม่แทนการตรวจสอบทางสถิติ |
+| annotation | task จากความยินยอมแยก และการฝึกด้วยข้อมูลภายนอกที่คัดกรอง | ยังไม่มีการส่งออก annotation ที่ตรวจรับไป dataset แยกรุ่น ต้องกำหนดความยินยอมใช้ฝึก สิทธิ์ และข้อกำหนดคุณภาพ |
+| ผลิตภัณฑ์ | รายการผลิตภัณฑ์ ตัวกรองความปลอดภัย/การซื้อ และ admin API | เพิ่มขอบเขตเฉพาะ SKU/สูตรที่ตรวจได้ บางชนิดผิว/หมวดยังไม่มีรายการตรง ห้ามอนุมานสูตรแรงขึ้นจากพื้นที่ริ้วรอย |
+| Daily Health | ผลจริง candidate/registry ร่วม เกณฑ์ชุดกันไว้ บันทึกผู้ปฏิบัติการ และพยากรณ์เฉพาะบุคคล | กลุ่มข้อมูลจริงต้องพร้อม candidate ทุกเป้าหมายต้องชนะค่าอ้างอิงและผ่านตรวจด้วยตนเอง แถวที่นำเข้า/สังเคราะห์ไม่เติมเกณฑ์ |
+| นำเข้า dataset | รายการที่อนุญาต คลัง fingerprint/ที่มา และการลบ snapshot | ตรวจสิทธิ์/การเก็บรักษาชุดใหม่ การนำเข้าไม่ใช่การอนุญาตใช้เป็นป้ายกำกับฝึก |
+| เชื่อมอุปกรณ์ | ข้อมูลรายวันจากผู้ใช้ ยังไม่มีการซิงก์ Zepp/Amazfit | กำหนดแหล่งข้อมูล การเทียบเวลา สิทธิ์ และความยินยอมข้อมูลอุปกรณ์ก่อนเชื่อม ห้ามถือข้อเสนอเดิมเป็นการเชื่อมที่เสร็จแล้ว |
+| สิว | API ข้อมูลสังเกต/ความยินยอม/ล้างข้อมูลเดิม | ถอดพยากรณ์และ UI แล้ว การนำกลับมาเป็นขอบเขตใหม่ ไม่ถือแผนเก่าเป็นอนุมัติ |
+| UV | ท้องฟ้าโปร่งสามเมือง แผนที่ API 77 พื้นที่ และ candidate/promotion/rollback | การแก้ UV ตามเมฆ/ท้องฟ้าจริงยังขาดข้อมูลสังเกตเป้าหมายเหมาะสมครบสามเมือง ต้องประเมินช่วงเวลาที่ไม่เคยใช้และเทียบค่าอ้างอิง พยากรณ์ API ไม่ใช่ข้อมูลจริงอ้างอิง |
+| งานทั่วไป | การฝึกเฉพาะ metadata และ inference ที่ปฏิเสธเมื่อไม่พร้อม | ต้องมีแพ็กเกจโมเดลที่อนุมัติและรองรับ deployment ก่อนอ้างว่า fit/ให้บริการอนุกรมเวลาหรือตารางผ่าน route ทั่วไปได้ |
+| การปฏิบัติงาน | healthcheck, log JSON ปลอดภัย การเชื่อมเหตุการณ์ Prometheus/Loki/Grafana/Alloy แบบเสริม การแจ้งเตือน Discord และคู่มือ | ตั้ง Discord webhook และทดสอบช่องจริง ตรวจทรัพยากร/tunnel ของ VM/GPU และ baseline 7 วัน ยังไม่มีเครื่อง external probe หรือ distributed tracing |
+| CI/CD | CI, release แบบ GHCR digest และการตรวจ/กู้ manifest | เจ้าของต้องตั้งการป้องกัน environment/runner/variables และความพร้อมตั้งต้น workflow ใน repository ไม่ยืนยันว่าเปิด deploy อยู่ |
 
-เริ่มคู่มือจาก [สารบัญ](README.md) แผนก่อนรวมอยู่ใน Git history เช่น `git log -- docs/` และ `git show <commit>:docs/<path>` รายงานเก่าที่ลงวันที่เป็นหลักฐานรอบนั้น ไม่ใช่สถานะสด
+เริ่มคู่มือจาก [สารบัญ](README.md) แผนก่อนรวมอยู่ในประวัติ Git เช่น `git log -- docs/` และ `git show <commit>:docs/<path>` รายงานเก่าที่ลงวันที่เป็นหลักฐานรอบนั้น ไม่ใช่สถานะสด

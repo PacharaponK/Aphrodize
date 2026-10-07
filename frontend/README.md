@@ -17,6 +17,14 @@ pnpm dev
 
 Open `http://localhost:3000`. The dashboard is at `/`; the other visible routes are `/login`, `/capture`, `/quality-rejected`, `/result-detail`, `/recommendation`, and `/showcase`. `/trend` and `/profile` redirect to the dashboard while those views are hidden.
 
+The service portal is at `/portal`, accessible by direct URL with no navbar or
+incoming navigation link. It links to Aphrodize, product administration, Label
+Studio and Grafana using the deployed proxy paths. Optional MinIO and MLflow URLs
+are configured through server-only `PORTAL_MINIO_URL` and `PORTAL_MLFLOW_URL`;
+unconfigured services show unavailable text. Each tool keeps its own login.
+Infrastructure access instructions are in a disclosure. The portal does not check
+service health. See `../docs/services-portal.md` for deployment details.
+
 Every page has a dedicated title, description, Open Graph and Twitter summary.
 Metadata follows the default rendered language (English, or Thai for Thai-only pages).
 Personal wellness pages, admin tools and UI previews use `noindex`; sign-in,

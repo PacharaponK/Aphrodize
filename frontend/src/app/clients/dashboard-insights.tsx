@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { DailyHealthHistoryItem, HealthSignal } from "@/lib/daily-health-types";
 import HealthInlineDetails from "./health-inline-details";
+import { riskSignals } from "./daily-health-risk-results";
 
 type Props = {
   latest?: DailyHealthHistoryItem;
@@ -24,9 +25,7 @@ export default function DashboardInsights({ latest, loading, failed, requiresLog
   const ready = !loading && !failed && !requiresLogin && latest;
   const interpretation = ready ? latest.interpretation : null;
   const summary = interpretation?.daily_health_summary;
-  const signals = interpretation ? [summary!, interpretation.skin_care_attention_level,
-    interpretation.next_day_predictions.low_energy_signal,
-    interpretation.next_day_predictions.thirst_attention] : [];
+  const signals = interpretation ? riskSignals(interpretation, language === "th" ? "th" : "en").map(({ signal }) => signal) : [];
   const unavailableCount = signals.filter(signal => signal.level === null && !hasForecast(signal)).length;
   // Show saved messages only; deduplicate identical guidance without rewriting it.
   const recommendations = interpretation ? [...new Set([

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.schemas.analysis import TrainingRequest
 from backend.core.db.models import TrainingRun
+from backend.core.observability import enqueue_job
 from backend.libs.redis_client import get_arq_pool
 from backend.services.curated_training import DATASET_URI
 
@@ -33,6 +34,6 @@ async def create_training_run(session: AsyncSession, payload: TrainingRequest) -
     await session.refresh(run)
     # Training has its own queue and does not block image inference.
     redis = await get_arq_pool()
-    await redis.enqueue_job("run_training", str(run.id), _queue_name="training")
+    await enqueue_job(redis, "run_training", str(run.id), _queue_name="training")
     await redis.close()
     return run

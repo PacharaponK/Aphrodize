@@ -1,6 +1,6 @@
-# Aphrodize — Full Input → Retraining → Output Flow
+# Aphrodize — ข้อมูลเข้า → การฝึกใหม่ → ผลลัพธ์ทั้งหมด
 
-อ้างอิงโค้ดและการตรวจระบบ ณ **6 ตุลาคม 2026** อ่านรายละเอียดแต่ละ component ได้ใน [Component and Service Flows](../Component-Flows.md)
+อ้างอิงโค้ดและการตรวจระบบ ณ **6 ตุลาคม 2026** อ่านรายละเอียดแต่ละ component ได้ใน [เส้นทางองค์ประกอบและบริการ](../Component-Flows.md)
 
 - **เส้นทึบ:** workflow ที่มีในโค้ด ไม่ใช่การรับรองว่า integration พร้อมใช้งานจริงทุกจุด
 - **เส้นประ:** ขั้นที่ยังไม่ implemented หรือขั้น release ที่ต้องดำเนินการโดย operator
@@ -183,6 +183,6 @@ flowchart TD
 7. **Baseline ต้องระบุแหล่งที่มา:** หากไม่มี active Daily Health candidate เส้นทางเดิมใช้ baseline ไม่ใช่ผล actual หรือหลักฐานว่า next-day candidate ถูก deploy แล้ว
 8. **Generic time-series/tabular training ไม่รวมใน flow ฝึกจริงนี้:** ปัจจุบันเป็น metadata-only; ไม่ควรนำมานับเป็น retrained models
 
-## Deployment checks
+## การตรวจ deployment
 
-This source flow does not confirm live deployment readiness. Check credentials, Label Studio project access, model mounts, workers and fresh UV snapshots before use. See [Component Flows](../Component-Flows.md) and [Human Review](../../ai/Human-Review.md) for current boundaries.
+แผนผังจากซอร์สนี้ไม่ยืนยันความพร้อมของ deployment จริง ก่อนใช้งานให้ตรวจข้อมูลรับรอง การเข้าถึงโครงการ Label Studio, การ mount โมเดล, worker และ UV snapshot ที่สด ดูขอบเขตปัจจุบันใน [เส้นทางองค์ประกอบระบบ](../Component-Flows.md) และ [การตรวจโดยมนุษย์](../../ai/Human-Review.md)

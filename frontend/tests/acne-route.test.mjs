@@ -15,6 +15,7 @@ class ResponseStub {
   static json(body, init) { return new ResponseStub(body, init); }
 }
 new Function("require", "module", "exports", source)(name => {
+  if (name === "@/lib/backend-fetch") return { backendFetch: (...args) => globalThis.fetch(...args) };
   if (name === "next/server") return { NextResponse: ResponseStub };
   if (name === "@/lib/daily-health-session") return {
     accountSession: async () => session,

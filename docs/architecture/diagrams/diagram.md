@@ -1,6 +1,6 @@
-# Runtime architecture
+# สถาปัตยกรรมขณะรัน
 
-ตรวจเทียบ Compose และ `backend/api/v1/router.py` วันที่ 6 ตุลาคม 2026 รายละเอียดอยู่ใน [Component Flows](../Component-Flows.md)
+ตรวจเทียบ Compose และ `backend/api/v1/router.py` วันที่ 6 ตุลาคม 2026 รายละเอียดอยู่ใน [เส้นทางองค์ประกอบระบบ](../Component-Flows.md)
 
 ```mermaid
 flowchart LR
@@ -22,7 +22,7 @@ flowchart LR
     A --> S
 ```
 
-Inference เป็น asynchronous ตั้งแต่รับภาพ Browser อ่านสถานะและ artifacts ผ่าน proxy ที่ตรวจ session; API ตรวจเจ้าของด้วย Bearer token Inference/training ใช้คิว Redis แยกกัน ส่วน UV เป็น script/service ที่อ่านเขียนไฟล์ ไม่ผ่าน ARQ
+Inference เป็น asynchronous ตั้งแต่รับภาพ เบราว์เซอร์อ่านสถานะและ artifacts ผ่าน proxy ที่ตรวจ session; API ตรวจเจ้าของด้วย Bearer token Inference/training ใช้คิว Redis แยกกัน ส่วน UV เป็น script/service ที่อ่านเขียนไฟล์ ไม่ผ่าน ARQ
 
 | Compose | หน้าที่ |
 | --- | --- |

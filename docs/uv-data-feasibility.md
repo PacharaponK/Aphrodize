@@ -1,75 +1,87 @@
-# UV data feasibility — phase 1
+# ความเป็นไปได้ของข้อมูล UV — ระยะที่ 1
 
-Checked on **29 September 2026 (Asia/Bangkok)** for Bangkok (13.7563, 100.5018), Songkhla (7.1898, 100.5954), and Chiang Mai (18.7883, 98.9853). This phase checks public data access and completeness; it does not measure forecast accuracy.
+ตรวจเมื่อ **29 กันยายน 2026 (Asia/Bangkok)** สำหรับกรุงเทพฯ (13.7563, 100.5018), สงขลา (7.1898, 100.5954) และเชียงใหม่ (18.7883, 98.9853) ระยะนี้ตรวจการเข้าถึงและความครบถ้วนของข้อมูลสาธารณะ ไม่ได้วัดความแม่นยำพยากรณ์
 
-| Source | Direct download result | Latest valid date | What the UV value means | Phase-1 decision |
+| แหล่งข้อมูล | ผลดาวน์โหลดโดยตรง | วันที่ล่าสุดที่ใช้ได้ | ความหมายของค่า UV | ข้อสรุประยะที่ 1 |
 | --- | --- | --- | --- | --- |
-| [NASA POWER](https://power.larc.nasa.gov/docs/services/api/temporal/hourly/) `ALLSKY_SFC_UV_INDEX` | HTTP 200 without an account for all three places. In 2025, hourly valid values were 8,759/8,760 (Bangkok) and 8,760/8,760 (Songkhla and Chiang Mai). | **2026-06-30 23:00 UTC** for all three places. Every hourly response from 2026-07-01 through 2026-09-28 is `-999`. The daily endpoint ends on **2026-06-29**. | All-sky, satellite/model-derived UV index; hourly values could be grouped by local date for a daily peak. | Useful historical reference, **unsuitable as the current UV feed**. The observed gap is about three months, despite the [general POWER solar-data estimate of 5–7 days](https://registry.opendata.aws/nasa-power/). |
-| [TEMIS operational station series](https://temis.nl/uvradiation/UVarchive/stations_uv.php) `UVIEF` | HTTP 200 without an account. Each city file has 8,856 daily rows from 2002-07-01 through 2026-09-28. All 271 dates in 2026 through 2026-09-28 have valid `UVIEF` values in all three cities. | **2026-09-28** for all three places. | **Clear-sky** erythemal UV index at local solar noon, on a 0.25° grid. Cloud-modified UV fields for these Thai locations are unavailable (`-1`). | Viable current data for a model of **clear-sky UV potential**, not observed all-sky UV. |
-| [Open-Meteo weather forecast](https://open-meteo.com/en/docs) | HTTP 200 without an account. All three cities returned 48 hourly cloud-cover values in `Asia/Bangkok`, including all 24 hours of 2026-09-30. The [historical forecast endpoint](https://open-meteo.com/en/docs/historical-forecast-api) also returned a 2025 sample. | Forecast for **2026-09-30** was present at check time. | Forecast cloud cover, not a UV observation. | Viable weather input. Do not request Open-Meteo's ready-made UV forecast for this project. |
+| [NASA POWER](https://power.larc.nasa.gov/docs/services/api/temporal/hourly/) `ALLSKY_SFC_UV_INDEX` | HTTP 200 โดยไม่ใช้บัญชีครบสามพื้นที่ ปี 2025 ค่ารายชั่วโมงที่ใช้ได้มี 8,759/8,760 (กรุงเทพฯ) และ 8,760/8,760 (สงขลาและเชียงใหม่) | **2026-06-30 23:00 UTC** ทุกพื้นที่ response รายชั่วโมงตั้งแต่ 2026-07-01 ถึง 2026-09-28 เป็น `-999` ทั้งหมด endpoint รายวันสิ้นสุด **2026-06-29** | UV index ในสภาพท้องฟ้าจริง (all-sky) จากดาวเทียม/โมเดล; ค่ารายชั่วโมงอาจจัดกลุ่มตามวันที่ท้องถิ่นเพื่อหาค่าสูงสุดรายวัน | ใช้อ้างอิงย้อนหลังได้ แต่ **ไม่เหมาะเป็นข้อมูล UV ปัจจุบัน** พบช่วงขาดประมาณสามเดือน แม้ [POWER ประเมินทั่วไปว่าข้อมูลแสงอาทิตย์ล่าช้า 5–7 วัน](https://registry.opendata.aws/nasa-power/) |
+| [อนุกรมสถานีปฏิบัติการ TEMIS](https://temis.nl/uvradiation/UVarchive/stations_uv.php) `UVIEF` | HTTP 200 โดยไม่ใช้บัญชี แต่ละเมืองมี 8,856 แถวรายวัน ตั้งแต่ 2002-07-01 ถึง 2026-09-28 วันที่ทั้ง 271 วันในปี 2026 ถึง 2026-09-28 มี `UVIEF` ที่ใช้ได้ครบสามเมือง | **2026-09-28** ทุกพื้นที่ | UV index ที่ถ่วงตามผลต่อผิวเกิดผื่นแดงใน **ท้องฟ้าโปร่ง (clear-sky)** ณ เที่ยงสุริยะท้องถิ่น บนกริด 0.25° ค่า UV ที่ปรับด้วยเมฆสำหรับตำแหน่งไทยเหล่านี้ไม่มี (`-1`) | ใช้เป็นข้อมูลปัจจุบันของโมเดล **ศักยภาพ UV ท้องฟ้าโปร่ง** ได้ ไม่ใช่ UV all-sky ที่สังเกตจริง |
+| [พยากรณ์อากาศ Open-Meteo](https://open-meteo.com/en/docs) | HTTP 200 โดยไม่ใช้บัญชี ทั้งสามเมืองได้ cloud cover รายชั่วโมง 48 ค่าใน `Asia/Bangkok` รวมครบ 24 ชั่วโมงของ 2026-09-30 และ [endpoint พยากรณ์ย้อนหลัง](https://open-meteo.com/en/docs/historical-forecast-api) ส่งตัวอย่างปี 2025 ได้ด้วย | มีพยากรณ์ **2026-09-30** ขณะตรวจ | พยากรณ์เมฆ ไม่ใช่ค่าที่สังเกต UV | ใช้เป็นข้อมูลอากาศได้ ห้ามขอพยากรณ์ UV สำเร็จรูปของ Open-Meteo สำหรับโครงการนี้ |
 
-## Reproduce the source checks
+## ตรวจแหล่งข้อมูลซ้ำ
 
-- NASA POWER hourly example (Bangkok): `https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_UV_INDEX&community=RE&longitude=100.5018&latitude=13.7563&start=20260625&end=20260928&format=JSON&time-standard=UTC`. Treat `-999` as missing. Its daily endpoint was checked separately and must not be treated as a daily maximum without confirming the aggregation definition.
-- TEMIS city files: [Bangkok](https://d1qb6yzwaaq4he.cloudfront.net/uvradiation/v2.0/overpass/uv_Bangkok_Thailand.dat), [Songkhla](https://d1qb6yzwaaq4he.cloudfront.net/uvradiation/v2.0/overpass/uv_Songkhla_Thailand.dat), [Chiang Mai](https://d1qb6yzwaaq4he.cloudfront.net/uvradiation/v2.0/overpass/uv_Chiang_Mai_Thailand.dat). Ignore `#` lines; split data lines on whitespace. Column 1 is `YYYYMMDD`, column 2 is `UVIEF`, and `-1` means missing. The file header defines all columns.
-- Open-Meteo example (Bangkok): `https://api.open-meteo.com/v1/forecast?latitude=13.7563&longitude=100.5018&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high&forecast_days=2&timezone=Asia%2FBangkok`. Only cloud and weather fields were requested.
+- ตัวอย่าง NASA POWER รายชั่วโมง (กรุงเทพฯ): `https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=ALLSKY_SFC_UV_INDEX&community=RE&longitude=100.5018&latitude=13.7563&start=20260625&end=20260928&format=JSON&time-standard=UTC` ให้ถือ `-999` ว่าข้อมูลหาย ตรวจ endpoint รายวันแยกแล้ว และห้ามถือเป็นค่าสูงสุดรายวันโดยไม่ยืนยันนิยามการรวมค่า
+- ไฟล์เมือง TEMIS: [กรุงเทพฯ](https://d1qb6yzwaaq4he.cloudfront.net/uvradiation/v2.0/overpass/uv_Bangkok_Thailand.dat), [สงขลา](https://d1qb6yzwaaq4he.cloudfront.net/uvradiation/v2.0/overpass/uv_Songkhla_Thailand.dat), [เชียงใหม่](https://d1qb6yzwaaq4he.cloudfront.net/uvradiation/v2.0/overpass/uv_Chiang_Mai_Thailand.dat) ข้ามบรรทัด `#`; แยกบรรทัดข้อมูลด้วยช่องว่าง column 1 คือ `YYYYMMDD`, column 2 คือ `UVIEF` และ `-1` คือข้อมูลหาย header ของไฟล์อธิบายทุก column
+- ตัวอย่าง Open-Meteo (กรุงเทพฯ): `https://api.open-meteo.com/v1/forecast?latitude=13.7563&longitude=100.5018&hourly=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high&forecast_days=2&timezone=Asia%2FBangkok` ขอเฉพาะ field เมฆและอากาศ
 
-## Repository fit
+## ความสอดคล้องกับ repository
 
-- There is no deployed generic time-series model yet (`README.md`). The UV model needs its own trained artifact and integration in a later phase.
-- The product schema already supports a `sunscreen` category (`backend/api/schemas/product.py`), while the current recommendation in `backend/services/analysis_service.py` is general guidance tied to image-analysis eligibility. A location-based UV recommendation needs a separate input and safety path.
-- The current product-scope document does not include this environmental UV forecast. Update its scope and acceptance criteria when implementing the feature; do not imply a forecast of treatment outcomes.
+- ยังไม่มีโมเดลอนุกรมเวลาทั่วไปที่ deploy (`README.md`) โมเดล UV ต้องมี artifact ที่ฝึกเองและเชื่อมระบบในระยะถัดไป
+- schema ผลิตภัณฑ์รองรับหมวด `sunscreen` แล้ว (`backend/api/schemas/product.py`) ส่วนคำแนะนำใน `backend/services/analysis_service.py` ปัจจุบันเป็นแนวทางทั่วไปที่ผูกกับสิทธิ์รับคำแนะนำจากการวิเคราะห์ภาพ คำแนะนำ UV ตามตำแหน่งต้องมี input และเส้นทางความปลอดภัยแยก
+- เอกสารขอบเขตผลิตภัณฑ์ปัจจุบันยังไม่รวมพยากรณ์ UV สิ่งแวดล้อมนี้ เมื่อพัฒนาให้ปรับขอบเขตและเกณฑ์ตรวจรับ ห้ามสื่อว่าเป็นการทำนายผลการรักษา
 
-## Decision for phase 2
+## ข้อสรุปสำหรับระยะที่ 2
 
-Start with the three TEMIS `UVIEF` series as the timely prediction target, and label every forecast **clear-sky UV potential**. Use weather forecasts to explain cloud conditions separately. NASA POWER can support historical comparison and a later, explicitly validated cloud-correction model; its current gap prevents using it as the live all-sky target. Before showing any numeric cloud-adjusted UV estimate to users, test that estimate against independent all-sky observations. Keep the source date and forecast date visible in the app.
+เริ่มด้วยอนุกรม TEMIS `UVIEF` ทั้งสามชุดเป็น target ที่มีข้อมูลทันเวลา และติดป้ายทุกพยากรณ์ว่า **ศักยภาพ UV ท้องฟ้าโปร่ง** ใช้พยากรณ์อากาศอธิบายเมฆแยกต่างหาก NASA POWER ใช้เทียบย้อนหลังและสนับสนุนโมเดลแก้ผลเมฆในอนาคตที่ผ่านการตรวจอย่างชัดเจนได้ แต่ช่วงขาดปัจจุบันทำให้ใช้เป็น all-sky target สดไม่ได้
+ก่อนแสดงตัวเลข UV ที่ปรับตามเมฆให้ผู้ใช้ ต้องทดสอบกับข้อมูลสังเกต all-sky อิสระ แสดงวันที่แหล่งข้อมูลและวันที่พยากรณ์ในแอปเสมอ
 
-## Phase 2 — prepared dataset (29 September 2026)
+## ระยะที่ 2 — dataset ที่เตรียมแล้ว (29 กันยายน 2026)
 
-Run `python scripts/prepare_uv_dataset.py` from the repository root. The script downloads the three public TEMIS files, verifies the `UVIEF` column definition and 17-column rows, rejects duplicate or skipped dates and invalid values, and writes `storage/data/uv/temis_clear_sky_uv.csv`. The local CSV is gitignored and can be regenerated without an account or a forecast-model API. Its columns are `date`, `city`, `uv_index_clear_sky`, and `uv_index_uncertainty`; a TEMIS `-1` becomes an empty CSV field rather than an invented UV value.
+รัน `python scripts/prepare_uv_dataset.py` จากราก repository สคริปต์ดาวน์โหลดไฟล์ TEMIS สาธารณะสามเมือง ตรวจนิยาม column `UVIEF` และแถว 17 column ปฏิเสธวันที่ซ้ำ/ข้ามและค่าที่ไม่ถูกต้อง แล้วเขียน `storage/data/uv/temis_clear_sky_uv.csv`
+CSV ในเครื่องถูก gitignore และสร้างใหม่ได้โดยไม่ใช้บัญชีหรือ API โมเดลพยากรณ์ มี column `date`, `city`, `uv_index_clear_sky` และ `uv_index_uncertainty`; ค่า TEMIS `-1` กลายเป็น field ว่างใน CSV ไม่สร้างค่า UV ขึ้นเอง
 
-| City ID | Daily rows | Date range | Missing days | Missing `UVIEF` | `UVIEF` range |
+| City ID | แถวรายวัน | ช่วงวันที่ | วันที่หาย | `UVIEF` ที่หาย | ช่วง `UVIEF` |
 | --- | ---: | --- | ---: | ---: | ---: |
-| `bangkok` | 8,856 | 2002-07-01 to 2026-09-28 | 0 | 0 | 7.708–16.187 |
-| `songkhla` | 8,856 | 2002-07-01 to 2026-09-28 | 0 | 0 | 9.327–16.866 |
-| `chiang_mai` | 8,856 | 2002-07-01 to 2026-09-28 | 0 | 0 | 6.101–15.882 |
+| `bangkok` | 8,856 | 2002-07-01 ถึง 2026-09-28 | 0 | 0 | 7.708–16.187 |
+| `songkhla` | 8,856 | 2002-07-01 ถึง 2026-09-28 | 0 | 0 | 9.327–16.866 |
+| `chiang_mai` | 8,856 | 2002-07-01 ถึง 2026-09-28 | 0 | 0 | 6.101–15.882 |
 
-The combined file has **26,568 data rows** (SHA-256 `9e047b625710219f051161c82c390ccc5a3287964cd7cbed016868835859b04a`). The downloaded source SHA-256 values, in city order above, are `12db307eb3fdf8b09330889ac7ba28e03b4b9b6e126777d79944c8c5126fd6a1`, `8b3c91e68d8522757a184eec19cbec9537b6c679c721bbfb52c524a709c81abc`, and `29bdf2cee0e1dde7b841cfd76b732ab4bd2a5ef5929b73adfd0a96071a31d6cf`. TEMIS updates its files, so later runs may have different row counts and hashes. The source hash identifies the data used here; the source files themselves are not archived in this repository.
+ไฟล์รวมมี **26,568 แถวข้อมูล** (SHA-256 `9e047b625710219f051161c82c390ccc5a3287964cd7cbed016868835859b04a`) SHA-256 ของแหล่งข้อมูลที่ดาวน์โหลดตามลำดับเมืองข้างต้นคือ `12db307eb3fdf8b09330889ac7ba28e03b4b9b6e126777d79944c8c5126fd6a1`, `8b3c91e68d8522757a184eec19cbec9537b6c679c721bbfb52c524a709c81abc` และ `29bdf2cee0e1dde7b841cfd76b732ab4bd2a5ef5929b73adfd0a96071a31d6cf`
+TEMIS อัปเดตไฟล์ จึงอาจมีจำนวนแถวและแฮชต่างกันในการรันภายหลัง source hash ระบุข้อมูลที่ใช้ครั้งนี้ แต่ repository ไม่ได้เก็บไฟล์ต้นทางย้อนหลัง
 
-For the next phase, split **by date within each city**: train through 2023-12-31, validate on 2024, and reserve 2025-01-01 onward for final testing. Compare a seasonal baseline with a locally fitted SARIMAX model. Use only information available by each forecast date when backtesting. Cloud cover is not a predictor of this clear-sky target; forecast weather can be displayed as separate context until a cloud-adjusted model is independently validated.
+ระยะถัดไปให้แบ่ง **ตามวันที่ภายในแต่ละเมือง**: train ถึง 2023-12-31, validate ปี 2024 และกันตั้งแต่ 2025-01-01 ไว้ทดสอบสุดท้าย เทียบ seasonal baseline กับ SARIMAX ที่ fit ในเครื่อง ใช้เฉพาะข้อมูลที่มี ณ วันพยากรณ์เมื่อ backtest
+cloud cover ไม่ใช่ตัวทำนาย target ท้องฟ้าโปร่งนี้ แสดงอากาศเป็นบริบทแยกได้จนกว่าโมเดลปรับตามเมฆจะผ่านการตรวจอิสระ
 
-Check the parser with `python -m unittest discover -s tests -p test_prepare_uv_dataset.py -v`.
+ตรวจ parser ด้วย `python -m unittest discover -s tests -p test_prepare_uv_dataset.py -v`
 
-## Phase 3 — local model training and backtest (29 September 2026)
+## ระยะที่ 3 — ฝึกโมเดลในเครื่องและ backtest (29 กันยายน 2026)
 
-Run `python scripts/train_uv_model.py` after preparing the CSV. This fits a separate SARIMAX to each city **on this machine** using `statsmodels`; no external forecast-model API is called. The target remains TEMIS clear-sky UV at local solar noon. Four known-in-advance annual sine/cosine terms (two harmonics, 365.2425-day period) represent seasonality; SARIMAX models the remaining day-to-day correlation. The four candidate orders are `(1,0,0)`, `(2,0,0)`, `(3,0,0)`, and `(1,0,1)`.
+รัน `python scripts/train_uv_model.py` หลังเตรียม CSV สคริปต์ fit SARIMAX แยกแต่ละเมือง **บนเครื่องนี้** ด้วย `statsmodels` ไม่เรียก API โมเดลพยากรณ์ภายนอก target ยังคงเป็น TEMIS UV ท้องฟ้าโปร่ง ณ เที่ยงสุริยะท้องถิ่น
+ใช้พจน์ sine/cosine รายปีสี่พจน์ที่ทราบล่วงหน้า (สอง harmonic, คาบ 365.2425 วัน) แทนฤดูกาล; SARIMAX จำลองความสัมพันธ์รายวันที่เหลือ candidate order สี่ชุดคือ `(1,0,0)`, `(2,0,0)`, `(3,0,0)` และ `(1,0,1)`
 
-Parameters are fitted on data through 2023-12-31, and the candidate with the lowest **two-day validation MAE** in 2024 is selected per city. The selected order is refitted through 2024-12-31 and tested once on 2025-01-01 through 2026-09-28. Rolling predictions use only values observed through each forecast origin. A two-day forecast is evaluated from 2025-01-02 onward (635 target days), which matches the case where today's latest TEMIS value is from yesterday and tomorrow is two days ahead of that observation. After evaluation, the selected order is fitted to all available observations for a local model artifact.
+fit พารามิเตอร์ด้วยข้อมูลถึง 2023-12-31 แล้วเลือก candidate ที่มี **MAE validation ระยะสองวัน** ต่ำสุดในปี 2024 แยกแต่ละเมือง นำ order ที่เลือกมา fit ใหม่ถึง 2024-12-31 และทดสอบครั้งเดียวกับ 2025-01-01 ถึง 2026-09-28
+การทำนายแบบ rolling ใช้เฉพาะค่าที่สังเกตแล้วถึงจุดเริ่มพยากรณ์ ประเมินพยากรณ์สองวันตั้งแต่ 2025-01-02 เป็นต้นไป (635 วันเป้าหมาย) ตรงกับกรณี TEMIS ล่าสุดวันนี้เป็นค่าของเมื่อวาน และพรุ่งนี้อยู่ห่างจากข้อมูลนั้นสองวัน หลังประเมิน นำ order ที่เลือกมา fit กับข้อมูลสังเกตทั้งหมดเพื่อสร้าง artifact โมเดลในเครื่อง
 
-| City | Selected order | Validation two-day MAE | Test two-day MAE | Test two-day persistence MAE | Test previous-year MAE |
+| เมือง | order ที่เลือก | MAE validation สองวัน | MAE test สองวัน | MAE persistence test สองวัน | MAE baseline ปีก่อน |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Bangkok | `(1,0,1)` | 0.3229 | **0.3309** | 0.3938 | 0.6195 |
-| Songkhla | `(1,0,1)` | 0.3095 | **0.2819** | 0.3451 | 0.7501 |
-| Chiang Mai | `(1,0,1)` | 0.3600 | **0.3482** | 0.4129 | 0.5704 |
+| กรุงเทพฯ | `(1,0,1)` | 0.3229 | **0.3309** | 0.3938 | 0.6195 |
+| สงขลา | `(1,0,1)` | 0.3095 | **0.2819** | 0.3451 | 0.7501 |
+| เชียงใหม่ | `(1,0,1)` | 0.3600 | **0.3482** | 0.4129 | 0.5704 |
 
-MAE is in UV-index units; lower is better. Persistence repeats the value available at the forecast origin, while the seasonal baseline repeats the same calendar date from the preceding year (28 February for leap day). The selected SARIMAX beats both baselines on this held-out period in all three cities. This comparison tests **clear-sky UV potential**, not cloud-affected ground-level UV or the quality of sunscreen recommendations.
+MAE มีหน่วย UV index ยิ่งต่ำยิ่งดี persistence ใช้ค่าที่มี ณ จุดเริ่มพยากรณ์ซ้ำ ส่วน seasonal baseline ใช้ค่าของวันที่ปฏิทินเดียวกันในปีก่อน (ใช้ 28 กุมภาพันธ์แทน leap day) SARIMAX ที่เลือกดีกว่า baseline ทั้งสองในช่วงกันไว้ครบสามเมือง
+การเทียบนี้ทดสอบ **ศักยภาพ UV ท้องฟ้าโปร่ง** ไม่ใช่ UV ระดับพื้นดินที่ได้รับผลเมฆหรือคุณภาพคำแนะนำกันแดด
 
-The script saves `storage/models/uv/{city}.pkl`, `storage/artifacts/uv/metrics.json`, and `storage/artifacts/uv/backtest_predictions.csv` locally; these generated files are gitignored. The metrics file records candidate scores, selected orders, library version, and source CSV SHA-256. With source observations ending 2026-09-28, the fitted models' example forecasts for **2026-09-30** are Bangkok **11.577**, Songkhla **12.366**, and Chiang Mai **11.373** clear-sky UVI. Refreshing TEMIS data and retraining changes these numbers. All three saved models were reloaded and reproduced these forecasts. Run the focused checks with `python -m unittest discover -s tests -p 'test_*uv*.py' -v`.
+สคริปต์บันทึก `storage/models/uv/{city}.pkl`, `storage/artifacts/uv/metrics.json` และ `storage/artifacts/uv/backtest_predictions.csv` ในเครื่อง ไฟล์ที่สร้างเหล่านี้ถูก gitignore ไฟล์ metric บันทึกคะแนน candidate, order ที่เลือก, เวอร์ชันไลบรารี และ SHA-256 ของ CSV ต้นทาง
+เมื่อข้อมูลสิ้นสุด 2026-09-28 ตัวอย่างพยากรณ์ **2026-09-30** จากโมเดลที่ fit แล้วคือกรุงเทพฯ **11.577**, สงขลา **12.366** และเชียงใหม่ **11.373** clear-sky UVI การรีเฟรช TEMIS และฝึกใหม่เปลี่ยนตัวเลขได้ โหลดโมเดลที่บันทึกทั้งสามแล้วและได้พยากรณ์ซ้ำตรงกัน ตรวจเฉพาะส่วนด้วย `python -m unittest discover -s tests -p 'test_*uv*.py' -v`
 
-The next phase can expose city selection, a dated forecast, weather context, and sunscreen guidance. Show the forecast as clear-sky potential; cloud cover must not be used as an unvalidated numeric correction. Add a freshness check before serving forecasts so a delayed TEMIS update does not silently turn tomorrow into a longer-range prediction.
+ระยะถัดไปแสดงการเลือกเมือง พยากรณ์พร้อมวันที่ บริบทอากาศ และแนวทางกันแดดได้ ต้องแสดงว่าเป็นศักยภาพท้องฟ้าโปร่ง ห้ามใช้ cloud cover ปรับตัวเลขโดยไม่ตรวจสอบ เพิ่มการตรวจความสดก่อนให้บริการ เพื่อไม่ให้ TEMIS ที่อัปเดตช้าทำให้พยากรณ์พรุ่งนี้กลายเป็นระยะยาวขึ้นโดยไม่แจ้ง
 
-## Phase 3 evaluation gate — before app integration
+## gate ประเมินระยะที่ 3 — ก่อนเชื่อมแอป
 
-Run `python scripts/evaluate_uv_model.py` after training. It reads the locked 2025–2026 test predictions and checks the source checksum, sample count, and reported MAE. It audits two-day forecasts on **635 target dates per city**. The 95% ranges below come from 2,000 paired 14-day moving-block resamples of daily absolute-error improvement over persistence. They describe uncertainty within this historical test period, not a guarantee for future days.
+รัน `python scripts/evaluate_uv_model.py` หลังฝึก สคริปต์อ่านค่าทำนาย test ปี 2025–2026 ที่ล็อกไว้ และตรวจ checksum ต้นทาง จำนวน sample และ MAE ที่รายงาน ตรวจพยากรณ์สองวันบน **635 วันเป้าหมายต่อเมือง**
+ช่วง 95% ด้านล่างมาจากการสุ่มซ้ำแบบจับคู่ moving-block 14 วัน จำนวน 2,000 ครั้งของการลด absolute error รายวันเทียบ persistence อธิบายความไม่แน่นอนภายในช่วง test ย้อนหลังนี้ ไม่รับประกันวันในอนาคต
 
-| City | Test MAE | 90th-percentile absolute error | MAE gain vs persistence (95% block range) | Months beating persistence | Under-called UV ≥8 | Under-called UV ≥11 |
+| เมือง | MAE test | absolute error เปอร์เซ็นไทล์ 90 | MAE ที่ลดจาก persistence (ช่วง block 95%) | เดือนที่ดีกว่า persistence | ประเมินต่ำกว่าเกณฑ์ UV ≥8 | ประเมินต่ำกว่าเกณฑ์ UV ≥11 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Bangkok | 0.3309 | 0.6838 | 0.0629 (0.0429–0.0820) | 11/12 | 0/635 | 3/492 |
-| Songkhla | 0.2819 | 0.5758 | 0.0632 (0.0492–0.0776) | 12/12 | 0/635 | 5/609 |
-| Chiang Mai | 0.3482 | 0.7386 | 0.0647 (0.0440–0.0852) | 11/12 | 9/578 | 2/447 |
+| กรุงเทพฯ | 0.3309 | 0.6838 | 0.0629 (0.0429–0.0820) | 11/12 | 0/635 | 3/492 |
+| สงขลา | 0.2819 | 0.5758 | 0.0632 (0.0492–0.0776) | 12/12 | 0/635 | 5/609 |
+| เชียงใหม่ | 0.3482 | 0.7386 | 0.0647 (0.0440–0.0852) | 11/12 | 9/578 | 2/447 |
 
-For the threshold audit, predicted and target values are rounded to the nearest whole UVI before comparing with 8 and 11. These are the [WHO action and exposure-category boundaries](https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index) ([11+ category and whole-number reporting in the WHO practical guide](https://iris.who.int/bitstream/handle/10665/42459/9241590076.pdf)). An *under-call* means the target reached the threshold but the forecast did not. All targets here are TEMIS **clear-sky** values. The largest individual absolute error was 2.2057 UVI in Bangkok on 2025-09-14 (target 14.911, forecast 12.705).
+การตรวจ threshold ปัดค่าทำนายและ target เป็น UVI จำนวนเต็มใกล้สุดก่อนเทียบ 8 และ 11 ซึ่งเป็น [เกณฑ์การปฏิบัติและระดับการสัมผัสของ WHO](https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index) ([ระดับ 11+ และการรายงานจำนวนเต็มในคู่มือ WHO](https://iris.who.int/bitstream/handle/10665/42459/9241590076.pdf))
+*ประเมินต่ำกว่าเกณฑ์* หมายถึง target ถึง threshold แต่พยากรณ์ไม่ถึง target ทั้งหมดเป็นค่า TEMIS **ท้องฟ้าโปร่ง** absolute error รายครั้งสูงสุดคือ 2.2057 UVI ในกรุงเทพฯ วันที่ 2025-09-14 (target 14.911, forecast 12.705)
 
-**Decision:** The locally trained SARIMAX passes this held-out point-forecast comparison against both simple baselines for clear-sky UV. The threshold misses and lack of independent cloud-affected, ground-level UV observations prevent claiming that its risk level or product advice is validated for actual outdoor exposure. Before release, evaluate a conservative recommendation rule against these under-calls; any numeric cloud correction also needs separate validation against all-sky observations. A prototype may show a dated, explicitly labeled clear-sky forecast while that work continues. Detailed results are in the ignored local file `storage/artifacts/uv/evaluation.json`.
+**ข้อสรุป:** SARIMAX ที่ฝึกในเครื่องผ่านการเทียบค่าพยากรณ์จุดบนชุดกันไว้กับ baseline ง่ายทั้งสองสำหรับ UV ท้องฟ้าโปร่ง แต่การพลาด threshold และการไม่มีข้อมูล UV ระดับพื้นดินที่ได้รับผลเมฆจากการสังเกตอิสระ ทำให้ยังอ้างไม่ได้ว่าระดับความเสี่ยงหรือคำแนะนำผลิตภัณฑ์ผ่านการตรวจสำหรับการสัมผัสกลางแจ้งจริง
+ก่อน release ให้ประเมินกฎคำแนะนำแบบระมัดระวังกับกรณีประเมินต่ำเหล่านี้ การปรับตัวเลขตามเมฆต้องตรวจแยกกับข้อมูลสังเกต all-sky ระหว่างนั้นต้นแบบแสดงพยากรณ์ท้องฟ้าโปร่งที่มีวันที่และป้ายชัดเจนได้ รายละเอียดอยู่ในไฟล์ในเครื่องที่ถูกละเว้น `storage/artifacts/uv/evaluation.json`
 
-The executed notebook `models/time-series/uv/uv_model_evaluation.ipynb` contains the validation selection table, held-out score table, threshold audit, and four plots (baseline comparison, recent actual vs forecast, monthly MAE, and residual distribution/scatter). It reuses matching local artifacts or runs the data preparation and training scripts when needed. Install the project's development dependencies to run its Python kernel and Matplotlib plots.
+notebook ที่รันแล้ว `models/time-series/uv/uv_model_evaluation.ipynb` มีตารางเลือกจาก validation, คะแนนชุดกันไว้, การตรวจ threshold และกราฟสี่ชุด (เทียบ baseline, ค่าจริงล่าสุดกับพยากรณ์, MAE รายเดือน และการกระจาย/กราฟกระจาย residual)
+ใช้ artifact ในเครื่องที่ตรงกันซ้ำ หรือรันสคริปต์เตรียมข้อมูลและฝึกเมื่อจำเป็น ติดตั้ง dependency สำหรับพัฒนาของโครงการเพื่อรัน Python kernel และกราฟ Matplotlib

@@ -1,6 +1,6 @@
-# Database ER - current ORM
+# แผนภาพ ER ฐานข้อมูล — ORM ปัจจุบัน
 
-Checked against [models.py](../../../backend/core/db/models.py) on 6 October 2026. All 24 ORM tables and mapped columns are included. Relationships below come from declared column ForeignKey entries; extra constraints added by startup SQL must also be checked in [session.py](../../../backend/core/db/session.py).
+ตรวจเทียบ [models.py](../../../backend/core/db/models.py) เมื่อ 6 ตุลาคม 2026 รวมตาราง ORM ทั้ง 24 ตารางและ column ที่ map ทั้งหมด ความสัมพันธ์ด้านล่างมาจาก ForeignKey ที่ประกาศใน column; ต้องตรวจ constraint เพิ่มเติมจาก SQL ตอนเริ่มระบบใน [session.py](../../../backend/core/db/session.py) ด้วย
 
 ```mermaid
 erDiagram
@@ -281,10 +281,10 @@ erDiagram
     }
 ```
 
-## Schema boundaries
+## ขอบเขต schema
 
-- Analysis results and display-artifact references are in `analyses.result`; there are no separate ORM `images`, `wrinkle_results`, `acne_results`, `factor_results`, `recommendations` or `observations` tables. Products use `products`; acne self-reports use `acne_observations`.
-- `daily_health_entries.next_day_forecasts` stores verified forecasts separately from calculated hydration and `daily_health_outcomes` labels. Model versions include `mlflow_run_id`; deployment events include nullable authenticated `actor`.
-- `annotation_tasks.analysis_id` is unique in the ORM but has no inline ForeignKey. Startup SQL handles additional analysis/owner integrity; do not invent an ORM relationship. Deployment-event `version_id` deliberately has no FK so audit records can survive pruning.
-- Composite uniqueness, check constraints, indexes and upgrade SQL are defined in source, not fully represented by this diagram. Account/security tables being present does not imply all corresponding auth workflows are implemented; see [Auth and Account](../Auth-Account-Database-Design.md).
-- This is a source schema snapshot, not confirmation that a running database has applied every startup upgrade.
+- ผลวิเคราะห์และการอ้างอิงภาพผลอยู่ใน `analyses.result`; ไม่มีตาราง ORM แยกชื่อ `images`, `wrinkle_results`, `acne_results`, `factor_results`, `recommendations` หรือ `observations` ผลิตภัณฑ์ใช้ `products`; รายงานสิวของผู้ใช้ใช้ `acne_observations`
+- `daily_health_entries.next_day_forecasts` เก็บพยากรณ์ที่ตรวจแล้วแยกจากค่าคำนวณน้ำดื่มและ label ของ `daily_health_outcomes` รุ่นโมเดลมี `mlflow_run_id`; event deployment มี `actor` ที่ยืนยันตัวตนและเป็น null ได้
+- `annotation_tasks.analysis_id` เป็น unique ใน ORM แต่ไม่มี ForeignKey แบบ inline SQL ตอนเริ่มระบบจัดการความสมบูรณ์ของ analysis/เจ้าของเพิ่มเติม ห้ามสร้างความสัมพันธ์ ORM ขึ้นเอง `version_id` ของ deployment event จงใจไม่มี FK เพื่อให้ audit record อยู่ได้หลังล้างรุ่นเก่า
+- การบังคับไม่ซ้ำแบบหลาย column, check constraint, index และ SQL อัปเกรดนิยามในซอร์ส แผนภาพนี้แสดงไม่ครบ การมีตารางบัญชี/ความปลอดภัยไม่ได้หมายความว่าพัฒนา auth workflow ที่เกี่ยวข้องครบแล้ว ดู [บัญชีและการยืนยันตัวตน](../Auth-Account-Database-Design.md)
+- นี่คือ snapshot schema จากซอร์ส ไม่ใช่การยืนยันว่าฐานข้อมูลที่รันอยู่ใช้การอัปเกรดตอนเริ่มระบบครบแล้ว

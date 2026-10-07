@@ -10,6 +10,7 @@ from arq.connections import RedisSettings
 from backend.core.config import settings
 from backend.core.db.models import TrainingRun
 from backend.core.db.session import SessionLocal, close_database
+from backend.core.observability import observed_job, start_worker_metrics, stop_worker_metrics
 from backend.libs.redis_client import redis_settings
 from backend.services.curated_training import train_candidate
 from backend.services.daily_health_tracking import track_daily_health_candidate
@@ -31,16 +32,19 @@ def _train_with_mlflow(run: TrainingRun) -> str:
         return mlflow_run.info.run_id
 
 
-async def shutdown(_: dict) -> None:
+async def shutdown(ctx: dict) -> None:
+    await stop_worker_metrics(ctx)
     await close_database()
 
 
-async def run_training(_: dict, training_run_id: str) -> None:
+@observed_job
+async def run_training(ctx: dict, training_run_id: str) -> None:
     """Train approved image datasets; keep other model families as placeholders."""
     async with SessionLocal() as session:
         # Fetch the request saved by training_service before it entered Redis.
         run = await session.get(TrainingRun, UUID(training_run_id))
         if run is None or run.status != "queued":
+            ctx["telemetry_outcome"] = "skipped"
             return
         run.status = "running"
         await session.commit()
@@ -64,9 +68,11 @@ async def run_training(_: dict, training_run_id: str) -> None:
             # Keep internal error details in logs and expose a failed status.
             logger.exception("Training run %s failed", training_run_id)
             run.status = "failed"
+            ctx["telemetry_outcome"] = "failed"
         await session.commit()
 
 
+@observed_job
 async def run_daily_health_candidate_training(_: dict) -> None:
     """Create a review-only version when enough consented self-reports have arrived."""
     async with SessionLocal() as session:
@@ -84,6 +90,7 @@ async def run_daily_health_candidate_training(_: dict) -> None:
                 raise
 
 
+@observed_job
 async def check_daily_health_candidate_training(_: dict) -> None:
     """Weekly: queue a candidate run only if the consented cohort passes readiness checks."""
     async with SessionLocal() as session:
@@ -104,5 +111,7 @@ class WorkerSettings:
         )
     ]
     on_shutdown = shutdown
+    on_startup = start_worker_metrics
+    health_check_interval = 30
     redis_settings: RedisSettings = redis_settings()
     queue_name = "training"

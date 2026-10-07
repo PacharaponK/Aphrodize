@@ -1,0 +1,15 @@
+services:
+  inference-worker:
+    environment: {WORKER_METRICS_PORT: "9101", SERVICE_NAME: inference-worker}
+    healthcheck:
+      test: [CMD, arq, --check, backend.workers.inference_worker.WorkerSettings]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  trainer-worker:
+    environment: {WORKER_METRICS_PORT: "9101", SERVICE_NAME: trainer-worker}
+    healthcheck:
+      test: [CMD, arq, --check, backend.workers.trainer_worker.WorkerSettings]
+      interval: 30s
+      timeout: 5s
+      retries: 3

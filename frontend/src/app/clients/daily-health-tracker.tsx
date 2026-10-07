@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import DailyHealthDashboard from "./daily-health-dashboard";
-import DailyHealthRiskResults from "./daily-health-risk-results";
 import DailyHealthOutcomeForm from "./daily-health-outcome-form";
 import type { AgeBand, DailyHealthHistoryItem, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
@@ -477,7 +476,8 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     ? prediction?.calculated.sleep_score_0_100 ?? savedResult?.calculated.sleep_score_0_100
       ?? Number(Math.min(100, (entry.sleepDurationMinutes / 540) * 100).toFixed(1))
     : null;
-  const scores = prediction?.predictions ?? savedResult?.predictions;
+  const healthResult = prediction ?? savedResult;
+  const scores = healthResult?.predictions;
   const thirstScore = scores?.thirst_score_0_10.value;
   const targetDate = prediction?.prediction_target_date ?? savedResult?.prediction_target_date;
   const hasForecast = Boolean(prediction?.model?.prediction_horizon_days || (savedResult?.prediction_target_date && savedResult.prediction_target_date !== savedResult.local_date));
@@ -771,12 +771,12 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           </p>
         )}
 
-        {prediction && <DailyHealthDashboard prediction={prediction} />}
-        {!prediction && savedResult && <section className="daily-health-dashboard" aria-label={t("ผลจากบันทึกของวันนี้", "Today's saved health signals")}>
-          <h2>{t("ความเสี่ยงและสัญญาณสุขภาพ", "Health risks and signals")}</h2>
-          {savedResult.prediction_model_id && <p className="entry-date-line">{t("โมเดลของผลที่บันทึก", "Saved model")}: {savedResult.prediction_model_id}</p>}
-          <DailyHealthRiskResults interpretation={savedResult.interpretation} />
-        </section>}
+        {healthResult && <DailyHealthDashboard
+          interpretation={healthResult.interpretation}
+          date={healthResult.local_date}
+          guidance={healthResult.guidance}
+          modelId={prediction ? prediction.model?.model_id : savedResult?.prediction_model_id}
+        />}
         <ScoreMethodDetails />
       </section>
 

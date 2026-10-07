@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import settings
 from backend.core.db.models import Analysis, AnalysisStatus, Consent, Product
+from backend.core.observability import enqueue_job
 from backend.libs.minio_client import put_bytes
 from backend.libs.redis_client import get_arq_pool
 from backend.libs.wrinkle_area import AREA_BAND_VERSION, assess_visible_area
@@ -731,6 +732,6 @@ async def create_analysis(session: AsyncSession, user_id: UUID, image: UploadFil
     if not quality_flags:
         # Queue only the ID; the worker reads the image directly from MinIO.
         redis = await get_arq_pool()
-        await redis.enqueue_job("run_inference", str(analysis.id), _queue_name="inference")
+        await enqueue_job(redis, "run_inference", str(analysis.id), _queue_name="inference")
         await redis.close()
     return analysis

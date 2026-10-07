@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import "./products.css";
+import { UvModelPanel } from "./uv-model-panel";
 
 type Product = {
   id: string;
@@ -200,6 +201,7 @@ export default function AdminProductsPage() {
       </div>}
 
       {access === "ready" && <>
+        <UvModelPanel />
         <div className="admin-summary" aria-label="ภาพรวมผลิตภัณฑ์">{([ ["ทั้งหมด", items.length, "all"], ["รอตรวจ", items.filter((item) => item.status === "draft").length, "draft"], ["เผยแพร่", items.filter((item) => item.status === "published").length, "published"], ["เก็บเข้าคลัง", items.filter((item) => item.status === "archived").length, "archived"] ] as const).map(([label, count, status]) => <Card key={status} className={`admin-summary-card ${status}`}><span>{label}</span><strong>{count}</strong></Card>)}</div>
         <div className="admin-products-layout">
           <section aria-label="รายการผลิตภัณฑ์"><Card className="admin-products-list"><div className="admin-products-heading"><div><p className="eyebrow">CATALOG</p><h2>รายการผลิตภัณฑ์</h2><p>เลือกสินค้าเพื่อแก้ไขข้อมูลหรือเปลี่ยนสถานะ</p></div><Badge className="admin-count-badge">{shown.length} รายการ</Badge></div><div className="admin-products-filters"><div className="admin-search"><Search size={18} aria-hidden="true" /><Input aria-label="ค้นหาสินค้า" placeholder="ค้นหาชื่อ แบรนด์ หรือหมวดสินค้า" value={search} onChange={(event) => setSearch(event.target.value)} /></div><div className="admin-status-filter"><Select ariaLabel="กรองสถานะ" value={filter} onChange={(val) => setFilter(val)} options={[{ value: "all", label: "ทุกสถานะ" }, { value: "draft", label: "รอตรวจ" }, { value: "published", label: "เผยแพร่" }, { value: "archived", label: "เก็บเข้าคลัง" }]} /></div></div>

@@ -16,6 +16,7 @@ const saved = { local_date: date, prediction_target_date: "2026-10-07", predicti
   input: { sleep_duration_total_minutes: 397, water_intake_ml: 1700, outdoor_exposure_choice: 1 },
   calculated: { sleep_score_0_100: 73.5 },
   predictions: { thirst_score_0_10: { value: 0, status: "calculated" }, skin_dryness_score_0_10: { value: 4.2, status: "predicted" } },
+  guidance: ["คำแนะนำจากบันทึกทดสอบ"],
   interpretation: { daily_health_summary: unavailable, skin_care_attention_level: unavailable,
     next_day_predictions: { low_energy_signal: unavailable, thirst_attention: unavailable }, profile_guidance: [] } };
 
@@ -29,7 +30,7 @@ function mountTracker() {
     const mod = { exports: {} }; modules.set(filename, mod);
     const require = createRequire(filename);
     const code = ts.transpileModule(fs.readFileSync(filename, "utf8"), { compilerOptions: {
-      module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
+      target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText;
     new Function("require", "module", "exports", code)(name => {
       if (filename.endsWith("daily-health-tracker.tsx") && name === "react") return { ...React,
         useState: initial => { const index = si++; if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
@@ -71,8 +72,18 @@ test("refresh restores today's persisted scores without requesting a new predict
     assert.match(html, /73\.5/);
     assert.match(html, /4\.2/);
     assert.match(html, /0\.0/);
+    assert.match(html, /คำแนะนำจากบันทึกทดสอบ/);
+    assert.match(html, /Your recorded day/);
+    assert.match(html, /saved-test-model/);
+    assert.match(html, /Next-day outlook/);
     assert.doesNotMatch(html, /No entry for today/);
   }
+});
+
+test("fresh and restored signals share the same rendering path", () => {
+  const source = fs.readFileSync(path.join(root, "app/clients/daily-health-tracker.tsx"), "utf8");
+  assert.equal((source.match(/<DailyHealthDashboard/g) ?? []).length, 1);
+  assert.doesNotMatch(source, /<DailyHealthRiskResults/);
 });
 
 test("refresh never substitutes yesterday's result for an empty today", async context => {
@@ -110,7 +121,7 @@ test("today's GET verifies account ownership, forwards the date window and is ne
   const owner = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   context.mock.method(globalThis, "fetch", async (url, options) => {
     assert.equal(options.cache, "no-store");
-    assert.equal(options.headers.Authorization, "Bearer test-session");
+    assert.equal(new Headers(options.headers).get("authorization"), "Bearer test-session");
     if (String(url).endsWith("/auth/profile")) return Response.json({ user_id: owner });
     const request = new URL(url);
     assert.ok(request.pathname.endsWith(`/users/${owner}/entries`));

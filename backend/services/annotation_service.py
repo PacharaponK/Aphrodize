@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import settings
 from backend.core.db.models import Analysis, AnnotationTask, Consent
+from backend.core.observability import enqueue_job
 from backend.libs.labelstudio_client import get_label_studio_client
 from backend.libs.minio_client import annotation_image_key, get_bytes, put_bytes, remove_objects
 
@@ -62,9 +63,9 @@ async def stage_annotation(
         await asyncio.to_thread(remove_objects, [key], settings.annotation_bucket)
         raise
     # Publish asynchronously; the user analysis result is already committed.
-    await redis.enqueue_job("publish_annotation_task", str(row.id), _queue_name="inference")
+    await enqueue_job(redis, "publish_annotation_task", str(row.id), _queue_name="inference")
     # A delayed job removes the review copy and remote task after retention ends.
-    await redis.enqueue_job(
+    await enqueue_job(redis,
         "expire_annotation_task", str(row.id), _queue_name="inference", _defer_until=row.expires_at
     )
 

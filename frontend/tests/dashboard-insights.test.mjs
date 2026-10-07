@@ -39,13 +39,12 @@ const latest = { local_date: "2026-10-04", interpretation: {
   profile_guidance: [{ topic: "test", status: "available", message: "คำแนะนำโปรไฟล์เดิม" }],
 } };
 
-test("inline details deduplicate guidance, group unavailable forecasts and preserve scope", () => {
+test("inline details deduplicate guidance and hide model-not-ready forecasts", () => {
   const html = renderToStaticMarkup(React.createElement(InlineDetails, {
     interpretation: latest.interpretation, language: "en", date: latest.local_date,
   }));
   assert.equal((html.match(/ข้อหนึ่ง/g) ?? []).length, 1);
-  assert.equal((html.match(/Record observed outcomes/g) ?? []).length, 1);
-  assert.equal((html.match(/Model not ready/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /Record observed outcomes|Model not ready|Next-day energy|Next-day thirst|Next-day outlook/);
   assert.ok(html.includes("Reasons &amp; guidance") && html.includes("Hide details"));
   assert.ok(html.includes("คำแนะนำโปรไฟล์เดิม") && html.includes(latest.local_date));
   assert.ok(!html.includes("health-signal-card") && !html.includes("Acne"));
@@ -59,7 +58,8 @@ test("inline details keep availability reasons distinct and profile reference li
   const html = renderToStaticMarkup(React.createElement(InlineDetails, {
     interpretation: data, language: "en", date: latest.local_date,
   }));
-  assert.ok(html.includes("Insufficient history") && html.includes("Model not ready"));
+  assert.ok(html.includes("Insufficient history"));
+  assert.doesNotMatch(html, /Next-day energy|Model not ready/);
   assert.ok(html.includes('href="https://example.org/reference"'));
 });
 
@@ -83,7 +83,7 @@ test("compact summary deduplicates and limits guidance while closed details pres
   assert.ok(!beforeDetails.includes("ข้อสาม"));
   assert.match(html, /<details class="health-inline-details home-insights-details">/);
   assert.ok(html.includes("ข้อสาม") && html.includes("ข้อสี่") && html.includes("คำแนะนำโปรไฟล์เดิม"));
-  assert.ok(html.includes("2 signals not assessed"));
+  assert.doesNotMatch(html, /signals not assessed|Next-day outlook/);
   assert.doesNotMatch(html, /Your reported breakouts|Observed breakouts|acne-observation-title/);
   assert.match(html, /datetime="2026-10-04"/i);
   assert.ok(!html.includes('<div lang="th">'));

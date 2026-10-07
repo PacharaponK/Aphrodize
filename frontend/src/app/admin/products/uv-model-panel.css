@@ -1,0 +1,27 @@
+.uv-admin-panel { margin-block: 24px 40px; padding: clamp(18px, 3vw, 28px); border: 1px solid var(--line); border-radius: var(--radius-card, 12px); background: var(--surface); color: var(--ink); scroll-margin-top: 24px; }
+.uv-admin-header, .uv-admin-rollback { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.uv-admin-header h2 { margin: 0 0 8px; font-size: clamp(24px, 2vw, 28px); }
+.uv-admin-panel h3 { margin: 28px 0 8px; font-size: 18px; }
+.uv-admin-panel p { max-width: 75ch; line-height: 1.65; }
+.uv-admin-header p { margin: 0; color: var(--muted); }
+.uv-admin-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-block: 28px; }
+.uv-admin-status > div { display: block; }
+.uv-admin-status dt { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+.uv-admin-status dd { margin: 0; overflow-wrap: anywhere; font-size: 16px; line-height: 1.65; }
+.uv-admin-status dd.uv-admin-meta { margin-top: 6px; font-size: 13px; }
+.uv-admin-meta { color: var(--muted); font-size: 13px; }
+.uv-admin-version { overflow-wrap: anywhere; }
+.uv-admin-table-wrap { overflow-x: auto; margin-block: 20px 12px; }
+.uv-admin-panel table { border-collapse: collapse; width: 100%; text-align: left; font-size: 14px; font-variant-numeric: tabular-nums; }
+.uv-admin-panel caption { text-align: left; padding-bottom: 12px; font-weight: 600; }
+.uv-admin-panel th, .uv-admin-panel td { padding: 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.uv-admin-panel thead { background: var(--surface-muted); }
+.uv-admin-note { color: var(--muted); font-size: 14px; }
+.uv-admin-feedback { padding: 12px 16px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface-muted); }
+.uv-admin-panel details { margin-block: 20px; }
+.uv-admin-panel summary { cursor: pointer; min-height: 44px; padding-block: 10px; font-weight: 600; }
+.uv-admin-history { padding-left: 24px; }
+.uv-admin-history li { margin-block: 16px; line-height: 1.65; }
+.uv-admin-panel :focus-visible { outline: 2px solid var(--primary-deep); outline-offset: 4px; }
+.uv-admin-panel [data-slot="button"] { min-height: 44px; white-space: normal; }
+@media (max-width: 760px) { .uv-admin-status { grid-template-columns: 1fr; gap: 18px; } .uv-admin-header, .uv-admin-rollback { align-items: flex-start; flex-direction: column; } }

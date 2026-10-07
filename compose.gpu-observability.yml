@@ -1,0 +1,46 @@
+services:
+  inference-worker:
+    environment: {WORKER_METRICS_PORT: "9101", SERVICE_NAME: inference-worker}
+    ports: ["127.0.0.1:9101:9101"]
+    healthcheck:
+      test: [CMD, arq, --check, backend.workers.inference_worker.WorkerSettings]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment: {CONTAINERS: "1", NETWORKS: "1", POST: "0"}
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [collector]
+    mem_limit: 64m
+    logging: &gpu-obs-logging
+      driver: local
+      options: {max-size: "10m", max-file: "3"}
+  alloy:
+    image: grafana/alloy:v1.10.0
+    restart: unless-stopped
+    command: [run, --server.http.listen-addr=0.0.0.0:12345, --storage.path=/var/lib/alloy, /etc/alloy/config.alloy]
+    env_file: .env.gpu
+    environment: {OBS_HOST: gpu, OBS_ENVIRONMENT: production, OBS_PROJECT: aphrodize-gpu}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./docker/observability/config.alloy:/etc/alloy/config.alloy:ro
+      - gpu_alloy_data:/var/lib/alloy
+    networks: [default, collector]
+    depends_on: [docker-socket-proxy]
+    mem_limit: 256m
+    logging: *gpu-obs-logging
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
+    profiles: [gpu-metrics]
+    gpus: all
+    cap_add: [SYS_ADMIN]
+    ports: ["127.0.0.1:9400:9400"]
+    restart: unless-stopped
+    mem_limit: 512m
+    logging: *gpu-obs-logging
+networks:
+  collector: {internal: true}
+volumes:
+  gpu_alloy_data:

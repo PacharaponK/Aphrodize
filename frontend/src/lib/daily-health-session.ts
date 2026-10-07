@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import type { NextRequest } from "next/server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

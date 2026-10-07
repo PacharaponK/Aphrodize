@@ -1,4 +1,5 @@
 arq==0.26.3
+prometheus-client>=0.21,<0.25
 asyncpg==0.30.0
 einops==0.8.1
 minio==7.2.20

@@ -24,4 +24,4 @@ Press `Ctrl+C` to stop following. This is equivalent to `docker compose logs --f
 
 Docker uses its local log driver with a 10 MB maximum file size and five retained files per container. Do not commit exported logs or add passwords, `.env` values, image payloads, personal data, or access tokens to application log messages.
 
-This is local log collection only. It does not deploy an observability platform or send logs to any external service.
+The export script captures local logs only. The optional [observability stack](../docs/observability.md) collects allowlisted JSON records from instrumented services into Loki and exposes dashboards/Discord alerts.

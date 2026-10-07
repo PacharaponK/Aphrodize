@@ -14,7 +14,8 @@ function load(file, overrides) {
   }).outputText;
   const evaluated = { exports: {} };
   new Function("require", "module", "exports", source)(
-    (name) => Object.hasOwn(overrides, name) ? overrides[name] : require(name), evaluated, evaluated.exports,
+    (name) => name === "@/lib/backend-fetch" ? { backendFetch: (...args) => globalThis.fetch(...args) }
+      : Object.hasOwn(overrides, name) ? overrides[name] : require(name), evaluated, evaluated.exports,
   );
   return evaluated.exports;
 }
@@ -36,7 +37,7 @@ test("recommendations always require a session and forward backend data, even wi
   assert.deepEqual(await response.json(), backendBody);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
   assert.ok(calls[0].url.endsWith("/api/v1/analyses/recommendations?market=TH"));
-  assert.equal(calls[0].options.headers.Authorization, "Bearer test-token");
+  assert.equal(new Headers(calls[0].options.headers).get("authorization"), "Bearer test-token");
   assert.equal(calls[0].options.cache, "no-store");
   context.mock.method(globalThis, "fetch", async () => { throw new Error("Backend unavailable"); });
   const failed = await route.GET(request);
