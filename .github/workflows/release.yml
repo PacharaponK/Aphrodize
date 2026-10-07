@@ -86,7 +86,15 @@ jobs:
         env:
           IMAGE: ghcr.io/pacharaponk/aphrodize-api@${{ steps.image.outputs.digest }}
         run: |
-          docker run --rm --network none "$IMAGE" python -c 'import asyncio, cv2; from backend.main import app; from backend.api.v1.routes.health import health; assert asyncio.run(health()) == {"status": "ok"}; assert app'
+          docker run --rm --network none "$IMAGE" python -c '
+          import asyncio, cv2
+          from backend.main import app
+          from backend.api.v1.routes.health import health
+          from backend.api.v1.routes.monitoring import prometheus_metrics
+          assert asyncio.run(health()) == {"status": "ok"}
+          assert any(r.path == "/api/v1/monitoring/metrics" for r in app.routes)
+          assert b"aphrodize_collector_success" in asyncio.run(prometheus_metrics()).body
+          '
       - name: Save digest
         env:
           SERVICE: ${{ matrix.service }}

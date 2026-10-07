@@ -40,6 +40,20 @@ docker compose --profile ai --profile background -f compose.yml -f compose.obser
 
 deploy worker ที่อัปเดต **ก่อน** API producer ที่อัปเดต: worker รุ่นเก่าไม่รับ correlation metadata ใหม่ ยังรองรับ cron และ job เก่าในคิวที่ไม่มี metadata worker ที่ติด instrumentation แต่ละตัวเปิดพอร์ต 9101 ภายในเท่านั้น และใช้ Redis health key ของ ARQ ทุก 30 วินาที หากเพิ่มจำนวน worker ให้กำหนด target/heartbeat key แยกกัน ปัจจุบัน heartbeat แทน worker pool หนึ่งชุดต่อคิว ไม่ใช่ทุก replica
 
+## การคง observability ใน CI/CD
+
+หลังรวม deployer ที่รองรับเข้า `main` ให้ตั้ง repository variable:
+
+```text
+VM_COMPOSE_OVERLAYS=compose.vm-worker-access.yml,compose.duckdns.yml,compose.observability.yml,compose.observability-web.yml
+```
+
+บริการ monitoring ต้องติดตั้งและทำงานอยู่ก่อน โดยใช้ Compose project และไดเรกทอรีเดียวกับ VM deployer อ่าน overlay และค่าตั้งส่วนตัวเดิม อัปเดตเฉพาะ API/frontend และคงคอนเทนเนอร์ monitoring, volume, provisioning และบัญชี Grafana ไว้ preflight ปฏิเสธการเปลี่ยนโครงสร้าง monitoring เดิมหรือปิด API telemetry และคงค่าการเชื่อมต่อ annotation เดิม
+
+CI ตรวจ API image ว่ามี metrics route และ collector metrics หลัง deploy ต้องตรวจ metrics โดยยืนยันตัวตน มี collector ที่สำเร็จภายใน 120 วินาที และผ่าน Grafana HTTPS health endpoint มี retry สั้นเพื่อรองรับการเริ่มระบบหรือรอบเก็บข้อมูลของ rollback image เดิม หากล้มเหลวจะคืนค่าตั้งแอปก่อนหน้าโดยไม่ restart monitoring หรือลบ volume การ recovery/rollback ใช้การตรวจเดียวกันและคงประวัติ release เดิม
+
+ตรวจ regression ด้วย `uv run --locked python -m pytest tests/test_observability.py tests/test_observability_readiness.py tests/test_vm_deployment.py` การทดสอบ deployment ใช้ Docker/curl จำลองบน Linux ครอบคลุม success, preflight rejection, health failure, rollback และ recovery โดยไม่หยุดบริการ production
+
 ## การเข้าถึงและงบทรัพยากร
 
 หากต้องการเข้าผ่านเบราว์เซอร์ด้วยชื่อโฮสต์ HTTPS เดิมของ VM ให้เพิ่ม `compose.observability-web.yml` หลัง monitoring overlay ตัวอย่างเมื่อใช้ DuckDNS:
