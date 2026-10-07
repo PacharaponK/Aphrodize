@@ -1,0 +1,11 @@
+# Optional override: docker compose -f compose.yml -f compose.wrinkle-gpu.yml --profile ai ...
+services:
+  trainer-worker:
+    build:
+      args:
+        TORCH_INDEX_URL: https://download.pytorch.org/whl/cu118
+    gpus: all
+  inference-worker:
+    build:
+      dockerfile: docker/inference-cuda.Dockerfile
+    gpus: all
