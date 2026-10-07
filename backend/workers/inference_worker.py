@@ -14,7 +14,13 @@ from arq import cron
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
-from backend.core.db.models import Analysis, AnalysisStatus, AnnotationTask, InferenceRun
+from backend.core.config import settings
+from backend.core.db.models import (
+    Analysis,
+    AnalysisStatus,
+    AnnotationTask,
+    InferenceRun,
+)
 from backend.core.db.session import SessionLocal, close_database
 from backend.core.observability import (
     enqueue_job,
@@ -56,7 +62,83 @@ async def startup(ctx: dict) -> None:
         released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None,
         approved_model_manifest=os.environ.get("APHRODIZE_WRINKLE_APPROVED_MANIFEST") or None,
     )
+    ctx["wrinkle_version"] = None
     await start_worker_metrics(ctx)
+
+
+async def refresh_wrinkle_model(ctx: dict) -> None:
+    async with ctx.setdefault("wrinkle_reload_lock", asyncio.Lock()):
+        await _refresh_wrinkle_model(ctx)
+
+
+async def _refresh_wrinkle_model(ctx: dict) -> None:
+    """Load a selected version between jobs; never switch a service during inference."""
+    from backend.services import wrinkle_lifecycle as lifecycle
+    from backend.wrinkle.service import WrinkleAnalysisService
+
+    async with SessionLocal() as session:
+        row = await lifecycle.deployment(session)
+        version = row.state["active"]
+        manifest = await lifecycle.selected_manifest(session, version)
+        if version != lifecycle.INITIAL:
+            try:
+                await lifecycle.check_lineage(session, version, verify_files=False)
+            except (OSError, ValueError, KeyError):
+                # Retire a model whose source consent or retained dataset is unavailable.
+                row = await lifecycle.deployment(session, lock=True)
+                if row.state["active"] == version:
+                    row.state = {
+                        **row.state,
+                        "active": lifecycle.INITIAL,
+                        "pending": None,
+                        "error": "Dataset expired or consent changed; restored initial model",
+                        "history": [
+                            *row.state["history"],
+                            {
+                                "from": version,
+                                "to": lifecycle.INITIAL,
+                                "actor": "consent-retention-guard",
+                                "action": "retire",
+                                "at": lifecycle.now(),
+                            },
+                        ],
+                    }
+                version, manifest = lifecycle.INITIAL, lifecycle.initial_manifest()
+        await session.commit()
+    if ctx["wrinkle_version"] == version:
+        return
+    if version == lifecycle.INITIAL:
+        # Preserve the installed initial policy when rolling back to the baseline.
+        from ai.ffhq_wrinkle.confidence import load_confidence_policy
+
+        reviewed = os.environ.get("APHRODIZE_WRINKLE_REVIEWED_POLICY")
+        service = WrinkleAnalysisService(
+            confidence_policy=load_confidence_policy(reviewed) if reviewed else None,
+            released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None,
+            approved_model_manifest=manifest,
+        )
+    else:
+        # Old confidence policies cannot certify a new checkpoint: abstain by default.
+        async with SessionLocal() as session:
+            from backend.core.db.models import TrainingRun
+            from backend.services.curated_training import sha256_file
+
+            run = await session.get(TrainingRun, UUID(version))
+            policy_hashes = run.config.get("policy_hashes", {})
+        policy_dir = lifecycle.package_path(version) / "policy"
+        for name, digest in policy_hashes.items():
+            if await asyncio.to_thread(sha256_file, policy_dir / name) != digest:
+                raise ValueError("Approved confidence policy changed")
+        service = WrinkleAnalysisService(
+            approved_model_manifest=manifest,
+            released_policy_bundle=policy_dir if policy_hashes else None,
+        )
+    await asyncio.to_thread(service._bundle)
+    ctx["wrinkle_service"], ctx["wrinkle_version"] = service, version
+    async with SessionLocal() as session:
+        row = await lifecycle.deployment(session, lock=True)
+        row.state = {**row.state, "loaded": {"version": version, "at": lifecycle.now()}}
+        await session.commit()
 
 
 async def shutdown(ctx: dict) -> None:
@@ -88,6 +170,8 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
         uploaded: list[str] = []
         try:
             try:
+                if "wrinkle_version" in ctx:
+                    await refresh_wrinkle_model(ctx)
                 # MinIO access is synchronous; a thread keeps the event loop free.
                 payload = await asyncio.to_thread(get_bytes, analysis.object_key)
                 # Preserve image encoding in the temporary upload filename.
@@ -183,7 +267,11 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                 # Review staging is a second workflow; its failure does not erase the user result.
                 try:
                     await stage_annotation(
-                        session, analysis, artifacts.get("aligned_face"), ctx["redis"]
+                        session,
+                        analysis,
+                        artifacts.get("aligned_face"),
+                        ctx["redis"],
+                        training_input=artifacts.get("training_input"),
                     )
                 except Exception:
                     secondary_failures.labels("annotation_staging").inc()
@@ -248,9 +336,17 @@ async def reconcile_annotation_tasks(ctx: dict) -> None:
                 ):
                     # Retention expiry and revocation take precedence over publishing.
                     await delete_annotation(session, row)
-                elif row.label_studio_task_id is None:
-                    # Retry only work without a recorded remote task ID.
-                    await publish_annotation(session, row)
+                else:
+                    from backend.services.wrinkle_datasets import input_key, training_consent
+
+                    if not await training_consent(session, row.user_id):
+                        # Retry tensor deletion after a training-only revocation/storage outage.
+                        await asyncio.to_thread(
+                            remove_objects, [input_key(row)], settings.annotation_bucket
+                        )
+                    if row.label_studio_task_id is None:
+                        # Retry only work without a recorded remote task ID.
+                        await publish_annotation(session, row)
             except Exception:
                 ctx["telemetry_outcome"] = "failed"
                 logger.exception("Could not reconcile annotation task %s", row.id)

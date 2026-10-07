@@ -163,6 +163,8 @@ class WrinkleAnalysisService:
                     "overlay": (work / "prediction" / "overlay.png").read_bytes(),
                     "mask": (work / "prediction" / "wrinkle_mask.png").read_bytes(),
                     "aligned_face": (work / "prediction" / "aligned_face.png").read_bytes(),
+                    **({"training_input": (work / "prediction" / "model_input.npy").read_bytes()}
+                       if (work / "prediction" / "model_input.npy").is_file() else {}),
                     **({"regions": region_map} if region_map is not None else {}),
                     **({"outline": personal_outline} if personal_outline is not None else {}),
                 })

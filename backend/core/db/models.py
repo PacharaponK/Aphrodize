@@ -560,6 +560,14 @@ class TrainingRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class WrinkleDeployment(Base):
+    """One locked deployment pointer, shared by API, trainer and inference workers."""
+
+    __tablename__ = "wrinkle_deployments"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    state: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
 class InferenceRun(Base):
     """Generic model request for approved time-series and non-time-series model deployments."""
 

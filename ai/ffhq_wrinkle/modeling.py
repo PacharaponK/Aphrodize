@@ -14,7 +14,6 @@ from time import perf_counter
 
 import torch
 
-from .official.unet.swin_unetr import SwinUNETR
 from .official.unet.unet_model import UNet
 from .paths import MODEL_ROOT
 
@@ -48,6 +47,7 @@ class DeviceSelection:
 @dataclass(frozen=True)
 class ModelBundle:
     """Loaded model, selected device, and provenance used in public metadata."""
+
     model: torch.nn.Module
     architecture: str
     checkpoint: Path
@@ -122,6 +122,8 @@ def create_model(architecture: str) -> torch.nn.Module:
     architecture = canonical_architecture(architecture)
     if architecture == "UNet":
         return UNet(n_channels=4, n_classes=2, bilinear=True)
+    from .official.unet.swin_unetr import SwinUNETR
+
     return SwinUNETR(in_channels=4, out_channels=2)
 
 
@@ -134,7 +136,11 @@ def load_checkpoint_strict(
     """Load weights only if every checkpoint key fits the chosen network."""
     checkpoint_path = Path(checkpoint_path)
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
-    state = checkpoint["model"] if isinstance(checkpoint, dict) and "model" in checkpoint else checkpoint
+    state = (
+        checkpoint["model"]
+        if isinstance(checkpoint, dict) and "model" in checkpoint
+        else checkpoint
+    )
     if not isinstance(state, dict):
         raise CheckpointArchitectureError("checkpoint does not contain a state dictionary")
     normalized = OrderedDict(
