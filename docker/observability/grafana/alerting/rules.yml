@@ -78,7 +78,7 @@ groups:
       datasourceUid: prometheus
       model:
         refId: A
-        expr: 1 - (up{job="api"} or vector(0))
+        expr: 1 - (up{job="api"} or on() vector(0))
         instant: true
         intervalMs: 1000
         maxDataPoints: 43200

@@ -154,7 +154,7 @@ ALERTS = [
     (
         "api-down",
         "API scrape unavailable",
-        '1 - (up{job="api"} or vector(0))',
+        '1 - (up{job="api"} or on() vector(0))',
         "2m",
         "critical",
         "system",
