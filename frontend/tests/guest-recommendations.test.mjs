@@ -9,7 +9,7 @@ const source = ts.transpileModule(fs.readFileSync(new URL("../src/app/api/analys
   compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true },
 }).outputText;
 const evaluated = { exports: {} };
-new Function("require", "module", "exports", source)(require, evaluated, evaluated.exports);
+new Function("require", "module", "exports", source)(name => name === "@/lib/backend-fetch" ? { backendFetch: (...args) => globalThis.fetch(...args) } : require(name), evaluated, evaluated.exports);
 const { GET, POST } = evaluated.exports;
 const url = "http://localhost/api/analysis/recommendations";
 const initial = await GET(new NextRequest(url));

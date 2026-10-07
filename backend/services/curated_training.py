@@ -4,9 +4,10 @@ import hashlib
 import json
 import re
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
-APPROVED_DATA_ROOT = Path("/app/storage/data/approved")
+APPROVED_DATA_ROOT = Path(__file__).resolve().parents[2] / "storage/data/approved"
 DATASET_URI = re.compile(r"^approved://([a-z0-9][a-z0-9_-]{0,63})@([0-9a-f]{64})$")
 SPLITS = {"train", "validation", "test"}
 PREPROCESSING_VERSION = (
@@ -60,13 +61,20 @@ def validate_manifest(path: Path) -> list[dict]:
     if (
         type(data.get("schema_version")) is not int
         or data["schema_version"] != 1
-        or data.get("source") != "external_licensed"
+        or data.get("source") not in {"external_licensed", "consented_user_review"}
         or data.get("approved_for_training") is not True
         or not data.get("approval_reference")
         or not data.get("rights_reference")
         or data.get("preprocessing_version") != PREPROCESSING_VERSION
     ):
         raise ValueError("dataset approval, rights, or preprocessing contract is missing")
+    if data["source"] == "consented_user_review":
+        if (
+            not data.get("consent_records")
+            or not data.get("expires_at")
+            or datetime.fromisoformat(data["expires_at"]) <= datetime.now(UTC)
+        ):
+            raise ValueError("user dataset consent or retention has expired")
     samples = data.get("samples")
     # A candidate requires at least one reviewed sample.
     if not isinstance(samples, list) or not samples:
@@ -84,21 +92,21 @@ def validate_manifest(path: Path) -> list[dict]:
             raise ValueError("sample appears in multiple splits")
         # Keep all images from one person in one split to avoid identity leakage.
         subject_id = sample.get("subject_id")
-        if not isinstance(subject_id, str) or not re.fullmatch(
-            r"[a-zA-Z0-9_-]{1,64}", subject_id
-        ):
+        if not isinstance(subject_id, str) or not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", subject_id):
             raise ValueError("invalid subject id")
         if subject_id in subjects and subjects[subject_id] != sample["split"]:
             raise ValueError("subject appears in multiple splits")
         subjects[subject_id] = sample["split"]
         seen.add(sample_id)
         splits.add(sample["split"])
-        checked.append({
-            "id": sample_id,
-            "split": sample["split"],
-            "input": _file(path.parent, sample.get("input"), sample.get("input_sha256")),
-            "mask": _file(path.parent, sample.get("mask"), sample.get("mask_sha256")),
-        })
+        checked.append(
+            {
+                "id": sample_id,
+                "split": sample["split"],
+                "input": _file(path.parent, sample.get("input"), sample.get("input_sha256")),
+                "mask": _file(path.parent, sample.get("mask"), sample.get("mask_sha256")),
+            }
+        )
         # Inputs and labels must use the expected formats and bounded file sizes.
         if checked[-1]["input"].suffix != ".npy" or checked[-1]["mask"].suffix != ".png":
             raise ValueError("dataset requires .npy model inputs and .png masks")
@@ -112,7 +120,16 @@ def validate_manifest(path: Path) -> list[dict]:
     return checked
 
 
-def train_candidate(uri: str, epochs: int = 1, root: Path = APPROVED_DATA_ROOT) -> dict:
+def train_candidate(
+    uri: str,
+    epochs: int = 1,
+    root: Path = APPROVED_DATA_ROOT,
+    *,
+    base_manifest: str | None = None,
+    progress=None,
+    check_consent=None,
+    cancelled=None,
+) -> dict:
     """Log a candidate and held-out metrics to the active MLflow run; never deploy it."""
     # Resolve and verify the external dataset before creating a model or checkpoint.
     if not 1 <= epochs <= 20:
@@ -126,7 +143,8 @@ def train_candidate(uri: str, epochs: int = 1, root: Path = APPROVED_DATA_ROOT) 
     import torch
     from PIL import Image
 
-    from ai.ffhq_wrinkle.official.unet.unet_model import UNet
+    from ai.ffhq_wrinkle.modeling import load_wrinkle_model
+    from backend.wrinkle.approved_model import approved_checkpoint
 
     def load(sample: dict) -> tuple[torch.Tensor, torch.Tensor]:
         # Refuse pickle while reading the four-channel model input.
@@ -158,54 +176,98 @@ def train_candidate(uri: str, epochs: int = 1, root: Path = APPROVED_DATA_ROOT) 
     for sample in samples:
         load(sample)
     torch.manual_seed(2024)
-    # Initialize a fresh four-input, two-class U-Net for this candidate run.
-    model = UNet(n_channels=4, n_classes=2, bilinear=True)
+    bundle = load_wrinkle_model(
+        "UNet",
+        checkpoint_path=approved_checkpoint(base_manifest) if base_manifest else None,
+        verify_official=not bool(base_manifest),
+    )
+    model = bundle.model
+    device = bundle.device
+    mlflow.log_params(
+        {
+            "base_checkpoint_sha256": bundle.checkpoint_sha256,
+            "device": str(device),
+            "training_kind": "fine_tuning",
+        }
+    )
+
+    def evaluate() -> dict:
+        model.eval()
+        result = {}
+        with torch.inference_mode():
+            for split in ("validation", "test"):
+                tp = fp = fn = 0
+                positive_samples = 0
+                sample_dice = []
+                for sample in samples:
+                    if sample["split"] != split:
+                        continue
+                    image, mask = load(sample)
+                    truth = mask.to(device).bool()
+                    positive_samples += int(truth.any())
+                    prediction = model(image.to(device)).argmax(dim=1).bool()
+                    a = int((prediction & truth).sum())
+                    b = int((prediction & ~truth).sum())
+                    c = int((~prediction & truth).sum())
+                    tp += a
+                    fp += b
+                    fn += c
+                    sample_dice.append(2 * a / (2 * a + b + c) if 2 * a + b + c else 1.0)
+                result[f"{split}_dice"] = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else 1.0
+                result[f"{split}_iou"] = tp / (tp + fp + fn) if tp + fp + fn else 1.0
+                result[f"{split}_precision"] = tp / max(1, tp + fp)
+                result[f"{split}_recall"] = tp / max(1, tp + fn)
+                result[f"{split}_mean_dice"] = sum(sample_dice) / len(sample_dice)
+                result[f"{split}_positive_samples"] = positive_samples
+        return result
+
+    baseline = evaluate()
+    mlflow.log_metrics({f"base_{key}": value for key, value in baseline.items()})
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     for epoch in range(epochs):
+        if check_consent:
+            check_consent()
         model.train()
         losses = []
         for sample in samples:
+            if cancelled and cancelled():
+                raise RuntimeError("Training job was cancelled")
             # Only training-split samples update model weights.
             if sample["split"] != "train":
                 continue
             image, mask = load(sample)
             optimizer.zero_grad(set_to_none=True)
-            loss = torch.nn.functional.cross_entropy(model(image), mask)
+            loss = torch.nn.functional.cross_entropy(model(image.to(device)), mask.to(device))
             # Backpropagate pixel-level classification loss through the U-Net.
             loss.backward()
             optimizer.step()
             losses.append(float(loss.item()))
         mlflow.log_metric("train_loss", sum(losses) / len(losses), step=epoch)
+        if progress:
+            progress(epoch + 1, sum(losses) / len(losses))
 
     # Evaluate held-out splits without gradients or optimizer updates.
-    model.eval()
-    metrics = {}
-    with torch.inference_mode():
-        for split in ("validation", "test"):
-            tp = fp = fn = 0
-            for sample in samples:
-                if sample["split"] != split:
-                    continue
-                image, mask = load(sample)
-                prediction = model(image).argmax(dim=1).bool()
-                # Aggregate true positives, false positives, and false negatives.
-                truth = mask.bool()
-                tp += int((prediction & truth).sum())
-                fp += int((prediction & ~truth).sum())
-                fn += int((~prediction & truth).sum())
-            metrics[f"{split}_dice"] = (2 * tp) / max(1, 2 * tp + fp + fn)
-            metrics[f"{split}_iou"] = tp / max(1, tp + fp + fn)
+    metrics = evaluate()
+    if check_consent:
+        check_consent()
     # Log reproducibility fields and held-out metrics to the active MLflow run.
     mlflow.log_params({"architecture": "UNet", "epochs": epochs, "manifest_sha256": manifest_sha})
     mlflow.log_metrics(metrics)
-    mlflow.set_tags({
-        "candidate_status": "awaiting_approval",
-        "dataset_source": "external_licensed",
-    })
+    mlflow.set_tags(
+        {
+            "candidate_status": "awaiting_approval",
+            "dataset_source": json.loads(manifest.read_text(encoding="utf-8"))["source"],
+        }
+    )
     with tempfile.TemporaryDirectory(prefix="aphrodize-candidate-") as directory:
         # Upload a candidate checkpoint; temporary local bytes disappear afterward.
         checkpoint = Path(directory) / "candidate_unet.pth"
         torch.save(model.state_dict(), checkpoint)
         mlflow.set_tag("checkpoint_sha256", sha256_file(checkpoint))
         mlflow.log_artifact(str(checkpoint), artifact_path="model")
-    return metrics
+        mlflow.log_dict({"candidate": metrics, "baseline": baseline}, "evaluation.json")
+    return {
+        "candidate": metrics,
+        "baseline": baseline,
+        "base_checkpoint_sha256": bundle.checkpoint_sha256,
+    }

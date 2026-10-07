@@ -14,7 +14,8 @@ function load(file, overrides) {
   }).outputText;
   const evaluated = { exports: {} };
   new Function("require", "module", "exports", source)(
-    (name) => Object.hasOwn(overrides, name) ? overrides[name] : require(name), evaluated, evaluated.exports,
+    (name) => name === "@/lib/backend-fetch" ? { backendFetch: (...args) => globalThis.fetch(...args) }
+      : Object.hasOwn(overrides, name) ? overrides[name] : require(name), evaluated, evaluated.exports,
   );
   return evaluated.exports;
 }
@@ -37,7 +38,7 @@ test("recommendations allow the guest form and forward account data, even with d
   assert.deepEqual(await response.json(), backendBody);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
   assert.ok(calls[0].url.endsWith("/api/v1/analyses/recommendations?market=TH"));
-  assert.equal(calls[0].options.headers.Authorization, "Bearer test-token");
+  assert.equal(new Headers(calls[0].options.headers).get("authorization"), "Bearer test-token");
   assert.equal(calls[0].options.cache, "no-store");
   context.mock.method(globalThis, "fetch", async () => { throw new Error("Backend unavailable"); });
   const failed = await route.GET(request);
@@ -476,18 +477,28 @@ test("capture keeps upload errors, results and another analysis on the same page
   assert.equal(productLink().nodes.find((node) => node.type === "analysis-result").props.view, "products");
 });
 
-test("return visits restore both choices; failed withdrawal keeps consent checked", async (context) => {
+test("return visits restore three choices; failed withdrawal keeps consent checked", async (context) => {
   const requests = [];
   let withdrawalFails = false;
   context.mock.method(globalThis, "fetch", async (url, options) => {
     requests.push({ url, options });
     if (options?.method === "DELETE") return new Response(null, { status: withdrawalFails ? 503 : 204 });
-    return Response.json({ analysis: true, annotations: true, annotation_review_available: true });
+    return Response.json({ analysis: true, annotations: true, training: true, annotation_review_available: true });
   });
   const render = pageHarness();
   assert.ok(render().every((input) => input.disabled && !input.checked));
   await settle();
   assert.ok(render().every((input) => input.checked && !input.disabled));
+  withdrawalFails = true;
+  render()[2].onChange({ target: { checked: false } });
+  await settle();
+  assert.equal(render()[2].checked, true);
+  assert.equal(requests.at(-1).url, "/api/analysis?scope=training");
+  withdrawalFails = false;
+  render()[2].onChange({ target: { checked: false } });
+  await settle();
+  assert.equal(render()[2].checked, false);
+  assert.equal(render()[1].checked, true);
   render()[0].onChange({ target: { checked: false } });
   await settle();
   assert.equal(render()[0].checked, false);
@@ -535,8 +546,10 @@ test("unconfigured optional review still queues analysis without granting review
   body.set("image", new File(["test-image"], "image.jpg", { type: "image/jpeg" }));
   body.set("consent", "yes");
   body.set("annotation_consent", "yes");
+  body.set("training_consent", "yes");
   const response = await route.POST(new NextRequest("http://localhost/api/analysis", { method: "POST", body }));
   assert.equal(response.status, 202);
+  assert.ok(calls.every(url => !url.endsWith("/wrinkle-training")));
   assert.equal((await response.json()).annotation_review_unavailable, true);
   assert.ok(calls.at(-1).endsWith(`/analyses/users/${owner.userId}`));
   assert.equal(response.cookies.get("aphrodize_annotations"), undefined);
@@ -578,7 +591,7 @@ test("unconfigured review is disabled while analysis remains available", async (
 test("existing review consent can still be withdrawn when review is unavailable", async (context) => {
   context.mock.method(globalThis, "fetch", async (_url, options) => options?.method === "DELETE"
     ? new Response(null, { status: 204 })
-    : Response.json({ analysis: true, annotations: true, annotation_review_available: false }));
+    : Response.json({ analysis: true, annotations: true, training: true, annotation_review_available: false }));
   const render = pageHarness();
   render();
   await settle();

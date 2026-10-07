@@ -129,7 +129,7 @@ async def test_read_saved_image_consents(analysis: bool, annotations: bool) -> N
             )
 
     assert await read_image_consents(owner, Session()) == {
-        "analysis": analysis, "annotations": annotations,
+        "analysis": analysis, "annotations": annotations, "training": False,
     }
 
 

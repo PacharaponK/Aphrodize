@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import { NextRequest, NextResponse } from "next/server";
 import { accountSession, apiHeaders, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 

@@ -89,6 +89,8 @@ export type PredictionResponse = {
 };
 
 export type DailyHealthHistoryItem = {
+  /** Rule-based guidance returned with the saved record; optional for older APIs. */
+  guidance?: string[];
   local_date: string;
   prediction_target_date: string | null;
   prediction_status: string;
@@ -158,6 +160,7 @@ export type SkinType =
   | "prefer_not_to_say";
 
 export type DailyHealthProfile = {
+  sex?: "male" | "female" | "prefer_not_to_say" | null;
   has_session: boolean;
   consent_active: boolean;
   age_guidance_consent_active: boolean;

@@ -118,8 +118,9 @@ services:
       retries: 20
     logging: *logging
 
-  # Keep forecasts fresh using the existing approved UV models.
+  # Optional forecast refresh using the existing approved UV models.
   uv-refresh:
+    profiles: [background]
     image: aphrodize-api:vm
     build:
       context: .

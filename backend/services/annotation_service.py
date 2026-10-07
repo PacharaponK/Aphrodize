@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.config import settings
 from backend.core.db.models import Analysis, AnnotationTask, Consent
+from backend.core.observability import enqueue_job
 from backend.libs.labelstudio_client import get_label_studio_client
 from backend.libs.minio_client import annotation_image_key, get_bytes, put_bytes, remove_objects
 
@@ -19,20 +20,27 @@ ANNOTATION_RETENTION_DAYS = 30
 
 async def has_annotation_consent(session: AsyncSession, user_id: UUID) -> bool:
     # Lock the active consent row while a publish or delete operation checks it.
-    return await session.scalar(
-        select(Consent.id)
-        .where(
-            Consent.user_id == user_id,
-            Consent.version == ANNOTATION_CONSENT_VERSION,
-            Consent.revoked_at.is_(None),
+    return (
+        await session.scalar(
+            select(Consent.id)
+            .where(
+                Consent.user_id == user_id,
+                Consent.version == ANNOTATION_CONSENT_VERSION,
+                Consent.revoked_at.is_(None),
+            )
+            .with_for_update()
         )
-        .with_for_update()
-    ) is not None
+        is not None
+    )
 
 
 # Stage a separate aligned image only when review consent is still active.
 async def stage_annotation(
-    session: AsyncSession, analysis: Analysis, aligned_face: bytes | None, redis: object
+    session: AsyncSession,
+    analysis: Analysis,
+    aligned_face: bytes | None,
+    redis: object,
+    training_input: bytes | None = None,
 ) -> None:
     # Skip the entire review branch when the integration is not configured.
     if not settings.label_studio_project_id or not settings.label_studio_api_key:
@@ -53,19 +61,40 @@ async def stage_annotation(
         expires_at=datetime.now(UTC) + timedelta(days=ANNOTATION_RETENTION_DAYS),
     )
     # Store the image in the private review bucket before committing its row.
-    await asyncio.to_thread(put_bytes, key, aligned_face, "image/png", settings.annotation_bucket)
     try:
+        await asyncio.to_thread(
+            put_bytes, key, aligned_face, "image/png", settings.annotation_bucket
+        )
+        if training_input is not None:
+            from backend.services.wrinkle_datasets import input_key, training_consent
+
+            if await training_consent(session, analysis.user_id):
+                await asyncio.to_thread(
+                    put_bytes,
+                    input_key(row),
+                    training_input,
+                    "application/octet-stream",
+                    settings.annotation_bucket,
+                )
         session.add(row)
         await session.commit()
     except Exception:
         # Avoid an orphan image when the database commit fails.
-        await asyncio.to_thread(remove_objects, [key], settings.annotation_bucket)
+        await asyncio.to_thread(
+            remove_objects,
+            [key, key.rsplit("/", 1)[0] + "/model_input.npy"],
+            settings.annotation_bucket,
+        )
         raise
     # Publish asynchronously; the user analysis result is already committed.
-    await redis.enqueue_job("publish_annotation_task", str(row.id), _queue_name="inference")
+    await enqueue_job(redis, "publish_annotation_task", str(row.id), _queue_name="inference")
     # A delayed job removes the review copy and remote task after retention ends.
-    await redis.enqueue_job(
-        "expire_annotation_task", str(row.id), _queue_name="inference", _defer_until=row.expires_at
+    await enqueue_job(
+        redis,
+        "expire_annotation_task",
+        str(row.id),
+        _queue_name="inference",
+        _defer_until=row.expires_at,
     )
 
 
@@ -138,7 +167,13 @@ def _delete_remote(row: AnnotationTask) -> None:
 
 async def delete_annotation(session: AsyncSession, row: AnnotationTask) -> None:
     # Remove the private image first, then the remote task and local tracking row.
-    await asyncio.to_thread(remove_objects, [row.object_key], settings.annotation_bucket)
+    from backend.services.wrinkle_datasets import input_key
+
+    await asyncio.to_thread(
+        remove_objects,
+        [row.object_key, input_key(row)],
+        settings.annotation_bucket,
+    )
     await asyncio.to_thread(_delete_remote, row)
     await session.delete(row)
     await session.commit()

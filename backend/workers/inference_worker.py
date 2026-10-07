@@ -14,8 +14,21 @@ from arq import cron
 from arq.connections import RedisSettings
 from sqlalchemy import select
 
-from backend.core.db.models import Analysis, AnalysisStatus, AnnotationTask, InferenceRun
+from backend.core.config import settings
+from backend.core.db.models import (
+    Analysis,
+    AnalysisStatus,
+    AnnotationTask,
+    InferenceRun,
+)
 from backend.core.db.session import SessionLocal, close_database
+from backend.core.observability import (
+    enqueue_job,
+    observed_job,
+    secondary_failures,
+    start_worker_metrics,
+    stop_worker_metrics,
+)
 from backend.libs.minio_client import (
     analysis_artifact_key,
     get_bytes,
@@ -49,13 +62,92 @@ async def startup(ctx: dict) -> None:
         released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None,
         approved_model_manifest=os.environ.get("APHRODIZE_WRINKLE_APPROVED_MANIFEST") or None,
     )
+    ctx["wrinkle_version"] = None
+    await start_worker_metrics(ctx)
 
 
-async def shutdown(_: dict) -> None:
+async def refresh_wrinkle_model(ctx: dict) -> None:
+    async with ctx.setdefault("wrinkle_reload_lock", asyncio.Lock()):
+        await _refresh_wrinkle_model(ctx)
+
+
+async def _refresh_wrinkle_model(ctx: dict) -> None:
+    """Load a selected version between jobs; never switch a service during inference."""
+    from backend.services import wrinkle_lifecycle as lifecycle
+    from backend.wrinkle.service import WrinkleAnalysisService
+
+    async with SessionLocal() as session:
+        row = await lifecycle.deployment(session)
+        version = row.state["active"]
+        manifest = await lifecycle.selected_manifest(session, version)
+        if version != lifecycle.INITIAL:
+            try:
+                await lifecycle.check_lineage(session, version, verify_files=False)
+            except (OSError, ValueError, KeyError):
+                # Retire a model whose source consent or retained dataset is unavailable.
+                row = await lifecycle.deployment(session, lock=True)
+                if row.state["active"] == version:
+                    row.state = {
+                        **row.state,
+                        "active": lifecycle.INITIAL,
+                        "pending": None,
+                        "error": "Dataset expired or consent changed; restored initial model",
+                        "history": [
+                            *row.state["history"],
+                            {
+                                "from": version,
+                                "to": lifecycle.INITIAL,
+                                "actor": "consent-retention-guard",
+                                "action": "retire",
+                                "at": lifecycle.now(),
+                            },
+                        ],
+                    }
+                version, manifest = lifecycle.INITIAL, lifecycle.initial_manifest()
+        await session.commit()
+    if ctx["wrinkle_version"] == version:
+        return
+    if version == lifecycle.INITIAL:
+        # Preserve the installed initial policy when rolling back to the baseline.
+        from ai.ffhq_wrinkle.confidence import load_confidence_policy
+
+        reviewed = os.environ.get("APHRODIZE_WRINKLE_REVIEWED_POLICY")
+        service = WrinkleAnalysisService(
+            confidence_policy=load_confidence_policy(reviewed) if reviewed else None,
+            released_policy_bundle=os.environ.get("APHRODIZE_WRINKLE_POLICY_BUNDLE") or None,
+            approved_model_manifest=manifest,
+        )
+    else:
+        # Old confidence policies cannot certify a new checkpoint: abstain by default.
+        async with SessionLocal() as session:
+            from backend.core.db.models import TrainingRun
+            from backend.services.curated_training import sha256_file
+
+            run = await session.get(TrainingRun, UUID(version))
+            policy_hashes = run.config.get("policy_hashes", {})
+        policy_dir = lifecycle.package_path(version) / "policy"
+        for name, digest in policy_hashes.items():
+            if await asyncio.to_thread(sha256_file, policy_dir / name) != digest:
+                raise ValueError("Approved confidence policy changed")
+        service = WrinkleAnalysisService(
+            approved_model_manifest=manifest,
+            released_policy_bundle=policy_dir if policy_hashes else None,
+        )
+    await asyncio.to_thread(service._bundle)
+    ctx["wrinkle_service"], ctx["wrinkle_version"] = service, version
+    async with SessionLocal() as session:
+        row = await lifecycle.deployment(session, lock=True)
+        row.state = {**row.state, "loaded": {"version": version, "at": lifecycle.now()}}
+        await session.commit()
+
+
+async def shutdown(ctx: dict) -> None:
     # Release database connections when ARQ stops this worker process.
+    await stop_worker_metrics(ctx)
     await close_database()
 
 
+@observed_job
 async def run_inference(ctx: dict, analysis_id: str) -> None:
     """Turn a queued Analysis into a terminal result.
 
@@ -68,6 +160,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
         analysis = await session.get(Analysis, UUID(analysis_id))
         # Ignore missing jobs and jobs already handled by another worker.
         if analysis is None or analysis.status != AnalysisStatus.queued:
+            ctx["telemetry_outcome"] = "skipped"
             return
         # Persist 'running' so API polling can show that work has started.
         analysis.status = AnalysisStatus.running
@@ -77,6 +170,8 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
         uploaded: list[str] = []
         try:
             try:
+                if "wrinkle_version" in ctx:
+                    await refresh_wrinkle_model(ctx)
                 # MinIO access is synchronous; a thread keeps the event loop free.
                 payload = await asyncio.to_thread(get_bytes, analysis.object_key)
                 # Preserve image encoding in the temporary upload filename.
@@ -107,7 +202,8 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                 # Both derived images have a 24-hour viewing lifetime.
                 expires_at = datetime.now(UTC) + timedelta(hours=24)
                 # The API also checks this timestamp, even if the delete job runs late.
-                job = await ctx["redis"].enqueue_job(
+                job = await enqueue_job(
+                    ctx["redis"],
                     "expire_analysis_artifacts",
                     str(analysis.user_id),
                     str(analysis.id),
@@ -126,6 +222,7 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
                         # Roll back images already uploaded before the error.
                         await asyncio.to_thread(remove_objects, uploaded)
                     except Exception:
+                        secondary_failures.labels("incomplete_artifact_cleanup").inc()
                         logger.exception(
                             "Could not remove incomplete artifacts for %s", analysis.id
                         )
@@ -159,24 +256,36 @@ async def run_inference(ctx: dict, analysis_id: str) -> None:
 
             # Both successful and failed jobs receive a completion timestamp.
             analysis.completed_at = datetime.now(UTC)
+            ctx["telemetry_outcome"] = {
+                AnalysisStatus.completed: "succeeded",
+                AnalysisStatus.failed: "failed",
+                AnalysisStatus.rejected: "rejected",
+            }[analysis.status]
             # Persist the user-facing result before starting optional review work.
             await session.commit()
             if analysis.status == AnalysisStatus.completed:
                 # Review staging is a second workflow; its failure does not erase the user result.
                 try:
                     await stage_annotation(
-                        session, analysis, artifacts.get("aligned_face"), ctx["redis"]
+                        session,
+                        analysis,
+                        artifacts.get("aligned_face"),
+                        ctx["redis"],
+                        training_input=artifacts.get("training_input"),
                     )
                 except Exception:
+                    secondary_failures.labels("annotation_staging").inc()
                     logger.exception("Could not queue annotation review for %s", analysis.id)
         finally:
             try:
                 # The original upload is deleted regardless of outcome.
                 await asyncio.to_thread(remove_objects, [analysis.object_key])
             except Exception:
+                secondary_failures.labels("source_cleanup").inc()
                 logger.exception("Could not remove source image for %s", analysis.id)
 
 
+@observed_job
 async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> None:
     """Delete the two derived PNGs after their 24-hour viewing window."""
     # Reconstruct both private object keys from the IDs in the delayed job.
@@ -187,6 +296,7 @@ async def expire_analysis_artifacts(_: dict, user_id: str, analysis_id: str) -> 
     await asyncio.to_thread(remove_objects, keys)
 
 
+@observed_job
 async def publish_annotation_task(_: dict, task_id: str) -> None:
     # Resolve the staged row; annotation_service handles consent and remote idempotency.
     async with SessionLocal() as session:
@@ -195,6 +305,7 @@ async def publish_annotation_task(_: dict, task_id: str) -> None:
             await publish_annotation(session, row)
 
 
+@observed_job
 async def expire_annotation_task(_: dict, task_id: str) -> None:
     # Ignore an early delayed job; delete only after the stored deadline.
     async with SessionLocal() as session:
@@ -203,6 +314,7 @@ async def expire_annotation_task(_: dict, task_id: str) -> None:
             await delete_annotation(session, row)
 
 
+@observed_job
 async def delete_annotation_task(_: dict, task_id: str) -> None:
     # A revoke job deletes only rows whose review consent is no longer active.
     async with SessionLocal() as session:
@@ -211,7 +323,8 @@ async def delete_annotation_task(_: dict, task_id: str) -> None:
             await delete_annotation(session, row)
 
 
-async def reconcile_annotation_tasks(_: dict) -> None:
+@observed_job
+async def reconcile_annotation_tasks(ctx: dict) -> None:
     # Recover unpublished tasks and pending deletions after worker or Label Studio outages.
     async with SessionLocal() as session:
         # Inspect every staged row because a queue job may have been lost.
@@ -223,20 +336,32 @@ async def reconcile_annotation_tasks(_: dict) -> None:
                 ):
                     # Retention expiry and revocation take precedence over publishing.
                     await delete_annotation(session, row)
-                elif row.label_studio_task_id is None:
-                    # Retry only work without a recorded remote task ID.
-                    await publish_annotation(session, row)
+                else:
+                    from backend.services.wrinkle_datasets import input_key, training_consent
+
+                    if not await training_consent(session, row.user_id):
+                        # Retry tensor deletion after a training-only revocation/storage outage.
+                        await asyncio.to_thread(
+                            remove_objects, [input_key(row)], settings.annotation_bucket
+                        )
+                    if row.label_studio_task_id is None:
+                        # Retry only work without a recorded remote task ID.
+                        await publish_annotation(session, row)
             except Exception:
+                ctx["telemetry_outcome"] = "failed"
                 logger.exception("Could not reconcile annotation task %s", row.id)
 
 
-async def run_model_inference(_: dict, inference_run_id: str) -> None:
+@observed_job
+async def run_model_inference(ctx: dict, inference_run_id: str) -> None:
     """Fail closed until model loading, signature validation, and approval policy exist."""
     async with SessionLocal() as session:
         run = await session.get(InferenceRun, UUID(inference_run_id))
         if run is None or run.status != "queued":
+            ctx["telemetry_outcome"] = "skipped"
             return
         run.status = "failed"
+        ctx["telemetry_outcome"] = "failed"
         run.error_category = "model_not_deployed"
         run.result = {"message": "No approved model deployment is available for this model URI."}
         run.completed_at = datetime.now(UTC)
@@ -261,3 +386,4 @@ class WorkerSettings:
     queue_name = "inference"
     # ponytail: one model job at a time; raise after measuring worker memory and latency.
     max_jobs = 1
+    health_check_interval = 30

@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
-from backend.api.deps import require_matching_user
+from backend.api.deps import require_matching_user, require_model_reviewer
 from backend.api.schemas.daily_health import (
     DailyHealthAgeBandRead,
     DailyHealthAgeBandUpsert,
@@ -57,6 +57,7 @@ from backend.services.daily_health_personal_forecast import (
 from backend.services.daily_health_training import inputs_available_before_target
 
 router = APIRouter()
+review_router = APIRouter(dependencies=[Depends(require_model_reviewer)])
 user_router = APIRouter(dependencies=[Depends(require_matching_user)])
 logger = logging.getLogger(__name__)
 SLEEP_SCORE_METHOD = "round(min(100, sleep_duration_minutes / 540 * 100), 1); duration-only, 9h cap"
@@ -533,9 +534,25 @@ async def list_daily_health_entries(
             ),
             thirst_is_calculated=thirst_is_calculated,
         )
+        # Rebuild rule-based advice from the saved inputs, without running inference.
+        # As with interpretation above, withdrawn profile consent is respected.
+        age_band = age_record.age_band if age_record is not None else None
+        guidance = model.make_guidance(
+            sleep_minutes, None, dryness_score if inside_training_domain else None,
+            entry.outdoor_exposure_choice, age_band,
+        )
+        if thirst_is_calculated:
+            water_guidance = model.hydration_guidance(
+                model.calculate_hydration(entry.water_intake_ml, entry.weight_kg, age_band),
+                entry.water_intake_ml,
+            )
+            if water_guidance:
+                guidance.append(water_guidance)
+        guidance.extend(item["message"] for item in interpretation["profile_guidance"])
         items.append(
             {
                 "local_date": entry.local_date.isoformat(),
+                "guidance": list(dict.fromkeys(guidance)),
                 "prediction_target_date": (
                     entry.prediction_target_date.isoformat()
                     if entry.prediction_target_date is not None
@@ -1086,7 +1103,7 @@ async def delete_daily_health_data(
         ) from error
 
 
-@router.get("/model-versions")
+@review_router.get("/model-versions")
 async def list_daily_health_model_versions(
     limit: int = Query(default=20, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
@@ -1105,6 +1122,7 @@ async def list_daily_health_model_versions(
                 "status": item.status,
                 "training_records": item.training_records,
                 "participant_count": item.participant_count,
+                "mlflow_run_id": item.mlflow_run_id,
                 "metrics": item.metrics,
                 "created_at": item.created_at.isoformat() if item.created_at else None,
                 "completed_at": item.completed_at.isoformat() if item.completed_at else None,
@@ -1114,7 +1132,7 @@ async def list_daily_health_model_versions(
     }
 
 
-@router.get("/model-deployment")
+@review_router.get("/model-deployment")
 async def read_daily_health_model_deployment(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
@@ -1129,7 +1147,7 @@ async def read_daily_health_model_deployment(
     }
 
 
-@router.get("/model-deployment/events")
+@review_router.get("/model-deployment/events")
 async def list_daily_health_model_deployment_events(
     limit: int = Query(default=50, ge=1, le=200),
     session: AsyncSession = Depends(get_session),
@@ -1145,6 +1163,7 @@ async def list_daily_health_model_deployment_events(
                 "action": event.action,
                 "version_id": event.version_id,
                 "reason": event.reason,
+                "actor": event.actor,
                 "created_at": event.created_at.isoformat() if event.created_at else None,
             }
             for event in events_result.all()
@@ -1152,10 +1171,11 @@ async def list_daily_health_model_deployment_events(
     }
 
 
-@router.put("/model-deployment")
+@review_router.put("/model-deployment")
 async def promote_daily_health_model(
     payload: DailyHealthModelPromotionRequest,
     session: AsyncSession = Depends(get_session),
+    actor: str = Depends(require_model_reviewer),
 ) -> dict:
     version = await session.get(DailyHealthModelVersion, payload.version_id)
     if version is None:
@@ -1187,6 +1207,7 @@ async def promote_daily_health_model(
     session.add(
         DailyHealthModelDeploymentEvent(
             action="promote",
+            actor=actor,
             version_id=version.version_id,
             reason=payload.approval_reason.strip(),
         )
@@ -1199,10 +1220,11 @@ async def promote_daily_health_model(
     }
 
 
-@router.post("/model-deployment/rollback")
+@review_router.post("/model-deployment/rollback")
 async def rollback_daily_health_model(
     payload: DailyHealthModelRollbackRequest,
     session: AsyncSession = Depends(get_session),
+    actor: str = Depends(require_model_reviewer),
 ) -> dict:
     deployment = await session.get(DailyHealthModelDeployment, "daily_health")
     if deployment is None or deployment.previous_version_id is None:
@@ -1228,6 +1250,7 @@ async def rollback_daily_health_model(
     session.add(
         DailyHealthModelDeploymentEvent(
             action="rollback",
+            actor=actor,
             version_id=target.version_id,
             reason=payload.reason.strip(),
         )

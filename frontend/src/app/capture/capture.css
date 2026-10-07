@@ -22,10 +22,10 @@
 .capture-image-area, .capture-permissions { min-width: 0; padding: clamp(22px, 2.2vw, 36px); border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 8px 24px rgb(88 42 53 / .04); }
 .capture-studio h2 { margin: 0 0 10px; font-size: clamp(22px, 1.6vw, 28px); line-height: 1.35; }
 .capture-description { max-width: 65ch; margin: 0 0 22px; color: var(--muted); font-size: 14px; line-height: 1.7; }
-.capture-image-frame { display: grid; place-items: center; min-height: clamp(320px, 33vw, 520px); overflow: hidden; border: 1px dashed var(--border-strong); border-radius: 14px; background: var(--surface-soft); }
-.capture-image-frame.has-image { border-style: solid; }
+.capture-image-frame { display: grid; place-items: center; min-height: 200px; overflow: hidden; border: 1px dashed var(--border-strong); border-radius: 14px; background: var(--surface-soft); }
+.capture-image-frame.has-image { min-height: clamp(320px, 33vw, 520px); border-style: solid; }
 .capture-image-frame img, .capture-image-frame video { display: block; width: 100%; height: clamp(320px, 33vw, 520px); object-fit: contain; }
-.capture-empty { padding: 32px 20px; text-align: center; }
+.capture-empty { padding: 24px 20px; text-align: center; }
 .capture-empty > svg { display: block; margin: 0 auto 20px; color: var(--primary-deep); }
 .capture-empty h3 { margin: 0 0 8px; font-size: 19px; }
 .capture-empty p { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
@@ -79,7 +79,7 @@
 .capture-results .analysis-page-actions > button { min-height: 48px; }
 @media (max-width: 1000px) {
   .capture-studio { grid-template-columns: minmax(0, 1fr); }
-  .capture-image-frame, .capture-image-frame img, .capture-image-frame video { min-height: 320px; height: 380px; }
+  .capture-image-frame.has-image, .capture-image-frame img, .capture-image-frame video { min-height: 320px; height: 380px; }
 }
 @media (max-width: 600px) {
   .capture-page .workspace-topbar h1 { font-size: 28px; }
@@ -88,7 +88,7 @@
   .capture-steps button { flex-direction: column; padding: 10px 4px; font-size: 12px; text-align: center; height: 100%; }
   .capture-stage-actions > * { width: 100%; justify-content: center; }
   .capture-image-area, .capture-permissions { padding: 20px; border-radius: 14px; }
-  .capture-image-frame, .capture-image-frame img, .capture-image-frame video { min-height: 260px; height: 300px; }
+  .capture-image-frame.has-image, .capture-image-frame img, .capture-image-frame video { min-height: 260px; height: 300px; }
   .capture-tips ul { grid-template-columns: 1fr; gap: 14px; }
   .capture-page .capture-phone { display: inline-flex; }
   .capture-page .capture-webcam { display: none; }

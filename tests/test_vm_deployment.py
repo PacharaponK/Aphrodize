@@ -21,8 +21,20 @@ if args[:1] == ['inspect']:
  print(json.dumps([{'Image': 'sha256:'+'a'*64, 'State': {'Health': {'Status': status}}}]))
 if 'config' in args:
  root = os.environ['FAKE_DEPLOY_DIR']
- print(json.dumps({'name':'aphrodize', 'services': {
+ volumes = {'postgres_data':{'name':'aphrodize_postgres_data'}}
+ candidate = 'API_IMAGE' in os.environ
+ if mode == 'extra-vm-volume' and not candidate:
+  volumes['label_studio_data'] = {'name':'aphrodize_label_studio_data'}
+ if mode == 'changed-volume' and candidate:
+  volumes['postgres_data']['name'] = 'private-not-for-logs'
+ if mode == 'new-volume' and candidate:
+  volumes['new_data'] = {'name':'new_data'}
+ config = {'name':'aphrodize', 'services': {
  'api': {'image':os.environ.get('API_IMAGE','old-api'),
+ 'environment': ({'LABEL_STUDIO_URL':'http://label-studio:8080',
+ 'LABEL_STUDIO_API_KEY':'private-review-token','LABEL_STUDIO_PROJECT_ID':'1'}
+ if mode.startswith('annotation-')
+ and not (mode == 'annotation-dropped' and 'API_IMAGE' in os.environ) else {}),
  'volumes':[{'type':'bind','source':root+'/storage/artifacts/uv',
  'target':'/app/storage/artifacts/uv'}]},
  'frontend': {'image':os.environ.get('FRONTEND_IMAGE','old-web'), 'environment':{'SITE_URL':'https://aphrodize.duckdns.org'}},
@@ -31,7 +43,18 @@ if 'config' in args:
  'postgres': {'image':'postgres:16-alpine'},
  'caddy': {'image':'caddy:2-alpine', 'volumes':[{'type':'bind','source':root+'/docker/Caddyfile.vm',
  'target':'/etc/caddy/Caddyfile'}]},
- }, 'volumes':{'postgres_data':{'name':'aphrodize_postgres_data'}}}))
+ }, 'volumes':volumes}
+ if mode.startswith('monitoring'):
+  config['services']['api']['environment'] = {'OBSERVABILITY_ENABLED':'true'}
+  config['services']['grafana'] = {'image':'grafana-pinned',
+   'environment':{'GF_SERVER_SERVE_FROM_SUB_PATH':'true'}}
+  config['services']['prometheus'] = {'image':'prometheus-pinned'}
+  volumes['grafana_data'] = {'name':'aphrodize_grafana_data'}
+  if candidate and mode == 'monitoring-disabled':
+   config['services']['api']['environment'] = {}
+  if candidate and mode == 'monitoring-removed':
+   del config['services']['prometheus']
+ print(json.dumps(config))
 if 'run' in args and '--no-build' in args: sys.exit(64)
 if 'ps' in args: print('container-'+args[-1])
 if args[:1] == ['pull'] and mode == 'pull-fail': sys.exit(1)
@@ -41,6 +64,9 @@ if 'up' in args:
  if mode in ('update-fail','rollback-fail') and (count == 0 or mode == 'rollback-fail'): sys.exit(1)
 if 'exec' in args and mode == 'readiness-fail':
  if (state/'up-count').read_text() == '1': sys.exit(1)
+if 'exec' in args and mode == 'monitoring-metrics-fail':
+ if 'Check authenticated API telemetry' in sys.stdin.read():
+  if (state/'up-count').read_text() == '1': sys.exit(1)
 """
 FAKE_CURL = """#!/usr/bin/env python3
 import os, sys
@@ -48,6 +74,9 @@ from pathlib import Path
 state = Path(os.environ['FAKE_STATE'])
 if os.environ.get('FAKE_MODE') == 'https-fail':
  if (state/'up-count').read_text() == '1': sys.exit(1)
+if os.environ.get('FAKE_MODE') == 'monitoring-grafana-fail':
+ if sys.argv[-1].endswith('/grafana/api/health') and (state/'up-count').read_text() == '1':
+  sys.exit(1)
 """
 
 
@@ -137,6 +166,83 @@ class VmDeploymentTests(unittest.TestCase):
         self.assertFalse(
             any("down" in command or "prune" in command for command in self.commands())
         )
+
+    def test_preserves_extra_vm_volume_when_release_omits_optional_service(self):
+        result = self.run_deploy("extra-vm-volume")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        candidate = json.loads(Path(current["config"]).read_text())
+        self.assertEqual(
+            candidate["volumes"]["label_studio_data"],
+            {"name": "aphrodize_label_studio_data"},
+        )
+
+    def test_monitoring_overlays_preserve_services_and_volumes_without_restarting_them(self):
+        overlays = "compose.observability.yml,compose.observability-web.yml"
+        for name in overlays.split(","):
+            (self.deploy / name).write_text("services: {}\n")
+        result = self.run_deploy("monitoring", "--overlays", overlays)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        config = json.loads(Path(current["config"]).read_text())
+        self.assertEqual(config["services"]["api"]["environment"]["OBSERVABILITY_ENABLED"], "true")
+        self.assertIn("grafana", config["services"])
+        self.assertIn("prometheus", config["services"])
+        self.assertEqual(config["volumes"]["grafana_data"]["name"], "aphrodize_grafana_data")
+        updates = [command for command in self.commands() if "up" in command]
+        self.assertEqual(len(updates), 1)
+        self.assertEqual(updates[0][-3:], ["api", "frontend", "uv-refresh"])
+
+    def test_monitoring_removal_is_rejected_before_container_updates(self):
+        for mode in ("monitoring-disabled", "monitoring-removed"):
+            with self.subTest(mode=mode):
+                result = self.run_deploy(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(any("up" in c or "run" in c for c in self.commands()))
+                self.assertFalse((self.deploy / ".releases/current-release.json").exists())
+
+    def test_failed_metrics_or_grafana_check_rolls_back_monitoring_configuration(self):
+        for mode in ("monitoring-metrics-fail", "monitoring-grafana-fail"):
+            with self.subTest(mode=mode):
+                (self.state / "up-count").unlink(missing_ok=True)
+                result = self.run_deploy(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Rollback succeeded", result.stderr)
+                current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+                config = json.loads(Path(current["config"]).read_text())
+                self.assertIsNone(current["manifest"])
+                self.assertIn("grafana", config["services"])
+                self.assertEqual(
+                    config["services"]["api"]["environment"]["OBSERVABILITY_ENABLED"], "true"
+                )
+
+    def test_volume_changes_rejected_with_safe_diagnostic_before_mutation(self):
+        for mode in ("changed-volume", "new-volume"):
+            with self.subTest(mode=mode):
+                result = self.run_deploy(mode)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Persistent volume configuration changed", result.stderr)
+                self.assertNotIn("private-not-for-logs", result.stdout + result.stderr)
+                self.assertFalse(any("up" in c or "run" in c for c in self.commands()))
+                self.assertFalse((self.deploy / ".releases/current-release.json").exists())
+
+    def test_configured_annotation_survives_release(self):
+        result = self.run_deploy("annotation-preserved")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        current = json.loads((self.deploy / ".releases/current-release.json").read_text())
+        candidate = json.loads(Path(current["config"]).read_text())
+        self.assertEqual(
+            candidate["services"]["api"]["environment"]["LABEL_STUDIO_PROJECT_ID"], "1"
+        )
+        self.assertNotIn("private-review-token", result.stdout + result.stderr)
+
+    def test_dropped_annotation_rejected_before_services_update(self):
+        result = self.run_deploy("annotation-dropped")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("annotation review configuration", result.stderr)
+        self.assertNotIn("private-review-token", result.stdout + result.stderr)
+        self.assertFalse(any("up" in command or "run" in command for command in self.commands()))
+        self.assertFalse((self.deploy / ".releases/current-release.json").exists())
 
     def test_pull_failure_does_not_update_services(self):
         result = self.run_deploy("pull-fail")

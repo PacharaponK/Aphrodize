@@ -32,6 +32,14 @@ async def test_startup_adds_missing_account_columns_without_dropping_data(monkey
     await db_session.create_database_schema()
 
     assert not any("DROP TABLE" in s for s in statements)
+    assert any(
+        "ALTER TABLE daily_health_model_versions ADD COLUMN mlflow_run_id VARCHAR(128)" in s
+        for s in statements
+    )
+    assert any(
+        "ALTER TABLE daily_health_model_deployment_events ADD COLUMN actor TEXT" in s
+        for s in statements
+    )
     assert any("ADD COLUMN next_day_forecasts JSON" in s for s in statements)
     assert any("ADD COLUMN IF NOT EXISTS status" in s for s in statements)
     assert any("ADD COLUMN IF NOT EXISTS deleted_at" in s for s in statements)

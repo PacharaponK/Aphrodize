@@ -181,8 +181,12 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./models:/app/models
+      - ./storage/data/approved:/app/storage/data/approved
+      - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
       - ./scripts:/app/scripts:ro
-      - ./storage/artifacts/uv:/app/storage/artifacts/uv:ro
+      - ./storage/artifacts/uv:/app/storage/artifacts/uv
+      - ./storage/models/uv:/app/storage/models/uv
+      - ./storage/data/uv:/app/storage/data/uv:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -227,7 +231,13 @@ services:
     restart: unless-stopped
     environment:
       PYTHONPATH: /app
-      MLFLOW_TRACKING_URI: ${UV_MLFLOW_TRACKING_URI:-file:///app/storage/artifacts/uv/mlruns}
+      MLFLOW_TRACKING_URI: ${UV_MLFLOW_TRACKING_URI:-http://mlflow:5000}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-aphrodize}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+    depends_on:
+      mlflow:
+        condition: service_healthy
     volumes:
       - ./backend:/app/backend:ro
       - ./scripts:/app/scripts:ro
@@ -249,6 +259,7 @@ services:
       - ./backend:/app/backend:ro
       - ./ai:/app/ai:ro
       - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle:ro
+      - ./storage/data/approved:/app/storage/data/approved:ro
     depends_on:
       api:
         condition: service_healthy
@@ -262,7 +273,7 @@ services:
         condition: service_completed_successfully
     logging: *container-logging
 
-  # The trainer consumes approved external datasets and logs candidate models.
+  # The trainer consumes approved datasets and runs reviewed wrinkle deployments.
   trainer-worker:
     profiles: [ai]
     build:
@@ -273,7 +284,8 @@ services:
     environment: *api-environment
     volumes:
       - ./models:/app/models
-      - ./storage/data/approved:/app/storage/data/approved:ro
+      - ./storage/data/approved:/app/storage/data/approved
+      - ./storage/models/ffhq-wrinkle:/app/storage/models/ffhq-wrinkle
     depends_on:
       redis:
         condition: service_healthy

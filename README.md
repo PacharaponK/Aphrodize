@@ -164,7 +164,7 @@ The supported platform model families are `time_series`, `tabular`, and `image_s
 
 ## Logs
 
-Docker uses local log rotation for every service: 10 MB per file, retaining five files. This is local log capture only; no Grafana, Prometheus, Loki, Tempo, OpenTelemetry, or other observability platform is included.
+Docker uses local log rotation for every service: 10 MB per file, retaining five files. The optional [observability stack](docs/observability.md) adds Prometheus, Grafana, Loki, Alloy and Discord alerts through `compose.observability.yml`; it is not enabled by the base Compose stack.
 
 Save a timestamped snapshot of all service logs:
 
@@ -213,7 +213,7 @@ To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Lab
 - It does not implement face recognition, age prediction, diagnosis, causal claims, or medical prescriptions. Product guidance matches reviewed cosmetic labels and application areas; it does not predict treatment effects. Face-inference data is not training data; the daily-health workflow can train review-only candidates only from separately consented, user-reported outcomes.
 - User data and artifacts are intended for private MinIO storage and must not be included in logs or committed to Git.
 - A reviewed, validated model artifact is required before inference can produce a result.
-- The current Compose stack deliberately excludes external observability and monitoring systems.
+- Centralized monitoring is opt-in; configure its private credentials, expected services and Discord channel before operational use. An independent external probe requires another host.
 
 ## Further documentation
 

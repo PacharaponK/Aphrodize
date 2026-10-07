@@ -5,9 +5,10 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import DailyHealthDashboard from "./daily-health-dashboard";
 import DailyHealthOutcomeForm from "./daily-health-outcome-form";
-import type { AgeBand, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
+import type { AgeBand, DailyHealthHistoryItem, DailyHealthProfile, PredictionResponse, SmokingStatus } from "@/lib/daily-health-types";
 import { useLanguage } from "@/components/language-provider";
 import { Select } from "@/components/ui/select";
+import { EvidenceLabel } from "@/components/evidence-label";
 
 type OutdoorChoice = "under_1_hour" | "1_to_under_3_hours" | "3_to_under_4_hours" | "4_hours_or_more";
 
@@ -141,9 +142,48 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
     smoking_status: null,
   });
   const [isPredicting, setIsPredicting] = useState(false);
+  const canAskMenstruation = personalProfile.has_session && personalProfile.sex !== "male";
   const [storageStatus, setStorageStatus] = useState<StorageStatus>("idle");
   const [storageMessage, setStorageMessage] = useState("");
   const predictionRequestId = useRef(0);
+  const [savedResult, setSavedResult] = useState<DailyHealthHistoryItem | null>(null);
+  const [restoring, setRestoring] = useState(true);
+  const [restoreError, setRestoreError] = useState(false);
+  const [restoreRevision, setRestoreRevision] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestId = predictionRequestId.current;
+    const query = new URLSearchParams({ from_date: initialDate, to_date: initialDate, limit: "1" });
+    void fetch(`/api/daily-health/entries?${query}`, { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Could not restore today's record");
+        const body = await response.json();
+        if (!Array.isArray(body.items)) throw new Error("Invalid history response");
+        if (controller.signal.aborted || requestId !== predictionRequestId.current) return;
+        const record: DailyHealthHistoryItem | undefined = body.items.find((item: DailyHealthHistoryItem) => item.local_date === initialDate);
+        if (!record) return;
+        const choice = outdoorOptions.find(option => option.apiChoice === record.input.outdoor_exposure_choice);
+        if (!choice || !Number.isInteger(record.input.sleep_duration_total_minutes) || !Number.isInteger(record.input.water_intake_ml)) throw new Error("Invalid saved inputs");
+        const restored: DailyEntry = {
+          date: record.local_date,
+          sleepHours: Math.floor(record.input.sleep_duration_total_minutes / 60),
+          sleepMinutes: record.input.sleep_duration_total_minutes % 60,
+          sleepDurationMinutes: record.input.sleep_duration_total_minutes,
+          waterIntakeMl: record.input.water_intake_ml,
+          outdoorChoice: choice.value,
+          modelTrainingConsent: false, personalizationConsent: false, ageGuidanceConsent: false,
+          ageBand: null, smokingStatus: null, currentlyMenstruating: null,
+        };
+        setEntry(restored);
+        setSavedResult(record);
+        setStorageStatus("saved");
+        setForm(current => ({ ...current, date: restored.date, sleepHours: String(restored.sleepHours), sleepMinutes: String(restored.sleepMinutes), waterIntakeMl: String(restored.waterIntakeMl), outdoorChoice: restored.outdoorChoice, consentToStore: false }));
+      })
+      .catch(() => { if (!controller.signal.aborted && requestId === predictionRequestId.current) setRestoreError(true); })
+      .finally(() => { if (!controller.signal.aborted && requestId === predictionRequestId.current) setRestoring(false); });
+    return () => controller.abort();
+  }, [initialDate, restoreRevision]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -194,6 +234,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       });
       if (!response.ok) throw new Error(t("ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not delete the information. Please try again."));
       setPersonalProfile({
+        sex: personalProfile.sex,
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -255,9 +296,13 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
         throw new Error(typeof result?.detail === "string" ? result.detail : t("ลบข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not delete the data. Please try again."));
       }
       setEntry(null);
+      predictionRequestId.current++;
+      setSavedResult(null);
+      setRestoring(false);
       setPrediction(null);
       setForm({ ...emptyForm, date: localDateValue() });
       setPersonalProfile({
+        sex: personalProfile.sex,
         has_session: true,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -368,12 +413,15 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
       ageGuidanceConsent: form.ageGuidanceConsent,
       ageBand: form.ageGuidanceConsent && form.ageBand ? form.ageBand : null,
       smokingStatus: form.personalizationConsent && form.smokingStatus ? form.smokingStatus : null,
-      currentlyMenstruating: form.personalizationConsent && form.menstruationChoice
+      currentlyMenstruating: canAskMenstruation && form.personalizationConsent && form.menstruationChoice
         ? form.menstruationChoice === "yes"
         : null,
     } satisfies DailyEntry;
     const selectedChoice = outdoorOptions.find((option) => option.value === form.outdoorChoice);
     const requestId = ++predictionRequestId.current;
+    setSavedResult(null);
+    setRestoring(false);
+    setRestoreError(false);
     setEntry(dailyEntry);
     setPrediction(null);
     setPredictionError(false);
@@ -425,10 +473,14 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
 
   const selectedOutdoor = outdoorOptions.find((option) => option.value === entry?.outdoorChoice);
   const calculatedSleepScore = entry
-    ? prediction?.calculated.sleep_score_0_100
+    ? prediction?.calculated.sleep_score_0_100 ?? savedResult?.calculated.sleep_score_0_100
       ?? Number(Math.min(100, (entry.sleepDurationMinutes / 540) * 100).toFixed(1))
     : null;
-  const thirstScore = prediction?.predictions.thirst_score_0_10.value;
+  const healthResult = prediction ?? savedResult;
+  const scores = healthResult?.predictions;
+  const thirstScore = scores?.thirst_score_0_10.value;
+  const targetDate = prediction?.prediction_target_date ?? savedResult?.prediction_target_date;
+  const hasForecast = Boolean(prediction?.model?.prediction_horizon_days || (savedResult?.prediction_target_date && savedResult.prediction_target_date !== savedResult.local_date));
   const hydrationRangeStatus = prediction?.calculated.hydration?.range_status;
   const thirstUnavailableMessage = predictionError
     ? t("คำนวณคะแนนไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง", "Could not calculate the score. Check your connection and try again.")
@@ -513,7 +565,9 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                 checked={form.personalizationConsent}
                 onChange={(event) => updateForm("personalizationConsent", event.target.checked)}
               />
-              <span>{t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status and menstrual check-ins for personalized guidance only, not diagnosis.")}</span>
+              <span>{canAskMenstruation
+                ? t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่และเช็กอินประจำเดือน เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status and menstrual check-ins for personalized guidance only, not diagnosis.")
+                : t("ยินยอมให้ใช้และบันทึกสถานะสูบบุหรี่ เพื่อปรับคำแนะนำเท่านั้น ไม่ใช้วินิจฉัยโรค", "I consent to using and saving smoking status for personalized guidance only, not diagnosis.")}</span>
             </label>
             {form.personalizationConsent && (
               <div className="personal-context-fields">
@@ -533,7 +587,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                     ]}
                   />
                 </label>
-                <fieldset className="tracker-field">
+                {canAskMenstruation && <fieldset className="tracker-field">
                   <legend>{t("กำลังมีประจำเดือนวันนี้หรือไม่ (ไม่บังคับ)", "Are you menstruating today? (Optional)")}</legend>
                   <div className="period-checkin-options">
                     <label>
@@ -564,7 +618,7 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
                       <span>{t("ไม่ใช่", "No")}</span>
                     </label>
                   </div>
-                </fieldset>
+                </fieldset>}
               </div>
             )}
             <label className="personalization-consent">
@@ -654,27 +708,31 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             <p className="entry-date-line" role="status" aria-live="polite">{t("สรุปข้อมูลวันที่", "Summary for")} {displayDate(entry.date, locale)}</p>
             <div className="tracker-metric-grid">
               <article className="tracker-metric duration-metric">
+                <EvidenceLabel kind="recorded" language={language} />
                 <p className="eyebrow">{t("ระยะเวลานอนที่คำนวณได้", "SLEEP DURATION")}</p>
                 <strong>{entry.sleepHours} {t("ชม.", "hr")} {entry.sleepMinutes} {t("นาที", "min")}</strong>
                 <p>{t("รวม", "Total")} {entry.sleepDurationMinutes.toLocaleString(locale)} {t("นาที", "minutes")}</p>
               </article>
               <article className="tracker-metric sleep-score-metric">
+                <EvidenceLabel kind="calculated" language={language} />
                 <p className="eyebrow">SLEEP SCORE</p>
                 <strong>{calculatedSleepScore?.toFixed(1) ?? "—"} <small>/ 100</small></strong>
                 <p>{t("คะแนนเต็มที่เพดานสูตร 9 ชั่วโมง", "Score caps at the 9-hour formula limit.")}</p>
               </article>
               <article className="tracker-metric pending-metric">
+                <EvidenceLabel kind={scores?.thirst_score_0_10.status === "calculated" ? "calculated" : hasForecast ? "forecast" : "estimate"} language={language} />
                 <p className="eyebrow">THIRST SCORE</p>
                 <strong>{isPredicting ? "…" : thirstScore?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
-                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : prediction?.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
+                <p>{isPredicting ? t("กำลังคำนวณ…", "Calculating…") : thirstScore == null ? thirstUnavailableMessage : scores?.thirst_score_0_10.status === "calculated" ? t("ตามสูตรน้ำหนัก ไม่ใช่ความกระหายที่รายงานเอง", "Weight-based formula, not self-reported thirst") : hasForecast && targetDate ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(targetDate, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
                 {!isPredicting && thirstScore == null && hydrationRangeStatus === "missing_weight" && (
                   <Link href="/profile">{t("ไปที่โปรไฟล์ →", "Open profile →")}</Link>
                 )}
               </article>
               <article className="tracker-metric pending-metric">
+                <EvidenceLabel kind={hasForecast ? "forecast" : "estimate"} language={language} />
                 <p className="eyebrow">DRYNESS SCORE</p>
-                <strong>{isPredicting ? "…" : prediction?.predictions.skin_dryness_score_0_10.value?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
-                <p>{prediction?.predictions.skin_dryness_score_0_10.value == null ? t("ไม่มีคะแนนในรอบนี้", "No score available this time") : prediction.model?.prediction_horizon_days ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(prediction.prediction_target_date, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
+                <strong>{isPredicting ? "…" : scores?.skin_dryness_score_0_10.value?.toFixed(1) ?? "—"} <small>/ 10</small></strong>
+                <p>{scores?.skin_dryness_score_0_10.value == null ? t("ไม่มีคะแนนในรอบนี้", "No score available this time") : hasForecast && targetDate ? `${t("คาดการณ์สำหรับ", "Forecast for")} ${displayDate(targetDate, locale)}` : t("ค่าประเมินจากข้อมูลวันนี้", "Estimate from today's data")}</p>
               </article>
             </div>
             <div className="entry-summary" aria-label={t("ข้อมูลที่กรอก", "Entered data")}>
@@ -684,13 +742,16 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
             <p className={`storage-status storage-status-${storageStatus}`} role="status" aria-live="polite">
               {storageMessage || (storageStatus === "saved" ? t("บันทึกข้อมูลรายวันนี้ลงฐานข้อมูลแล้ว", "Today's record was saved.") : "")}
             </p>
-            {storageStatus === "failed" && (
+            {storageStatus === "failed" && !savedResult && (
               <button className="secondary-button storage-retry" type="button" onClick={() => void saveEntry(entry, prediction)}>
                 {t("ลองบันทึกอีกครั้ง", "Try saving again")}
               </button>
             )}
           </>
-        ) : (
+        ) : restoring ? <p role="status">{t("กำลังโหลดบันทึกของวันนี้…", "Loading today's saved result…")}</p> : restoreError ? <div role="alert">
+          <p>{t("ยังโหลดผลของวันนี้ไม่ได้ กรุณาลองอีกครั้ง", "Could not load today's result. Please retry.")}</p>
+          <button type="button" className="secondary-button" onClick={() => { setRestoreError(false); setRestoring(true); setRestoreRevision(value => value + 1); }}>{t("ลองโหลดอีกครั้ง", "Retry loading")}</button>
+        </div> : (
           <div className="tracker-empty-state">
             <span className="tracker-empty-icon" aria-hidden="true">＋</span>
             <div>
@@ -710,7 +771,12 @@ export default function DailyHealthTracker({ initialDate }: { initialDate: strin
           </p>
         )}
 
-        {prediction && <DailyHealthDashboard prediction={prediction} />}
+        {healthResult && <DailyHealthDashboard
+          interpretation={healthResult.interpretation}
+          date={healthResult.local_date}
+          guidance={healthResult.guidance}
+          modelId={prediction ? prediction.model?.model_id : savedResult?.prediction_model_id}
+        />}
         <ScoreMethodDetails />
       </section>
 

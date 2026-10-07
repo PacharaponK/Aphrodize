@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { accountSession } from "@/lib/daily-health-session";
@@ -94,6 +95,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const form = await request.formData();
   const image = form.get("image");
   const wantsAnnotation = form.get("annotation_consent") === "yes";
+  const wantsTraining = form.get("training_consent") === "yes";
+  if (wantsTraining && !wantsAnnotation) return failed(422, "Training requires separate human-review consent");
   // The analysis consent is mandatory; review consent is a separate choice.
   if (form.get("consent") !== "yes") return failed(403, "Consent is required");
   if (!(image instanceof File) || !IMAGE_TYPES.has(image.type) || !image.size) {
@@ -160,6 +163,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
     // Forward only the image to the protected analysis endpoint.
+    if (wantsTraining && !annotationReviewUnavailable) {
+      const trainingConsent = await fetch(backendUrl(`/consents/users/${user_id}/wrinkle-training`), {
+        method: "PUT", headers: userHeaders, cache: "no-store",
+      });
+      if (!trainingConsent.ok) return backendError(trainingConsent);
+    }
     const upload = new FormData();
     upload.set("image", image);
     const analysis = await fetch(backendUrl(`/analyses/users/${user_id}`), {
@@ -222,6 +231,12 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const anonymous = account ? null : anonymousSession(request);
     const owner = account ?? anonymous;
     if (!owner) return failed(401, "No active analysis session in this browser");
+    if (request.nextUrl.searchParams.get("scope") === "training") {
+      const response = await fetch(backendUrl(`/consents/users/${owner.userId}/wrinkle-training`), {
+        method: "DELETE", headers: { Authorization: `Bearer ${owner.token}` }, cache: "no-store",
+      });
+      return response.ok ? new NextResponse(null, { status: 204 }) : backendError(response);
+    }
     if (request.nextUrl.searchParams.get("scope") === "analysis") {
       const response = await fetch(backendUrl(`/consents/users/${owner.userId}/analysis`), {
         method: "DELETE",

@@ -1,24 +1,34 @@
 # เอกสาร Aphrodize
 
-เริ่มจาก [README หลัก](../README.md) เพื่อรันระบบ แล้วเลือกอ่านตามงาน:
+ตรวจเทียบโค้ดวันที่ **6 ตุลาคม 2026 (Asia/Bangkok)** เริ่มรันระบบจาก [README หลัก](../README.md) สถานะในคู่มือหมายถึงสิ่งที่โค้ดรองรับ ไม่ยืนยันว่า deployment มีข้อมูลรับรอง ไฟล์โมเดล หรือข้อมูลสดพร้อมแล้ว
 
-| ต้องการรู้เรื่อง | อ่านเอกสารนี้ |
+| ต้องการทำอะไร | คู่มือหลัก |
 | --- | --- |
-| เป้าหมายและขอบเขตผลิตภัณฑ์ | [Product and Scope](project/Product%20and%20Scope.md) |
-| ข้อกำหนด consent, privacy และคำกล่าวอ้าง | [Safety and Governance](project/Safety%20and%20Governance.md) |
-| ภาพรวมระบบที่ทำงานอยู่ | [Architecture diagram](architecture/diagrams/diagram.md) และ [ER ของฐานข้อมูลปัจจุบัน](architecture/diagrams/database-er.md) |
-| ตั้งค่าและรัน FFHQ-Wrinkle | [AI README](../ai/README.md) |
-| กรอก Daily Health และดูผล | [Daily Health Input Flow](lifestyle/Daily-Health-Input-Flow.md) |
-| เข้าใจโมเดลและเส้นทางข้อมูล UV | [การทำงานของโมเดลทำนาย UV](uv-model-workflow.md) |
-| ใช้และดูแลฟีเจอร์ UV | [UV delivery and operation](uv-implementation.md) |
-| UV MLOps, quality gate และคู่มือเปลี่ยนรุ่น | [รายงาน UV MLOps 2 ตุลาคม 2026](uv-mlops-report.md) |
-| แผนที่ UV 77 พื้นที่และ component ที่ใช้ซ้ำได้ | [Thailand UV map](uv-thailand-map.md) |
+| เข้าใจความสามารถและข้อจำกัดปัจจุบัน | [ผลิตภัณฑ์และขอบเขต](project/Product%20and%20Scope.md) |
+| ตรวจความยินยอม ความเป็นส่วนตัว และคำกล่าวอ้าง | [ความปลอดภัยและการกำกับดูแล](project/Safety%20and%20Governance.md) |
+| ดูภาพรวมและเส้นทางบริการ | [สถาปัตยกรรมขณะรัน](architecture/diagrams/diagram.md), [เส้นทางองค์ประกอบระบบ](architecture/Component-Flows.md) |
+| ตรวจโครงสร้างข้อมูลและบัญชี | [แผนภาพ ER ฐานข้อมูล](architecture/diagrams/database-er.md), [บัญชีและการยืนยันตัวตน](architecture/Auth-Account-Database-Design.md) |
+| รันการวิเคราะห์ภาพและเข้าใจ AI | [README ของ AI](../ai/README.md), [AI และข้อมูล](ai/AI%20and%20Data.md) |
+| ตั้งค่า annotation และฝึกโมเดลภาพ | [การตรวจ annotation](ai/Annotation-Review.md), [การฝึกด้วยข้อมูลที่คัดกรอง](ai/Curated-Training.md), [การตรวจโดยมนุษย์](ai/Human-Review.md) |
+| บันทึก Daily Health | [ขั้นตอนกรอกข้อมูล](lifestyle/Daily-Health-Input-Flow.md) |
+| แยกสูตร โมเดลอ้างอิง และพยากรณ์ | [สรุปโมเดลพฤติกรรมชีวิต](lifestyle/Lifestyle-Model-Summary.md) |
+| นำเข้า ฝึก เลื่อนรุ่น และลบข้อมูลสุขภาพ | [ขั้นตอนฝึกโมเดลสุขภาพรายวัน](lifestyle/Daily-Health-Training-Pipeline.md) |
+| ดูขอบเขตสิวที่ถอดออกและ API ล้างข้อมูล | [แนวทางรายงานสิว](lifestyle/Acne-Observation-Protocol.md) |
+| ดูพยากรณ์ UV และกฎผลิตภัณฑ์ | [การปฏิบัติงาน UV](uv-implementation.md), [ขั้นตอนโมเดล UV](uv-model-workflow.md) |
+| ใช้แผนที่ UV 77 พื้นที่ | [แผนที่ UV ประเทศไทย](uv-thailand-map.md) |
+| ดูแล UV candidate, เกณฑ์คุณภาพ และ rollback | [UV MLOps](uv-mlops-report.md) |
+| deploy VM และ GPU worker | [VM](deploy-vm.md), [GPU](deploy-gpu.md) |
+| ตั้งค่า CI การป้องกัน main และ release | [CI และการป้องกันสาขา](ci-main-protection.md), [CI/CD VM](cicd-vm.md) |
+| ดูงานที่ยังเหลือ | [งานคงเหลือ](roadmap.md) |
+| ตั้ง metric, log, dashboard และการแจ้งเตือน Discord | [การปฏิบัติงาน observability](observability.md) |
 
-## รายละเอียดเมื่อทำงานในส่วนนั้น
+## รายละเอียดเฉพาะทางและหลักฐานเดิม
 
-- **AI:** [การออกแบบและประเมินข้อมูล](ai/AI%20and%20Data.md), [annotation review](ai/Annotation-Review.md), [controlled training](ai/Curated-Training.md), [EDA](ai/EDA.md), [สรุปการพัฒนา FFHQ-Wrinkle](ai/implementation/FFHQ-Wrinkle-Implementation-Summary.md)
-- **ระบบและข้อมูล:** [System and MLOps](architecture/System%20and%20MLOps.md), [Auth and Account Database Design](architecture/Auth-Account-Database-Design.md), [เส้นทางภาพเข้า AI](architecture/diagrams/ai-photo-data-flow.md), [เส้นทาง review และ training](architecture/diagrams/ai-review-mlops-flow.md)
-- **Daily Health:** [โมเดลที่ใช้](lifestyle/Lifestyle-Model-Summary.md), [ข้อมูลและเวอร์ชันโมเดล](lifestyle/Daily-Health-Training-Pipeline.md)
-- **UV:** [ข้อมูลและผลประเมิน](uv-data-feasibility.md)
+- ภาพและ MLOps: [เส้นทางข้อมูลภาพ](architecture/diagrams/ai-photo-data-flow.md), [เส้นทางการตรวจ](architecture/diagrams/ai-review-mlops-flow.md), [เส้นทางข้อมูลเข้า/ฝึก/ผลลัพธ์ทั้งหมด](architecture/diagrams/full-input-retraining-output-flow.md)
+- landmark/พื้นที่ริ้วรอย: [ROI](architecture/face-landmark-rois.md), [การพัฒนาการวัดพื้นที่ริ้วรอย](ai/implementation/Wrinkle-Area-Implementation.md)
+- ผลทดลอง: [สรุป FFHQ](ai/implementation/FFHQ-Wrinkle-Implementation-Summary.md), [EDA](ai/EDA.md), [ความเป็นไปได้ของข้อมูล UV](uv-data-feasibility.md)
+- ที่มารายการผลิตภัณฑ์: [บันทึกตรวจสินค้า 1 ตุลาคม 2026](research/thai-product-catalog-2026-10-01.md) ราคา/ฉลากเป็นข้อมูลวันที่ตรวจ ไม่ใช่ข้อมูลสด
 
-เอกสารที่ชื่อ `Plan` และ `proposed` เป็นข้อเสนอหรือแผนงาน ไม่ใช่คำยืนยันว่าระบบทำได้แล้ว ให้ตรวจโค้ดและคู่มือการใช้งานข้างต้นเมื่อดูสถานะปัจจุบัน รายงานการพัฒนาฉบับเดิมยังดูได้ใน Git history
+แผนที่ซ้ำและข้อเสนอโครงสร้างข้อมูลเดิมรวมเข้าคู่มือที่เกี่ยวข้องและงานคงเหลือแล้ว อ่านต้นฉบับได้จากประวัติ Git เช่น `git log -- docs/` และ `git show <commit>:docs/<path>` รายงานผลทดสอบที่ลงวันที่เป็นหลักฐานรอบนั้น ไม่ใช่ผลตรวจรอบปัจจุบัน ไฟล์แผนภาพ `.dio`/PNG เป็นภาพออกแบบเดิม ให้ใช้ Mermaid และ ORM ตรวจระบบปัจจุบัน
+
+เมื่อแก้ระบบ ให้แก้คู่มือหลักส่วนนั้นพร้อมลิงก์โค้ด ไม่สร้างรายงาน/แผนใหม่ที่เล่าความสามารถเดิมซ้ำ ตรวจ endpoint จาก OpenAPI และโครงสร้างข้อมูลจาก `backend/core/db/models.py` ก่อนใช้

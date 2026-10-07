@@ -639,7 +639,15 @@ class FakeDailyHealthHistorySession:
 
 
 @pytest.mark.asyncio
-async def test_history_read_returns_saved_prediction_risks_with_consented_profile_context() -> None:
+async def test_history_read_returns_saved_prediction_risks_with_consented_profile_context(
+    monkeypatch,
+) -> None:
+    from backend.libs.model_loader import get_daily_score_model
+
+    def no_inference():
+        raise AssertionError("Restoring advice must not load an estimator or run inference")
+
+    monkeypatch.setattr(get_daily_score_model(), "load_model_bundle", no_inference)
     user_id = uuid4()
     entry = DailyHealthEntry(
         id=uuid4(),
@@ -690,6 +698,15 @@ async def test_history_read_returns_saved_prediction_risks_with_consented_profil
         "menstrual_wellbeing",
     }
     assert "user_id" not in item
+    assert item["guidance"]
+    assert len(item["guidance"]) == len(set(item["guidance"]))
+    for profile_advice in item["interpretation"]["profile_guidance"]:
+        assert profile_advice["message"] in item["guidance"]
+    session.active_consents = {"daily-health-v1"}
+    without_context = await list_daily_health_entries(user_id, limit=7, session=session)
+    assert without_context["items"][0]["interpretation"]["profile_guidance"] == []
+    for profile_advice in item["interpretation"]["profile_guidance"]:
+        assert profile_advice["message"] not in without_context["items"][0]["guidance"]
 
 
 @pytest.mark.asyncio
@@ -733,6 +750,7 @@ async def test_history_preserves_formula_snapshot_and_independent_dryness_predic
     assert item["prediction_target_date"] == "2026-09-27"
     assert item["input"]["weight_kg"] == 60
     assert item["interpretation"]["skin_care_attention_level"]["level"] == "low"
+    assert any("900" in message and "1,800" in message for message in item["guidance"])
 
 
 @pytest.mark.asyncio

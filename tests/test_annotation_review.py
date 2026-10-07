@@ -129,6 +129,6 @@ async def test_delete_removes_private_image_and_review_task(monkeypatch) -> None
     row = SimpleNamespace(object_key="review/image.png", label_studio_task_id=42)
     session = Session()
     await review.delete_annotation(session, row)
-    assert removed == [([row.object_key], settings.annotation_bucket)]
+    assert removed == [([row.object_key, "review/model_input.npy"], settings.annotation_bucket)]
     assert deleted == [{"id": "42"}]
     assert session.deleted is row and session.committed

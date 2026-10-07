@@ -7,6 +7,10 @@ LABEL_CONFIG = """
 <View>
   <Header value="Mark visible wrinkle pixels on the aligned face. Skip unclear images." />
   <Image name="image" value="$image" zoom="true" />
+  <Choices name="wrinkle_presence" toName="image" choice="single-radio" required="true">
+    <Choice value="Visible wrinkles" />
+    <Choice value="No visible wrinkles" />
+  </Choices>
   <BrushLabels name="wrinkle" toName="image">
     <Label value="Wrinkle" background="#ff3030" />
   </BrushLabels>
@@ -22,6 +26,7 @@ def main() -> None:
     for project in client.projects.list(title=TITLE):
         # Reuse the existing review project when setup is run again.
         if project.title == TITLE:
+            client.projects.update(id=project.id, label_config=LABEL_CONFIG)
             print(f"LABEL_STUDIO_PROJECT_ID={project.id}")
             return
     # Install the BrushLabels interface used to draw wrinkle pixels.

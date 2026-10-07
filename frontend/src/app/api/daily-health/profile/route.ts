@@ -1,3 +1,4 @@
+import { backendFetch as fetch } from "@/lib/backend-fetch";
 import { NextRequest, NextResponse } from "next/server";
 import { accountSession, backendUrl, sameOrigin } from "@/lib/daily-health-session";
 
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const account = await accountSession(request);
     if (!account) {
       return NextResponse.json({
+        sex: null,
         has_session: false,
         consent_active: false,
         age_guidance_consent_active: false,
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
     if (!response.ok) return backendFailure(response);
     const profile = await response.json();
-    return NextResponse.json({ has_session: true, ...profile }, {
+    return NextResponse.json({ has_session: true, ...profile, sex: account.sex ?? null }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch {

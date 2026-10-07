@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Activity, Camera, House, LogIn, LogOut, Menu, TrendingUp, UserRound, X } from "lucide-react";
 import { LanguageToggle, useLanguage } from "./language-provider";
 import { ThemeToggle } from "./theme-toggle";
+import { useAuthPresentation } from "./auth-presentation";
 
 type ActiveSection = "dashboard" | "capture" | "clients" | "trend" | "profile" | "none";
 
@@ -81,7 +82,7 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
-  const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
+  const { authStatus, setAuthStatus } = useAuthPresentation();
   const [signingOut, setSigningOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const { language } = useLanguage();
@@ -96,7 +97,7 @@ export function AppNavigation({ active, showThemeToggle = false, showSignIn = fa
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, []);
+  }, [setAuthStatus]);
 
   async function signOut() {
     setSigningOut(true);

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.deps import require_matching_user
 from backend.api.schemas import ConsentCreate, ConsentRead
 from backend.core.config import settings
+from backend.core.consents import WRINKLE_TRAINING_CONSENT_VERSION
 from backend.core.db.models import Consent, User
 from backend.core.db.session import get_session
 from backend.services.analysis_service import ANALYSIS_CONSENT_VERSION
@@ -52,7 +53,13 @@ async def read_image_consents(
     versions = await session.scalars(
         select(Consent.version).where(
             Consent.user_id == user_id,
-            Consent.version.in_([ANALYSIS_CONSENT_VERSION, ANNOTATION_CONSENT_VERSION]),
+            Consent.version.in_(
+                [
+                    ANALYSIS_CONSENT_VERSION,
+                    ANNOTATION_CONSENT_VERSION,
+                    WRINKLE_TRAINING_CONSENT_VERSION,
+                ]
+            ),
             Consent.revoked_at.is_(None),
         )
     )
@@ -60,6 +67,7 @@ async def read_image_consents(
     return {
         "analysis": ANALYSIS_CONSENT_VERSION in active,
         "annotations": ANNOTATION_CONSENT_VERSION in active,
+        "training": WRINKLE_TRAINING_CONSENT_VERSION in active,
     }
 
 
@@ -84,11 +92,13 @@ async def grant_analysis_consent(
     if await session.get(User, user_id) is None:
         raise HTTPException(status_code=404, detail="User not found")
     existing = await session.scalar(
-        select(Consent.id).where(
+        select(Consent.id)
+        .where(
             Consent.user_id == user_id,
             Consent.version == ANALYSIS_CONSENT_VERSION,
             Consent.revoked_at.is_(None),
-        ).limit(1)
+        )
+        .limit(1)
     )
     if existing is None:
         session.add(Consent(user_id=user_id, version=ANALYSIS_CONSENT_VERSION))
@@ -142,15 +152,62 @@ async def revoke_annotation_consent(
     # Mark every review consent for this user revoked before touching stored images.
     await session.execute(
         Consent.__table__.update()
-        .where(Consent.user_id == user_id, Consent.version == ANNOTATION_CONSENT_VERSION)
+        .where(
+            Consent.user_id == user_id,
+            Consent.version.in_(
+                [
+                    ANNOTATION_CONSENT_VERSION,
+                    WRINKLE_TRAINING_CONSENT_VERSION,
+                ]
+            ),
+        )
         .values(revoked_at=datetime.now(UTC))
     )
     await session.commit()
     try:
         # Remove staged images and corresponding Label Studio tasks.
         await delete_user_annotations(session, user_id)
+        from backend.services.wrinkle_datasets import cleanup_datasets
+
+        await cleanup_datasets(session)
     except Exception as error:
         # The worker can retry cleanup when Label Studio becomes available again.
         raise HTTPException(
             status_code=503, detail="Annotation deletion is pending; retry"
         ) from error
+
+
+@user_router.put("/users/{user_id}/wrinkle-training")
+async def grant_wrinkle_training_consent(user_id: UUID, session=Depends(get_session)):
+    from backend.services.annotation_service import has_annotation_consent
+    from backend.services.wrinkle_datasets import training_consent
+
+    if await session.get(User, user_id) is None:
+        raise HTTPException(404, "User not found")
+    if not await has_annotation_consent(session, user_id):
+        raise HTTPException(409, "Human-review consent is required before training consent")
+    if not await training_consent(session, user_id):
+        session.add(Consent(user_id=user_id, version=WRINKLE_TRAINING_CONSENT_VERSION))
+        await session.commit()
+    return {"status": "granted"}
+
+
+@user_router.delete("/users/{user_id}/wrinkle-training", status_code=204)
+async def revoke_wrinkle_training_consent(user_id: UUID, session=Depends(get_session)):
+    from backend.services.wrinkle_datasets import remove_user_training_inputs
+
+    if await session.get(User, user_id) is None:
+        raise HTTPException(404, "User not found")
+    await session.execute(
+        Consent.__table__.update()
+        .where(
+            Consent.user_id == user_id,
+            Consent.version == WRINKLE_TRAINING_CONSENT_VERSION,
+        )
+        .values(revoked_at=datetime.now(UTC))
+    )
+    await session.commit()
+    try:
+        await remove_user_training_inputs(session, user_id)
+    except Exception as error:
+        raise HTTPException(503, "Training data deletion is pending; retry") from error

@@ -93,3 +93,4 @@ tasks/
 
 # Private deployment configurations include rendered runtime secrets
 .releases/
+.observability/

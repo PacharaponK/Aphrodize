@@ -9,11 +9,12 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const source = fs.readFileSync(new URL("../src/app/clients/daily-health-risk-results.tsx", import.meta.url), "utf8");
 const compiled = ts.transpileModule(source, { compilerOptions: {
-  module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
+  target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
 } }).outputText;
+let language = "en";
 const loaded = { exports: {} };
 new Function("require", "module", "exports", compiled)(name => name === "@/components/language-provider"
-  ? { useLanguage: () => ({ language: "en" }) } : require(name), loaded, loaded.exports);
+  ? { useLanguage: () => ({ language }) } : require(name), loaded, loaded.exports);
 const absent = { level: null, status: "model_not_ready" };
 const prediction = { level: null, status: "predicted", value_0_10: 6.2,
   target_date: "2026-10-06", model_id: "review-approved-test-model", target: "perceived_thirst" };
@@ -38,6 +39,47 @@ test("observed forecast renders value, target day and source without fabricated 
 test("removed acne signal stays hidden for legacy historical responses", () => {
   const html = render(absent);
   assert.doesNotMatch(html, /Acne signal|Forecast model not enabled|Current account data readiness|acne-observation-title/);
-  assert.match(html, /Next-day energy/);
-  assert.match(html, /Next-day thirst/);
+  assert.doesNotMatch(html, /Next-day energy|Next-day thirst|daily-risk-outlook/);
+});
+
+test("model-not-ready outlook is hidden while invalid forecasts remain unavailable", () => {
+  const html = render(absent);
+  assert.match(html, /daily-risk-current/);
+  assert.doesNotMatch(html, /daily-risk-outlook/);
+  assert.equal((html.match(/<article /g) ?? []).length, 2);
+  assert.doesNotMatch(html, /Record observed outcomes|review and approval are still required/);
+  const invalid = render({ ...prediction, value_0_10: 11 });
+  assert.doesNotMatch(invalid, /11 \/ 10|Experimental estimate/);
+  assert.match(invalid, /Unavailable/);
+});
+
+test("guidance is unique and preserves references in closed disclosures", () => {
+  const html = renderToStaticMarkup(React.createElement(loaded.exports.default, {
+    date: "2026-10-06", guidance: ["คำแนะนำซ้ำ", "คำแนะนำอื่น"], interpretation: {
+      daily_health_summary: { ...absent, recommendations: ["คำแนะนำซ้ำ"] },
+      skin_care_attention_level: { ...absent, recommendations: ["คำแนะนำซ้ำ"] },
+      next_day_predictions: { low_energy_signal: { ...prediction, target: "perceived_energy", value_0_10: 0 }, thirst_attention: prediction },
+      profile_guidance: [{ topic: "skin", message: "คำแนะนำซ้ำ", reference_url: "https://example.org/source", reference_label: "Source" }],
+    },
+  }));
+  assert.equal((html.match(/คำแนะนำซ้ำ/g) ?? []).length, 1);
+  assert.match(html, /คำแนะนำอื่น/);
+  assert.match(html, /href="https:\/\/example.org\/source"/);
+  assert.match(html, /0 \/ 10/);
+  assert.match(html, /higher means more energy/);
+  assert.match(html, /<details class="daily-risk-guidance">/);
+  assert.match(html, /<details class="daily-risk-provenance">/);
+  assert.doesNotMatch(html, /<details[^>]* open/);
+});
+
+test("Thai grouping and resilient headers retain readable controls", () => {
+  language = "th";
+  const html = render(absent);
+  assert.match(html, /จากบันทึกของคุณ/);
+  assert.doesNotMatch(html, /แนวโน้มวันถัดไป|พลังงานวันถัดไป|กระหายน้ำวันถัดไป/);
+  language = "en";
+  const css = fs.readFileSync(new URL("../src/app/clients/clients.css", import.meta.url), "utf8");
+  assert.match(css, /\.clients-page \.health-signal-heading \{[^}]*flex-wrap: wrap/);
+  assert.match(css, /\.clients-page \.health-signal-heading \.health-signal-level \{[^}]*white-space: normal/);
+  assert.match(css, /daily-risk-provenance\) summary \{[^}]*min-height: 44px/);
 });

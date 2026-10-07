@@ -26,6 +26,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "postcss": "8.5.28",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4",
     "typescript": "^5",

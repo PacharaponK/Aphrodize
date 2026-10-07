@@ -257,11 +257,12 @@ async def enqueue_candidate_training_if_ready(session: AsyncSession) -> bool:
     ):
         return False
 
+    from backend.core.observability import enqueue_job
     from backend.libs.redis_client import get_arq_pool
 
     redis = await get_arq_pool()
     try:
-        job = await redis.enqueue_job(
+        job = await enqueue_job(redis,
             "run_daily_health_candidate_training",
             _queue_name="training",
             _job_id=f"daily-health-candidate-{fingerprint[:24]}",
@@ -323,6 +324,7 @@ async def train_daily_health_candidate(session: AsyncSession) -> DailyHealthMode
         version.participant_count = len(participants)
         version.metrics = None
         version.artifact_uri = None
+        version.mlflow_run_id = None
     await session.commit()
 
     try:

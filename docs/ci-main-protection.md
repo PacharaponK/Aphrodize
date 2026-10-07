@@ -1,27 +1,20 @@
-# CI and main protection (phases 1–2)
+# CI และการป้องกัน main (ระยะที่ 1–2)
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pushes to `dev`/`main`, PRs targeting either
-branch, and manual dispatch. No path filters skip required checks. Each job has a
-20-minute timeout; newer runs cancel older runs for the same branch or PR.
-The workflow uses GitHub-hosted Ubuntu 24.04 runners, read-only repository access,
-and commit-pinned Actions. It needs no production secrets or live services.
+`.github/workflows/ci.yml` ทำงานเมื่อ push ไปที่ `dev`/`main`, เปิด PR ไปยังสองสาขานี้ หรือสั่งรันด้วยตนเอง ไม่มีตัวกรอง path ที่ข้ามการตรวจที่จำเป็น แต่ละ job มีเวลาจำกัด 20 นาที และการรันใหม่จะยกเลิกการรันเก่าของสาขาหรือ PR เดียวกัน
+workflow ใช้ runner Ubuntu 24.04 ที่ GitHub จัดให้ สิทธิ์อ่าน repository เท่านั้น และ Actions ที่ตรึงเวอร์ชันด้วย commit โดยไม่ต้องใช้ความลับของ production หรือบริการที่ใช้งานจริง
 
-Required check names must remain exactly (the baseline binds them to the verified
-GitHub Actions app ID 15368):
+ชื่อการตรวจที่บังคับต้องตรงตามนี้ทุกตัวอักษร (ค่าตั้งต้นผูกชื่อเหล่านี้กับ GitHub Actions app ID 15368 ที่ตรวจสอบแล้ว):
 
-- `Backend CI`: Python 3.11; locked project dependencies plus the `ci` group;
-  Ruff and the root pytest suite. Headless OpenCV is included for landmark tests.
-- `Frontend CI`: Node 24; pnpm 11.19.0 with the committed pnpm lockfile; ESLint,
-  all `tests/*.mjs` (including the cross-layer recommendation fixture), TypeScript
-  and the production build.
+- `Backend CI`: Python 3.11 พร้อม dependency ของโครงการที่ล็อกเวอร์ชันและกลุ่ม `ci`; ตรวจ Ruff และชุด pytest ที่รากโครงการ รวม Headless OpenCV สำหรับการทดสอบ landmark
+- `Frontend CI`: Node 24; pnpm 11.19.0 พร้อม pnpm lockfile ที่ commit ไว้; ตรวจ ESLint, `tests/*.mjs` ทั้งหมด (รวม fixture คำแนะนำข้ามชั้นระบบ), TypeScript และ production build
 
-Reproduce locally from the repository root:
+รันซ้ำในเครื่องจากราก repository:
 
 ```bash
 uv sync --locked --no-default-groups --group ci --no-install-package opencv-python
-uv run --no-sync ruff check backend tests
+uv run --no-sync ruff check backend tests scripts/release_manifest.py scripts/deploy_vm.py scripts/check-vm-readiness.py
 uv run --no-sync python -m pytest
 cd frontend
 pnpm install --frozen-lockfile --ignore-scripts
@@ -31,38 +24,28 @@ pnpm exec tsc --noEmit
 pnpm build
 ```
 
-This validates web/backend code. GPU/checkpoint integration and production deployment
-are separate phases. Root dependencies and CI dependencies are committed in `uv.lock`;
-the full GPU runtime requirements are intentionally not installed for these jobs.
-`label-studio-sdk` also pulls `opencv-python`. CI omits that GUI distribution and
-uses the locked `opencv-python-headless` provider of the same `cv2` module, so two
-wheels cannot overwrite each other and tests do not depend on desktop libraries.
+ขั้นตอนนี้ตรวจโค้ดเว็บและ backend ส่วนการเชื่อม GPU/checkpoint และ deployment ของ production อยู่ในระยะอื่น dependency หลักและของ CI ถูก commit ใน `uv.lock`; job เหล่านี้จงใจไม่ติดตั้ง runtime ของ GPU ทั้งชุด
+`label-studio-sdk` ดึง `opencv-python` มาด้วย CI จึงเว้นแพ็กเกจแบบ GUI และใช้ `opencv-python-headless` ที่ล็อกเวอร์ชันไว้ ซึ่งให้โมดูล `cv2` เดียวกัน เพื่อไม่ให้ wheel สองตัวเขียนทับกัน และไม่ให้การทดสอบพึ่งไลบรารีเดสก์ท็อป
 
-## Enable main protection
+## เปิดการป้องกัน main
 
-The committed JSON is a configuration proposal, not proof of live protection.
-Run CI once before choosing the required checks. An administrator must apply and
-read back the settings in GitHub; committing this file does not apply them.
+JSON ที่ commit ไว้เป็นข้อเสนอการตั้งค่า ไม่ใช่หลักฐานว่าการป้องกันมีผลแล้ว ให้รัน CI หนึ่งครั้งก่อนเลือกการตรวจที่บังคับ ผู้ดูแลต้องนำการตั้งค่าไปใช้และอ่านกลับจาก GitHub; การ commit ไฟล์นี้ไม่ได้ตั้งค่าให้โดยอัตโนมัติ
 
-Open https://github.com/PacharaponK/Aphrodize/settings/branches and add a branch
-protection rule matching `main` (or strengthen an existing matching rule):
+เปิด https://github.com/PacharaponK/Aphrodize/settings/branches แล้วเพิ่มกฎป้องกันสาขาที่ตรงกับ `main` (หรือเพิ่มความเข้มงวดให้กฎเดิมที่ตรงกัน):
 
-1. Require a pull request before merging. No mandatory reviewer approval is added
-   for the initial setup, so a sole maintainer can use PRs. Preserve any existing
-   higher approval requirement.
-2. Require status checks to pass: `Backend CI` and `Frontend CI`, selecting the
-   GitHub Actions source. Require the branch to be up to date before merging.
-3. Require conversation resolution before merging.
-4. Do not allow bypassing the above settings, including administrators.
-5. Keep force pushes and branch deletion disabled.
+1. บังคับให้ใช้ pull request ก่อน merge การตั้งค่าเริ่มต้นไม่เพิ่มข้อบังคับให้ reviewer อนุมัติ เพื่อให้ผู้ดูแลคนเดียวใช้ PR ได้ แต่ต้องคงข้อกำหนดการอนุมัติเดิมที่เข้มงวดกว่าไว้
+2. บังคับให้ `Backend CI` และ `Frontend CI` ผ่าน โดยเลือกแหล่งที่มาเป็น GitHub Actions และบังคับให้สาขาอัปเดตตาม main ก่อน merge
+3. บังคับให้แก้ไขบทสนทนาใน PR ให้ครบก่อน merge
+4. ไม่อนุญาตให้ข้ามการตั้งค่าข้างต้น รวมถึงผู้ดูแลระบบ
+5. ปิดการ force push และการลบสาขาไว้
 
-If configuring through an authenticated GitHub CLI, inspect current protection first:
+หากตั้งค่าผ่าน GitHub CLI ที่ยืนยันตัวตนแล้ว ให้ตรวจการป้องกันปัจจุบันก่อน:
 
 ```bash
 gh api repos/PacharaponK/Aphrodize/branches/main/protection
 ```
 
-If no rule exists (404), the prepared baseline can be applied from the repo root:
+หากยังไม่มีกฎ (404) สามารถนำค่าตั้งต้นที่เตรียมไว้ไปใช้จากราก repository:
 
 ```bash
 gh api --method PUT repos/PacharaponK/Aphrodize/branches/main/protection \
@@ -70,18 +53,14 @@ gh api --method PUT repos/PacharaponK/Aphrodize/branches/main/protection \
 gh api repos/PacharaponK/Aphrodize/branches/main/protection
 ```
 
-For an existing rule, retain stronger settings, required checks, source bindings and
-restrictions; do not blindly overwrite it with the baseline. Existing repository rulesets
-can also protect main and must be considered before adding a duplicate rule.
+หากมีกฎอยู่แล้ว ให้รักษาการตั้งค่าที่เข้มงวดกว่า การตรวจที่บังคับ การผูกแหล่งที่มา และข้อจำกัดเดิม อย่าเขียนทับด้วยค่าตั้งต้นโดยไม่ตรวจสอบ ruleset ของ repository อาจป้องกัน main อยู่แล้ว จึงต้องตรวจด้วยก่อนเพิ่มกฎซ้ำ
 
-## Acceptance checks
+## เกณฑ์ตรวจรับ
 
-- A dev push and a PR to main produce both checks and pass.
-- A deliberate failing test on a disposable PR branch makes its check fail and blocks
-  merging. Restore/remove that probe before merging; do not introduce a bypass.
-- A PR needs to be current with main and have resolved conversations.
-- Verify the protection page/API actually lists the required settings. Only then
-  report phase 2 complete.
+- การ push ไป dev และ PR ไป main ต้องสร้างการตรวจทั้งสองรายการและผ่าน
+- การทดสอบที่จงใจให้ล้มเหลวบนสาขา PR ชั่วคราวต้องทำให้การตรวจล้มเหลวและบล็อก merge ให้คืนค่าหรือลบการทดสอบทดลองก่อน merge โดยไม่เพิ่มช่องทางข้ามข้อบังคับ
+- PR ต้องอัปเดตตาม main และแก้ไขบทสนทนาให้ครบ
+- ตรวจว่าหน้าการป้องกันหรือ API แสดงการตั้งค่าที่จำเป็นจริง จึงรายงานว่าระยะที่ 2 เสร็จสมบูรณ์ได้
 
-References: [uv in GitHub Actions](https://docs.astral.sh/uv/guides/integration/github/),
-[GitHub branch protection API](https://docs.github.com/en/rest/branches/branch-protection).
+แหล่งอ้างอิง: [uv ใน GitHub Actions](https://docs.astral.sh/uv/guides/integration/github/),
+[API การป้องกันสาขาของ GitHub](https://docs.github.com/en/rest/branches/branch-protection).

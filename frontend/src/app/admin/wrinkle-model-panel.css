@@ -1,0 +1,11 @@
+.wrinkle-training-form { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+.wrinkle-admin-panel label { display: grid; gap: 8px; font-size: 14px; }
+.wrinkle-training-form label:first-child { flex: 1; min-width: min(100%, 260px); }
+.wrinkle-training-form select { width: 100%; min-height: 44px; padding: 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.wrinkle-training-form input { width: 100px; }
+.wrinkle-run { border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.wrinkle-review-tasks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 16px; margin-block: 20px; }
+.wrinkle-admin-panel .wrinkle-review-consent { display: flex; align-items: start; gap: 10px; margin-block: 20px; line-height: 1.65; }
+.wrinkle-review-consent input { margin-top: 5px; accent-color: var(--primary-deep); }
+.wrinkle-training-form select:disabled { opacity: .6; }
+@media (max-width: 760px) { .wrinkle-training-form { align-items: stretch; flex-direction: column; } .wrinkle-training-form input { width: 100%; } }

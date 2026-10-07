@@ -15,6 +15,8 @@ from backend.api.v1.routes import (
     training,
     users,
     uv,
+    uv_admin,
+    wrinkle_admin,
 )
 
 api_router = APIRouter()
@@ -40,6 +42,9 @@ api_router.include_router(
 )
 api_router.include_router(daily_health.user_router, prefix="/daily-health", tags=["daily-health"])
 api_router.include_router(
+    daily_health.review_router, prefix="/daily-health", tags=["model review"]
+)
+api_router.include_router(
     training.router, prefix="/training", tags=["training"], dependencies=protected
 )
 api_router.include_router(
@@ -50,6 +55,8 @@ api_router.include_router(
 )
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(uv.router, prefix="/uv", tags=["uv"], dependencies=protected)
+api_router.include_router(uv_admin.router, prefix="/admin/uv", tags=["admin UV"])
+api_router.include_router(wrinkle_admin.router, prefix="/admin/wrinkle", tags=["admin wrinkle"])
 api_router.include_router(
     products.router,
     prefix="/admin/products",

@@ -13,6 +13,7 @@ import HealthInlineDetails from "./health-inline-details";
 import DashboardInsights from "./dashboard-insights";
 import { useLanguage } from "@/components/language-provider";
 import { selectHistoryDays } from "@/lib/history-selection";
+import { EvidenceLabel } from "../../components/evidence-label";
 
 type HistoryView = "overview" | "trend" | "dashboard";
 const DAILY_HEALTH_DATA_UPDATED_EVENT = "daily-health-data-updated";
@@ -144,7 +145,7 @@ function DailyHistoryEntry({ item, compact = false }: { item: DailyHealthHistory
   const summary: HealthSignal = item.interpretation.daily_health_summary;
   const unavailableCount = [summary, item.interpretation.skin_care_attention_level,
     item.interpretation.next_day_predictions.low_energy_signal,
-    item.interpretation.next_day_predictions.thirst_attention].filter((signal) => signal.level === null && signal.status !== "predicted").length;
+    item.interpretation.next_day_predictions.thirst_attention].filter((signal) => signal.level === null && signal.status !== "predicted" && signal.status !== "model_not_ready").length;
 
   return (
     <article className="daily-history-entry">
@@ -164,6 +165,7 @@ function DailyHistoryEntry({ item, compact = false }: { item: DailyHealthHistory
           </span>
         ) : null}
       </header>
+      <EvidenceLabel kind="recorded" language={english ? "en" : "th"} />
       <div className="daily-history-input-summary" aria-label={t("ข้อมูลประจำวันที่บันทึก", "Recorded daily inputs")}>
         <span>{t("นอน", "Sleep")} <strong>{english ? `${Math.floor(item.input.sleep_duration_total_minutes / 60)}h ${item.input.sleep_duration_total_minutes % 60}m` : durationLabel(item.input.sleep_duration_total_minutes)}</strong></span>
         <span>{t("น้ำดื่ม", "Water")} <strong>{item.input.water_intake_ml.toLocaleString(english ? "en-US" : "th-TH")} {t("มล.", "ml")}</strong></span>
@@ -198,17 +200,17 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
   const week = dates.map((date) => items.find((item) => item.local_date === date));
   const latest = [...items].sort((a, b) => b.local_date.localeCompare(a.local_date))[0];
   const metrics = [
-    { label: t("การนอน", "Sleep duration score"), Icon: Moon, unit: "/ 100", maximum: 100,
+    { label: t("การนอน", "Sleep duration score"), evidence: "calculated" as const, Icon: Moon, unit: "/ 100", maximum: 100,
       values: week.map((item) => item?.calculated.sleep_score_0_100),
       note: t("คะแนนระยะเวลานอนตามสูตร ไม่ใช่คุณภาพการนอน", "Duration-based formula, not sleep quality") },
-    { label: t("น้ำดื่ม", "Water intake"), Icon: Droplets, unit: t("มล./วัน", "ml/day"), maximum: null,
+    { label: t("น้ำดื่ม", "Water intake"), evidence: "recorded" as const, Icon: Droplets, unit: t("มล./วัน", "ml/day"), maximum: null,
       values: week.map((item) => item?.input.water_intake_ml),
       note: t("ปริมาณน้ำดื่มที่คุณบันทึก", "The drinking water you recorded") },
-    { label: "Thirst score", Icon: Droplets, unit: "/ 10", maximum: 10,
+    { label: "Thirst score", evidence: "calculated" as const, Icon: Droplets, unit: "/ 10", maximum: 10,
       values: week.map((item) => item?.predictions.thirst_score_0_10.status === "calculated"
         ? item.predictions.thirst_score_0_10.value : null),
       note: t("ตามสูตรน้ำหนัก · ค่าสูงหมายถึงน้ำดื่มต่ำกว่าเกณฑ์มากขึ้น", "Weight-based formula; higher means a larger recorded shortfall") },
-    { label: "Dryness score", Icon: ScanFace, unit: "/ 10", maximum: 10,
+    { label: "Dryness score", evidence: "forecast" as const, Icon: ScanFace, unit: "/ 10", maximum: 10,
       values: week.map((item) => item?.predictions.skin_dryness_score_0_10.status === "predicted"
         ? item.predictions.skin_dryness_score_0_10.value : null),
       note: t("ผลคาดการณ์ที่บันทึก · ค่าสูงหมายถึงสัญญาณผิวแห้งมากขึ้น", "Stored forecasts; higher means a stronger dryness signal") },
@@ -241,12 +243,12 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
       <section className="home-metric-section" aria-label={t("ค่าเฉลี่ยและข้อมูลรายสัปดาห์", "Weekly averages and records")}>
         <header className="home-card-heading"><h2>{t("ภาพรวมรายสัปดาห์", "Weekly overview")}</h2><span className="home-period">{t("ค่าเฉลี่ยจากข้อมูลที่มีใน 7 วัน", "Averages from available records in the last 7 days")}</span></header>
         <div className="home-metric-grid">
-          {metrics.map(({ label, Icon, unit, maximum, values, note }) => {
+          {metrics.map(({ label, evidence, Icon, unit, maximum, values, note }) => {
             const mean = unavailable ? null : average(values);
             const count = unavailable ? 0 : values.filter((value) => typeof value === "number" && Number.isFinite(value)).length;
             const scale = maximum ?? Math.max(1, ...values.map((value) => value ?? 0));
-            return <article className="home-metric-card" key={label}>
-              <Icon className="home-metric-icon" size={22} aria-hidden="true" /><h3>{label}</h3>
+            return <article className="home-metric-card" data-evidence={evidence} key={label}>
+              <div className="home-metric-source"><Icon className="home-metric-icon" size={22} aria-hidden="true" /><EvidenceLabel kind={evidence} language={language} /></div><h3>{label}</h3>
               <p className="home-metric-value">{mean === null ? "-" : averageValue(mean, maximum === null ? 0 : 1)} <span>{unit}</span></p>
               <p className="home-metric-note">{note}</p>
               {mean === null ? <div className="home-chart-empty">{loading && !requiresLogin ? t("กำลังโหลด…", "Loading…") : t("ยังไม่มีข้อมูล", "No data yet")}</div> : <>
@@ -261,14 +263,14 @@ export function DashboardHistory({ items, loading, failed, requiresLogin, onRetr
           })}
         </div>
       </section>
-      <section className="home-insights-card" aria-labelledby="home-uv-map-heading">
+      <DashboardInsights latest={latest} loading={loading} failed={failed} requiresLogin={requiresLogin} onRetry={onRetry} language={language} dateLabel={dateLabel} />
+      <section className="home-insights-card home-uv-utility" aria-labelledby="home-uv-map-heading">
         <header className="home-card-heading">
           <h2 id="home-uv-map-heading">{t("แผนที่ UV ประเทศไทย", "Thailand UV map")}</h2>
-          <Link href="/uv-map" className="primary-button">{t("ดูแผนที่ UV", "Explore UV map")} <ArrowUpRight size={18} aria-hidden="true" /></Link>
+          <Link href="/uv-map" className="secondary-button">{t("ดูแผนที่ UV", "Explore UV map")} <ArrowUpRight size={18} aria-hidden="true" /></Link>
         </header>
         <p>{t("สำรวจค่า UV ท้องฟ้าโปร่งรายจังหวัด สำหรับวันนี้และพรุ่งนี้ เพื่อวางแผนกิจกรรมกลางแจ้ง", "Explore clear-sky UV by province for today and tomorrow to plan your time outdoors.")}</p>
       </section>
-      <DashboardInsights latest={latest} loading={loading} failed={failed} requiresLogin={requiresLogin} onRetry={onRetry} language={language} dateLabel={dateLabel} />
     </div>
   );
 }

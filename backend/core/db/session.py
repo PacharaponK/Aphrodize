@@ -20,6 +20,28 @@ async def create_database_schema() -> None:
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        review_columns = await connection.run_sync(
+            lambda sync_connection: {
+                column["name"]
+                for column in inspect(sync_connection).get_columns(
+                    "daily_health_model_deployment_events"
+                )
+            }
+        ) or set()
+        if "actor" not in review_columns:
+            await connection.execute(
+                text("ALTER TABLE daily_health_model_deployment_events ADD COLUMN actor TEXT")
+            )
+        version_columns = await connection.run_sync(
+            lambda sync_connection: {
+                column["name"]
+                for column in inspect(sync_connection).get_columns("daily_health_model_versions")
+            }
+        ) or set()
+        if "mlflow_run_id" not in version_columns:
+            await connection.execute(text(
+                "ALTER TABLE daily_health_model_versions ADD COLUMN mlflow_run_id VARCHAR(128)"
+            ))
         entry_columns = await connection.run_sync(
             lambda sync_connection: {
                 column["name"]

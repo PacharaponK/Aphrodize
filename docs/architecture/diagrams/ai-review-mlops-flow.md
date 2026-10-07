@@ -20,7 +20,7 @@ flowchart TD
     AI -->|quality gate ไม่ผ่าน| REJ2["analyses: rejected; ไม่มี task"]
     AI -->|error| FAIL["analyses: failed; ไม่มี task"]
     AI -->|สำเร็จ| RESULT["analyses: completed; MinIO overlay และ mask 24 ชม."]
-    RESULT --> WEB["/result-detail: poll ผลและแสดงภาพ"]
+    RESULT --> WEB["/capture#results: poll ผลและแสดงภาพ"]
     RESULT --> G{"มี consent ตรวจป้ายกำกับ<br/>และตั้งค่า Label Studio?"}
     G -->|ไม่| END["จบเฉพาะการวิเคราะห์"]
     G -->|ใช่| STAGE["MinIO aphrodize-annotation: aligned_face.png<br/>PostgreSQL: annotation_tasks"]
@@ -33,7 +33,7 @@ flowchart TD
     AI --> DEL["ลบ original ใน finally"]
 ```
 
-`POST /api/analysis` ตอบ `202` หลังสร้าง analysis และคิวงานสำเร็จ **ไม่ได้รอ** AI หรือ Label Studio ทำงานเสร็จ หน้า `/result-detail` จึง poll สถานะ `queued → running → completed/rejected/failed` ทุก 2.5 วินาทีขณะยังทำงานอยู่ การที่หน้าแสดงผลวิเคราะห์แล้วไม่ได้ยืนยันว่ามี task ใน Label Studio; สองงานนี้แยกคิวกัน
+`POST /api/analysis` ตอบ `202` หลังสร้าง analysis และคิวงานสำเร็จ **ไม่ได้รอ** AI หรือ Label Studio ทำงานเสร็จ หน้า `/capture#results` จึง poll สถานะ `queued → running → completed/rejected/failed` ทุก 2.5 วินาทีขณะยังทำงานอยู่ การที่หน้าแสดงผลวิเคราะห์แล้วไม่ได้ยืนยันว่ามี task ใน Label Studio; สองงานนี้แยกคิวกัน
 
 ## 2. ไล่ไฟล์ตามคำขอหนึ่งรูป
 
@@ -44,7 +44,7 @@ flowchart TD
 | 3. API วิเคราะห์ | `backend/api/v1/routes/analyses.py` → `submit_analysis()`; `backend/services/analysis_service.py` → `create_analysis()` | ตรวจ active consent, MIME, ขนาด และ Pillow preflight; บันทึกแถว `analyses`; ถ้าผ่านเก็บ original ใน MinIO และ enqueue `run_inference` ใน Redis |
 | 4. AI worker | `backend/workers/inference_worker.py` → `run_inference()` | รับเพียง `analysis_id`, อ่าน original จาก MinIO, เปลี่ยนสถานะเป็น `running`, เรียก service แล้วบันทึกผลหรือเหตุที่ปฏิเสธ/ล้มเหลว; ลบ original ใน `finally` |
 | 5. ประมวลผลภาพ | `backend/wrinkle/service.py` → `analyze_bytes()`; `ai/ffhq_wrinkle/prediction.py` → `predict_image()`; `ai/ffhq_wrinkle/preprocess.py` → `preprocess_image()` | ใช้ temporary directory; ตรวจหน้า/คุณภาพ, align หน้า, สร้าง tensor 4 ช่อง, U-Net mask และคะแนน; ส่ง bytes ของ `overlay`, `mask`, `aligned_face` ให้ worker ก่อนลบไฟล์ชั่วคราว |
-| 6. ผลให้ผู้ใช้ | `backend/workers/inference_worker.py` → `run_inference()`; `backend/api/v1/routes/analyses.py` → `get_analysis()`/`get_analysis_artifact()`; `frontend/src/app/result-detail/page.tsx` | เก็บ `result` JSON ใน PostgreSQL; เก็บ overlay/mask ใน MinIO 24 ชม.; หน้าเว็บ poll ผ่าน `GET /api/analysis` ซึ่ง proxy ไป backend และขอรูปผ่าน `?artifact=overlay|mask` |
+| 6. ผลให้ผู้ใช้ | `backend/workers/inference_worker.py` → `run_inference()`; `backend/api/v1/routes/analyses.py` → `get_analysis()`/`get_analysis_artifact()`; `frontend/src/app/capture/analysis-result.tsx` | เก็บ `result` JSON ใน PostgreSQL; เก็บ overlay/mask ใน MinIO 24 ชม.; หน้าเว็บ poll ผ่าน `GET /api/analysis` ซึ่ง proxy ไป backend และขอรูปผ่าน `?artifact=overlay|mask` |
 | 7. เตรียมงานตรวจ | `backend/services/annotation_service.py` → `stage_annotation()` | ทำเฉพาะ analysis `completed` + มี `image-annotation-v1`; เก็บ `aligned_face.png` ใน bucket แยก, สร้างแถว `annotation_tasks`, enqueue งานส่ง Label Studio และงานลบหลัง 30 วัน |
 | 8. ส่ง task | `backend/workers/inference_worker.py` → `publish_annotation_task()`; `backend/services/annotation_service.py` → `_publish()` | ใช้ `backend/libs/labelstudio_client.py`; ตรวจ task เดิมด้วย `analysis_id`, ส่งภาพเป็น `data:image/png;base64,...`; บันทึก `label_studio_task_id` ใน PostgreSQL |
 | 9. คนตรวจ | `backend/scripts/setup_annotation_project.py` | สร้าง project `Aphrodize wrinkle mask review` พร้อม `Wrinkle` brush; ผู้ตรวจทำ annotation ใน Label Studio โดยตรง |
@@ -56,7 +56,7 @@ flowchart TD
 | ที่เก็บ | ข้อมูล | อายุและผู้ใช้ข้อมูล |
 |---|---|---|
 | PostgreSQL `consents` | consent วิเคราะห์และ `image-annotation-v1` แยกกัน | ใช้ตรวจสิทธิ์ก่อนสร้าง analysis/task และเมื่อถอนสิทธิ์ |
-| PostgreSQL `analyses` | สถานะ, quality flags, ผล JSON, model version | ไม่มี bytes ภาพ; ใช้ poll ผลและ monitoring |
+| PostgreSQL `analyses` | สถานะ, quality flags, ผล JSON, รุ่นโมเดล | ไม่มี bytes ภาพ; ใช้ poll ผลและ monitoring |
 | MinIO `aphrodize-private` | original ชั่วคราว; `derived/<analysis_id>/overlay.png`, `mask.png` | original ลบเมื่อ worker จบ; ภาพผล API ปฏิเสธหลัง 24 ชม. และมี job ลบ object |
 | MinIO `aphrodize-annotation` | `annotation/<analysis_id>/aligned_face.png` | สร้างเฉพาะมี consent รีวิว; นัดลบหลัง 30 วันหรือเมื่อต้องถอนสิทธิ์ |
 | PostgreSQL `annotation_tasks` | `analysis_id`, object key, Label Studio task ID, เวลาหมดอายุ | เป็นตัวเชื่อมและใช้ retry/cleanup |
@@ -84,7 +84,7 @@ flowchart LR
     I --> MON["GET /api/v1/monitoring/analyses"]
 ```
 
-ไฟล์ในเส้นทางนี้: `backend/api/v1/routes/training.py` รับคำขอ → `backend/services/training_service.py` ตรวจรูปแบบ URI/epochs และเข้าคิว → `backend/workers/trainer_worker.py` เปิด MLflow run → `backend/services/curated_training.py` ตรวจ dataset ทุกไฟล์, train, วัด Dice/IoU และ log checkpoint → `backend/wrinkle/approved_model.py` ตรวจ `approved.json` และ SHA-256 ก่อน `backend/wrinkle/service.py` โหลดโมเดลที่เลือก ส่วน `backend/api/v1/routes/monitoring.py` สรุปสถานะ, failure rate, quality flags และ p95 ตาม model version; ไม่ส่งภาพหรือ user ID
+ไฟล์ในเส้นทางนี้: `backend/api/v1/routes/training.py` รับคำขอ → `backend/services/training_service.py` ตรวจรูปแบบ URI/epochs และเข้าคิว → `backend/workers/trainer_worker.py` เปิด MLflow run → `backend/services/curated_training.py` ตรวจ dataset ทุกไฟล์, train, วัด Dice/IoU และ log checkpoint → `backend/wrinkle/approved_model.py` ตรวจ `approved.json` และ SHA-256 ก่อน `backend/wrinkle/service.py` โหลดโมเดลที่เลือก ส่วน `backend/api/v1/routes/monitoring.py` สรุปสถานะ, failure rate, quality flags และ p95 ตาม รุ่นโมเดล; ไม่ส่งภาพหรือ user ID
 
 MLflow เก็บ run metadata ในฐาน `mlflow` บน PostgreSQL และ artifact ใน MinIO bucket `mlflow` ตาม `docker/mlflow-start.sh` ตัวฝึกสร้าง U-Net ใหม่จากชุดข้อมูลที่อนุมัติ; การฝึกสำเร็จได้เพียง **candidate** สถานะ `awaiting_approval` ไม่มีโค้ดที่เปลี่ยนเป็นโมเดลใช้งานทันที และ annotation จาก Label Studio ยังไม่เชื่อมไป dataset นี้ หากต้องการนำภาพผู้ใช้ไปฝึก ต้องออกแบบ consent สำหรับ training, ขั้น export/ตรวจคุณภาพ, สิทธิ์ข้อมูล และการอนุมัติ dataset เพิ่มก่อน
 

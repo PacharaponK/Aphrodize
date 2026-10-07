@@ -63,7 +63,8 @@ class FakeRedis:
 
 
 @pytest.mark.asyncio
-async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
+@pytest.mark.parametrize("cleanup_fails", [False, True])
+async def test_worker_persists_wrinkle_response(monkeypatch, cleanup_fails) -> None:
     analysis = SimpleNamespace(
         id=uuid4(),
         user_id=uuid4(),
@@ -92,11 +93,19 @@ async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
     monkeypatch.setattr(inference_worker, "get_bytes", lambda _key: b"image")
     stored = []
     removed = []
+    cleanup_metric = inference_worker.secondary_failures.labels("source_cleanup")
+    failures_before = cleanup_metric._value.get()
+
+    def remove(keys):
+        removed.extend(keys)
+        if cleanup_fails:
+            raise RuntimeError("private storage error")
+
     monkeypatch.setattr(
         inference_worker, "put_bytes", lambda *args: stored.append(args)
     )
     monkeypatch.setattr(
-        inference_worker, "remove_objects", lambda keys: removed.extend(keys)
+        inference_worker, "remove_objects", remove
     )
     redis = FakeRedis()
 
@@ -111,6 +120,7 @@ async def test_worker_persists_wrinkle_response(monkeypatch) -> None:
     assert analysis.result["artifacts_expires_at"]
     assert len(stored) == 2
     assert removed == [analysis.object_key]
+    assert cleanup_metric._value.get() == failures_before + int(cleanup_fails)
     assert redis.jobs[0][0][0] == "expire_analysis_artifacts"
     assert analysis.error_category is None
     assert analysis.completed_at is not None

@@ -13,6 +13,7 @@ function load(relative, overrides = {}) {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   new Function("require", "module", "exports", source)(name => {
+    if (name === "@/lib/backend-fetch") return { backendFetch: (...args) => globalThis.fetch(...args) };
     if (Object.hasOwn(overrides, name)) return overrides[name];
     if (name === "@/lib/daily-health-session") return load("../src/lib/daily-health-session.ts");
     return require(name);
@@ -67,8 +68,8 @@ test("only capture and sign-in flows allow guests; member pages and APIs verify 
   let calls = 0;
   global.fetch = async () => { calls++; throw new Error("Guests must not contact the backend"); };
   for (const path of ["/capture", "/capture/", "/capture#products", "/login", "/signup",
-    "/api/analysis", "/api/analysis/recommendations", "/api/auth/login", "/api/auth/signup",
-    "/api/auth/logout", "/admin/products", "/api/admin/session", "/api/admin/products"]) {
+    "/api/analysis", "/api/analysis/recommendations", "/api/health", "/api/auth/login", "/api/auth/signup",
+    "/api/auth/logout", "/admin", "/admin/products", "/api/admin/session", "/api/admin/products", "/api/admin/uv", "/api/admin/wrinkle"]) {
     assert.equal((await proxy(request(path))).headers.get("x-middleware-next"), "1", path);
   }
   for (const path of ["/", "/clients", "/trend", "/profile", "/onboarding/health?edit=1",

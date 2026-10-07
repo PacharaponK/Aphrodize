@@ -32,6 +32,9 @@ async def delete_user_images(user_id: UUID, session: AsyncSession = Depends(get_
     await session.commit()
     try:
         await delete_user_annotations(session, user_id)
+        from backend.services.wrinkle_datasets import cleanup_datasets
+
+        await cleanup_datasets(session)
     except Exception as error:
         raise HTTPException(
             status_code=503, detail="Annotation deletion is pending; retry"

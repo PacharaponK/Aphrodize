@@ -23,7 +23,7 @@ export default function PortalPage() {
     { name: "MinIO Console", description: "จัดการ buckets ภาพ และไฟล์ artifacts", href: serviceUrl(process.env.PORTAL_MINIO_URL), Icon: FolderOpen, unavailable: "ยังไม่ได้ตั้งค่าทางเข้า Console" },
     { name: "MLflow", description: "ดู experiments, training runs และ model artifacts", href: serviceUrl(process.env.PORTAL_MLFLOW_URL), Icon: FlaskConical, unavailable: "ยังไม่ได้เปิดทางเข้า MLflow บน VM" },
     { name: "Grafana", description: "ดูสถานะระบบ metrics, logs และการแจ้งเตือน", href: "/grafana/", Icon: Gauge },
-    { name: "Product admin", description: "ตรวจทานและจัดการแคตตาล็อกผลิตภัณฑ์", href: "/admin/products", Icon: Store },
+    { name: "Product admin", description: "ตรวจทานและจัดการแคตตาล็อกผลิตภัณฑ์", href: "/admin", Icon: Store },
   ];
 
   return (

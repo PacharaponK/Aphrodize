@@ -21,12 +21,12 @@ docker compose exec -T api python /app/scripts/refresh_uv_forecast.py
 ```
 
 API ที่มี Basic authentication: `GET /api/v1/uv/map?day=today|tomorrow&source=api|model`
-Browser ใช้ Next.js `/api/uv/map` ซึ่งเก็บ credentials บน server เท่านั้น
+เบราว์เซอร์ใช้ Next.js `/api/uv/map` ซึ่งเก็บ credentials บน server เท่านั้น
 API คืน 77 รายการในโหมด API หรือ 3 รายการในโหมดโมเดล พร้อมสถานะรายจังหวัดแม้ snapshot หาย ไม่มีโหมดผสม UI ล้างค่ารอบก่อนเมื่อสลับแหล่งและกลับไปเลือกกรุงเทพฯ ถ้าจังหวัดเดิมไม่อยู่ในสามพื้นที่โมเดล
 
 ตัวโหลด API ไม่อยู่ใน SVG component จึงสามารถใช้ข้อมูลจากแหล่งอื่นที่ตรง schema ได้ การเลือกวันไม่เกินช่วงสองวันที่โมเดลประเมินไว้
 
-## ใช้ component ซ้ำ
+## ใช้องค์ประกอบซ้ำ
 
 ทั้งสอง component มี stylesheet ในตัว:
 
@@ -58,7 +58,7 @@ SVG มี label/keyboard focus, Enter/Space สำหรับเลือก, 
 
 ชุดข้อมูลที่ดัดแปลงพร้อม SVG path พิกัดและรหัสจังหวัดดาวน์โหลดได้ที่ `/assets/uv-map-provinces.json` ภายใต้ ODbL รายละเอียดและ notice เต็มที่ `/assets/uv-map-data-license.txt` และ `frontend/src/components/uv/DATA-LICENSE.md` รหัสเป็น English slug ที่คงที่ ไม่ใช่รหัสจังหวัดราชการ
 
-Free hosted Open-Meteo สำหรับ non-commercial ต้องให้เครดิต CC BY 4.0 และเคารพ quota; การเปิดเชิงพาณิชย์ต้องใช้บริการที่อนุญาต ดู [terms](https://open-meteo.com/en/terms) และ [pricing](https://open-meteo.com/en/pricing) นับ quota ตาม location/ตัวแปร/ระยะเวลา ไม่สมมติว่าทั้ง batch นับเป็นหนึ่ง call
+บริการ Open-Meteo แบบโฮสต์ฟรีสำหรับการใช้ที่ไม่ใช่เชิงพาณิชย์ ต้องให้เครดิต CC BY 4.0 และเคารพ quota; การเปิดเชิงพาณิชย์ต้องใช้บริการที่อนุญาต ดู [terms](https://open-meteo.com/en/terms) และ [pricing](https://open-meteo.com/en/pricing) นับ quota ตาม location/ตัวแปร/ระยะเวลา ไม่สมมติว่าทั้ง batch นับเป็นหนึ่ง call
 
 ## ผลตรวจ
 
