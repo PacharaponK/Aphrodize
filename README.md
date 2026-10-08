@@ -2,6 +2,20 @@
 
 A privacy-first skin-tracking and ML workflow application: Next.js, FastAPI, PostgreSQL, Redis/ARQ workers, private MinIO storage, Label Studio, and MLflow. Model outputs are experimental and are not diagnoses or treatment predictions.
 
+## What you can run
+
+| Workflow | Available behavior | Additional setup |
+| --- | --- | --- |
+| Accounts and Daily Health | Sign in, record daily inputs, view calculated scores and experimental predictions | Base backend and frontend |
+| Face-image analysis | Consent, quality checks, queued wrinkle segmentation, private results | `ai` profile, verified weights, appropriate score-release policy |
+| Cosmetic recommendations | Match reviewed products to eligible profile/analysis information | Import the reviewed product catalog |
+| City UV forecasts and Thailand UV map | Read generated forecast/map snapshots | Prepare data, approved UV models, and fresh snapshots |
+| Annotation and model training | Human review, candidate training, explicit approval and rollback | AI services, separate consent, reviewed datasets, operator credentials |
+
+For the first local run, start with accounts and Daily Health. Enable image and UV
+workflows after their artifacts are prepared. The default Compose stack starts
+the backend services; the web client runs in a second terminal.
+
 ## Workspace guides
 
 | Section | Guide |
@@ -24,6 +38,20 @@ A privacy-first skin-tracking and ML workflow application: Next.js, FastAPI, Pos
 - Python 3.11 and `uv` for backend development/tests outside Docker. The optional AI research environment uses Python 3.9 via Conda and stays separate.
 
 ## 1. Configure the local stack
+
+If you do not already have a checkout:
+
+```powershell
+git clone https://github.com/PacharaponK/Aphrodize.git
+Set-Location Aphrodize
+```
+
+Otherwise, open PowerShell in the existing repository root. Check the tools:
+
+```powershell
+docker compose version
+node --version
+```
 
 Create `.env` only if it does not already exist:
 
@@ -68,16 +96,52 @@ Use `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` for MinIO and `LABEL_STUDIO_USERNAME`/
 
 ## 3. Start the web client
 
-Follow [frontend configuration](frontend/README.md) to create `frontend/.env.local` with backend credentials and a random session secret before using capture or account flows. Then:
+Keep the backend containers running. In a second PowerShell terminal at the
+repository root, install the frontend dependencies:
 
 ```powershell
 Set-Location frontend
 npm install --global pnpm@11.19.0 --ignore-scripts
 pnpm install --frozen-lockfile
+```
+
+Create `frontend/.env.local` (or `.env.local` from this terminal, which is now in
+`frontend/`). Replace the placeholders with your local values:
+
+```dotenv
+BACKEND_API_URL=http://127.0.0.1:8000
+BACKEND_API_USERNAME=aphrodize
+BACKEND_API_PASSWORD=<same API_PASSWORD as root .env>
+ANALYSIS_SESSION_SECRET=<random secret generated below>
+```
+
+Generate the session secret and paste its output into `ANALYSIS_SESSION_SECRET`:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Keep all four settings server-only; do not prefix them with `NEXT_PUBLIC_`.
+`BACKEND_API_URL` is the backend origin without `/api/v1`. If you enabled admin
+access, also add matching `ADMIN_USERNAME` and `ADMIN_PASSWORD` values to this
+file. See [frontend configuration](frontend/README.md) for deployment metadata
+and optional service-portal links.
+
+Start the web server from `frontend/`:
+
+```powershell
 pnpm dev
 ```
 
-Open <http://localhost:3000>. Accounts, Daily Health, capture/results, and recommendations connect to backend services. Image capture needs the AI profile and verified weights; UV pages need current forecast/map snapshots. Return to the repository root before subsequent Docker commands.
+Open <http://localhost:3000/login> and create an account, or load the optional
+demo account below. The dashboard at `/` requires an account session; capture
+also supports an explicit guest-consent flow. Image capture needs the AI profile
+and verified weights; UV pages need current forecast/map snapshots.
+
+Leave this terminal running for the web client. Run the following fixture and
+operations commands in the first terminal at the repository root. If using this
+terminal instead, stop the dev server with `Ctrl+C` and run `Set-Location ..`
+before Docker commands.
 
 ## 4. Optional demo account and catalog
 
