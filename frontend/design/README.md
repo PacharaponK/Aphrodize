@@ -1,32 +1,22 @@
-# Aphrodize UI wireframe
+# Frontend design references
 
-`aphrodize-ui-wireframe.svg` เป็นแนวทางหน้าบ้านสำหรับนำเข้า Figma หรือใช้เป็น reference ตอนทำ frontend. มี desktop dashboard และ mobile capture/result flows.
+These SVGs are historical visual references, not executable screens or a specification of current backend capabilities. Use [DESIGN.md](../DESIGN.md), nearby components, and the [frontend guide](../README.md) when implementing UI.
 
-## Information architecture
+## Open and reuse
 
-1. **Consent + capture** — แจ้งวัตถุประสงค์/การเก็บข้อมูล, questionnaire และ capture protocol ก่อน upload
-2. **Analysis result** — quality gate, acne-like spots, wrinkle score, region, confidence และ model version
-3. **Separated sources** — ใช้ส่วนที่ต่างกันสำหรับ `ตรวจพบจากภาพ`, `คุณรายงาน`, และ `คำแนะนำจากกฎ`
-4. **History** — trend ตามเวลาโดยตัดภาพที่ไม่ผ่าน quality gate ออก
-5. **Privacy controls** — เปลี่ยน consent และลบ original image, masks และ derived results ได้
+- [aphrodize-ui-wireframe.svg](aphrodize-ui-wireframe.svg): desktop dashboard and mobile capture/result concepts. Open in a browser or import into Figma.
+- [aphrodize-logo-concepts.svg](aphrodize-logo-concepts.svg): Contour A, Calm Orbit, and Protected Signal logo concepts.
 
-## Mobile states included
+Contour A explores a curved A/visual signal; Calm Orbit explores longitudinal observations; Protected Signal explores consent/privacy controls. They are concepts, not a requirement to replace the current logo.
 
-- Capture guide: checklist ก่อนเปิดกล้อง, consent version และ bottom navigation
-- Quality rejection: เหตุผลที่ตรวจได้และปุ่มถ่ายใหม่ โดยไม่สร้าง analysis/trend
-- Result detail: score/confidence/model version, deep link ไป mask overlay และ empty trend ที่ระบุว่าต้องมีภาพผ่านอย่างน้อย 2 ครั้ง
+## Apply to current flows
 
-## Content rules
+The wireframe explores consent/capture, quality rejection, results, history, and privacy controls. Some historical labels, including acne-like image observations, do not represent supported current inference. Verify against the implemented API before reusing copy or metrics.
 
-- ใช้ "ลักษณะคล้ายสิวที่ตรวจพบจากภาพ" และ "wrinkle score"; หลีกเลี่ยง diagnosis, age prediction หรือ claim ว่ารักษาได้
-- วาง confidence, quality limitation และ model version ใกล้ผลการวิเคราะห์
-- คำแนะนำต้องแสดง rule/version, source ที่ใช้ และสถานะ safety check
-- หาก image quality ต่ำหรือมี contraindication ให้แสดงเหตุผล/วิธีแก้ ไม่แสดง recommendation
+- Separate image-derived observations, user-reported information, and rule-based guidance.
+- Keep quality limitations, release/confidence status, and model version near results. Show unavailable/withheld states honestly.
+- Explain capture rejection and provide a retake action. Do not invent a score for rejected input.
+- Preserve explicit consent, deletion controls, accessible labels, keyboard navigation, and visible focus.
+- Avoid diagnosis, age-prediction, treatment-effect claims, or unsupported accuracy claims. Label prices and research results with their recorded provenance/date.
 
-## Logo concepts
-
-ดูตัวเลือกได้ที่ `aphrodize-logo-concepts.svg`:
-
-1. **Contour A** (แนะนำ) — A แบบเส้นโค้งซ้อน สื่อถึง tracking/visual signal ใช้เป็น app icon ได้ดี
-2. **Calm Orbit** — จุด observation และเส้นโคจร เหมาะกับ narrative เรื่อง longitudinal trend
-3. **Protected Signal** — privacy-first เหมาะใช้เป็นสัญลักษณ์ของ consent/data controls มากกว่าโลโก้หลัก
+For the running pages use `pnpm dev` in `frontend/`; the SVGs do not start an app. See [safety and governance](../../docs/project/Safety%20and%20Governance.md) for product constraints.

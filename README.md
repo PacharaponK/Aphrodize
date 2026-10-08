@@ -1,220 +1,145 @@
 # Aphrodize
 
-**A local MLOps platform for time-series and non-time-series model workflows.**
+A privacy-first skin-tracking and ML workflow application: Next.js, FastAPI, PostgreSQL, Redis/ARQ workers, private MinIO storage, Label Studio, and MLflow. Model outputs are experimental and are not diagnoses or treatment predictions.
 
-Aphrodize is a Docker Compose–based modular monolith for managing private data, annotation, asynchronous inference and training jobs, and experiment tracking. It provides the platform foundation; production model packages, datasets, checkpoints, and trained weights are intentionally out of scope for this repository.
+## Workspace guides
 
-> Current status: image analyses run the checked FFHQ-Wrinkle model through the inference worker. Generic time-series and tabular inference still fails safely with `model_not_deployed` until an approved MLflow model is integrated.
-
-## Included services
-
-| Service | Local address | Purpose |
-|---|---|---|
-| FastAPI | [http://localhost:8000/docs](http://localhost:8000/docs) | Versioned REST API and OpenAPI documentation |
-| PostgreSQL | Internal Compose network | Workflow metadata and application records through async SQLAlchemy |
-| Redis | Internal Compose network | Authenticated ARQ job queues |
-| MinIO API | [http://localhost:9000](http://localhost:9000) | Private application and MLflow object storage |
-| MinIO Console | [http://localhost:9001](http://localhost:9001) | Local object-storage administration |
-| Label Studio | [http://localhost:8080](http://localhost:8080) | Human-operated annotation UI; the local account comes from `.env` |
-| MLflow | [http://localhost:5000](http://localhost:5000) | Training-run and artifact tracking |
-| Inference worker | Internal Compose network | ARQ worker for inference jobs |
-| Trainer worker | Internal Compose network | ARQ worker for model-training jobs |
-
-The platform uses separate Redis queues for training and inference. MinIO buckets are initialized automatically when the stack starts.
-
-## Architecture
-
-```text
-Client
-  -> FastAPI API
-     -> PostgreSQL: consent, questionnaire, job metadata, results
-     -> MinIO: private source data, derived artifacts, MLflow artifacts
-     -> Redis / ARQ
-          -> inference worker
-          -> trainer worker -> MLflow
-     -> Label Studio SDK -> Label Studio
-```
-
-For data-flow detail, see the [architecture diagram](docs/architecture/diagrams/diagram.md).
+| Section | Guide |
+| --- | --- |
+| Web client, sessions, capture, recommendations, admin UI | [frontend](frontend/README.md) |
+| API, authentication, queues, database, fixtures | [backend](backend/README.md) |
+| Wrinkle models, CLI, research API, evaluation | [AI](ai/README.md) |
+| Daily Health baseline and model workspaces | [models](models/README.md) |
+| Datasets, weights, generated outputs | [storage](storage/README.md) |
+| Operational commands | [scripts](scripts/README.md) |
+| Container images and deployment configurations | [Docker](docker/README.md) |
+| Log exports | [logs](logs/README.md) |
+| Architecture, consent, training, deployment, monitoring | [documentation index](docs/README.md) |
 
 ## Requirements
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Docker Compose v2 enabled
-- PowerShell 5.1+ or PowerShell 7+ on Windows
-- Git, if cloning the repository
+- Docker Desktop with Linux containers and Docker Compose v2. Builds download images, packages, and a MediaPipe asset; allow network access and sufficient disk space.
+- PowerShell for the examples below. Run commands from the repository root unless a step says otherwise.
+- Node.js 24 and pnpm 11.19.0 for the web client, which runs separately from the default Compose stack.
+- Python 3.11 and `uv` for backend development/tests outside Docker. The optional AI research environment uses Python 3.9 via Conda and stays separate.
 
-You do not need Python installed to run the complete local Docker stack. Python 3.11+ is only required for local linting or tests outside Docker.
+## 1. Configure the local stack
 
-## Run locally
-
-### 1. Create local configuration
-
-Copy the example configuration. The `.env` file is ignored by Git, so credentials stay local.
+Create `.env` only if it does not already exist:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Open `.env` and set strong local values for these required secrets before starting:
+Edit `.env` before startup. Replace `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `MINIO_SECRET_KEY` (at least eight characters), `LABEL_STUDIO_PASSWORD`, `API_PASSWORD`, and `JWT_SECRET_KEY` with your own secrets. Keep them out of Git. In the base development Compose file, PostgreSQL is initialized as user/database `aphrodize`; keep those defaults. Changing `.env` passwords does not reset credentials inside existing database volumes.
 
-```dotenv
-POSTGRES_PASSWORD=replace-me
-REDIS_PASSWORD=replace-me
-MINIO_SECRET_KEY=replace-me
-LABEL_STUDIO_PASSWORD=replace-me
-API_PASSWORD=replace-me
+For administration, also set `ADMIN_USERNAME` and an `ADMIN_PASSWORD` of at least eight characters. Use credentials distinct from `API_USERNAME`/`API_PASSWORD` for model review.
+
+## 2. Start backend services
+
+For accounts and Daily Health without image processing:
+
+```powershell
+docker compose up -d --build
+docker compose ps --all
+curl.exe --fail http://localhost:8000/api/v1/health
 ```
 
-You may also change the matching usernames, plus `MINIO_ACCESS_KEY`, `LABEL_STUDIO_USERNAME`, and `API_USERNAME`. Keep the values in `.env`; do not commit this file.
-
-The image worker expects the FFHQ-Wrinkle runtime files under `storage/models/ffhq-wrinkle/`; see [ai/README.md](ai/README.md) for the required layout and checksums. Compose mounts this directory read-only.
-
-The project owner approved the deployed UNet checkpoint on 2026-10-01. To activate that reviewed release, set `APHRODIZE_WRINKLE_REVIEWED_POLICY=/app/ai/ffhq_wrinkle/reviewed_policy.json` in the local `.env`, then run `docker compose --profile ai up -d --no-deps inference-worker`. The [reviewed policy](ai/ffhq_wrinkle/reviewed_policy.json) pins the checkpoint hash and pipeline versions; a mismatch withholds scores. Manual release records `release_basis=manual_review`, an approval reference, and `calibration_status=not_calibrated` without inventing a validation dataset, sample count, or threshold. Image quality, consent, and product-allergy screening still apply. A statistically calibrated release instead uses `APHRODIZE_WRINKLE_POLICY_BUNDLE`; only one release source can be configured. New analyses use the active policy; saved results retain their original release metadata. In this local development stack, the inference worker mounts backend and AI source read-only; restart it after changing worker code.
-
-### 2. Build and start services
+For capture, annotation, and training, prepare the runtime weights in [AI setup](ai/README.md), then enable the AI services:
 
 ```powershell
 docker compose --profile ai up -d --build
+docker compose --profile ai ps --all
+.\scripts\check-health.ps1 -Profiles ai
 ```
 
-For local demos, run `docker compose run --rm fixture` to load the account, profile, daily-health consent, and two dated tracker entries in [`backend/fixtures/users.yaml`](backend/fixtures/users.yaml). This is optional and does not run during normal startup. The demo login is `demo@example.local` / `demo-password-123` at [http://localhost:3000/login](http://localhost:3000/login). Existing accounts are kept; repeated runs do not duplicate the profile or daily entries. Fixture entries use `data_source=fixture` and are excluded from user-model training.
+`minio-init` should exit with code `0`; it creates the private, annotation, and MLflow buckets. Other enabled services should remain running. Container health does not prove that weights or a confidence release are ready. `/api/v1/health` reports API liveness; the health script also checks authenticated readiness, which can fail when required dependencies are unavailable.
 
-Load only the real product catalog with `docker compose exec -T api python -m backend.scripts.load_fixtures --products /app/backend/fixtures/products.yaml` (running API required), or locally with `python -m backend.scripts.load_fixtures --products backend/fixtures/products.yaml`. The [product fixture](backend/fixtures/products.yaml) contains 18 reviewed products, including eight Thai variants with verified THB prices, exact Watsons purchase pages, and actual product photos. Manufacturer claims, INCI, application areas, pack sizes and retailer sources are documented in the [research notes](docs/research/thai-product-catalog-2026-10-01.md), reviewed on 2026-10-01. Prices are snapshots, exclude shipping, and may change at checkout. Unknown prices and shopping media remain unset. Import validates the complete batch and identifies products by source URL **and variant**; it preserves archived products and admin edits, filling missing shopping metadata only for an identical reviewed variant/formula. This command does not load users or change profiles.
+| Service | Local URL | Enabled by |
+| --- | --- | --- |
+| API docs | <http://localhost:8000/docs> | Base stack |
+| API liveness | <http://localhost:8000/api/v1/health> | Base stack |
+| MinIO API / console | <http://localhost:9000> / <http://localhost:9001> | `ai` profile |
+| Label Studio | <http://localhost:8080> | `ai` profile |
+| MLflow | <http://localhost:5000> | `ai` profile |
+| PostgreSQL / Redis / workers | Internal Compose network | Base / `ai` profile |
 
-Recommendation endpoints default to `market=TH`; `market=all` includes other reviewed markets. Named products require both a verified HTTPS purchase link and product photo; older catalog entries without shopping metadata remain stored but are excluded from named recommendations. Optional `max_price_satang` limits each product using only sourced prices checked within 30 days. The frontend sends these filters to the API and renders the returned product photo and purchase link without sample-data fallbacks. Adult wrinkle guidance requires released image regions and explicit label support for face or eye-contour application; users under 18 receive a three-step basic routine. Standardized `allergy_ingredients` supplement free-text history, but any reported allergy still withholds named products. Some basic-routine profile/category combinations, including oily or unsure skin and moderately sensitive combination skin, have no verified shopping-ready match in this snapshot; the UI shows this honestly rather than substituting an unsupported formula. Foreign-market formulas are explicitly marked; check the purchased package's ingredients.
+Use `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` for MinIO and `LABEL_STUDIO_USERNAME`/`LABEL_STUDIO_PASSWORD` for Label Studio. API operations use service Basic credentials, user Bearer tokens, or separate admin Basic credentials; check each operation in OpenAPI.
 
-Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
+## 3. Start the web client
 
-Daily Health predictions can be previewed without signing in. Saving entries, outcomes, consent changes, and data deletion require an account session; all saved daily records use that account's `user_id`.
-
-The `ai` profile starts MinIO and the inference worker required by `/capture`. Without it, account and health APIs can run, but image analysis cannot.
-
-Check the startup state:
-
-```powershell
-docker compose ps
-```
-
-`minio-init` is expected to finish with exit code `0`; it creates the `aphrodize-private`, `aphrodize-annotation`, and `mlflow` buckets. The remaining services should continue running.
-
-### 3. Verify the stack
-
-Run the repository health checker after the containers have started:
-
-```powershell
-.\scripts\check-health.ps1
-```
-
-It checks all expected containers, FastAPI, Label Studio, MinIO, MLflow, PostgreSQL readiness, authenticated Redis connectivity, and the completed MinIO bucket initializer. The command exits with code `1` if a required check fails.
-
-### 4. Open the local applications
-
-- FastAPI documentation: [http://localhost:8000/docs](http://localhost:8000/docs)
-- FastAPI health: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-- Label Studio: [http://localhost:8080](http://localhost:8080)
-- MinIO Console: [http://localhost:9001](http://localhost:9001)
-- MLflow: [http://localhost:5000](http://localhost:5000)
-
-All FastAPI routes except `/api/v1/health` require HTTP Basic authentication. Use the `API_USERNAME` and `API_PASSWORD` values from `.env`; the **Authorize** button in FastAPI Docs accepts these credentials. Sign in to Label Studio with `LABEL_STUDIO_USERNAME` and `LABEL_STUDIO_PASSWORD` from `.env`.
-
-## Run the web client
-
-The `frontend/` directory contains the Next.js web workspace and the skin-tracking UI prototype. It runs separately from the Docker Compose stack.
-
-Open a PowerShell window from the repository root:
+Follow [frontend configuration](frontend/README.md) to create `frontend/.env.local` with backend credentials and a random session secret before using capture or account flows. Then:
 
 ```powershell
 Set-Location frontend
+npm install --global pnpm@11.19.0 --ignore-scripts
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The capture and result pages connect to the local API; other pages remain a UI prototype. See [frontend/README.md](frontend/README.md) for the required environment variables and available routes.
+Open <http://localhost:3000>. Accounts, Daily Health, capture/results, and recommendations connect to backend services. Image capture needs the AI profile and verified weights; UV pages need current forecast/map snapshots. Return to the repository root before subsequent Docker commands.
 
-## Typical workflow
+## 4. Optional demo account and catalog
 
-1. Create a consent record with `POST /api/v1/consents`.
-2. Use the returned pseudonymous `user_id` to submit an image at `POST /api/v1/analyses/users/{user_id}`.
-3. Create generic training jobs at `POST /api/v1/training/runs` or inference jobs at `POST /api/v1/inference/runs`.
-4. Poll the corresponding run endpoint for its state.
-5. Use Label Studio for human-managed annotation. Add `LABEL_STUDIO_API_KEY` to `.env` only when the backend needs SDK access.
-
-To send only separately consented images to human wrinkle-mask review, set up the [annotation review project](docs/ai/Annotation-Review.md). Review images are staged in a private MinIO bucket and embedded in Label Studio tasks.
-
-For an approved external dataset, use the [controlled wrinkle training workflow](docs/ai/Curated-Training.md). New checkpoints remain candidates until separately approved and selected.
-
-The OpenAPI page documents request and response schemas for each API route.
-
-## Model workspace
-
-The repository reserves model-package directories without placing implementation code or model artifacts in them:
-
-```text
-models/
-├── time-series/
-│   ├── linear-model/
-│   └── non-linear-model/
-└── non-time-series/
-    └── u-net/
-```
-
-Do not commit datasets, checkpoints, weights, generated artifacts, or MLflow outputs. Store operational artifacts in MinIO through MLflow. See [models/README.md](models/README.md) for the policy.
-
-The supported platform model families are `time_series`, `tabular`, and `image_segmentation`. The `models/` paths are reserved workspace locations, not a claim that a deployable model is already present.
-
-## Logs
-
-Docker uses local log rotation for every service: 10 MB per file, retaining five files. The optional [observability stack](docs/observability.md) adds Prometheus, Grafana, Loki, Alloy and Discord alerts through `compose.observability.yml`; it is not enabled by the base Compose stack.
-
-Save a timestamped snapshot of all service logs:
+With the backend running:
 
 ```powershell
+docker compose --profile demo run --rm fixture
+```
+
+Sign in at <http://localhost:3000/login> with `demo@example.local` / `demo-password-123`. The [fixture](backend/fixtures/users.yaml) preserves existing accounts and avoids duplicate entries. Fixture health records are excluded from user-model training. Use this account only for local development.
+
+Load reviewed products separately:
+
+```powershell
+docker compose exec -T api python -m backend.scripts.load_fixtures --products /app/backend/fixtures/products.yaml
+
+# Optional additional reviewed wrinkle-care products.
+docker compose exec -T api python -m backend.scripts.load_fixtures --products /app/backend/fixtures/wrinkle-products-2026-10-07.yaml
+```
+
+These imports add products without users or profiles and preserve admin edits and archived products. Recommendations may withhold named products because of consent, release status, allergy history, or missing verified shopping metadata. Prices in the [base catalog research](docs/research/thai-product-catalog-2026-10-01.md) and [additional wrinkle-care review](docs/research/wrinkle-product-catalog-2026-10-07.md) are dated snapshots.
+
+## Model readiness
+
+- **Wrinkles:** weights are absent from Git. The default confidence policy withholds scores/recommendations. Select a matching reviewed policy or passed calibration bundle deliberately; see [AI setup](ai/README.md).
+- **Daily Health:** the committed baseline reproduces synthetic labels; its metrics do not establish real-user accuracy. Sleep and fluid-shortfall scores are calculations. User-data candidates need separate consent, evaluation, and admin approval; see the [model contract](models/time-series/non-linear-model/README.md).
+- **UV:** clone alone provides neither current snapshots nor approved models. Follow the [UV workflow](docs/uv-model-workflow.md) and [UV MLOps guide](docs/uv-mlops-report.md) before enabling `background` or `uv-training`.
+- **Generic jobs:** submitting time-series/tabular inference does not deploy an estimator; unsupported deployments fail with `model_not_deployed`.
+
+For human annotation, use the [Label Studio guide](docs/ai/Annotation-Review.md). For curated datasets and candidate deployment, use the [controlled training guide](docs/ai/Curated-Training.md). Training does not automatically publish a candidate.
+
+## Development checks
+
+From the repository root, use the locked Python 3.11 environment used by CI:
+
+```powershell
+uv sync --python 3.11 --locked --no-default-groups --group ci --no-install-package opencv-python
+uv run --no-sync python -m pytest
+uv run --no-sync ruff check backend tests
+```
+
+See the [frontend](frontend/README.md) and [AI](ai/README.md) guides for their checks. Do not combine the research PyTorch/NumPy environment with the backend environment.
+
+## Operations and troubleshooting
+
+```powershell
+# Inspect startup failures.
+docker compose --profile ai logs --tail 100 api inference-worker trainer-worker
+
+# Export a local snapshot or follow logs.
 .\scripts\export-logs.ps1
-```
-
-Stream recent logs from all services:
-
-```powershell
 .\scripts\export-logs.ps1 -Follow
-```
 
-Log snapshots are written under `logs/` and ignored by Git. You can also inspect a single service directly:
-
-```powershell
-docker compose logs --tail 200 api
-docker compose logs --tail 200 inference-worker
-docker compose logs --tail 200 trainer-worker
-```
-
-## Common commands
-
-```powershell
-# Stop containers while keeping the named volumes and their local data.
-docker compose down
-
-# Restart after a configuration or Compose change.
+# Apply environment changes and rebuild local services.
 docker compose --profile ai up -d --build
 
-# Follow one service's output.
-docker compose logs -f api
-
-# Run tests locally when Python 3.11+ and project dependencies are installed.
-python -m pytest
-
-# Run linting locally.
-ruff check .
+# Stop enabled services while retaining data volumes.
+docker compose --profile ai down
 ```
 
-To remove all local containers **and persisted PostgreSQL, Redis, MinIO, and Label Studio data**, run `docker compose down -v`. This is destructive and is only appropriate when you intentionally want a clean local environment.
+The API reloads mounted backend code in development; workers need a restart after source changes. Use `up -d` to apply changed environment variables. If capture stays queued, check the inference worker, Redis, MinIO, and weights. For `401`, check the credential type and matching frontend/backend settings; admin `503` can indicate missing or insufficient admin configuration. Resolve port conflicts or update both Compose and client URLs.
 
-## Safety and scope
+`docker compose --profile ai down -v` also deletes persisted database, queue, object-store, and annotation volumes. Use it only when intentionally discarding local data.
 
-- Aphrodize is an orchestration and MLOps foundation, not a medical device or diagnostic system.
-- It does not implement face recognition, age prediction, diagnosis, causal claims, or medical prescriptions. Product guidance matches reviewed cosmetic labels and application areas; it does not predict treatment effects. Face-inference data is not training data; the daily-health workflow can train review-only candidates only from separately consented, user-reported outcomes.
-- User data and artifacts are intended for private MinIO storage and must not be included in logs or committed to Git.
-- A reviewed, validated model artifact is required before inference can produce a result.
-- Centralized monitoring is opt-in; configure its private credentials, expected services and Discord channel before operational use. An independent external probe requires another host.
-
-## Further documentation
-
-- [Documentation guide](docs/README.md)
+The base stack is for development. Use the [VM](docs/deploy-vm.md), [GPU](docs/deploy-gpu.md), and [observability](docs/observability.md) guides for deployment. Monitoring is opt-in. Keep photos, health records, secrets, logs, and generated checkpoints private; analysis, annotation, and training consent are separate decisions.

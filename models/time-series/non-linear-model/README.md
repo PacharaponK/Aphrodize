@@ -1,32 +1,62 @@
-# Daily lifestyle score model
+# Daily Health score model
 
-This folder contains the inference code and source-controlled baseline artifact used by the Aphrodize daily-health API. The baseline Random Forest is a same-day tabular regressor, not a sequential model. Separately trained user-data candidates are one-day-ahead forecasters and are served only after explicit review and approval.
+This directory contains inference helpers and the committed synthetic baseline used by the Daily Health API. Its historical time-series folder name does not make the baseline a sequential model: it is a same-day multi-output Random Forest. Separately trained, approved user-data candidates can have a one-day prediction horizon.
 
-## Model contract
+## Run and verify
 
-- Family: multi-output `RandomForestRegressor` (non-linear).
-- Inputs: `sleep_duration_total_minutes`, full-day `water_intake_ml`, and `outdoor_exposure_choice` (choice code 1–4; not UV exposure).
-- Outputs: synthetic `thirst_score_0_10` and `skin_dryness_score_0_10` on a 0–10 scale.
-- Sleep score is calculated separately as `round(min(100, sleep_duration_total_minutes / 540 * 100), 1)`; inputs are accepted through 600 minutes (10 hours), while the score caps at 540 minutes (9 hours). This is an app-defined duration scale, not an ML output, age-adjusted medical score, or Zepp sleep-quality score.
-- The production prediction endpoint abstains outside the estimator's training domain: sleep 180–540 minutes and water 900–1,800 ml. Thus 541–600 minute inputs are accepted and receive the duration score, but thirst/dryness predictions remain unavailable until the estimator is retrained and validated for that range. `POST /api/v1/daily-health/predict/test` remains a separate test-only path that can expose explicitly flagged experimental estimator output out of domain.
-- Guidance is deterministic, individualized rule-based text using daily inputs and consented age, smoking, and menstrual context. It is not model output or a diagnosis; age-based sleep recommendations follow CDC public guidance.
-- The API exposes input-domain status, feature-specific reasons, and prediction status; physically invalid inputs are rejected by request validation instead of being clipped into range.
-- The API returns a three-tier daily attention summary (low, moderate, high) and a separate skin-care attention signal. These are experimental rule-based interpretations of synthetic scores and sleep duration, not probabilities, diagnoses, or model predictions.
-- Optional age band (no birth date) requires a separate age-guidance consent from smoking/menstruation personalization consent. It adjusts only the general sleep-duration comparison because guidance differs by age; smoking and menstruation context never change the attention level. If no age band is chosen, sleep advice remains age-neutral.
-- Next-day energy and thirst outputs remain insufficient_history until enough real user-reported outcomes are collected. Acne flare remains insufficient_data; no acne model is trained or claimed.
-- User-reported next-day energy and thirst labels are stored separately from predictions for future evaluation; synthetic labels do not establish real-user or clinical accuracy.
-- Approved user-trained candidates are loaded from `artifacts/user-candidates/<version-id>/` only when their registry status, feature/target contract, manifest, validation/test metrics, path, and model checksum all match. Inference responses identify the candidate and the one-day prediction horizon. If the active artifact fails any check, the API returns unavailable rather than silently switching to a different model.
-- Operators can review versions at `GET /api/v1/daily-health/model-versions`, promote with `PUT /api/v1/daily-health/model-deployment` plus an approval reason, inspect the active pointer at `GET /api/v1/daily-health/model-deployment`, and restore the previous model with `POST /api/v1/daily-health/model-deployment/rollback`. These endpoints are protected by backend API credentials; no candidate is deployed automatically.
-- Users can explicitly erase their account's daily entries, reported outcomes, profile context, consents, and user-trained candidate artifacts. Because candidate records do not keep per-user cohort membership, erasure conservatively invalidates every user-trained candidate and clears deployment, returning inference to the baseline. Imported CSV archive snapshots are not linked to account IDs; an operator must delete a whole snapshot by its SHA-256 fingerprint if needed.
+Start the backend using the [root guide](../../../README.md). Use the web dashboard for normal input, or open <http://localhost:8000/docs> and call `POST /api/v1/daily-health/predict` with service Basic credentials. Example JSON:
 
-## Artifact and provenance
+```json
+{
+  "local_date": "2026-10-08",
+  "sleep_hours": 7,
+  "sleep_minutes": 30,
+  "water_intake_ml": 1500,
+  "weight_kg": 60,
+  "outdoor_exposure_choice": 2
+}
+```
 
-Daily user-reported outcomes are accepted at PUT /api/v1/daily-health/users/{user_id}/outcomes and stored separately from predictions. Consent-gated profile context can be read or deleted at /api/v1/daily-health/users/{user_id}/profile.
+Use the date of the observation. `weight_kg` is optional; without it the fluid-shortfall score is unavailable. Personal age, smoking, menstrual, and skin-type context has separate consent requirements in the request schema. Previewing a prediction does not save an account record.
 
-`artifacts/daily_score_regression_v1/score_regressor.joblib` was trained on 1,083 synthetic rows from 20 synthetic users. It uses 300 trees and a 25%-user holdout split. `metrics.json` records the holdout metrics. Those metrics measure how well the model reproduces the synthetic label-generation rules; they do **not** establish clinical validity or real-user accuracy. Do not describe this artifact as medically validated. Replace or retrain it only after collecting consented, quality-checked user-reported target scores and evaluating on a separate user/time holdout.
+With the locked backend development environment installed, run from the repository root:
 
-Inference is loaded by `backend/libs/model_loader.py` and served at `POST /api/v1/daily-health/predict`; the `/predict/test` variant exists only for out-of-domain robustness experiments. The database stores predictions separately from user-reported outcomes; prediction values must never be reused as ground-truth labels. No accuracy claim is valid without matching real user-reported outcomes.
+```powershell
+uv run --no-sync python -m pytest tests/test_daily_score_model.py tests/test_daily_health.py tests/test_model_review_authorization.py
+```
 
-The estimator artifact was verified with scikit-learn 1.9.1 and joblib 1.6.0; the root project pins those versions because Python model serialization is version-sensitive. Retraining/replacing the artifact requires reviewing and updating the pins together.
+The backend loads this module through [model_loader.py](../../../backend/libs/model_loader.py); the hyphenated folder is not a normal Python package import path.
 
-The research trainer remains in `sandboxes/model/train_daily_score_regressors.py`; its default outputs remain sandbox-only. User-data candidates require a deliberate review of label provenance, validation and untouched test metrics, checksum, compatibility, and version ID. Metrics measure agreement with opted-in self-reports, not clinical accuracy.
+## Current output contract
+
+| Output | Source / limit |
+| --- | --- |
+| Sleep duration score | `round(min(100, total_sleep_minutes / 540 * 100), 1)`; accepts up to 600 minutes but caps at nine hours |
+| `thirst_score_0_10` | Calculated recorded-fluid shortfall: `round(10 * max(0, 1 - water_intake_ml / (weight_kg * 30)), 1)`; unavailable without weight or for the unsupported adolescent age band |
+| `skin_dryness_score_0_10` | Experimental estimator output; synthetic baseline does not establish real-user accuracy |
+| Attention/guidance | Deterministic rules and consented context, not model probabilities or diagnoses |
+| Next-day forecasts | Require sufficient real user-reported history and eligible reviewed models; otherwise remain unavailable |
+
+The fluid score is not measured thirst or dehydration. Sleep score is an app-defined duration scale, not sleep quality or an age-adjusted medical score. Smoking/menstrual context does not change the attention level. Acne forecasting remains insufficient-data; no acne model is claimed.
+
+Estimator inputs are sleep duration, full-day water intake, and outdoor-exposure choice code 1–4 (not UV exposure). Baseline training-domain bounds are sleep **180–540 minutes** and water **900–1,800 ml**. Valid requests outside that domain still receive eligible calculations but withhold estimator dryness output. `/predict/test` can expose explicitly flagged experimental out-of-domain output; it is for robustness evaluation, not normal product guidance. Invalid physical inputs are rejected rather than clipped into range.
+
+## Baseline provenance
+
+`artifacts/daily_score_regression_v1/score_regressor.joblib` was trained on 1,083 synthetic rows from 20 synthetic users, using 300 trees and a 25%-user holdout. [metrics.json](artifacts/daily_score_regression_v1/metrics.json) measures reproduction of synthetic label-generation rules. The serialized model has two historical targets; the current API computes the displayed fluid-shortfall score separately.
+
+The root project pins scikit-learn **1.9.1** and joblib **1.6.0** for artifact compatibility. Review those pins together with any baseline replacement. Load only trusted serialized artifacts. The research trainer is under local `sandboxes/` and is not part of a fresh clone.
+
+## User-data candidates and approval
+
+User-reported outcomes are stored separately from predictions. Predictions must never become ground-truth training labels. See the [training pipeline](../../../docs/lifestyle/Daily-Health-Training-Pipeline.md) for consent, import, training, and evidence requirements.
+
+Approved candidates under `artifacts/user-candidates/<version-id>/` require matching registry status, feature/target contract, manifest, validation/test metrics, path, and checksum. An invalid active artifact returns unavailable instead of silently switching models.
+
+Model review endpoints use **separate admin Basic credentials**, distinct from service API credentials:
+
+- `GET /api/v1/daily-health/model-versions`: inspect candidates.
+- `GET` / `PUT /api/v1/daily-health/model-deployment`: inspect or promote with an approval reason.
+- `POST /api/v1/daily-health/model-deployment/rollback`: restore the previous deployment.
+
+No candidate deploys automatically. Users can erase account health records, context, consents, and user-trained candidate artifacts. Because cohort membership is not tracked per candidate, erasure conservatively invalidates all user-trained candidates and clears deployment. Imported archive snapshots are not linked to account IDs; operators must delete the relevant whole snapshot by SHA-256 when needed.
