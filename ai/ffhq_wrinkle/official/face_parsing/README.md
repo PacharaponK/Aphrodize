@@ -11,5 +11,23 @@ The local `ai.ffhq_wrinkle.bisenet` implementation is adapted from
 - Checkpoint: upstream `79999_iter.pth` Google Drive artifact
 - License: MIT; preserved in `LICENSE.txt`
 
-The checkpoint is downloaded into the gitignored research-data tree by
-`python -m ai.scripts.prepare_phase2_data` and is verified before use.
+## Prepare the checkpoint
+
+Activate the [AI research environment](../../../README.md), then run from the
+repository root:
+
+```powershell
+python -m ai.scripts.prepare_phase2_data
+Get-FileHash -Algorithm SHA256 storage/models/ffhq-wrinkle/79999_iter.pth
+```
+
+The checkpoint is stored in the Git-ignored **model** tree at
+`storage/models/ffhq-wrinkle/79999_iter.pth`, not the dataset tree. The downloader
+verifies its size and SHA-256 before use, including when a file already exists.
+Expected SHA-256: `468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567`.
+
+This directory preserves provenance and licensing; it is not an independent
+inference service. Use the [AI pipeline](../../../README.md) to combine parsing
+with face detection, wrinkle inference, and quality checks. Network/download
+failures must be resolved before inference; an HTML download page is not a valid
+checkpoint.

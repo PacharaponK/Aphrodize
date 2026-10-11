@@ -1,34 +1,37 @@
-# เอกสาร Aphrodize
+# Aphrodize documentation
 
-ตรวจเทียบโค้ดวันที่ **6 ตุลาคม 2026 (Asia/Bangkok)** เริ่มรันระบบจาก [README หลัก](../README.md) สถานะในคู่มือหมายถึงสิ่งที่โค้ดรองรับ ไม่ยืนยันว่า deployment มีข้อมูลรับรอง ไฟล์โมเดล หรือข้อมูลสดพร้อมแล้ว
+Start with the [root quick start](../README.md). This index describes repository capabilities; it does not certify that a deployment has credentials, model files, or fresh data. README entry points are in English; some detailed reports retain their original Thai text.
 
-| ต้องการทำอะไร | คู่มือหลัก |
+## Find a workflow
+
+| Task | Guide |
 | --- | --- |
-| เข้าใจความสามารถและข้อจำกัดปัจจุบัน | [ผลิตภัณฑ์และขอบเขต](project/Product%20and%20Scope.md) |
-| ตรวจความยินยอม ความเป็นส่วนตัว และคำกล่าวอ้าง | [ความปลอดภัยและการกำกับดูแล](project/Safety%20and%20Governance.md) |
-| ดูภาพรวมและเส้นทางบริการ | [สถาปัตยกรรมขณะรัน](architecture/diagrams/diagram.md), [เส้นทางองค์ประกอบระบบ](architecture/Component-Flows.md) |
-| ตรวจโครงสร้างข้อมูลและบัญชี | [แผนภาพ ER ฐานข้อมูล](architecture/diagrams/database-er.md), [บัญชีและการยืนยันตัวตน](architecture/Auth-Account-Database-Design.md) |
-| รันการวิเคราะห์ภาพและเข้าใจ AI | [README ของ AI](../ai/README.md), [AI และข้อมูล](ai/AI%20and%20Data.md) |
-| ตั้งค่า annotation และฝึกโมเดลภาพ | [การตรวจ annotation](ai/Annotation-Review.md), [การฝึกด้วยข้อมูลที่คัดกรอง](ai/Curated-Training.md), [การตรวจโดยมนุษย์](ai/Human-Review.md) |
-| บันทึก Daily Health | [ขั้นตอนกรอกข้อมูล](lifestyle/Daily-Health-Input-Flow.md) |
-| แยกสูตร โมเดลอ้างอิง และพยากรณ์ | [สรุปโมเดลพฤติกรรมชีวิต](lifestyle/Lifestyle-Model-Summary.md) |
-| นำเข้า ฝึก เลื่อนรุ่น และลบข้อมูลสุขภาพ | [ขั้นตอนฝึกโมเดลสุขภาพรายวัน](lifestyle/Daily-Health-Training-Pipeline.md) |
-| ดูขอบเขตสิวที่ถอดออกและ API ล้างข้อมูล | [แนวทางรายงานสิว](lifestyle/Acne-Observation-Protocol.md) |
-| ดูพยากรณ์ UV และกฎผลิตภัณฑ์ | [การปฏิบัติงาน UV](uv-implementation.md), [ขั้นตอนโมเดล UV](uv-model-workflow.md) |
-| ใช้แผนที่ UV 77 พื้นที่ | [แผนที่ UV ประเทศไทย](uv-thailand-map.md) |
-| ดูแล UV candidate, เกณฑ์คุณภาพ และ rollback | [UV MLOps](uv-mlops-report.md) |
-| deploy VM และ GPU worker | [VM](deploy-vm.md), [GPU](deploy-gpu.md) |
-| ตั้งค่า CI การป้องกัน main และ release | [CI และการป้องกันสาขา](ci-main-protection.md), [CI/CD VM](cicd-vm.md) |
-| ดูงานที่ยังเหลือ | [งานคงเหลือ](roadmap.md) |
-| ตั้ง metric, log, dashboard และการแจ้งเตือน Discord | [การปฏิบัติงาน observability](observability.md) |
+| Understand features and limitations | [Product and scope](project/Product%20and%20Scope.md) |
+| Review consent, privacy, and claims | [Safety and governance](project/Safety%20and%20Governance.md) |
+| Inspect runtime architecture | [Runtime diagram](architecture/diagrams/diagram.md), [component flows](architecture/Component-Flows.md) |
+| Inspect database and accounts | [Database ER](architecture/diagrams/database-er.md), [authentication design](architecture/Auth-Account-Database-Design.md) |
+| Run image inference and understand AI | [AI README](../ai/README.md), [AI and data](ai/AI%20and%20Data.md) |
+| Configure annotation and image training | [Annotation review](ai/Annotation-Review.md), [curated training](ai/Curated-Training.md), [human review](ai/Human-Review.md) |
+| Enter Daily Health records | [Input flow](lifestyle/Daily-Health-Input-Flow.md) |
+| Distinguish calculations, baseline models, and forecasts | [Lifestyle model summary](lifestyle/Lifestyle-Model-Summary.md), [model contract](../models/time-series/non-linear-model/README.md) |
+| Import, train, promote, or delete health data | [Daily Health training pipeline](lifestyle/Daily-Health-Training-Pipeline.md) |
+| Understand removed acne scope and cleanup APIs | [Acne observation protocol](lifestyle/Acne-Observation-Protocol.md) |
+| Operate city UV forecasts and product rules | [UV operations](uv-implementation.md), [model workflow](uv-model-workflow.md) |
+| Use the 77-area Thailand UV map | [Map guide](uv-thailand-map.md) |
+| Review UV candidates, gates, and rollback | [UV MLOps](uv-mlops-report.md) |
+| Deploy the web VM and GPU workers | [VM deployment](deploy-vm.md), [GPU deployment](deploy-gpu.md) |
+| Configure CI, branch protection, and releases | [Main protection](ci-main-protection.md), [VM CI/CD](cicd-vm.md) |
+| Configure tool links | [Services portal](services-portal.md) |
+| Configure metrics, logs, dashboards, and Discord alerts | [Observability](observability.md) |
+| Find outstanding work | [Roadmap](roadmap.md) |
 
-## รายละเอียดเฉพาะทางและหลักฐานเดิม
+## Evidence and specialist references
 
-- ภาพและ MLOps: [เส้นทางข้อมูลภาพ](architecture/diagrams/ai-photo-data-flow.md), [เส้นทางการตรวจ](architecture/diagrams/ai-review-mlops-flow.md), [เส้นทางข้อมูลเข้า/ฝึก/ผลลัพธ์ทั้งหมด](architecture/diagrams/full-input-retraining-output-flow.md)
-- landmark/พื้นที่ริ้วรอย: [ROI](architecture/face-landmark-rois.md), [การพัฒนาการวัดพื้นที่ริ้วรอย](ai/implementation/Wrinkle-Area-Implementation.md)
-- ผลทดลอง: [สรุป FFHQ](ai/implementation/FFHQ-Wrinkle-Implementation-Summary.md), [EDA](ai/EDA.md), [ความเป็นไปได้ของข้อมูล UV](uv-data-feasibility.md)
-- ที่มารายการผลิตภัณฑ์: [บันทึกตรวจสินค้า 1 ตุลาคม 2026](research/thai-product-catalog-2026-10-01.md) ราคา/ฉลากเป็นข้อมูลวันที่ตรวจ ไม่ใช่ข้อมูลสด
+- Image/MLOps flows: [photo data](architecture/diagrams/ai-photo-data-flow.md), [review pipeline](architecture/diagrams/ai-review-mlops-flow.md), [input/training/output](architecture/diagrams/full-input-retraining-output-flow.md).
+- Landmarks and wrinkle regions: [ROI guide](architecture/face-landmark-rois.md), [area implementation](ai/implementation/Wrinkle-Area-Implementation.md).
+- Research evidence: [FFHQ implementation summary](ai/implementation/FFHQ-Wrinkle-Implementation-Summary.md), [EDA](ai/EDA.md), [UV data feasibility](uv-data-feasibility.md).
+- Product provenance: [catalog review dated 2026-10-01](research/thai-product-catalog-2026-10-01.md), [additional wrinkle-care review dated 2026-10-07](research/wrinkle-product-catalog-2026-10-07.md). Labels and prices reflect the recorded review, not live retailer data.
 
-แผนที่ซ้ำและข้อเสนอโครงสร้างข้อมูลเดิมรวมเข้าคู่มือที่เกี่ยวข้องและงานคงเหลือแล้ว อ่านต้นฉบับได้จากประวัติ Git เช่น `git log -- docs/` และ `git show <commit>:docs/<path>` รายงานผลทดสอบที่ลงวันที่เป็นหลักฐานรอบนั้น ไม่ใช่ผลตรวจรอบปัจจุบัน ไฟล์แผนภาพ `.dio`/PNG เป็นภาพออกแบบเดิม ให้ใช้ Mermaid และ ORM ตรวจระบบปัจจุบัน
+Dated test reports describe their recorded run, not current verification. Older `.dio`/PNG diagrams are design references; check Mermaid diagrams and ORM definitions for current behavior. Superseded documents remain available through `git log -- docs/` and `git show <commit>:docs/<path>`.
 
-เมื่อแก้ระบบ ให้แก้คู่มือหลักส่วนนั้นพร้อมลิงก์โค้ด ไม่สร้างรายงาน/แผนใหม่ที่เล่าความสามารถเดิมซ้ำ ตรวจ endpoint จาก OpenAPI และโครงสร้างข้อมูลจาก `backend/core/db/models.py` ก่อนใช้
+When changing behavior, update its primary guide and code references. Verify endpoints against OpenAPI and data structures against [database models](../backend/core/db/models.py). Link to existing guides instead of duplicating setup instructions.

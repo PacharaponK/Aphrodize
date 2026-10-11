@@ -25,3 +25,19 @@ Press `Ctrl+C` to stop following. This is equivalent to `docker compose logs --f
 Docker uses its local log driver with a 10 MB maximum file size and five retained files per container. Do not commit exported logs or add passwords, `.env` values, image payloads, personal data, or access tokens to application log messages.
 
 The export script captures local logs only. The optional [observability stack](../docs/observability.md) collects allowlisted JSON records from instrumented services into Loki and exposes dashboards/Discord alerts.
+
+## Inspect one service or another deployment
+
+Run from the repository root with Docker running:
+
+```powershell
+docker compose logs --tail 100 api
+docker compose --profile ai logs --tail 100 inference-worker trainer-worker
+```
+
+The export script uses the default Compose selection. To inspect a VM or another
+configuration, use its documented file/environment selection directly, for example
+`docker compose -f compose.vm.yml logs --tail 100 api`. A snapshot contains only
+logs still retained by Docker; it cannot recover rotated or deleted records.
+Exported snapshots have no automatic retention policy. Remove obsolete local
+snapshots deliberately after keeping any needed troubleshooting evidence.

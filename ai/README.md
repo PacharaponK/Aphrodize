@@ -1,142 +1,68 @@
-# Aphrodize AI — FFHQ-Wrinkle
+# Aphrodize AI: FFHQ-Wrinkle
 
-คู่มือสำหรับติดตั้งและใช้งานระบบตรวจพื้นที่ริ้วรอยจากภาพใบหน้าหนึ่งภาพ
-ทั้งผ่าน CLI และ FastAPI
+Preprocessing, face detection/parsing, wrinkle segmentation, evaluation, and confidence-release tools. Run commands from the repository root. Segmentation and derived scores are experimental, not clinical severity ratings.
 
-โมเดลหลักเป็นงานวิจัย FFHQ-Wrinkle สำหรับ segmentation ไม่ใช่ระบบวินิจฉัยโรค
-คะแนนที่ Aphrodize คำนวณเพิ่มไม่ใช่คะแนนทางคลินิก และค่าเริ่มต้นของ API จะ
-งดแสดงคะแนนจนกว่าจะมี confidence calibration ที่ผ่านเกณฑ์
+## Choose a runtime
 
-## สิ่งที่ได้หลัง clone repository
+| Goal | Runtime | Entry point |
+| --- | --- | --- |
+| Use the web application | Docker worker | [Root setup](../README.md), [GPU deployment](../docs/deploy-gpu.md) |
+| Analyze local images or reproduce research | Separate Conda environment below | `ai/scripts/predict_wrinkle.py` |
+| Exercise the synchronous research API | Same Conda environment | `backend.wrinkle.api:app` |
 
-Git repository มี:
+The research API is separate from the queued application API (`backend.main:app`). It has no application accounts, Redis jobs, or product-catalog integration. Both default to port 8000; the example below uses **8001** to avoid a conflict. Keep the research API bound to localhost.
 
-- source code สำหรับ preprocessing, inference และ evaluation
-- Conda environment specification
-- automated tests
-- model/dataset verification tools
-- confidence-calibration tools
+Git includes source, tests, verification tools, and environment specifications, but no FFHQ images or runtime weights. Image inference needs weights, not the FFHQ dataset. Official evaluation also needs the licensed dataset.
 
-Git repository **ไม่มี** model weights และ FFHQ dataset เนื่องจากไฟล์มีขนาดใหญ่
-และมีข้อจำกัดด้านสิทธิ์
+## Research environment
 
-การวิเคราะห์ภาพผู้ใช้ต้องมีเฉพาะ model weights ไม่ต้องมี dataset:
-
-```text
-source code + U-Net + BiSeNet + YuNet
-→ วิเคราะห์ภาพผู้ใช้ได้
-```
-
-Dataset จำเป็นเฉพาะเมื่อจะทำ official evaluation, texture reproduction หรือ
-งานวิจัยเพิ่มเติม
-
-## โครงสร้างที่เกี่ยวข้อง
-
-```text
-ai/
-├── ffhq_wrinkle/                       # reusable model/pipeline package
-├── scripts/                            # command-line tools
-├── tests/                              # unit/integration tests
-└── environment-ffhq-wrinkle.yml
-
-backend/
-├── wrinkle/                            # FastAPI adapter, service, schemas
-└── scripts/build_wrinkle_artifact.py
-
-storage/
-├── models/ffhq-wrinkle/                # local model weights; Git ignored
-├── data/ffhq-wrinkle/                  # optional research data; Git ignored
-└── artifacts/ffhq_wrinkle_phase*/      # generated results; Git ignored
-```
-
-Canonical paths อยู่ใน `ai/ffhq_wrinkle/paths.py` ไม่ควร hard-code ตำแหน่ง
-model หรือ dataset ซ้ำใน module อื่น
-
-## 1. สร้าง environment
-
-ต้องมี Conda หรือ Miniconda จากนั้นรันจาก repository root:
+Install Conda/Miniconda, then:
 
 ```powershell
 conda env create --file ai/environment-ffhq-wrinkle.yml
 conda activate ffhq-wrinkle
-```
-
-ตรวจ dependency:
-
-```powershell
 python -m pip check
 ```
 
-Environment นี้ใช้ Python 3.9 และตรึง dependency ให้ตรงกับ official
-FFHQ-Wrinkle implementation เท่าที่ทำได้
+This pins Python 3.9 and research dependencies. Keep it separate from the Python 3.11 backend environment. CUDA requires a compatible PyTorch build and driver; the environment file alone does not guarantee GPU support.
 
-## 2. เตรียม runtime models
+## Runtime models
 
-สร้าง layout ต่อไปนี้:
+Obtain the official Stage-2 U-Net checkpoint using the distribution references in [third-party provenance](ffhq_wrinkle/THIRD_PARTY.md), then place it here:
 
 ```text
 storage/models/ffhq-wrinkle/
-├── stage2_wrinkle_finetune_unet/
-│   └── stage2_unet.pth
+├── stage2_wrinkle_finetune_unet/stage2_unet.pth
 ├── 79999_iter.pth
 └── face_detection_yunet_2023mar.onnx
 ```
 
-หน้าที่ของแต่ละไฟล์:
-
-| ไฟล์ | หน้าที่ | SHA-256 |
-|---|---|---|
-| `stage2_unet.pth` | wrinkle segmentation | `883034b3e0726dcdae946c312106dfde1d354ea5455fa21cba045a73058f4a25` |
-| `79999_iter.pth` | BiSeNet face parsing | `468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567` |
-| `face_detection_yunet_2023mar.onnx` | face detection และ landmarks | `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4` |
-
-ดาวน์โหลดและตรวจสอบ BiSeNet/YuNet ด้วย scripts ที่มีให้:
+Download and verify the supporting models:
 
 ```powershell
 python -m ai.scripts.prepare_phase2_data
 python -m ai.scripts.prepare_phase3_data
 ```
 
-`stage2_unet.pth` ต้องได้มาจาก official FFHQ-Wrinkle checkpoint distribution
-แล้ววางตาม path ด้านบน ระบบจะตรวจขนาด, SHA-256 และ architecture ก่อนโหลด
+| File | Purpose | SHA-256 |
+| --- | --- | --- |
+| `stage2_unet.pth` | Segmentation | `883034b3e0726dcdae946c312106dfde1d354ea5455fa21cba045a73058f4a25` |
+| `79999_iter.pth` | BiSeNet parsing | `468e13ca13a9b43cc0881a9f99083a430e9c0a38abd935431d1c28ee94b26567` |
+| `face_detection_yunet_2023mar.onnx` | Face detection/landmarks | `8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4` |
 
-หากมี original archive ให้วางไว้ที่:
+Check the U-Net with `Get-FileHash -Algorithm SHA256 storage/models/ffhq-wrinkle/stage2_wrinkle_finetune_unet/stage2_unet.pth`. Canonical locations are defined in [paths.py](ffhq_wrinkle/paths.py).
 
-```text
-storage/models/ffhq-wrinkle/checkpoints.zip
-```
-
-แล้วตรวจ environment และ archive:
+If you have the original `storage/models/ffhq-wrinkle/checkpoints.zip`, verify it and the environment:
 
 ```powershell
 python -m ai.scripts.verify_phase0 --device auto
 ```
 
-ถ้ามีเฉพาะ extracted runtime models และไม่มี archive ใช้:
+Without the archive, `python -m ai.scripts.verify_phase0 --device auto --skip-checksums` checks the environment only; it does **not** verify extracted files. The prediction loader performs separate checkpoint checks. Optional SwinUNETR evaluation needs `stage2_wrinkle_finetune_swinunetr/stage2_swinunetr.pth` under the same model root, SHA-256 `b8f6a46c49d52f5725d0d79740d2c9508b4f8aa6400ea4fe0b27f7a6cd8bdd12`.
 
-```powershell
-python -m ai.scripts.verify_phase0 --device auto --skip-checksums
-```
+## Analyze an image
 
-### SwinUNETR แบบ optional
-
-หากต้องการใช้หรือประเมิน SwinUNETR เพิ่ม:
-
-```text
-storage/models/ffhq-wrinkle/
-└── stage2_wrinkle_finetune_swinunetr/
-    └── stage2_swinunetr.pth
-```
-
-SHA-256:
-
-```text
-b8f6a46c49d52f5725d0d79740d2c9508b4f8aa6400ea4fe0b27f7a6cd8bdd12
-```
-
-## 3. วิเคราะห์ภาพด้วย CLI
-
-รองรับ JPEG, PNG และ WebP โดยภาพต้องมีใบหน้าหนึ่งใบและผ่าน quality gate
+Use JPEG, PNG, or WebP with exactly one sufficiently large, well-lit, sharp, near-frontal face. Replace the example path with your own consented image:
 
 ```powershell
 python ai/scripts/predict_wrinkle.py `
@@ -146,158 +72,32 @@ python ai/scripts/predict_wrinkle.py `
   --output storage/artifacts/wrinkle_prediction
 ```
 
-ผลลัพธ์:
+Outputs include `result.json`, aligned/masked faces, texture maps, input/logit/probability arrays, `wrinkle_mask.png`, and `overlay.png`. Keep these private. Use a fresh directory; add `--overwrite` only to intentionally replace existing managed outputs.
 
-```text
-storage/artifacts/wrinkle_prediction/
-├── aligned_face.png
-├── face_mask.png
-├── masked_face.png
-├── texture_map.png
-├── model_input.npy
-├── wrinkle_logits.npy
-├── wrinkle_probability.npy
-├── wrinkle_probability.png
-├── wrinkle_mask.png
-├── overlay.png
-└── result.json
-```
+Devices are `auto`, `cpu`, and `cuda`; inspect result metadata for the actual device/fallback. Quality rejection can indicate missing/multiple faces, low resolution, blur, lighting, unreliable landmarks, pose, or invalid parsing regions. Retake the image instead of bypassing the gate.
 
-CLI จะไม่เขียนทับ output directory ที่ไม่ว่าง หากตั้งใจเขียนทับให้เพิ่ม:
+## Standalone research API
 
 ```powershell
---overwrite
+python -m uvicorn backend.wrinkle.api:app --host 127.0.0.1 --port 8001
 ```
 
-เลือก device ได้ด้วย `--device auto`, `--device cpu` หรือ `--device cuda`
-กรณีขอ CUDA แต่ PyTorch build ไม่มี CUDA ระบบ inference จะบันทึก CPU fallback
-ไว้ใน metadata
-
-Quality rejection มีสาเหตุได้ เช่น:
-
-- ไม่พบใบหน้า หรือพบมากกว่าหนึ่งใบหน้า
-- resolution/ขนาดใบหน้าต่ำเกินไป
-- ภาพมืด สว่าง หรือเบลอเกินเกณฑ์
-- landmark confidence ต่ำ
-- pose ต่างจากเงื่อนไขที่รองรับมากเกินไป
-- face parsing ให้พื้นที่ผิดปกติ
-
-## 4. เปิด FastAPI
-
-รันจาก repository root:
+In another terminal:
 
 ```powershell
-conda run -n ffhq-wrinkle python -m uvicorn backend.wrinkle.api:app `
-  --host 127.0.0.1 `
-  --port 8000
-```
-
-Health check:
-
-```powershell
-curl.exe http://127.0.0.1:8000/health
-```
-
-วิเคราะห์ภาพ:
-
-```powershell
-curl.exe -X POST http://127.0.0.1:8000/v1/wrinkle/analyze `
+curl.exe --fail http://127.0.0.1:8001/health
+curl.exe -X POST http://127.0.0.1:8001/v1/wrinkle/analyze `
   -F "image=@path/to/face.jpg" `
   -F "consent_accepted=true"
 ```
 
-API จำกัดไฟล์ไม่เกิน 10 MiB และรับเฉพาะ JPEG, PNG หรือ WebP
-raw probability map และ mask ถูกเก็บชั่วคราวระหว่าง request และไม่ถูกส่งเป็น
-permanent public URL
+Uploads are limited to 10 MiB and JPEG/PNG/WebP. Consent is required. Quality rejection returns `422`, unsupported media `415`, and oversized uploads `413`. Temporary outputs are not published as permanent public URLs. Open <http://127.0.0.1:8001/docs> for response schemas.
 
-### เหตุใด response เริ่มต้นเป็น `abstained`
+## Score release and calibration
 
-Default confidence policy มีสถานะ `not_calibrated` ดังนั้นแม้ segmentation
-สำเร็จ API จะตอบประมาณนี้:
+The default policy is `not_calibrated`. Successful segmentation can still return `status: "abstained"`, `derived_score: null`, and withheld recommendations.
 
-```json
-{
-  "status": "abstained",
-  "derived_score": null,
-  "recommendation_gate": {
-    "eligible": false,
-    "status": "withheld",
-    "reasons": ["confidence_not_calibrated"]
-  },
-  "recommendations": []
-}
-```
-
-พฤติกรรมนี้ตั้งใจไว้เพื่อไม่แสดงคะแนนหรือคำแนะนำที่ยังไม่มีหลักฐาน calibration
-กับผู้ใช้เป้าหมาย
-
-## 5. Automated tests
-
-รันทุก AI test:
-
-```powershell
-python -m unittest discover -s ai/tests -p "test_*.py"
-```
-
-Tests ที่ต้องใช้ model/data artifacts จะ skip เมื่อไฟล์ที่ได้รับอนุญาตยังไม่มี
-ส่วน unit tests ที่ไม่พึ่ง artifacts ยังรันได้ตามปกติ
-
-ตรวจ Python syntax:
-
-```powershell
-python -m compileall -q ai backend/wrinkle
-```
-
-## 6. Dataset สำหรับ evaluation — ไม่จำเป็นต่อ inference
-
-หากต้องการรัน official evaluation ต้องเตรียม:
-
-```text
-storage/data/ffhq-wrinkle/
-├── images1024x1024/
-├── masked_face_images/
-├── weak_wrinkle_masks/
-├── manual_wrinkle_masks/
-├── face-parsed-labels/
-├── test_file_lists.txt
-├── phase1_test_images.json
-└── License.txt
-```
-
-เตรียม FFHQ images ที่อยู่ใน official test list:
-
-```powershell
-python -m ai.scripts.prepare_phase1_data
-```
-
-คำสั่งนี้ต้องมี `storage/data/ffhq-wrinkle/test_file_lists.txt` ก่อน และจะ
-ดาวน์โหลดเฉพาะ FFHQ images ที่บันทึกใน test list พร้อมตรวจ integrity metadata
-
-รัน evaluation:
-
-```powershell
-python ai/scripts/evaluate_ffhq_wrinkle.py `
-  --network both `
-  --device cpu `
-  --output storage/artifacts/ffhq_wrinkle_evaluation
-```
-
-ผลประกอบด้วย Dice, IoU, precision, recall, false-positive area, latency,
-memory summaries และ TP/FP/FN examples
-
-## 7. Confidence calibration
-
-ห้ามใช้ official test set เลือก confidence threshold ต้องใช้ held-out
-target-user validation set ที่ได้รับ consent และแยกจาก training/test data
-
-Templates:
-
-```text
-ai/ffhq_wrinkle/validation_records.template.csv
-ai/ffhq_wrinkle/validation_manifest.template.json
-```
-
-Calibration CLI:
+Calibration requires a separately consented, held-out target-user validation set. Do not select thresholds using the official test set. Start with the [records](ffhq_wrinkle/validation_records.template.csv) and [manifest](ffhq_wrinkle/validation_manifest.template.json) templates:
 
 ```powershell
 python ai/scripts/calibrate_ffhq_wrinkle_confidence.py `
@@ -307,72 +107,54 @@ python ai/scripts/calibrate_ffhq_wrinkle_confidence.py `
   --output storage/artifacts/confidence-calibration-v1
 ```
 
-ผลลัพธ์:
+Review `candidate_confidence_policy.json` and `calibration_report.json`. Only a passed, matching bundle can be activated. For the research API, set this before starting Uvicorn:
+
+```powershell
+$env:APHRODIZE_WRINKLE_POLICY_BUNDLE = (Resolve-Path storage/artifacts/confidence-calibration-v1).Path
+```
+
+For Docker, use paths accessible inside the worker under a mounted directory. The owner-reviewed original release can be selected in root `.env` with `APHRODIZE_WRINKLE_REVIEWED_POLICY=/app/ai/ffhq_wrinkle/reviewed_policy.json`, then applied with:
+
+```powershell
+docker compose --profile ai up -d --no-deps inference-worker
+```
+
+This records manual approval and still reports `calibration_status=not_calibrated`; it is not statistical calibration. Do not set both release variables. The standalone research API reads only the bundle variable. Model/policy lineage mismatch withholds results. Candidate training, approval, deployment pointers, and rollback are covered in [curated training](../docs/ai/Curated-Training.md).
+
+## Official evaluation
+
+Prepare licensed research files under `storage/data/ffhq-wrinkle/`:
 
 ```text
-candidate_confidence_policy.json
-calibration_report.json
+images1024x1024/       masked_face_images/
+weak_wrinkle_masks/   manual_wrinkle_masks/
+face-parsed-labels/   test_file_lists.txt
+phase1_test_images.json
+License.txt
 ```
 
-หลัง policy ผ่าน review แล้วจึงตั้งค่าให้ API:
+With `test_file_lists.txt` present, `python -m ai.scripts.prepare_phase1_data` downloads the listed FFHQ images and verifies integrity metadata. Supply the other masks/labels from the authorized distribution. Then:
 
 ```powershell
-$env:APHRODIZE_WRINKLE_POLICY_BUNDLE = `
-  "C:\path\to\approved-policy-bundle"
+python ai/scripts/evaluate_ffhq_wrinkle.py `
+  --network UNet --device cpu `
+  --output storage/artifacts/ffhq_wrinkle_evaluation
 ```
 
-Service จะปฏิเสธ policy ที่ report ไม่ผ่านหรือ model/checkpoint/preprocessing
-lineage ไม่ตรงกับ inference runtime
+Use `--network both` only with both checkpoints. Reports include Dice, IoU, precision/recall, false-positive area, latency/memory, and error examples. Dataset results do not establish clinical validity or target-user accuracy.
 
-## 8. Troubleshooting
+## Checks and troubleshooting
 
-### `Stage-2 checkpoint not found`
-
-ตรวจว่ามีไฟล์:
-
-```text
-storage/models/ffhq-wrinkle/stage2_wrinkle_finetune_unet/stage2_unet.pth
-```
-
-### `BiSeNet checkpoint not found`
-
-รัน:
+In the Conda environment:
 
 ```powershell
-python -m ai.scripts.prepare_phase2_data
-```
-
-### YuNet model หาย
-
-รัน:
-
-```powershell
-python -m ai.scripts.prepare_phase3_data
-```
-
-### `output directory is not empty`
-
-เลือก output directory ใหม่ หรือเพิ่ม `--overwrite` เมื่อยืนยันว่าต้องการแทนที่
-managed artifacts เดิม
-
-### ขอ CUDA แต่ยังรัน CPU
-
-ตรวจ:
-
-```powershell
+python -m unittest discover -s ai/tests -p "test_*.py"
+python -m compileall -q ai backend/wrinkle
 python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
 ```
 
-Environment เดิมอาจติดตั้ง PyTorch CPU build ต้องติดตั้ง CUDA-compatible
-PyTorch build ที่ตรงกับ driver/environment แยกต่างหากก่อนใช้ GPU
+Artifact-dependent tests may skip without licensed files. Missing Stage-2 weights require installing the official checkpoint. Prepare missing BiSeNet/YuNet files using the supporting-model commands. A non-empty output error requires a fresh directory or deliberate `--overwrite`. Docker analysis also needs the AI profile, Redis, and MinIO; a Conda installation alone does not configure workers.
 
-## 9. License และข้อจำกัด
+## Provenance and consent
 
-- FFHQ-Wrinkle ระบุ CC BY-NC-SA 4.0
-- FFHQ images มี attribution/licensing รายภาพ
-- checkpoint และ derived artifacts ต้องผ่าน legal/license review ก่อนนำไปใช้
-  เชิงพาณิชย์หรือแจกจ่ายต่อ
-- ห้ามนำภาพผู้ใช้เข้าสู่ training/retraining โดยอัตโนมัติ
-- segmentation และ derived score ไม่ใช่ diagnosis หรือ clinical severity rating
-
-รายละเอียด provenance อยู่ที่ `ai/ffhq_wrinkle/THIRD_PARTY.md`
+See [THIRD_PARTY.md](ffhq_wrinkle/THIRD_PARTY.md), the [official snapshot](ffhq_wrinkle/official/README.md), and [BiSeNet provenance](ffhq_wrinkle/official/face_parsing/README.md). Preserve recorded notices and review applicable model/data/source rights before redistribution or commercial use. Never add user images to training automatically; analysis, annotation, and training have separate consent.

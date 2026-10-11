@@ -27,6 +27,13 @@ SHA-256 values below are calculated after LF normalization:
 
 ## Running the unchanged inference script
 
+Activate the separate Conda environment from [AI setup](../../README.md), and run
+from the repository root. Install the licensed dataset inputs and verified
+checkpoint first; none of these inputs is included in a fresh clone. This script
+expects an already masked RGB image and its aligned texture input. It does not
+perform the application's upload consent or face-quality workflow. For a normal
+user photo, use `ai/scripts/predict_wrinkle.py` from the AI guide instead.
+
 Run the script by file path so its absolute `unet` import resolves from this directory:
 
 ```powershell
@@ -41,3 +48,10 @@ python ai/ffhq_wrinkle/official/inference.py `
   --img_size 1024 `
   --output_dir storage/artifacts/ffhq_wrinkle_phase1/run
 ```
+
+Replace the sample ID with a matching image/texture pair you actually have.
+`--gpu_id 0` selects the visible CUDA device; the script falls back to CPU when
+CUDA is unavailable. Inspect the generated `*_mask` image in the output directory.
+Use a fresh output directory because the unchanged script can replace matching
+filenames. Preserve the upstream Python source and source-integrity records;
+application adaptations belong outside this snapshot.
