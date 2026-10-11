@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #FFFFFF;
+    }
+    svg {
+      width: 1920px;
+      height: 1080px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" style="background:#FFFFFF;">
+  <defs>
+    <!-- Arrow Markers -->
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0D9488" />
+    </marker>
+    <marker id="arrow-magenta" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#C2416E" />
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563EB" />
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#D97706" />
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7C3AED" />
+    </marker>
+    <marker id="arrow-purple-rev" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#7C3AED" />
+    </marker>
+
+    <!-- Base Font & Typography Styles -->
+    <style>
+      .font-sans { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .title { font-size: 34px; font-weight: 700; fill: #212529; }
+      .subtitle { font-size: 18px; font-weight: 400; fill: #64748B; }
+      .box-title { font-size: 17px; font-weight: 700; fill: #212529; }
+      .box-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+      .box-desc { font-size: 13px; font-weight: 400; fill: #4B5563; }
+      .port-tag { font-size: 12px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      .meta-label { font-size: 13px; font-weight: 500; fill: #64748B; }
+    </style>
+  </defs>
+
+  <!-- ========================================== -->
+  <!-- SLIDE CANVAS BACKGROUND                    -->
+  <!-- ========================================== -->
+  <rect width="1920" height="1080" fill="#FFFFFF" />
+
+  <!-- ========================================== -->
+  <!-- HEADER SECTION (Top-Left)                  -->
+  <!-- ========================================== -->
+  <g class="font-sans" transform="translate(80, 52)">
+    <!-- Small Category Pill -->
+    <rect x="0" y="0" width="146" height="24" rx="12" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+    <text x="73" y="16" text-anchor="middle" font-size="11" font-weight="700" fill="#2563EB" letter-spacing="0.8">INFRASTRUCTURE</text>
+
+    <!-- Title & Subtitle -->
+    <text x="0" y="58" class="title">Deployment: 2-machine architecture</text>
+    <text x="0" y="90" class="subtitle">VM runs web and data; GPU worker is separate, connected via SSH tunnel</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- LEFT: USER BOX & INGRESS                   -->
+  <!-- ========================================== -->
+  <g class="font-sans">
+    <!-- User Card: X=80, Y=265, W=150, H=125 -->
+    <rect x="80" y="265" width="150" height="125" rx="12" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5" />
+    
+    <!-- User Tag -->
+    <rect x="96" y="281" width="56" height="20" rx="4" fill="#E2E8F0" />
+    <text x="124" y="295" text-anchor="middle" font-size="10" font-weight="700" fill="#475569">CLIENT</text>
+
+    <!-- User Title & Labels -->
+    <text x="96" y="328" font-size="20" font-weight="700" fill="#212529">User</text>
+    <text x="96" y="352" font-size="12.5" font-weight="500" fill="#64748B">university network</text>
+    <text x="96" y="370" font-size="12.5" font-weight="500" fill="#64748B">/ VPN access</text>
+
+    <!-- Arrow from User to VM Caddy: from (230, 325) to (315, 325) -->
+    <line x1="230" y1="325" x2="312" y2="325" stroke="#0D9488" stroke-width="2" marker-end="url(#arrow-teal)" />
+    
+    <!-- Traffic Pill between User and VM -->
+    <rect x="238" y="297" width="68" height="20" rx="4" fill="#CCFBF1" stroke="#99F6E4" stroke-width="1"/>
+    <text x="272" y="311" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0F766E">:443 TLS</text>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- CENTER: VM (LINUX) · DOCKER COMPOSE        -->
+  <!-- ========================================== -->
+  <g class="font-sans">
+    <!-- Large Light-Blue Container: X=320, Y=160, W=920, H=735 -->
+    <rect x="320" y="160" width="920" height="735" rx="16" fill="#F0F7FF" stroke="#2563EB" stroke-width="1.5" />
+
+    <!-- Container Header -->
+    <g transform="translate(344, 180)">
+      <rect x="0" y="0" width="260" height="32" rx="6" fill="#DBEAFE" stroke="#BFDBFE" stroke-width="1" />
+      <circle cx="16" cy="16" r="4.5" fill="#2563EB" />
+      <text x="28" y="21" font-size="14" font-weight="700" fill="#1D4ED8" letter-spacing="0.3">VM (Linux) · Docker Compose</text>
+      
+      <!-- Sub-label on top-right of container -->
+      <text x="872" y="21" text-anchor="end" class="meta-label">Production Host · 172.30.81.237 · aphrodize.duckdns.org</text>
+    </g>
+
+    <!-- ======================================== -->
+    <!-- TOP ROW: 3 WHITE BOXES (Caddy -> Frontend -> API) -->
+    <!-- ======================================== -->
+    <!-- VM content left = 344, total width = 872 -->
+    <!-- 3 boxes of width 264 with 40px gaps: 264 + 40 + 264 + 40 + 264 = 872 -->
+    <g transform="translate(344, 235)">
+      <!-- 1. Caddy (HTTPS) Box: W=264, H=145 -->
+      <g transform="translate(0, 0)">
+        <rect x="0" y="0" width="264" height="145" rx="10" fill="#FFFFFF" stroke="#0D9488" stroke-width="1.75" />
+        <rect x="16" y="14" width="94" height="20" rx="4" fill="#CCFBF1" />
+        <text x="63" y="28" text-anchor="middle" class="box-badge" fill="#0F766E">TLS INGRESS</text>
+        <text x="16" y="58" class="box-title" fill="#0F766E">Caddy (HTTPS)</text>
+        <text x="16" y="83" class="box-desc">• Automatic TLS certificate</text>
+        <text x="16" y="103" class="box-desc">• HTTP :80 → HTTPS :443</text>
+        <text x="16" y="123" class="box-desc">• Reverse proxy & routing</text>
+        <rect x="186" y="14" width="62" height="20" rx="4" fill="#F0FDFA" stroke="#99F6E4" stroke-width="1"/>
+        <text x="217" y="28" text-anchor="middle" class="port-tag" fill="#0F766E">:80/:443</text>
+      </g>
+
+      <!-- Arrow Caddy -> Frontend: from (264, 72) to (304, 72) -->
+      <line x1="264" y1="72" x2="298" y2="72" stroke="#0D9488" stroke-width="1.75" marker-end="url(#arrow-teal)" />
+
+      <!-- 2. Frontend (Next.js) Box: X=304, W=264, H=145 -->
+      <g transform="translate(304, 0)">
+        <rect x="0" y="0" width="264" height="145" rx="10" fill="#FFFFFF" stroke="#C2416E" stroke-width="1.75" />
+        <rect x="16" y="14" width="86" height="20" rx="4" fill="#FCE7F3" />
+        <text x="59" y="28" text-anchor="middle" class="box-badge" fill="#9D174D">WEB CLIENT</text>
+        <text x="16" y="58" class="box-title" fill="#9D174D">Frontend (Next.js)</text>
+        <text x="16" y="83" class="box-desc">• React 19 UI & SSR</text>
+        <text x="16" y="103" class="box-desc">• Skin analysis web flow</text>
+        <text x="16" y="123" class="box-desc">• Session proxy & cookies</text>
+        <rect x="196" y="14" width="52" height="20" rx="4" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1"/>
+        <text x="222" y="28" text-anchor="middle" class="port-tag" fill="#9D174D">:3000</text>
+      </g>
+
+      <!-- Arrow Frontend -> API: from (568, 72) to (608, 72) -->
+      <line x1="568" y1="72" x2="602" y2="72" stroke="#2563EB" stroke-width="1.75" marker-end="url(#arrow-blue)" />
+
+      <!-- 3. API (FastAPI) Box: X=608, W=264, H=145 -->
+      <g transform="translate(608, 0)">
+        <rect x="0" y="0" width="264" height="145" rx="10" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.75" />
+        <rect x="16" y="14" width="94" height="20" rx="4" fill="#DBEAFE" />
+        <text x="63" y="28" text-anchor="middle" class="box-badge" fill="#1D4ED8">APPLICATION</text>
+        <text x="16" y="58" class="box-title" fill="#1D4ED8">API (FastAPI)</text>
+        <text x="16" y="83" class="box-desc">• Core REST API (`/api/v1`)</text>
+        <text x="16" y="103" class="box-desc">• JWT auth & consent check</text>
+        <text x="16" y="123" class="box-desc">• ARQ job enqueue & status</text>
+        <rect x="196" y="14" width="52" height="20" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+        <text x="222" y="28" text-anchor="middle" class="port-tag" fill="#1D4ED8">:8000</text>
+      </g>
+    </g>
+
+    <!-- Arrow down from API into Yellow Container -->
+    <!-- API box center X = 344 + 608 + 132 = 1084. API bottom Y = 235 + 145 = 380. Yellow top Y = 422 -->
+    <g transform="translate(1084, 380)">
+      <line x1="0" y1="0" x2="0" y2="35" stroke="#2563EB" stroke-width="1.75" marker-end="url(#arrow-blue)" />
+      <rect x="12" y="8" width="112" height="20" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1" />
+      <text x="68" y="22" text-anchor="middle" font-size="11" font-weight="600" fill="#1D4ED8">DB & Queue Calls</text>
+    </g>
+
+    <!-- ======================================== -->
+    <!-- LIGHT-YELLOW CONTAINER: DATA LAYER       -->
+    <!-- ======================================== -->
+    <!-- X=344, Y=422, W=872, H=448 -->
+    <g transform="translate(344, 422)">
+      <rect x="0" y="0" width="872" height="448" rx="12" fill="#FEFCE8" stroke="#D97706" stroke-width="1.5" />
+
+      <!-- Yellow Container Header -->
+      <g transform="translate(20, 16)">
+        <rect x="0" y="0" width="370" height="28" rx="6" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1" />
+        <circle cx="14" cy="14" r="4.5" fill="#D97706" />
+        <text x="26" y="19" font-size="13" font-weight="700" fill="#92400E">loopback only, not exposed to LAN</text>
+        
+        <text x="832" y="19" text-anchor="end" class="meta-label" fill="#B45309">compose.vm-worker-access.yml · 127.0.0.1</text>
+      </g>
+
+      <!-- Three Amber Outlined Boxes Side by Side -->
+      <!-- Width available = 872 - 40 = 832. 3 boxes: W=264 each, gaps: (832-792)/2 = 20 -->
+      <g transform="translate(20, 58)">
+        <!-- 1. MinIO (images/results): X=0, W=264, H=365 -->
+        <g transform="translate(0, 0)">
+          <rect x="0" y="0" width="264" height="365" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.75" />
+          <rect x="16" y="16" width="102" height="20" rx="4" fill="#FEF3C7" />
+          <text x="67" y="30" text-anchor="middle" class="box-badge" fill="#B45309">OBJECT STORAGE</text>
+          
+          <text x="16" y="62" class="box-title" fill="#92400E">MinIO</text>
+          <text x="16" y="82" font-size="14" font-weight="500" fill="#B45309">(images/results)</text>
+          
+          <line x1="16" y1="96" x2="248" y2="96" stroke="#FEF3C7" stroke-width="1.5" />
+          
+          <text x="16" y="122" class="box-desc">• S3-compatible API</text>
+          <text x="16" y="147" class="box-desc">• Uploaded selfie photos</text>
+          <text x="16" y="172" class="box-desc">• Inference output masks</text>
+          <text x="16" y="197" class="box-desc">• Heatmap visualizations</text>
+          <text x="16" y="222" class="box-desc">• Private bucket access</text>
+          <text x="16" y="247" class="box-desc">• Volume: minio_data</text>
+
+          <!-- Ports Footer Pill -->
+          <rect x="16" y="285" width="232" height="64" rx="6" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+          <text x="26" y="307" font-size="11.5" font-weight="600" fill="#92400E">VM Loopback Port:</text>
+          <text x="26" y="324" class="port-tag" fill="#92400E">127.0.0.1:9000</text>
+          <text x="26" y="340" font-size="11" font-weight="700" fill="#7C3AED">SSH Forwarded: :19000</text>
+        </g>
+
+        <!-- 2. PostgreSQL (data/accounts): X=284, W=264, H=365 -->
+        <g transform="translate(284, 0)">
+          <rect x="0" y="0" width="264" height="365" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.75" />
+          <rect x="16" y="16" width="94" height="20" rx="4" fill="#FEF3C7" />
+          <text x="63" y="30" text-anchor="middle" class="box-badge" fill="#B45309">RELATIONAL DB</text>
+          
+          <text x="16" y="62" class="box-title" fill="#92400E">PostgreSQL</text>
+          <text x="16" y="82" font-size="14" font-weight="500" fill="#B45309">(data/accounts)</text>
+
+          <line x1="16" y1="96" x2="248" y2="96" stroke="#FEF3C7" stroke-width="1.5" />
+          
+          <text x="16" y="122" class="box-desc">• PostgreSQL 16 Alpine</text>
+          <text x="16" y="147" class="box-desc">• User accounts & auth</text>
+          <text x="16" y="172" class="box-desc">• Explicit user consents</text>
+          <text x="16" y="197" class="box-desc">• Daily health logs</text>
+          <text x="16" y="222" class="box-desc">• Wrinkle score metrics</text>
+          <text x="16" y="247" class="box-desc">• Volume: postgres_data</text>
+
+          <!-- Ports Footer Pill -->
+          <rect x="16" y="285" width="232" height="64" rx="6" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+          <text x="26" y="307" font-size="11.5" font-weight="600" fill="#92400E">VM Loopback Port:</text>
+          <text x="26" y="324" class="port-tag" fill="#92400E">127.0.0.1:5432</text>
+          <text x="26" y="340" font-size="11" font-weight="700" fill="#7C3AED">SSH Forwarded: :15432</text>
+        </g>
+
+        <!-- 3. Redis (job queue): X=568, W=264, H=365 -->
+        <g transform="translate(568, 0)">
+          <rect x="0" y="0" width="264" height="365" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.75" />
+          <rect x="16" y="16" width="96" height="20" rx="4" fill="#FEF3C7" />
+          <text x="64" y="30" text-anchor="middle" class="box-badge" fill="#B45309">QUEUE & BROKER</text>
+          
+          <text x="16" y="62" class="box-title" fill="#92400E">Redis</text>
+          <text x="16" y="82" font-size="14" font-weight="500" fill="#B45309">(job queue)</text>
+
+          <line x1="16" y1="96" x2="248" y2="96" stroke="#FEF3C7" stroke-width="1.5" />
+          
+          <text x="16" y="122" class="box-desc">• Redis 7 Alpine</text>
+          <text x="16" y="147" class="box-desc">• ARQ job broker</text>
+          <text x="16" y="172" class="box-desc">• Asynchronous dispatch</text>
+          <text x="16" y="197" class="box-desc">• AI worker polling</text>
+          <text x="16" y="222" class="box-desc">• Task result cache</text>
+          <text x="16" y="247" class="box-desc">• Volume: redis_data</text>
+
+          <!-- Ports Footer Pill -->
+          <rect x="16" y="285" width="232" height="64" rx="6" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+          <text x="26" y="307" font-size="11.5" font-weight="600" fill="#92400E">VM Loopback Port:</text>
+          <text x="26" y="324" class="port-tag" fill="#92400E">127.0.0.1:6379</text>
+          <text x="26" y="340" font-size="11" font-weight="700" fill="#7C3AED">SSH Forwarded: :16379</text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- BETWEEN CENTER & RIGHT: SSH TUNNEL         -->
+  <!-- ========================================== -->
+  <!-- Yellow container right edge: 344 + 872 = 1216. Right container left: 1420. Gap = 204px -->
+  <g class="font-sans">
+    <!-- Purple Dashed Connection Line at Y=645 -->
+    <line x1="1216" y1="645" x2="1412" y2="645" stroke="#7C3AED" stroke-width="2.5" stroke-dasharray="8,6" marker-start="url(#arrow-purple-rev)" marker-end="url(#arrow-purple)" />
+    
+    <!-- SSH Tunnel Pill Label (Centered between 1216 and 1420: center = 1318) -->
+    <rect x="1263" y="616" width="110" height="28" rx="14" fill="#7C3AED" />
+    <text x="1318" y="635" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF" letter-spacing="0.4">SSH tunnel</text>
+
+    <!-- Caption Below -->
+    <g transform="translate(1318, 685)">
+      <text x="0" y="0" text-anchor="middle" font-size="12" font-weight="700" fill="#6D28D9">forwards DB / Redis /</text>
+      <text x="0" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="#6D28D9">MinIO ports</text>
+      
+      <rect x="-85" y="28" width="170" height="54" rx="6" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="1" />
+      <text x="0" y="44" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B5563">15432 → 5432 (DB)</text>
+      <text x="0" y="59" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B5563">16379 → 6379 (Redis)</text>
+      <text x="0" y="74" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B5563">19000 → 9000 (MinIO)</text>
+    </g>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- RIGHT: GPU MACHINE (WINDOWS)               -->
+  <!-- ========================================== -->
+  <g class="font-sans">
+    <!-- Light-Purple Rounded Container: X=1420, Y=160, W=420, H=735 -->
+    <rect x="1420" y="160" width="420" height="735" rx="16" fill="#FAF5FF" stroke="#7C3AED" stroke-width="1.5" />
+
+    <!-- Container Header -->
+    <g transform="translate(1440, 180)">
+      <rect x="0" y="0" width="380" height="32" rx="6" fill="#EDE9FE" stroke="#DDD6FE" stroke-width="1" />
+      <circle cx="16" cy="16" r="4.5" fill="#7C3AED" />
+      <text x="28" y="21" font-size="13" font-weight="700" fill="#6D28D9" letter-spacing="0.2">GPU machine (Windows)</text>
+      <text x="365" y="21" text-anchor="end" font-size="11" font-weight="700" fill="#7C3AED">ON-PREMISES</text>
+
+      <text x="0" y="52" font-size="14" font-weight="700" fill="#7C3AED">GTX 1660 SUPER · 6 GB VRAM</text>
+      <text x="380" y="52" text-anchor="end" class="meta-label">PyTorch 2.1.2</text>
+    </g>
+
+    <!-- Two Boxes: Models above Inference Worker -->
+    <g transform="translate(1440, 245)">
+      <!-- Box 1 (Top): Models: W=380, H=175 -->
+      <g transform="translate(0, 0)">
+        <rect x="0" y="0" width="380" height="175" rx="10" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.75" />
+        <rect x="16" y="14" width="112" height="20" rx="4" fill="#EDE9FE" />
+        <text x="72" y="28" text-anchor="middle" class="box-badge" fill="#6D28D9">OFFLINE WEIGHTS</text>
+
+        <text x="16" y="58" class="box-title" fill="#6D28D9">Models:</text>
+        <text x="16" y="78" font-size="15" font-weight="700" fill="#212529">YuNet, BiSeNet, U-Net</text>
+
+        <line x1="16" y1="92" x2="364" y2="92" stroke="#EDE9FE" stroke-width="1.5" />
+
+        <text x="16" y="114" class="box-desc">• <tspan font-weight="600" fill="#212529">YuNet:</tspan> Face & landmark ROI detection</text>
+        <text x="16" y="134" class="box-desc">• <tspan font-weight="600" fill="#212529">BiSeNet:</tspan> 19-class semantic face parse</text>
+        <text x="16" y="154" class="box-desc">• <tspan font-weight="600" fill="#212529">FFHQ U-Net:</tspan> Wrinkle segmentation</text>
+      </g>
+
+      <!-- Arrow down from Models to Inference Worker -->
+      <g transform="translate(190, 175)">
+        <line x1="0" y1="0" x2="0" y2="28" stroke="#7C3AED" stroke-width="1.75" marker-end="url(#arrow-purple)" />
+        <rect x="10" y="5" width="124" height="18" rx="3" fill="#EDE9FE" />
+        <text x="72" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="#6D28D9">Model Mount (/models)</text>
+      </g>
+
+      <!-- Box 2 (Bottom): Inference Worker: Y=207, W=380, H=420 -->
+      <g transform="translate(0, 207)">
+        <rect x="0" y="0" width="380" height="420" rx="10" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.75" />
+        <rect x="16" y="16" width="112" height="20" rx="4" fill="#EDE9FE" />
+        <text x="72" y="30" text-anchor="middle" class="box-badge" fill="#6D28D9">DOCKER WORKER</text>
+
+        <text x="16" y="60" class="box-title" fill="#6D28D9">Inference worker</text>
+        <text x="16" y="80" font-size="14" font-weight="500" fill="#7C3AED">(Docker, CUDA 11.8)</text>
+
+        <line x1="16" y1="94" x2="364" y2="94" stroke="#EDE9FE" stroke-width="1.5" />
+
+        <text x="16" y="122" class="box-desc">• CUDA 11.8 accelerated inference</text>
+        <text x="16" y="148" class="box-desc">• Polls ARQ job queue via SSH</text>
+        <text x="16" y="174" class="box-desc">• Downloads raw input from MinIO</text>
+        <text x="16" y="200" class="box-desc">• Crops ROI & runs wrinkle U-Net</text>
+        <text x="16" y="226" class="box-desc">• Computes regional wrinkle density</text>
+        <text x="16" y="252" class="box-desc">• Saves result masks back to MinIO</text>
+        <text x="16" y="278" class="box-desc">• Writes metrics & status into Postgres</text>
+
+        <!-- Network loopback target info -->
+        <rect x="16" y="315" width="348" height="85" rx="6" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="1" />
+        <text x="28" y="337" font-size="11.5" font-weight="700" fill="#6D28D9">Container Network Target:</text>
+        <text x="28" y="357" font-size="11" font-weight="500" fill="#4B5563">Connects via <tspan font-weight="600" fill="#7C3AED">host.docker.internal</tspan></text>
+        <text x="28" y="375" font-size="11" font-weight="500" fill="#4B5563">Target ports: :15432, :16379, :19000</text>
+        <text x="28" y="391" font-size="11" font-weight="500" fill="#64748B">Isolated: zero inbound ports exposed</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ========================================== -->
+  <!-- BOTTOM: SECURITY BAR                       -->
+  <!-- ========================================== -->
+  <g class="font-sans" transform="translate(80, 935)">
+    <!-- Light-Gray Rounded Bar -->
+    <rect x="0" y="0" width="1760" height="70" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5" />
+
+    <!-- Shield / Security Pill -->
+    <rect x="24" y="20" width="94" height="30" rx="6" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1" />
+    <path d="M 38 31 L 43 27 L 48 31 L 48 37 C 48 40.5 43 43 43 43 C 43 43 38 40.5 38 37 Z" fill="#64748B" />
+    <text x="56" y="40" font-size="12" font-weight="700" fill="#334155" letter-spacing="0.5">OPS & SEC</text>
+
+    <!-- Security Text -->
+    <text x="135" y="41" font-size="15" fill="#334155">
+      <tspan font-weight="700" fill="#0F172A">Security:</tspan> secrets in <tspan font-weight="600" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#0D9488">.env (mode 600)</tspan>, run <tspan font-weight="600" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#2563EB">pnpm audit</tspan> before launch, never use <tspan font-weight="700" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#C2416E">docker compose down -v</tspan>
+    </text>
+
+    <!-- Subtext note on right of the bar -->
+    <text x="1736" y="41" text-anchor="end" font-size="13" font-weight="500" fill="#64748B">Preserves persistent data & prevent token leaks</text>
+  </g>
+</svg>
+
+</body>
+</html>

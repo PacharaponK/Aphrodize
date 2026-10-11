@@ -24,7 +24,7 @@
 ## ข้อมูลและการฝึก
 
 - ภาพผู้ใช้ใช้ inference; annotation ต้องมีความยินยอมแยก การมี task ไม่อนุญาตให้ฝึก
-- ตัวฝึกภาพรับเฉพาะ dataset `external_licensed` ที่อนุมัติ มี manifest, แฮชไฟล์ tensor/mask ที่จัดแนว และชุดที่ไม่ซ้ำบุคคล ดู [การฝึกด้วยข้อมูลที่คัดกรอง](Curated-Training.md)
+- ตัวฝึกภาพรับ dataset ที่อนุมัติ 2 แหล่ง คือ `external_licensed` และ `consented_user_review` (ภาพผู้ใช้ที่มีความยินยอมฝึกแยกและยังไม่หมดอายุ) ต้องมี manifest, แฮชไฟล์ tensor/mask ที่จัดแนว และชุดที่ไม่ซ้ำบุคคล ดู [การฝึกด้วยข้อมูลที่คัดกรอง](Curated-Training.md) และรายละเอียดโมเดล/เทคนิคใน [โมเดลริ้วรอยและเทคนิคการฝึก](Wrinkle-Model-and-Training.md)
 - ที่มา/สัญญาอนุญาต FFHQ-Wrinkle และ dependency ของ checkpoint ดู [THIRD_PARTY](../../ai/ffhq_wrinkle/THIRD_PARTY.md) ผลชุดทดสอบทางการใน [สรุป FFHQ](implementation/FFHQ-Wrinkle-Implementation-Summary.md) ไม่ยืนยันความแม่นยำกับภาพผู้ใช้จริง
 - Daily Health ใช้ผลที่ผู้ใช้รายงานจริงภายใต้ความยินยอมฝึก ไม่ใช้ภาพหรือค่าทำนายเป็นป้ายกำกับ ดู [ขั้นตอนฝึกโมเดล](../lifestyle/Daily-Health-Training-Pipeline.md)
 - ถอดพยากรณ์สิวและ UI เก็บข้อมูลแล้ว ดู [ขอบเขต API เดิม](../lifestyle/Acne-Observation-Protocol.md)

@@ -46,6 +46,7 @@ data/
 
 # Generated FFHQ-Wrinkle pipeline outputs
 storage/artifacts/ffhq_wrinkle_phase*/
+storage/artifacts/ffhq_wrinkle_comparison*/prepared/
 
 # Experiment and runtime outputs
 sandboxes/
