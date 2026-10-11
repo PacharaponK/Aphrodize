@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useLanguage } from "../language-provider";
+import { UvSunscreens } from "./uv-sunscreens";
 import { ThailandUvMap, UV_LEVELS, provinceOptions, type UvProvince } from "./thailand-uv-map";
 
 type Day = "today" | "tomorrow";
@@ -36,6 +37,23 @@ export function UvMapExplorer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const dialogTitleId = useId();
+  const dialogDescriptionId = useId();
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (!dialogOpen) { dialog.close(); return; }
+    dialog.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; dialog.close(); };
+  }, [dialogOpen]);
+  function chooseProvince(id: string) {
+    setSelected(id);
+    setDialogOpen(true);
+  }
   useEffect(() => {
     const controller = new AbortController();
     fetch(`/api/uv/map?day=${day}&source=${source}`, { cache: "no-store", signal: controller.signal })
@@ -79,7 +97,7 @@ export function UvMapExplorer() {
         </button>)}
       </div>
       <div className="uv-map-select"><label htmlFor={selectId}>{t("เลือกจังหวัด", "Choose province")}</label>
-        <select id={selectId} value={selected} onChange={(event) => setSelected(event.target.value)}>
+        <select id={selectId} value={selected} onChange={(event) => chooseProvince(event.target.value)}>
           {options.map((p) => <option key={p.id} value={p.id}>{language === "en" ? p.name_en : p.name}</option>)}
         </select>
       </div>
@@ -94,7 +112,7 @@ export function UvMapExplorer() {
     </p>}
     <div className="uv-map-layout" aria-busy={loading}>
       <div className="uv-map-canvas uv-mission-canvas">
-        <ThailandUvMap missionView language={language} provinces={result?.provinces ?? []} selectedProvinceId={selected} onSelectProvince={setSelected} provinceIds={source === "model" ? modelIds : undefined} />
+        <ThailandUvMap missionView language={language} provinces={result?.provinces ?? []} selectedProvinceId={selected} onSelectProvince={chooseProvince} provinceIds={source === "model" ? modelIds : undefined} />
         <ul className="uv-map-legend" aria-label={t("ระดับ UV", "UV levels")}>
           {UV_LEVELS.map((entry) => <li key={entry.id}><span style={{ background: entry.color }} aria-hidden="true" />{language === "en" ? entry.name_en : entry.name} <small>{entry.range}</small></li>)}
           <li><span className="uv-map-no-data" aria-hidden="true" />{t("ไม่มีข้อมูล", "No data")}</li>
@@ -106,6 +124,7 @@ export function UvMapExplorer() {
           <p className="uv-map-value"><strong>{province.uv_index!.toFixed(1)}</strong><span>{t("UV ท้องฟ้าโปร่ง", "Clear-sky UV")} · {language === "en" ? level?.name_en : level?.name}</span></p>
           <p className="uv-map-advice">{province.uv_index! >= 8 ? t("หลีกเลี่ยงแดดช่วงเที่ยง และป้องกันด้วยร่มเงา เสื้อผ้า หมวก และกันแดด", "Avoid midday sun. Use shade, clothing, a hat and sunscreen for protection.") : province.uv_index! >= 3 ? t("หาที่ร่มช่วงเที่ยง และใช้เสื้อผ้า หมวก และกันแดดช่วยป้องกัน", "Seek shade around midday and use clothing, a hat and sunscreen for protection.") : t("หากอยู่กลางแจ้งนาน ให้ป้องกันแดดตามกิจกรรมของคุณ", "For longer outdoor activities, use sun protection appropriate to your activity.")}</p>
         </> : <p className="uv-map-empty">{loading ? t("กำลังโหลดค่าของจังหวัด", "Loading this province’s reading…") : province?.status === "stale" ? t("ข้อมูลเก่าเกินเกณฑ์ กรุณาลองโหลดใหม่ภายหลัง", "This reading is too old to use. Try refreshing later.") : t("ยังไม่มีค่า UV ที่พร้อมใช้สำหรับวันที่เลือก", "No UV reading is available for the selected day.")}</p>}
+        <button type="button" className="uv-sunscreen-open" onClick={() => setDialogOpen(true)}>{t("เลือกกันแดดให้เหมาะกับคุณ", "Find sunscreen for you")}</button>
         {province && <dl>
           <div><dt>{t("แหล่งข้อมูล", "Data source")}</dt><dd>{province.source === "local_model" ? t("โมเดล SARIMAX ของเรา", "Our SARIMAX model") : "Open-Meteo"}</dd></div>
           <div><dt>{t("ชนิดค่า", "Reading type")}</dt><dd>{province.aggregation === "solar_noon" ? t("ค่าพยากรณ์ ณ เที่ยงสุริยะ", "Solar-noon forecast") : t("ค่าสูงสุดรายวัน", "Daily maximum")}</dd></div>
@@ -119,6 +138,24 @@ export function UvMapExplorer() {
         {available && <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-protecting-against-skin-cancer" target="_blank" rel="noopener noreferrer">{t("แนวทางป้องกันแดดจาก WHO ↗", "WHO sun-protection guidance ↗")}</a>}
       </aside>
     </div>
+    <dialog ref={dialogRef} className="uv-map-dialog" aria-labelledby={dialogTitleId} aria-describedby={dialogDescriptionId}
+      onClose={(event) => { if (!event.currentTarget.open) setDialogOpen(false); }} onCancel={() => setDialogOpen(false)}
+      onClick={(event) => {
+        if (event.target !== event.currentTarget) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setDialogOpen(false);
+      }}>
+      <header className="uv-dialog-header">
+        <h2 id={dialogTitleId}>{t(`กันแดดสำหรับ${name ?? selected}`, `Sunscreens for ${name ?? selected}`)}</h2>
+        <button type="button" onClick={() => setDialogOpen(false)}>{t("ปิด", "Close")}</button>
+      </header>
+      <p id={dialogDescriptionId} className="uv-dialog-context">{day === "today" ? t("วันนี้", "Today") : t("พรุ่งนี้", "Tomorrow")}
+        {result && ` · ${new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Asia/Bangkok" }).format(new Date(`${result.date}T12:00:00+07:00`))}`}
+        {available ? ` · UV ${province.uv_index!.toFixed(1)} ${t("ท้องฟ้าโปร่ง", "clear-sky")} · ${language === "en" ? level?.name_en : level?.name}` : t(" · ค่า UV ยังไม่พร้อม", " · UV unavailable")}
+        {` · ${source === "model" ? t("โมเดลของเรา (ทดลอง)", "Our model (experimental)") : "Open-Meteo API"}`}
+      </p>
+      <UvSunscreens provinceName={name ?? selected} uv={available ? province.uv_index! : null} />
+    </dialog>
     <div className="uv-map-method">
       <p><strong>{source === "model" ? t("ผลทดลองจากโมเดลของเรา", "Experimental results from our model") : t("ค่าพยากรณ์จาก Open-Meteo API", "Forecasts from Open-Meteo API")}</strong> {source === "model" ? t("แสดงเฉพาะกรุงเทพฯ สงขลา และเชียงใหม่ เป็น UV ท้องฟ้าโปร่ง ณ เที่ยงสุริยะ โมเดลประเมินเทียบกับ TEMIS ยังไม่ได้ยืนยันกับ UV ที่วัดจริง", "Covers Bangkok, Songkhla and Chiang Mai only, with clear-sky UV at solar noon. Evaluated against TEMIS, not yet validated against measured UV.") : t("แสดงครบ 77 พื้นที่ เป็นค่าสูงสุดรายวันแบบท้องฟ้าโปร่งจากแหล่งเดียวกัน รวมทั้งกรุงเทพฯ สงขลา และเชียงใหม่", "Covers all 77 areas with clear-sky daily maximum values from one source, including Bangkok, Songkhla and Chiang Mai.")} {t("เลือกแหล่งข้อมูลได้จากปุ่มด้านบน ค่าระหว่างสองแหล่งยังไม่ผ่านการตรวจเทียบเพื่อใช้แทนกัน", "Select a source above. The two sources have not been validated as interchangeable.")}</p>
       <p>{t("ข้อมูล UV:", "UV data:")} <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo (CC BY 4.0)</a> {t("และ TEMIS/โมเดลของโครงการ · ขอบเขต:", "and TEMIS/project model · Boundaries:")} <a href="https://www.geoboundaries.org/api/current/gbOpen/THA/ADM1/" target="_blank" rel="noopener noreferrer">geoBoundaries / © OpenStreetMap contributors (ODbL)</a> · <a href="/assets/uv-map-provinces.json">{t("ดาวน์โหลดข้อมูลแผนที่ที่ดัดแปลง", "Download adapted map data")}</a> · <a href="/assets/uv-map-data-license.txt">{t("ที่มาและสิทธิ์ข้อมูล", "Sources and data license")}</a></p>

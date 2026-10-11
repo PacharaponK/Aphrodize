@@ -15,5 +15,6 @@ COPY --from=build /app/.venv /app/.venv
 COPY --from=build /app/backend /app/backend
 COPY --from=build /app/models /app/models
 COPY scripts /app/scripts
+COPY ai/ffhq_wrinkle/confidence.py ai/ffhq_wrinkle/reviewed_policy.json /app/ai/ffhq_wrinkle/
 EXPOSE 8000
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

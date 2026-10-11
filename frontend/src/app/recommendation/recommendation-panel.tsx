@@ -284,7 +284,7 @@ export function RecommendationPanel({ compact = false, source = "analysis", lang
       } : { cache: "no-store" })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
-        if (!guestAnswers && (body?.guest_profile_required || response.status === 401)) {
+        if (!guestAnswers && (body?.guest_profile_required || response.status === 401 || body?.blocked_reason === "profile_consent_required" || body?.questionnaire_context?.status === "missing")) {
           if (active) setGuest(true);
           return null;
         }

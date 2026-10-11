@@ -54,7 +54,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const origin = request.headers.get("origin");
-  if (origin && origin !== request.nextUrl.origin) return failed(403, "Invalid request origin");
+  const host = request.headers.get("host");
+  if (origin && (!host || origin !== `${request.nextUrl.protocol}//${host}`)) return failed(403, "Invalid request origin");
   if (Number(request.headers.get("content-length")) > 4096) return failed(413, "Profile is too large");
   try {
     const text = await request.text();
@@ -67,14 +68,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (budget !== null && (!/^\d+$/.test(budget) || Number(budget) > 100_000_000)) return failed(400, "Invalid product budget");
     const query = new URLSearchParams({ market });
     if (budget !== null) query.set("max_price_satang", budget);
+    const analysisId = request.nextUrl.searchParams.get("scope") === "analysis" ? currentAnalysis(request) : null;
+    const anonymous = request.cookies.get("aphrodize_anonymous")?.value;
+    const separator = anonymous?.indexOf(":") ?? -1;
+    const anonymousToken = anonymous && separator > 0 && UUID.test(anonymous.slice(0, separator))
+      && /^[\w.-]+$/.test(anonymous.slice(separator + 1)) ? anonymous.slice(separator + 1) : null;
+    const token = request.cookies.get(SESSION_COOKIE)?.value ?? anonymousToken;
+    if (request.nextUrl.searchParams.get("scope") === "analysis" && (!analysisId || !token)) {
+      return failed(401, "No active analysis in this browser");
+    }
     const username = process.env.BACKEND_API_USERNAME;
     const password = process.env.BACKEND_API_PASSWORD;
-    if (!username || !password) throw new Error("Backend credentials are not configured");
+    if (!analysisId && (!username || !password)) throw new Error("Backend credentials are not configured");
     const response = await fetch(
-      `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/analyses/recommendations/guest?${query}`,
+      `${process.env.BACKEND_API_URL ?? "http://127.0.0.1:8000"}/api/v1/analyses/${analysisId ? `${analysisId}/recommendations` : "recommendations/guest"}?${query}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}` },
+        headers: { "Content-Type": "application/json", Authorization: analysisId ? `Bearer ${token}` : `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}` },
         body: JSON.stringify(answers), cache: "no-store",
       },
     );

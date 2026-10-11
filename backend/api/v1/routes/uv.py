@@ -29,6 +29,13 @@ async def recommendation(
         result = load_recommendation(city)
     except ValueError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    result["products"] = (await sunscreen_products(session))[:5]
+    return result
+
+
+@router.get("/products")
+async def sunscreen_products(session: AsyncSession = Depends(get_session)) -> list[dict]:
+    # ponytail: bounded reviewed catalog; add pagination when it exceeds 500 items.
     products = (
         await session.scalars(
             select(Product)
@@ -41,18 +48,22 @@ async def recommendation(
                 Product.source_url.is_not(None),
             )
             .order_by(Product.brand, Product.name)
-            .limit(5)
+            .limit(500)
         )
     ).all()
-    result["products"] = [
+    return [
         {
             "brand": product.brand,
             "name": product.name,
+            "variant": product.variant,
+            "market": product.market,
             "spf": product.spf,
             "broad_spectrum": product.broad_spectrum,
             "water_resistant_minutes": product.water_resistant_minutes,
             "source_url": product.source_url,
+            "image_url": product.image_url,
+            "target_skin_types": product.target_skin_types,
+            "suitable_for_sensitive_skin": "sensitive-skin" in (product.concerns or []),
         }
         for product in products
     ]
-    return result

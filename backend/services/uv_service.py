@@ -21,7 +21,9 @@ def uv_level(value: float) -> str:
     return "extreme"
 
 
-def load_recommendation(city: str, now: datetime | None = None) -> dict:
+def load_recommendation(
+    city: str, now: datetime | None = None, *, target_date: date | None = None
+) -> dict:
     now = now or datetime.now(UTC)
     today = now.astimezone(ZoneInfo("Asia/Bangkok")).date()
     try:
@@ -43,7 +45,11 @@ def load_recommendation(city: str, now: datetime | None = None) -> dict:
         hours=8
     ):
         raise ValueError("UV forecast has not been refreshed in eight hours")
-    if not today - timedelta(days=1) <= data_date <= today:
+    target = target_date or today
+    if target_date is not None and target not in (today, today + timedelta(days=1)):
+        raise ValueError("Choose today or tomorrow")
+    oldest_data = target - timedelta(days=2 if target_date is not None else 1)
+    if not oldest_data <= data_date <= today:
         raise ValueError("TEMIS UV data are older than yesterday")
     if (
         not isinstance(days, list)
@@ -55,11 +61,19 @@ def load_recommendation(city: str, now: datetime | None = None) -> dict:
         )
     ):
         raise ValueError("UV forecast days are invalid")
-    if [entry["date"] for entry in days] != [
-        today.isoformat(),
-        (today + timedelta(days=1)).isoformat(),
-    ]:
-        raise ValueError("UV forecast dates do not match today and tomorrow")
+    if target_date is None:
+        expected_dates = [today.isoformat(), (today + timedelta(days=1)).isoformat()]
+    else:
+        # A fresh snapshot's second forecast remains valid after Bangkok midnight.
+        expected_dates = [
+            (data_date + timedelta(days=offset)).isoformat() for offset in (1, 2)
+        ]
+    if [entry["date"] for entry in days] != expected_dates:
+        raise ValueError("UV forecast dates do not match the evaluated two-day horizon")
+    if target_date is not None:
+        days = [entry for entry in days if entry["date"] == target_date.isoformat()]
+        if not days:
+            raise ValueError("UV forecast is unavailable for the selected date")
     for entry in days:
         value = entry["uv_index_clear_sky"]
         if (

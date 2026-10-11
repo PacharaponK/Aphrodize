@@ -1,0 +1,1884 @@
+{
+  "catalog_count": 29,
+  "eye_product_count": 8,
+  "cases": [
+    {
+      "case": "eligible_eye_5pct_dry_low",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_dry_medium",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_normal_low",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "Hyaluronic Acid Booster",
+            "HYALURON (3X)+ FILLER EYE CARE SPF 15"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        },
+        {
+          "rule": "R-MOIST-NORMAL-001",
+          "products": [
+            "PM Facial Moisturising Lotion"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_normal_medium",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "Hyaluronic Acid Booster",
+            "HYALURON (3X)+ FILLER EYE CARE SPF 15"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        },
+        {
+          "rule": "R-MOIST-NORMAL-001",
+          "products": [
+            "PM Facial Moisturising Lotion"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_combination_low",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream",
+            "Hyaluronic Acid Booster"
+          ]
+        },
+        {
+          "rule": "R-MOIST-COMBINATION-001",
+          "products": [
+            "Oil Control Moisturising Gel-Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": []
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_combination_medium",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream",
+            "Hyaluronic Acid Booster"
+          ]
+        },
+        {
+          "rule": "R-MOIST-COMBINATION-001",
+          "products": []
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": []
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_oily_low",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "Hyaluronic Acid Booster",
+            "HYALURON (3X)+ FILLER EYE CARE SPF 15"
+          ]
+        },
+        {
+          "rule": "R-CLEANSE-OILY-001",
+          "products": []
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": []
+        }
+      ]
+    },
+    {
+      "case": "eligible_eye_5pct_oily_medium",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "Hyaluronic Acid Booster",
+            "HYALURON (3X)+ FILLER EYE CARE SPF 15"
+          ]
+        },
+        {
+          "rule": "R-CLEANSE-OILY-001",
+          "products": []
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": []
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_0/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_100/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 20.0,
+            "wrinkle_pixels": 100,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.01,
+            "visible_area_band": "low",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_165/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 33.0,
+            "wrinkle_pixels": 165,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.0165,
+            "visible_area_band": "medium",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": true
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_181/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 36.2,
+            "wrinkle_pixels": 181,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.0181,
+            "visible_area_band": "medium",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": true
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_182/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 36.4,
+            "wrinkle_pixels": 182,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.0182,
+            "visible_area_band": "medium",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_200/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 40.0,
+            "wrinkle_pixels": 200,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.02,
+            "visible_area_band": "medium",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_335/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 67.0,
+            "wrinkle_pixels": 335,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.0335,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": true
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_boundary_1000/10000",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 1000,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.1,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "forehead_only",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "forehead",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-FACE-001",
+          "products": [
+            "Pro-Collagen Peptide Plumping Moisturizer",
+            "Hyaluronic Acid Booster",
+            "HYALU B5 SERUM"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "eye_and_forehead",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 1000,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "forehead",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          },
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.1,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-WRINKLE-FACE-001",
+          "products": [
+            "Pro-Collagen Peptide Plumping Moisturizer",
+            "Hyaluronic Acid Booster",
+            "HYALU B5 SERUM"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "gate_withheld",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "withheld",
+        "reason": "wrinkle_confidence_not_released"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "low_quality",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "withheld",
+        "reason": "image_quality_below_threshold"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "under_18",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-YOUTH-CLEANSE-001",
+          "products": [
+            "Hydrating Facial Cleanser"
+          ]
+        },
+        {
+          "rule": "R-YOUTH-MOIST-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-YOUTH-SUN-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "age_missing",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "sensitivity_high",
+      "status": "safety_blocked",
+      "blocked_reason": "reported_high_sensitivity",
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null
+      },
+      "recommendations": []
+    },
+    {
+      "case": "allergy_reported",
+      "status": "safety_blocked",
+      "blocked_reason": "reported_allergy",
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null
+      },
+      "recommendations": []
+    },
+    {
+      "case": "budget_500_baht",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": []
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "budget_1000_baht",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": null,
+        "regions": {
+          "image_right_periocular": {
+            "score": 100,
+            "wrinkle_pixels": 500,
+            "evaluated_pixels": 10000
+          },
+          "forehead": {
+            "score": 0.0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10000
+          }
+        },
+        "score_version": "audit-synthetic-v1",
+        "roi_version": "audit-synthetic-v1",
+        "model_version": "audit-synthetic-v1",
+        "calibration_version": "audit-synthetic-v1",
+        "release_basis": "calibration",
+        "approval_reference": null,
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Mineral 89 Eyes Serum"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "live_image_hero",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "withheld",
+        "reason": "wrinkle_confidence_not_released"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "counterfactual_gate_only_hero",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": {
+          "score": 4.3751,
+          "severity_label": "low_visible_area",
+          "wrinkle_area_ratio": 0.002187527344091801,
+          "wrinkle_pixels": 700,
+          "evaluated_pixels": 319996,
+          "score_version": "aphrodize-wrinkle-area-v1",
+          "roi_version": "mediapipe-landmark-skin-roi-v1"
+        },
+        "regions": {
+          "forehead": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 55568,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "glabella": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 6645,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "nasolabial": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 10707,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_left_periocular": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 7296,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_right_periocular": {
+            "score": 100,
+            "severity_label": "high_visible_area",
+            "wrinkle_area_ratio": 0.05444743935309973,
+            "wrinkle_pixels": 404,
+            "evaluated_pixels": 7420,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "perioral": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 22688,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_left_cheek": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 4371,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_right_cheek": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 4333,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          }
+        },
+        "score_version": "aphrodize-wrinkle-area-v1",
+        "roi_version": "mediapipe-landmark-skin-roi-v1",
+        "model_version": "ffhq-wrinkle-inference-v1",
+        "calibration_version": null,
+        "release_basis": "manual_review",
+        "approval_reference": "project-owner-authorization:2026-10-02:complete-remaining-prototype",
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "image_right_periocular",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.05444743935309973,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-EYE-001",
+          "products": [
+            "Intensive Moisture Care Moisture Repair Eye Cream",
+            "Pro-Collagen Peptide Firming Eye Serum",
+            "C5 Super Boost Eye Cream"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "live_image_hopper",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "withheld",
+        "reason": "wrinkle_confidence_not_released"
+      },
+      "recommendations": [
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "counterfactual_gate_only_hopper",
+      "status": "ready",
+      "blocked_reason": null,
+      "image_context": {
+        "status": "eligible",
+        "overall": {
+          "score": 63.0202,
+          "severity_label": "medium_visible_area",
+          "wrinkle_area_ratio": 0.03151012400236195,
+          "wrinkle_pixels": 6617,
+          "evaluated_pixels": 209996,
+          "score_version": "aphrodize-wrinkle-area-v1",
+          "roi_version": "mediapipe-landmark-skin-roi-v1"
+        },
+        "regions": {
+          "forehead": {
+            "score": 14.7834,
+            "severity_label": "low_visible_area",
+            "wrinkle_area_ratio": 0.007391715869653401,
+            "wrinkle_pixels": 328,
+            "evaluated_pixels": 44374,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "glabella": {
+            "score": 12.8374,
+            "severity_label": "low_visible_area",
+            "wrinkle_area_ratio": 0.0064186965108624094,
+            "wrinkle_pixels": 39,
+            "evaluated_pixels": 6076,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "nasolabial": {
+            "score": 100,
+            "severity_label": "high_visible_area",
+            "wrinkle_area_ratio": 0.10401216961399505,
+            "wrinkle_pixels": 1094,
+            "evaluated_pixels": 10518,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_left_periocular": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 0,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_right_periocular": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 0,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "perioral": {
+            "score": 100,
+            "severity_label": "high_visible_area",
+            "wrinkle_area_ratio": 0.06605186143061322,
+            "wrinkle_pixels": 1941,
+            "evaluated_pixels": 29386,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_left_cheek": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 4182,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          },
+          "image_right_cheek": {
+            "score": 0,
+            "severity_label": "no_segmented_area",
+            "wrinkle_area_ratio": 0,
+            "wrinkle_pixels": 0,
+            "evaluated_pixels": 3791,
+            "score_version": "aphrodize-wrinkle-area-v1",
+            "roi_version": "mediapipe-landmark-skin-roi-v1"
+          }
+        },
+        "score_version": "aphrodize-wrinkle-area-v1",
+        "roi_version": "mediapipe-landmark-skin-roi-v1",
+        "model_version": "ffhq-wrinkle-inference-v1",
+        "calibration_version": null,
+        "release_basis": "manual_review",
+        "approval_reference": "project-owner-authorization:2026-10-02:complete-remaining-prototype",
+        "area_band_version": "visible-area-provisional-v1",
+        "area_measurements": [
+          {
+            "region": "forehead",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.007391715869653401,
+            "visible_area_band": "low",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          },
+          {
+            "region": "glabella",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.0064186965108624094,
+            "visible_area_band": "low",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          },
+          {
+            "region": "nasolabial",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.10401216961399505,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          },
+          {
+            "region": "perioral",
+            "area_band_version": "visible-area-provisional-v1",
+            "validation_status": "not_validated",
+            "recommendation_ready": false,
+            "wrinkle_area_ratio": 0.06605186143061322,
+            "visible_area_band": "high",
+            "thresholds": {
+              "low_ratio": 0.0165,
+              "high_ratio": 0.0335
+            },
+            "near_boundary": false
+          }
+        ],
+        "area_policy": "owner_reviewed_provisional"
+      },
+      "recommendations": [
+        {
+          "rule": "R-WRINKLE-FACE-001",
+          "products": [
+            "Pro-Collagen Peptide Plumping Moisturizer",
+            "Hyaluronic Acid Booster",
+            "HYALU B5 SERUM"
+          ]
+        },
+        {
+          "rule": "R-MOIST-DRY-001",
+          "products": [
+            "Moisturising Cream"
+          ]
+        },
+        {
+          "rule": "R-SUN-ROUTINE-001",
+          "products": [
+            "AM Facial Moisturising Lotion SPF 50"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "live_image_astronaut",
+      "status": "no_recommendation",
+      "blocked_reason": "analysis_not_complete",
+      "image_context": {
+        "status": "unavailable",
+        "reason": "analysis_not_complete"
+      },
+      "recommendations": []
+    },
+    {
+      "case": "live_image_blank",
+      "status": "no_recommendation",
+      "blocked_reason": "analysis_not_complete",
+      "image_context": {
+        "status": "unavailable",
+        "reason": "analysis_not_complete"
+      },
+      "recommendations": []
+    }
+  ],
+  "assertions": "passed"
+}

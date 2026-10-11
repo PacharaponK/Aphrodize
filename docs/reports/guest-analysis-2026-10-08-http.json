@@ -1,0 +1,61 @@
+[
+  {
+    "check": "guest_page",
+    "path": "/",
+    "status": 200
+  },
+  {
+    "check": "guest_page",
+    "path": "/capture",
+    "status": 200
+  },
+  {
+    "check": "guest_page",
+    "path": "/result-detail",
+    "status": 200
+  },
+  {
+    "check": "guest_page",
+    "path": "/recommendation",
+    "status": 200
+  },
+  {
+    "check": "guest_page",
+    "path": "/quality-rejected",
+    "status": 200
+  },
+  {
+    "check": "private_data_remains_protected",
+    "path": "/api/profile",
+    "status": 401
+  },
+  {
+    "check": "private_data_remains_protected",
+    "path": "/api/daily-health/entries",
+    "status": 401
+  },
+  {
+    "check": "anonymous_upload",
+    "status": 202,
+    "account_cookie": false
+  },
+  {
+    "check": "test_analysis_consent_withdrawal",
+    "status": 204
+  },
+  {
+    "check": "anonymous_live_catalog",
+    "status": 200,
+    "product_count": 2,
+    "profile_source": "guest",
+    "saved_profile_revision": null,
+    "account_cookie": false
+  },
+  {
+    "check": "image_completion",
+    "status": "not_confirmed_within_180_seconds",
+    "observed_state": "running",
+    "inference_worker_healthy": true,
+    "queued_jobs": 39
+  }
+]

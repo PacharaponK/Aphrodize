@@ -148,7 +148,7 @@ def load_map(day="today", now=None, *, source="api"):
         }
         if local:
             try:
-                prediction = load_recommendation(province["model_city"], now)
+                prediction = load_recommendation(province["model_city"], now, target_date=target)
                 entry = next(d for d in prediction["days"] if d["date"] == target.isoformat())
                 if entry["value_kind"] != "SARIMAX forecast":
                     raise ValueError("Map requires a model prediction")

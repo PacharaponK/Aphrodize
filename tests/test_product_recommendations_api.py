@@ -358,3 +358,60 @@ def test_guest_schema_rejects_missing_safety_answers_and_account_identifiers():
         GuestSkinProfile(skin_type="dry", skin_sensitivity="low", known_product_allergy="no",
                          severe_irritation="no", age_group="25_34",
                          sunscreen_frequency="every_day", user_id=str(uuid4()))
+
+
+@pytest.mark.asyncio
+async def test_transient_answers_use_owned_image_without_reading_or_saving_profile():
+    from backend.api.schemas.product import GuestSkinProfile
+    from backend.api.v1.routes.analyses import get_transient_analysis_recommendations
+
+    owner = uuid4()
+    analysis = sample_analysis(owner)
+    payload = GuestSkinProfile(
+        skin_type="dry", skin_sensitivity="low", known_product_allergy="no",
+        severe_irritation="no", age_group="25_34", sunscreen_frequency="every_day",
+    )
+    session = FakeSession(analysis, None, consent=False)
+    result = await get_transient_analysis_recommendations(
+        analysis.id, payload, user_id=owner, session=session,
+        market="TH", max_price_satang=None,
+    )
+    assert result["status"] == "ready"
+    assert result["image_context"]["status"] == "withheld"
+    assert result["questionnaire_context"]["revision_id"] is None
+    assert result["profile_context"]["source"] == "guest"
+    assert len(session.queries) == 1
+    assert "products" in str(session.queries[0])
+    analysis.result = {
+        "recommendation_gate": {"eligible": True},
+        "model_output": {
+            "prediction_version": "v1",
+            "confidence": {"calibration_status": "calibrated", "calibration_version": "v1"},
+        },
+        "derived_score": {
+            "score_version": "v1", "roi_version": "v1",
+            "regions": {"forehead": {
+                "score": 40, "wrinkle_pixels": 200, "evaluated_pixels": 10000,
+            }},
+        },
+    }
+    eligible = await get_transient_analysis_recommendations(
+        analysis.id, payload, user_id=owner, session=FakeSession(analysis, None),
+        market="TH", max_price_satang=None,
+    )
+    assert eligible["image_context"]["status"] == "eligible"
+    assert any(item["rule_id"] == "R-WRINKLE-FACE-001" for item in eligible["recommendations"])
+    with pytest.raises(HTTPException) as error:
+        await get_transient_analysis_recommendations(
+            analysis.id, payload, user_id=uuid4(), session=session,
+            market="TH", max_price_satang=None,
+        )
+    assert error.value.status_code == 404
+    analysis.status = AnalysisStatus.running
+    pending_session = FakeSession(analysis, None)
+    result = await get_transient_analysis_recommendations(
+        analysis.id, payload, user_id=owner, session=pending_session,
+        market="TH", max_price_satang=None,
+    )
+    assert result["status"] == "pending"
+    assert pending_session.queries == []

@@ -31,6 +31,7 @@ class ConfidencePolicy:
     preprocessing_version: str | None = None
     threshold_version: str | None = None
     approval_reference: str | None = None
+    roi_version: str | None = None
 
     @classmethod
     def from_dict(cls, value: dict[str, object]) -> ConfidencePolicy:

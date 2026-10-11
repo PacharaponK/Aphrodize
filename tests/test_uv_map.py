@@ -185,3 +185,26 @@ def test_today_remains_a_model_forecast_when_today_temis_exists(monkeypatch):
         for city in result["cities"].values()
         for entry in city["days"]
     )
+
+
+def test_model_map_preserves_second_day_after_bangkok_midnight(tmp_path, monkeypatch):
+    snapshots(tmp_path, monkeypatch)
+    payload = json.loads(uv_service.SNAPSHOT.read_text())
+    before_midnight = datetime(2026, 10, 1, 16, tzinfo=UTC)
+    payload["generated_at"] = before_midnight.isoformat()
+    uv_service.SNAPSHOT.write_text(json.dumps(payload))
+    after_midnight = datetime(2026, 10, 1, 17, 1, tzinfo=UTC)
+
+    today = service.load_map("today", after_midnight, source="model")
+    assert today["date"] == "2026-10-02"
+    assert all(p["status"] == "available" and p["uv_index"] == 11.4 for p in today["provinces"])
+    tomorrow = service.load_map("tomorrow", after_midnight, source="model")
+    assert all(p["status"] == "unavailable" for p in tomorrow["provinces"])
+    expired = service.load_map("today", before_midnight + timedelta(hours=9), source="model")
+    assert all(p["status"] == "unavailable" for p in expired["provinces"])
+
+    for city in payload["cities"].values():
+        city["days"][1]["date"] = "2026-10-03"
+    uv_service.SNAPSHOT.write_text(json.dumps(payload))
+    invalid = service.load_map("today", after_midnight, source="model")
+    assert all(p["status"] == "unavailable" for p in invalid["provinces"])

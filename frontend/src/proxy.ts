@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { accountSession } from "@/lib/daily-health-session";
 
 const PUBLIC_PATHS = new Set([
-  "/capture", "/login", "/signup",
+  "/", "/capture", "/result-detail", "/recommendation", "/quality-rejected", "/login", "/signup",
   "/api/auth/login", "/api/auth/signup", "/api/auth/logout",
   "/api/analysis", "/api/analysis/recommendations", "/api/health",
   // Admin sign-in and product APIs enforce their own separate admin session.

@@ -1,26 +1,27 @@
 # Services portal
 
-Open `https://aphrodize.duckdns.org/portal` directly. The portal has no entry
-in the shared navigation, and the portal page has no navbar. Label Studio, Grafana and Product admin keep their own sign-in flows.
-MinIO Console has no public entry yet. The portal shows it as unavailable until
-`PORTAL_MINIO_URL` is configured. Its S3 API stays private.
+Open `https://aphrodize.duckdns.org/portal` directly and sign into the app if prompted. The portal remains a standalone page without the shared navbar. External tools open in a new tab.
 
-`docker/Caddyfile.minio-console.example` contains a proposed route for
-`https://minio.aphrodize.duckdns.org`, proxying the Console on port 9001. This is
-not loaded by Caddy. Enabling it exposes the existing MinIO administrator login
-to the internet and requires operator approval. After approval, add the route
-to the DuckDNS Caddyfile, validate and reload Caddy, then set `PORTAL_MINIO_URL`
-and recreate the frontend. DNS resolution and a certificate for the Console
-hostname are required.
+| Service | Entrance | Sign-in |
+| --- | --- | --- |
+| Aphrodize | `https://aphrodize.duckdns.org/` | App account |
+| Label Studio | `https://aphrodize.duckdns.org/label-studio/` | Label Studio account |
+| MinIO Console | `https://minio.aphrodize.duckdns.org/` | Existing MinIO account |
+| MLflow | `https://mlflow.aphrodize.duckdns.org/` | Existing Product admin account at the HTTPS gateway |
+| Grafana | `https://aphrodize.duckdns.org/grafana/` | Grafana account |
+| Prometheus | `https://prometheus.aphrodize.duckdns.org/` | Existing Product admin account at the HTTPS gateway |
+| Product admin | `https://aphrodize.duckdns.org/admin` | Product admin account |
 
-The portal lists infrastructure without a browser UI separately. It does not
-probe health or label services healthy. Missing Console/MLflow URLs render as
-unavailable text, never as a link to localhost on the visitor's computer.
+## Deployment
 
-MLflow is not running on the current VM. After deploying an authenticated MLflow
-endpoint, set server-only `PORTAL_MLFLOW_URL` and recreate the frontend.
-The portal never carries service passwords or API tokens.
+Merge `compose.services-portal.yml` after the existing VM, DuckDNS, and observability configurations. Caddy needs `ADMIN_USERNAME` and a bcrypt `PORTAL_OPERATOR_PASSWORD_HASH` generated from the existing admin password using `caddy hash-password`. Never save plaintext passwords into a new release file or commit them. Use `--env-file .env` explicitly when the first Compose file lives under `.releases/`.
 
-For local development, configure `PORTAL_MINIO_URL=http://localhost:9001` and
-`PORTAL_MLFLOW_URL=http://localhost:5000` in the frontend environment when those
-services are running. The Label Studio and Grafana links use the VM proxy paths.
+The DuckDNS Caddyfile routes the three service subdomains with one wildcard DNS-01 HTTPS certificate, avoiding concurrent DuckDNS TXT challenges. Unknown subdomains return 404. MinIO Console retains its own authentication. MLflow and Prometheus require authentication at Caddy; Caddy removes the gateway Authorization header before proxying. Their ports are not published publicly. DNS must resolve each hostname to the VM.
+
+MLflow stores experiment metadata in the `mlflow` PostgreSQL database and proxies artifact access into the private MinIO `mlflow` bucket. On an existing VM, create that database once with the existing PostgreSQL operator; existing volumes do not rerun initialization scripts. Build `docker/mlflow.Dockerfile` against the deployed API image. The start script enables server artifact proxying so browser clients do not need direct S3 access.
+
+The overlay sets server-only `PORTAL_MINIO_URL`, `PORTAL_MLFLOW_URL`, and `PORTAL_PROMETHEUS_URL`. Missing or invalid URLs still render unavailable text. The portal never carries passwords, tokens, or inferred service health.
+
+PostgreSQL, Redis and the MinIO S3 API remain accessible through VM loopback/SSH. Loki, Alloy, exporters, API, workers and Caddy can be inspected through Grafana; the portal lists these separately with their connection guidance.
+
+For local development, optional service URLs may point to localhost only when those services run on the visitor's computer.

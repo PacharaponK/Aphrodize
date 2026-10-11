@@ -184,3 +184,20 @@ async def test_annotation_capability_requires_token_and_project(
     monkeypatch.setattr(settings, "label_studio_api_key", key)
     monkeypatch.setattr(settings, "label_studio_project_id", project)
     assert await capabilities() == {"annotation_review_available": available}
+
+
+@pytest.mark.asyncio
+async def test_annotation_capability_is_registered_and_public(monkeypatch):
+    import httpx
+
+    from backend.core.config import settings
+    from backend.main import app
+
+    monkeypatch.setattr(settings, "label_studio_api_key", "test-token")
+    monkeypatch.setattr(settings, "label_studio_project_id", 1)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/api/v1/capabilities")
+    assert response.status_code == 200
+    assert response.json() == {"annotation_review_available": True}

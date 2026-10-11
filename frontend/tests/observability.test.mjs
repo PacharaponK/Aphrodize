@@ -14,10 +14,12 @@ function load(file, overrides = {}) {
   return exported;
 }
 
-test("proxy creates bounded correlation ID and forwards it to the route and browser", () => {
-  const { proxy } = load("src/proxy.ts");
+test("proxy creates bounded correlation ID and forwards it to the route and browser", async () => {
+  const { proxy } = load("src/proxy.ts", {
+    "@/lib/daily-health-session": { accountSession: async () => null },
+  });
   const { NextRequest } = require("next/server");
-  const response = proxy(new NextRequest("http://localhost/api/health", {
+  const response = await proxy(new NextRequest("http://localhost/api/health", {
     headers: { "x-request-id": "private@example.com" },
   }));
   const id = response.headers.get("x-request-id");

@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from math import isfinite
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import HTTPException, UploadFile
@@ -10,6 +11,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ai.ffhq_wrinkle.confidence import load_confidence_policy
 from backend.core.config import settings
 from backend.core.db.models import Analysis, AnalysisStatus, Consent, Product
 from backend.core.observability import enqueue_job
@@ -95,9 +97,44 @@ def _released_wrinkle_context(analysis: Analysis) -> dict[str, object]:
         return {"status": "unavailable", "reason": "analysis_not_complete"}
     if (analysis.image_quality_score or 0) < 0.8:
         return {"status": "withheld", "reason": "image_quality_below_threshold"}
+    reviewed_policy = None
     if not isinstance(gate, dict) or gate.get("eligible") is not True:
-        return {"status": "withheld", "reason": "wrinkle_confidence_not_released"}
-    score = result.get("derived_score")
+        # The owner-approved landmark release also covers saved measurements from
+        # the exact pipeline. Never rewrite a saved result or release other failures.
+        score = result.get("experimental_score")
+        model = result.get("model_output")
+        confidence = model.get("confidence") if isinstance(model, dict) else None
+        if not (
+            isinstance(gate, dict)
+            and gate.get("reasons") == ["landmark_roi_not_calibrated"]
+            and isinstance(score, dict)
+            and isinstance(model, dict)
+            and model.get("regional_geometry_status") == "available"
+            and isinstance(confidence, dict)
+            and confidence.get("release_basis") == "manual_review"
+            and confidence.get("passed") is True
+        ):
+            return {"status": "withheld", "reason": "wrinkle_confidence_not_released"}
+        policy = load_confidence_policy(
+            Path(__file__).resolve().parents[2] / "ai/ffhq_wrinkle/reviewed_policy.json"
+        )
+        metadata = {
+            "model": model,
+            "prediction_version": model.get("prediction_version"),
+            "preprocessing_version": model.get("preprocessing_version"),
+            "threshold": {"version": model.get("threshold_version")},
+        }
+        if not (
+            policy.status == "manually_approved"
+            and policy.roi_version is not None
+            and score.get("roi_version") == policy.roi_version
+            and score.get("score_version") == "aphrodize-wrinkle-area-v1"
+            and not policy.compatibility_reasons(metadata)
+        ):
+            return {"status": "withheld", "reason": "wrinkle_provenance_incomplete"}
+        reviewed_policy = policy
+    else:
+        score = result.get("derived_score")
     if not isinstance(score, dict) or not isinstance(score.get("regions"), dict):
         return {"status": "withheld", "reason": "released_score_missing"}
     # Release requires calibrated evidence or explicit approval of the exact model lineage.
@@ -130,7 +167,13 @@ def _released_wrinkle_context(analysis: Analysis) -> dict[str, object]:
         "model_version": model_output.get("prediction_version"),
         "calibration_version": confidence.get("calibration_version"),
         "release_basis": "manual_review" if manual_release else "calibration",
-        "approval_reference": confidence.get("approval_reference"),
+        "approval_reference": (
+            reviewed_policy.approval_reference if reviewed_policy
+            else confidence.get("approval_reference")
+        ),
+        "policy_version": (
+            reviewed_policy.policy_version if reviewed_policy else confidence.get("policy_version")
+        ),
     }
 
 

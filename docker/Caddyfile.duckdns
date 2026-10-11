@@ -6,6 +6,51 @@
     metrics
 }
 
+(service_tls) {
+    tls {
+        issuer acme {
+            dir https://acme-v02.api.letsencrypt.org/directory
+            dns duckdns {env.DUCKDNS_API_TOKEN} {
+                resolver 127.0.0.11:53
+            }
+            resolvers 127.0.0.11:53
+        }
+    }
+    encode zstd gzip
+}
+
+(operator_login) {
+    basic_auth {
+        {$PORTAL_OPERATOR_USERNAME} {$PORTAL_OPERATOR_PASSWORD_HASH}
+    }
+}
+
+*.{$VM_HOST} {
+    import service_tls
+
+    @minio host minio.{$VM_HOST}
+    handle @minio {
+        reverse_proxy minio:9001
+    }
+    @mlflow host mlflow.{$VM_HOST}
+    handle @mlflow {
+        import operator_login
+        reverse_proxy mlflow:5000 {
+            header_up -Authorization
+        }
+    }
+    @prometheus host prometheus.{$VM_HOST}
+    handle @prometheus {
+        import operator_login
+        reverse_proxy prometheus:9090 {
+            header_up -Authorization
+        }
+    }
+    handle {
+        respond "Service not found" 404
+    }
+}
+
 {$VM_HOST} {
 	tls {
 		issuer acme {

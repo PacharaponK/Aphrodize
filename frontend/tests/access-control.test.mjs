@@ -67,13 +67,13 @@ test("only capture and sign-in flows allow guests; member pages and APIs verify 
   t.after(() => { global.fetch = savedFetch; });
   let calls = 0;
   global.fetch = async () => { calls++; throw new Error("Guests must not contact the backend"); };
-  for (const path of ["/capture", "/capture/", "/capture#products", "/login", "/signup",
+  for (const path of ["/", "/recommendation", "/result-detail", "/quality-rejected", "/capture", "/capture/", "/capture#products", "/login", "/signup",
     "/api/analysis", "/api/analysis/recommendations", "/api/health", "/api/auth/login", "/api/auth/signup",
     "/api/auth/logout", "/admin", "/admin/products", "/api/admin/session", "/api/admin/products", "/api/admin/uv", "/api/admin/wrinkle"]) {
     assert.equal((await proxy(request(path))).headers.get("x-middleware-next"), "1", path);
   }
-  for (const path of ["/", "/clients", "/trend", "/profile", "/onboarding/health?edit=1",
-    "/portal", "/uv-map", "/showcase", "/quality-rejected", "/recommendation", "/result-detail",
+  for (const path of ["/clients", "/trend", "/profile", "/onboarding/health?edit=1",
+    "/portal", "/uv-map", "/showcase",
     "/capture-extra", "/capture/private", "/future-member-page"]) {
     const response = await proxy(request(path));
     const login = new URL(response.headers.get("location"));

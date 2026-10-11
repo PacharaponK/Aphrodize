@@ -928,10 +928,11 @@
 /* Product Cards Grid: Products are the real Cards! */
 .recommendation-panel-root .recommendation-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  grid-auto-rows: 1fr;
   gap: 18px;
   margin: 12px 0 0;
-  align-items: start;
+  align-items: stretch;
 }
 
 .recommendation-panel-root .recommendation-product-card {
@@ -957,6 +958,7 @@
 .recommendation-panel-root .recommendation-product-media {
   width: 100%;
   height: 144px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   margin-bottom: 12px;
@@ -989,6 +991,7 @@
 .recommendation-panel-root .recommendation-product-body {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
 
@@ -1022,8 +1025,8 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 6px;
-  margin-top: 2px;
-  padding-top: 0;
+  margin-top: auto;
+  padding-top: 10px;
 }
 
 .recommendation-panel-root .product-price-amount {
@@ -1144,13 +1147,6 @@
 }
 
 .recommendation-panel-root { min-width: 0; container-type: inline-size; }
-.recommendation-panel-root .recommendation-product-grid:has(> .recommendation-product-card:only-child) { grid-template-columns: minmax(0, 1fr); }
-@container (min-width: 640px) {
-  .recommendation-panel-root .recommendation-product-card:only-child { display: grid; grid-template-columns: 192px minmax(0, 1fr); gap: 24px; align-items: start; padding: 24px; }
-  .recommendation-panel-root .recommendation-product-card:only-child .recommendation-product-media { height: 192px; margin: 0; }
-  .recommendation-panel-root .recommendation-product-card:only-child .recommendation-buy-btn { width: fit-content; min-width: 180px; }
-  .recommendation-panel-root .recommendation-product-card:only-child .recommendation-warning { max-width: 75ch; }
-}
 .recommendation-panel-root .recommendation-filters { margin: 0; padding: 12px 14px; border-radius: 8px; }
 .recommendation-panel-root .recommendation-filters label { min-width: 0; }
 .recommendation-panel-root .recommendation-filters input[name="budget"] { font-size: 16px; }

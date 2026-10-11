@@ -23,6 +23,7 @@ export default function PortalPage() {
     { name: "MinIO Console", description: "จัดการ buckets ภาพ และไฟล์ artifacts", href: serviceUrl(process.env.PORTAL_MINIO_URL), Icon: FolderOpen, unavailable: "ยังไม่ได้ตั้งค่าทางเข้า Console" },
     { name: "MLflow", description: "ดู experiments, training runs และ model artifacts", href: serviceUrl(process.env.PORTAL_MLFLOW_URL), Icon: FlaskConical, unavailable: "ยังไม่ได้เปิดทางเข้า MLflow บน VM" },
     { name: "Grafana", description: "ดูสถานะระบบ metrics, logs และการแจ้งเตือน", href: "/grafana/", Icon: Gauge },
+    { name: "Prometheus", description: "ค้นหา metrics และตรวจสอบ targets · ใช้บัญชีผู้ดูแลระบบ", href: serviceUrl(process.env.PORTAL_PROMETHEUS_URL), Icon: Server, unavailable: "ยังไม่ได้ตั้งค่าทางเข้า Prometheus" },
     { name: "Product admin", description: "ตรวจทานและจัดการแคตตาล็อกผลิตภัณฑ์", href: "/admin", Icon: Store },
   ];
 
@@ -35,7 +36,7 @@ export default function PortalPage() {
 
       <section aria-labelledby="portal-tools-heading">
         <h2 id="portal-tools-heading">ทางเข้าใช้งาน</h2>
-        <p className="portal-help">แต่ละบริการใช้บัญชีของตัวเอง ลิงก์ที่เปิดได้ยังไม่ได้หมายความว่าบริการออนไลน์อยู่</p>
+        <p className="portal-help">เครื่องมือภายนอกเปิดในแท็บใหม่และใช้บัญชีของแต่ละบริการ · MLflow และ Prometheus ใช้บัญชี Product admin</p>
         <ul className="portal-services">
           {services.map(({ name, description, href, Icon, unavailable }) => (
             <li className="portal-service" key={name}>
@@ -45,7 +46,7 @@ export default function PortalPage() {
                 href.startsWith("/") && !["/label-studio/", "/grafana/"].includes(href) ? (
                   <Link className="portal-open" href={href}>เปิด {name}<ArrowUpRight size={18} aria-hidden="true" /></Link>
                 ) : (
-                  <a className="portal-open" href={href}>เปิด {name}<ArrowUpRight size={18} aria-hidden="true" /></a>
+                  <a className="portal-open" href={href} target="_blank" rel="noopener noreferrer" aria-label={`เปิด ${name} ในแท็บใหม่`}>เปิด {name}<ArrowUpRight size={18} aria-hidden="true" /></a>
                 )
               ) : <span className="portal-unavailable">{unavailable}</span>}
             </li>
@@ -62,15 +63,15 @@ export default function PortalPage() {
             <div><dt><Database size={18} aria-hidden="true" /> PostgreSQL</dt><dd>ฐานข้อมูล · ใช้ database client ผ่าน SSH tunnel ที่พอร์ต 5432</dd></div>
             <div><dt>Redis</dt><dd>คิวและ cache · ใช้ Redis client ผ่าน SSH tunnel ที่พอร์ต 6379</dd></div>
             <div><dt>MinIO API</dt><dd>S3 API · ใช้ S3 client ผ่าน SSH tunnel ที่พอร์ต 9000; หน้าเว็บจัดการอยู่ที่ MinIO Console</dd></div>
-            <div><dt>Prometheus</dt><dd>Metrics · ดูผ่าน Grafana หรือ SSH tunnel ที่พอร์ต 9090</dd></div>
+            <div><dt>Prometheus</dt><dd>Metrics · เปิดจากรายการด้านบน หรือดูผ่าน Grafana</dd></div>
             <div><dt>Loki</dt><dd>Logs · เปิด Grafana แล้วเลือก Explore และ Loki</dd></div>
             <div><dt>Alloy / exporters</dt><dd>เก็บ logs, host metrics และผลตรวจ endpoints · ดูผ่าน Grafana</dd></div>
             <div><dt>API / workers</dt><dd>ให้บริการแอปและประมวลผลงาน · ดูสถานะและ logs ผ่าน Grafana</dd></div>
             <div><dt>Caddy</dt><dd>HTTPS และ routing · ดูสถานะและ logs ผ่าน Grafana</dd></div>
           </dl>
-          <p className="portal-help">ตัวอย่างเปิด Prometheus จากคอมพิวเตอร์ของคุณ:</p>
-          <pre><code>ssh -N -L 9090:127.0.0.1:9090 aphrodize@172.30.81.237</code></pre>
-          <p className="portal-help">เมื่อเชื่อมต่อ SSH แล้ว เปิด <a href="http://localhost:9090">http://localhost:9090</a> ในเบราว์เซอร์บนเครื่องเดียวกัน</p>
+          <p className="portal-help">ตัวอย่างเชื่อมต่อฐานข้อมูลจากคอมพิวเตอร์ของคุณ:</p>
+          <pre><code>ssh -N -L 5432:127.0.0.1:5432 aphrodize@172.30.81.237</code></pre>
+          <p className="portal-help">เมื่อเชื่อมต่อ SSH แล้ว ตั้งค่า database client เป็น host 127.0.0.1 และ port 5432 โดยใช้บัญชีฐานข้อมูลของคุณ</p>
         </details>
       </section>
     </main>

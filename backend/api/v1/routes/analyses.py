@@ -295,3 +295,23 @@ async def get_recommendations(
     return await recommendation_response(
         session, user_id, analysis, market=market, max_price_satang=max_price_satang,
     )
+
+
+@router.post("/{analysis_id}/recommendations")
+async def get_transient_analysis_recommendations(
+    analysis_id: UUID,
+    payload: GuestSkinProfile,
+    user_id: UUID = Depends(require_user_token),
+    session: AsyncSession = Depends(get_session),
+    market: Literal["TH", "all"] = "TH",
+    max_price_satang: Annotated[int | None, Query(ge=0, le=100_000_000)] = None,
+) -> dict:
+    """Combine the owner's image with per-request answers, without saving a profile."""
+    analysis = await session.get(Analysis, analysis_id)
+    if analysis is None or analysis.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    response = recommendations_for(analysis, payload.model_dump())
+    response["questionnaire_context"] = {"status": "available", "revision_id": None}
+    if response.get("profile_context") is not None:
+        response["profile_context"]["source"] = "guest"
+    return await catalog_recommendation_response(session, response, market, max_price_satang)

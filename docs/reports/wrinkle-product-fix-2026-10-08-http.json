@@ -1,0 +1,18 @@
+{
+  "http_chain": "signup -> profile -> image upload -> inference -> recommendations",
+  "status": "passed",
+  "image_gate": {
+    "eligible": false,
+    "status": "withheld",
+    "reasons": [
+      "landmark_roi_not_calibrated"
+    ]
+  },
+  "image_context": "eligible",
+  "rule": "R-WRINKLE-EYE-001",
+  "products": [
+    "Pro-Collagen Peptide Firming Eye Serum",
+    "C5 Super Boost Eye Cream",
+    "Hyaluronic Acid Booster"
+  ]
+}

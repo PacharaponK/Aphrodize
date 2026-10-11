@@ -299,6 +299,7 @@ products:
   market: US
 - brand: Cetaphil
   name: Daily Facial Moisturizer SPF 35
+  image_url: https://www.cetaphil.com/dw/image/v2/bggn_prd/on/demandware.static/-/Sites-galderma-us-m-catalog/default/dwb6b94f8e/Daily%20Facial%20Moisturizer%20SPF%2035%2C/New%20revive/083215_DFM_SPF35_3oz_Pump-Front.PNG?q=85&sh=900&sm=fit&sw=900
   variant: สูตรเว็บไซต์ผู้ผลิตสหรัฐฯ (US)
   category: sunscreen
   spf: 35
@@ -435,6 +436,7 @@ products:
   image_url: https://medias.watsons.co.th/publishing/WTCTH-313221-front-zoom.jpg?version=1733877181
 - brand: CeraVe
   name: AM Facial Moisturising Lotion SPF 30
+  image_url: https://www.cerave.co.th/-/media/project/loreal/brand-sites/cerave/americas/th/scx/th-packshot-images/facial-moisturising-lotion-spf30/fml-am-spf30-uvb-uva-lg.jpg
   variant: สูตรเว็บไซต์ผู้ผลิตไทย (TH)
   category: sunscreen
   spf: 30

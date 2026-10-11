@@ -1,0 +1,90 @@
+[
+  {
+    "image": "hero",
+    "skin": "dry",
+    "rule": "R-WRINKLE-EYE-001",
+    "products": [
+      "Intensive Moisture Care Moisture Repair Eye Cream",
+      "Pro-Collagen Peptide Firming Eye Serum",
+      "C5 Super Boost Eye Cream"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hero",
+    "skin": "normal",
+    "rule": "R-WRINKLE-EYE-001",
+    "products": [
+      "Pro-Collagen Peptide Firming Eye Serum",
+      "Hyaluronic Acid Booster",
+      "HYALURON (3X)+ FILLER EYE CARE SPF 15"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hero",
+    "skin": "combination",
+    "rule": "R-WRINKLE-EYE-001",
+    "products": [
+      "Pro-Collagen Peptide Firming Eye Serum",
+      "C5 Super Boost Eye Cream",
+      "Hyaluronic Acid Booster"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hero",
+    "skin": "oily",
+    "rule": "R-WRINKLE-EYE-001",
+    "products": [
+      "Pro-Collagen Peptide Firming Eye Serum",
+      "Hyaluronic Acid Booster",
+      "HYALURON (3X)+ FILLER EYE CARE SPF 15"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hopper",
+    "skin": "dry",
+    "rule": "R-WRINKLE-FACE-001",
+    "products": [
+      "Pro-Collagen Peptide Plumping Moisturizer",
+      "Hyaluronic Acid Booster",
+      "HYALU B5 SERUM"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hopper",
+    "skin": "normal",
+    "rule": "R-WRINKLE-FACE-001",
+    "products": [
+      "Pro-Collagen Peptide Plumping Moisturizer",
+      "Hyaluronic Acid Booster",
+      "HYALU B5 SERUM"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hopper",
+    "skin": "combination",
+    "rule": "R-WRINKLE-FACE-001",
+    "products": [
+      "Pro-Collagen Peptide Plumping Moisturizer",
+      "Hyaluronic Acid Booster",
+      "HYALU B5 SERUM"
+    ],
+    "image_status": "eligible"
+  },
+  {
+    "image": "hopper",
+    "skin": "oily",
+    "rule": "R-WRINKLE-FACE-001",
+    "products": [
+      "Pro-Collagen Peptide Plumping Moisturizer",
+      "Hyaluronic Acid Booster",
+      "HYALU B5 SERUM"
+    ],
+    "image_status": "eligible"
+  }
+]

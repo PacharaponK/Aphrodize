@@ -33,6 +33,7 @@ test("portal uses VM proxy destinations and marks unconfigured services unavaila
   }
   assert.ok(html.includes("ยังไม่ได้ตั้งค่าทางเข้า Console"));
   assert.ok(html.includes("ยังไม่ได้เปิดทางเข้า MLflow บน VM"));
+  assert.ok(html.includes("ยังไม่ได้ตั้งค่าทางเข้า Prometheus"));
   assert.ok(html.includes("<details>"));
   assert.ok(!html.includes("<nav"));
 });
@@ -41,14 +42,18 @@ test("optional service URLs accept web destinations and exclude unsafe or creden
   const configured = renderPortal({
     PORTAL_MINIO_URL: "https://minio.example.org",
     PORTAL_MLFLOW_URL: "http://localhost:5000",
+    PORTAL_PROMETHEUS_URL: "https://prometheus.example.org",
   });
   assert.ok(configured.includes('href="https://minio.example.org/"'));
   assert.ok(configured.includes('href="http://localhost:5000/"'));
+  assert.ok(configured.includes('href="https://prometheus.example.org/"'));
+  assert.ok(configured.includes('target="_blank" rel="noopener noreferrer"'));
   assert.ok(!configured.includes('class="portal-unavailable"'));
   for (const value of ["javascript:alert(1)", "not a URL", "https://user:password@example.org"]) {
-    const html = renderPortal({ PORTAL_MINIO_URL: value, PORTAL_MLFLOW_URL: value });
+    const html = renderPortal({ PORTAL_MINIO_URL: value, PORTAL_MLFLOW_URL: value, PORTAL_PROMETHEUS_URL: value });
     assert.ok(html.includes("ยังไม่ได้ตั้งค่าทางเข้า Console"));
     assert.ok(html.includes("ยังไม่ได้เปิดทางเข้า MLflow บน VM"));
+    assert.ok(html.includes("ยังไม่ได้ตั้งค่าทางเข้า Prometheus"));
     assert.ok(!html.includes(value));
   }
 });

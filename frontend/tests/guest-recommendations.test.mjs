@@ -31,7 +31,7 @@ globalThis.fetch = async (target, init) => {
   return Response.json({ status: "ready", recommendations: [] });
 };
 const request = (query = "?market=TH&max_price_satang=50000", body = JSON.stringify(answers), origin = "http://localhost") => new NextRequest(url + query, {
-  method: "POST", body, headers: { "Content-Type": "application/json", origin },
+  method: "POST", body, headers: { "Content-Type": "application/json", origin, host: "localhost" },
 });
 const result = await POST(request());
 assert.equal(result.status, 200);
@@ -43,3 +43,24 @@ assert.equal((await POST(request("?market=invalid"))).status, 400);
 assert.equal((await POST(request("", "x".repeat(4097)))).status, 413);
 assert.equal(calls, 1);
 console.log("Guest recommendations: anonymous access, forwarding, filters and validation passed");
+
+// Per-request skin answers must retain the private image context for guests.
+const { createHmac } = require("node:crypto");
+process.env.ANALYSIS_SESSION_SECRET = "test-analysis-secret";
+const analysisId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const expiry = String(Date.now() + 60_000);
+const mac = createHmac("sha256", process.env.ANALYSIS_SESSION_SECRET).update(`${analysisId}.${expiry}`).digest("hex");
+const cookie = `aphrodize_analysis=${analysisId}.${expiry}.${mac}; aphrodize_anonymous=${analysisId}:guest-token`;
+globalThis.fetch = async (target, init) => {
+  assert.equal(target, `http://backend.test/api/v1/analyses/${analysisId}/recommendations?market=TH`);
+  assert.equal(init.headers.Authorization, "Bearer guest-token");
+  assert.deepEqual(JSON.parse(init.body), answers);
+  return Response.json({ status: "ready", image_context: { status: "eligible" } });
+};
+const imageRequest = (cookies) => new NextRequest(url + "?scope=analysis", {
+  method: "POST", body: JSON.stringify(answers), headers: { cookie: cookies, origin: "http://localhost", host: "localhost" },
+});
+assert.equal((await POST(imageRequest(cookie))).status, 200);
+assert.equal((await POST(imageRequest(""))).status, 401);
+assert.equal((await POST(imageRequest(cookie.replace(mac, "0".repeat(64))))).status, 401);
+console.log("Guest image recommendations: signed image and owner token required");

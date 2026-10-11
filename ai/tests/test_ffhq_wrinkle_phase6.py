@@ -144,6 +144,18 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(response.experimental_score.regions, {})
         self.assertEqual(response.model_output.regional_geometry_status, "unavailable")
 
+    def test_explicit_landmark_release_requires_matching_geometry_and_keeps_missing_regions_blocked(self):
+        policy = replace(calibrated_policy(), roi_version="mediapipe-landmark-skin-roi-v1")
+        service = WrinkleAnalysisService(confidence_policy=policy)
+        face = np.ones((8, 8), dtype=bool)
+        result = prediction(np.full((8, 8), .95))
+        response = service.build_response(result, face, regional_rois={"forehead": face})
+        self.assertTrue(response.recommendation_gate.eligible)
+        self.assertEqual(response.derived_score.roi_version, policy.roi_version)
+        response = service.build_response(result, face, regional_rois={})
+        self.assertFalse(response.recommendation_gate.eligible)
+        self.assertIn("landmark_regions_unavailable", response.recommendation_gate.reasons)
+
     def test_owner_review_releases_only_the_approved_model_without_calibration_claims(self):
         policy = load_confidence_policy(
             Path(__file__).resolve().parents[1] / "ffhq_wrinkle" / "reviewed_policy.json"

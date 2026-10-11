@@ -200,9 +200,13 @@ class WrinkleAnalysisService:
         config = self.score_config
         if regional_rois is not None:
             config = replace(config, roi_version=LANDMARK_ROI_VERSION)
-            # Existing release/calibration applies to fixed ROIs, not this new geometry.
-            gate_passed = False
-            reasons.append("landmark_roi_not_calibrated")
+            # A release must explicitly cover this geometry, not inherit fixed-ROI approval.
+            if not regional_rois:
+                gate_passed = False
+                reasons.append("landmark_regions_unavailable")
+            elif self.confidence_policy.roi_version != LANDMARK_ROI_VERSION:
+                gate_passed = False
+                reasons.append("landmark_roi_not_calibrated")
         # Only one of these score fields is populated for a given response.
         derived = None
         experimental = None

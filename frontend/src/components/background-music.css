@@ -1,0 +1,22 @@
+.background-music {
+  max-width: 1920px;
+  margin: 24px auto;
+  padding: 20px var(--responsive-page-gutter, 24px);
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--surface);
+  font-size: var(--text-secondary);
+}
+.background-music-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.background-music-controls label { font-weight: 700; }
+.background-music-controls select { min-height: 44px; max-width: 100%; padding: 8px 12px; font-size: 1rem; }
+.background-music-controls button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; }
+.background-music-controls button:hover { background: var(--surface-soft); }
+.background-music-controls span, .background-music p { color: var(--muted); }
+.background-music-player { width: min(100%, 426px); margin-top: 16px; min-height: 240px; }
+.background-music-player iframe { display: block; width: 100%; height: 240px; border: 0; }
+.background-music p { margin: 12px 0 0; }
+@media (max-width: 480px) {
+  .background-music-controls label { flex-basis: 100%; }
+  .background-music-controls select { width: 100%; }
+}

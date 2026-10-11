@@ -1,0 +1,42 @@
+# Merge after the VM, DuckDNS and observability overlays.
+# Use the existing Product admin account at the authenticated service gateway.
+services:
+  frontend:
+    environment:
+      PORTAL_MINIO_URL: https://minio.${VM_HOST:?Required}
+      PORTAL_MLFLOW_URL: https://mlflow.${VM_HOST:?Required}
+      PORTAL_PROMETHEUS_URL: https://prometheus.${VM_HOST:?Required}
+  caddy:
+    environment:
+      PORTAL_OPERATOR_USERNAME: ${ADMIN_USERNAME:?Required}
+      PORTAL_OPERATOR_PASSWORD_HASH: ${PORTAL_OPERATOR_PASSWORD_HASH:?Generate with caddy hash-password}
+  mlflow:
+    image: aphrodize-mlflow:services-portal
+    build:
+      context: .
+      dockerfile: docker/mlflow.Dockerfile
+      additional_contexts:
+        api_image: service:api
+    restart: unless-stopped
+    command: [/app/start.sh]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-aphrodize}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-aphrodize}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Required}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    logging:
+      driver: local
+      options: {max-size: "10m", max-file: "5"}
