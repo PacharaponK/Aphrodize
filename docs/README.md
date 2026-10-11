@@ -11,7 +11,7 @@ Start with the [root quick start](../README.md). This index describes repository
 | Inspect runtime architecture | [Runtime diagram](architecture/diagrams/diagram.md), [component flows](architecture/Component-Flows.md) |
 | Inspect database and accounts | [Database ER](architecture/diagrams/database-er.md), [authentication design](architecture/Auth-Account-Database-Design.md) |
 | Run image inference and understand AI | [AI README](../ai/README.md), [AI and data](ai/AI%20and%20Data.md) |
-| Configure annotation and image training | [Annotation review](ai/Annotation-Review.md), [curated training](ai/Curated-Training.md), [human review](ai/Human-Review.md) |
+| Configure annotation and image training | [Annotation review](ai/Annotation-Review.md), [curated training](ai/Curated-Training.md), [wrinkle model and training](ai/Wrinkle-Model-and-Training.md), [human review](ai/Human-Review.md) |
 | Enter Daily Health records | [Input flow](lifestyle/Daily-Health-Input-Flow.md) |
 | Distinguish calculations, baseline models, and forecasts | [Lifestyle model summary](lifestyle/Lifestyle-Model-Summary.md), [model contract](../models/time-series/non-linear-model/README.md) |
 | Import, train, promote, or delete health data | [Daily Health training pipeline](lifestyle/Daily-Health-Training-Pipeline.md) |

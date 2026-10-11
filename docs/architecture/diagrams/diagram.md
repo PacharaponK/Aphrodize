@@ -39,4 +39,4 @@ PostgreSQL เก็บ account/consent/health/job/results/registry; MinIO เ�
 
 Image trainer รับเฉพาะ approved external licensed data ไม่มีการนำภาพผู้ใช้ไปฝึกอัตโนมัติ Generic training เป็น metadata-only และ generic inference ยังไม่ deploy โมเดล Container healthy ไม่ยืนยัน model/credentials/snapshot readiness
 
-Schema จริง: [Database ER](database-er.md) ไฟล์ `.dio`/PNG ข้างเอกสารเป็นภาพออกแบบเดิม ใช้ Mermaid และโค้ดตรวจ runtime ปัจจุบัน
+Schema จริง: [Database ER](database-er.md) และสถาปัตยกรรมการติดตั้งระบบจริง: [Deployment Diagram](deployment-diagram.md) ไฟล์ `.dio`/PNG ข้างเอกสารเป็นภาพออกแบบเดิม ใช้ Mermaid และโค้ดตรวจ runtime ปัจจุบัน

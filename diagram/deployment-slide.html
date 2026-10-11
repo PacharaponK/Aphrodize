@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployment: 2-machine architecture - Presentation Slide</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 24px;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 1440px;
+      margin-bottom: 16px;
+      padding: 12px 20px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+    }
+    .toolbar h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toolbar .badge {
+      font-size: 11px;
+      background: #2563eb;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background: #334155;
+      color: #f8fafc;
+      border: 1px solid #475569;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover {
+      background: #475569;
+      border-color: #64748b;
+    }
+    button.primary {
+      background: #2563eb;
+      border-color: #3b82f6;
+    }
+    button.primary:hover {
+      background: #1d4ed8;
+    }
+    .slide-wrapper {
+      width: 100%;
+      max-width: 1440px;
+      aspect-ratio: 16 / 9;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slide-wrapper svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .footer-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <h1>
+      Aphrodize Infrastructure Slide 
+      <span class="badge">16:9 Presentation Ready</span>
+    </h1>
+    <div class="actions">
+      <button onclick="copySvg()">📋 Copy SVG Code</button>
+      <button onclick="downloadSvg()">⬇️ Download .SVG</button>
+      <button class="primary" onclick="downloadPng()">🖼️ Download High-Res PNG</button>
+    </div>
+  </div>
+
+  <div class="slide-wrapper" id="slideContainer">
+    <!-- SVG Diagram Inlined Below -->
+    <svg id="architectureSvg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" style="background:#FFFFFF;">
+      <defs>
+        <!-- Arrow Markers -->
+        <marker id="arrow-teal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0D9488" />
+        </marker>
+        <marker id="arrow-magenta" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#C2416E" />
+        </marker>
+        <marker id="arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563EB" />
+        </marker>
+        <marker id="arrow-amber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#D97706" />
+        </marker>
+        <marker id="arrow-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7C3AED" />
+        </marker>
+        <marker id="arrow-purple-rev" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#7C3AED" />
+        </marker>
+        <marker id="arrow-gray" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B" />
+        </marker>
+
+        <!-- Base Font & Typography Styles -->
+        <style>
+          .font-sans { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+          .title { font-size: 34px; font-weight: 700; fill: #212529; }
+          .subtitle { font-size: 18px; font-weight: 400; fill: #64748B; }
+          .box-title { font-size: 18px; font-weight: 700; fill: #212529; }
+          .box-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+          .box-desc { font-size: 13px; font-weight: 400; fill: #4B5563; }
+          .port-tag { font-size: 12px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+          .meta-label { font-size: 13px; font-weight: 500; fill: #64748B; }
+        </style>
+      </defs>
+
+      <!-- SLIDE BACKGROUND -->
+      <rect width="1920" height="1080" fill="#FFFFFF" />
+
+      <!-- HEADER SECTION (Top-Left) -->
+      <g class="font-sans" transform="translate(80, 52)">
+        <rect x="0" y="0" width="138" height="24" rx="12" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+        <text x="69" y="16" text-anchor="middle" font-size="11" font-weight="700" fill="#2563EB" letter-spacing="0.8">INFRASTRUCTURE</text>
+        <text x="0" y="58" class="title">Deployment: 2-machine architecture</text>
+        <text x="0" y="90" class="subtitle">VM runs web and data; GPU worker is separate, connected via SSH tunnel</text>
+      </g>
+
+      <!-- LEFT: USER BOX & INGRESS -->
+      <g class="font-sans" transform="translate(80, 275)">
+        <rect x="0" y="0" width="180" height="116" rx="12" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5" />
+        <rect x="16" y="14" width="54" height="20" rx="4" fill="#E2E8F0" />
+        <text x="43" y="28" text-anchor="middle" font-size="10" font-weight="700" fill="#475569">CLIENT</text>
+        <text x="16" y="60" font-size="20" font-weight="700" fill="#212529">User</text>
+        <text x="16" y="82" font-size="13" font-weight="500" fill="#64748B">university network</text>
+        <text x="16" y="100" font-size="13" font-weight="500" fill="#64748B">/ VPN access</text>
+
+        <!-- Arrow to VM Caddy -->
+        <line x1="180" y1="58" x2="302" y2="58" stroke="#0D9488" stroke-width="2" marker-end="url(#arrow-teal)" />
+        <rect x="202" y="32" width="78" height="20" rx="4" fill="#CCFBF1" stroke="#99F6E4" stroke-width="1"/>
+        <text x="241" y="46" text-anchor="middle" font-size="11" font-weight="700" fill="#0F766E">HTTPS :443</text>
+      </g>
+
+      <!-- CENTER: VM (LINUX) · DOCKER COMPOSE -->
+      <g class="font-sans" transform="translate(310, 160)">
+        <rect x="0" y="0" width="920" height="735" rx="16" fill="#F0F7FF" stroke="#2563EB" stroke-width="1.5" />
+
+        <!-- Header -->
+        <g transform="translate(24, 20)">
+          <rect x="0" y="0" width="260" height="32" rx="6" fill="#DBEAFE" stroke="#BFDBFE" stroke-width="1" />
+          <circle cx="16" cy="16" r="4.5" fill="#2563EB" />
+          <text x="28" y="21" font-size="14" font-weight="700" fill="#1D4ED8" letter-spacing="0.3">VM (Linux) · Docker Compose</text>
+          <text x="872" y="21" text-anchor="end" class="meta-label">Production Host · 172.30.81.237 · aphrodize.duckdns.org</text>
+        </g>
+
+        <!-- Top Row: Caddy -> Frontend -> API -->
+        <g transform="translate(24, 75)">
+          <!-- Caddy -->
+          <g transform="translate(0, 0)">
+            <rect x="0" y="0" width="245" height="150" rx="10" fill="#FFFFFF" stroke="#0D9488" stroke-width="1.75" />
+            <rect x="16" y="14" width="94" height="20" rx="4" fill="#CCFBF1" />
+            <text x="63" y="28" text-anchor="middle" class="box-badge" fill="#0F766E">TLS INGRESS</text>
+            <text x="16" y="58" class="box-title" fill="#0F766E">Caddy (HTTPS)</text>
+            <text x="16" y="84" class="box-desc">• Automatic TLS certificate</text>
+            <text x="16" y="104" class="box-desc">• HTTP :80 → HTTPS :443</text>
+            <text x="16" y="124" class="box-desc">• Reverse proxy & routing</text>
+            <rect x="168" y="14" width="62" height="20" rx="4" fill="#F0FDFA" stroke="#99F6E4" stroke-width="1"/>
+            <text x="199" y="28" text-anchor="middle" class="port-tag" fill="#0F766E">:80/:443</text>
+          </g>
+
+          <line x1="245" y1="75" x2="288" y2="75" stroke="#0D9488" stroke-width="1.75" marker-end="url(#arrow-teal)" />
+
+          <!-- Frontend -->
+          <g transform="translate(296, 0)">
+            <rect x="0" y="0" width="245" height="150" rx="10" fill="#FFFFFF" stroke="#C2416E" stroke-width="1.75" />
+            <rect x="16" y="14" width="86" height="20" rx="4" fill="#FCE7F3" />
+            <text x="59" y="28" text-anchor="middle" class="box-badge" fill="#9D174D">WEB CLIENT</text>
+            <text x="16" y="58" class="box-title" fill="#9D174D">Frontend (Next.js)</text>
+            <text x="16" y="84" class="box-desc">• React 19 UI & SSR</text>
+            <text x="16" y="104" class="box-desc">• Skin analysis web flow</text>
+            <text x="16" y="124" class="box-desc">• Session proxy & cookies</text>
+            <rect x="178" y="14" width="52" height="20" rx="4" fill="#FFF1F2" stroke="#FECDD3" stroke-width="1"/>
+            <text x="204" y="28" text-anchor="middle" class="port-tag" fill="#9D174D">:3000</text>
+          </g>
+
+          <line x1="541" y1="75" x2="584" y2="75" stroke="#2563EB" stroke-width="1.75" marker-end="url(#arrow-blue)" />
+
+          <!-- API -->
+          <g transform="translate(592, 0)">
+            <rect x="0" y="0" width="280" height="150" rx="10" fill="#FFFFFF" stroke="#2563EB" stroke-width="1.75" />
+            <rect x="16" y="14" width="94" height="20" rx="4" fill="#DBEAFE" />
+            <text x="63" y="28" text-anchor="middle" class="box-badge" fill="#1D4ED8">APPLICATION</text>
+            <text x="16" y="58" class="box-title" fill="#1D4ED8">API (FastAPI)</text>
+            <text x="16" y="84" class="box-desc">• Core REST API (`/api/v1`)</text>
+            <text x="16" y="104" class="box-desc">• JWT auth & consent check</text>
+            <text x="16" y="124" class="box-desc">• ARQ job enqueue & status</text>
+            <rect x="212" y="14" width="52" height="20" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1"/>
+            <text x="238" y="28" text-anchor="middle" class="port-tag" fill="#1D4ED8">:8000</text>
+          </g>
+        </g>
+
+        <!-- Arrow down from API into Yellow Container -->
+        <g transform="translate(756, 225)">
+          <line x1="0" y1="0" x2="0" y2="35" stroke="#2563EB" stroke-width="1.75" marker-end="url(#arrow-blue)" />
+          <rect x="10" y="8" width="108" height="20" rx="4" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1" />
+          <text x="64" y="22" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1D4ED8">DB & Queue Calls</text>
+        </g>
+
+        <!-- Light-Yellow Container: Data Layer -->
+        <g transform="translate(24, 268)">
+          <rect x="0" y="0" width="872" height="435" rx="12" fill="#FEFCE8" stroke="#D97706" stroke-width="1.5" />
+
+          <!-- Header -->
+          <g transform="translate(20, 16)">
+            <rect x="0" y="0" width="365" height="28" rx="6" fill="#FEF3C7" stroke="#FDE68A" stroke-width="1" />
+            <circle cx="14" cy="14" r="4.5" fill="#D97706" />
+            <text x="26" y="19" font-size="13" font-weight="700" fill="#92400E">loopback only, not exposed to LAN</text>
+            <text x="832" y="19" text-anchor="end" class="meta-label" fill="#B45309">compose.vm-worker-access.yml · 127.0.0.1</text>
+          </g>
+
+          <!-- 3 Amber Outlined Boxes -->
+          <g transform="translate(20, 60)">
+            <!-- MinIO -->
+            <g transform="translate(0, 0)">
+              <rect x="0" y="0" width="260" height="350" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.75" />
+              <rect x="16" y="16" width="100" height="20" rx="4" fill="#FEF3C7" />
+              <text x="66" y="30" text-anchor="middle" class="box-badge" fill="#B45309">OBJECT STORAGE</text>
+              <text x="16" y="62" class="box-title" fill="#92400E">MinIO</text>
+              <text x="16" y="82" font-size="14" font-weight="500" fill="#B45309">(images/results)</text>
+              <line x1="16" y1="96" x2="244" y2="96" stroke="#FEF3C7" stroke-width="1.5" />
+              <text x="16" y="122" class="box-desc">• S3-compatible API</text>
+              <text x="16" y="146" class="box-desc">• Uploaded selfie photos</text>
+              <text x="16" y="170" class="box-desc">• Inference output masks</text>
+              <text x="16" y="194" class="box-desc">• Heatmap visualizations</text>
+              <text x="16" y="218" class="box-desc">• Private bucket access</text>
+              <text x="16" y="242" class="box-desc">• Volume: minio_data</text>
+              <rect x="16" y="295" width="228" height="38" rx="6" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+              <text x="26" y="313" font-size="11" font-weight="600" fill="#92400E">VM Port: 127.0.0.1:9000</text>
+              <text x="26" y="327" font-size="11" font-weight="700" fill="#7C3AED">Tunnel forward: 19000</text>
+            </g>
+
+            <!-- PostgreSQL -->
+            <g transform="translate(286, 0)">
+              <rect x="0" y="0" width="260" height="350" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.75" />
+              <rect x="16" y="16" width="92" height="20" rx="4" fill="#FEF3C7" />
+              <text x="62" y="30" text-anchor="middle" class="box-badge" fill="#B45309">RELATIONAL DB</text>
+              <text x="16" y="62" class="box-title" fill="#92400E">PostgreSQL</text>
+              <text x="16" y="82" font-size="14" font-weight="500" fill="#B45309">(data/accounts)</text>
+              <line x1="16" y1="96" x2="244" y2="96" stroke="#FEF3C7" stroke-width="1.5" />
+              <text x="16" y="122" class="box-desc">• PostgreSQL 16 Alpine</text>
+              <text x="16" y="146" class="box-desc">• User accounts & auth</text>
+              <text x="16" y="170" class="box-desc">• Explicit user consents</text>
+              <text x="16" y="194" class="box-desc">• Daily health logs</text>
+              <text x="16" y="218" class="box-desc">• Wrinkle score metrics</text>
+              <text x="16" y="242" class="box-desc">• Volume: postgres_data</text>
+              <rect x="16" y="295" width="228" height="38" rx="6" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+              <text x="26" y="313" font-size="11" font-weight="600" fill="#92400E">VM Port: 127.0.0.1:5432</text>
+              <text x="26" y="327" font-size="11" font-weight="700" fill="#7C3AED">Tunnel forward: 15432</text>
+            </g>
+
+            <!-- Redis -->
+            <g transform="translate(572, 0)">
+              <rect x="0" y="0" width="260" height="350" rx="10" fill="#FFFFFF" stroke="#D97706" stroke-width="1.75" />
+              <rect x="16" y="16" width="94" height="20" rx="4" fill="#FEF3C7" />
+              <text x="63" y="30" text-anchor="middle" class="box-badge" fill="#B45309">QUEUE & BROKER</text>
+              <text x="16" y="62" class="box-title" fill="#92400E">Redis</text>
+              <text x="16" y="82" font-size="14" font-weight="500" fill="#B45309">(job queue)</text>
+              <line x1="16" y1="96" x2="244" y2="96" stroke="#FEF3C7" stroke-width="1.5" />
+              <text x="16" y="122" class="box-desc">• Redis 7 Alpine</text>
+              <text x="16" y="146" class="box-desc">• ARQ job broker</text>
+              <text x="16" y="170" class="box-desc">• Asynchronous dispatch</text>
+              <text x="16" y="194" class="box-desc">• AI worker polling</text>
+              <text x="16" y="218" class="box-desc">• Task result cache</text>
+              <text x="16" y="242" class="box-desc">• Volume: redis_data</text>
+              <rect x="16" y="295" width="228" height="38" rx="6" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1" />
+              <text x="26" y="313" font-size="11" font-weight="600" fill="#92400E">VM Port: 127.0.0.1:6379</text>
+              <text x="26" y="327" font-size="11" font-weight="700" fill="#7C3AED">Tunnel forward: 16379</text>
+            </g>
+          </g>
+        </g>
+      </g>
+
+      <!-- BETWEEN CENTER & RIGHT: SSH TUNNEL -->
+      <g class="font-sans" transform="translate(1230, 580)">
+        <line x1="0" y1="50" x2="190" y2="50" stroke="#7C3AED" stroke-width="2.5" stroke-dasharray="8,6" marker-start="url(#arrow-purple-rev)" marker-end="url(#arrow-purple)" />
+        <rect x="42" y="24" width="106" height="28" rx="14" fill="#7C3AED" />
+        <text x="95" y="43" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF" letter-spacing="0.4">SSH tunnel</text>
+
+        <g transform="translate(95, 92)">
+          <text x="0" y="0" text-anchor="middle" font-size="11.5" font-weight="700" fill="#6D28D9">forwards DB / Redis /</text>
+          <text x="0" y="16" text-anchor="middle" font-size="11.5" font-weight="700" fill="#6D28D9">MinIO ports</text>
+          <rect x="-85" y="28" width="170" height="52" rx="6" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="1" />
+          <text x="0" y="44" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B5563">15432 → 5432 (DB)</text>
+          <text x="0" y="58" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B5563">16379 → 6379 (Redis)</text>
+          <text x="0" y="72" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B5563">19000 → 9000 (MinIO)</text>
+        </g>
+      </g>
+
+      <!-- RIGHT: GPU MACHINE (WINDOWS) -->
+      <g class="font-sans" transform="translate(1420, 160)">
+        <rect x="0" y="0" width="420" height="735" rx="16" fill="#FAF5FF" stroke="#7C3AED" stroke-width="1.5" />
+
+        <g transform="translate(20, 20)">
+          <rect x="0" y="0" width="380" height="32" rx="6" fill="#EDE9FE" stroke="#DDD6FE" stroke-width="1" />
+          <circle cx="16" cy="16" r="4.5" fill="#7C3AED" />
+          <text x="28" y="21" font-size="13" font-weight="700" fill="#6D28D9" letter-spacing="0.2">GPU machine (Windows)</text>
+          <text x="365" y="21" text-anchor="end" font-size="11" font-weight="700" fill="#7C3AED">ON-PREMISES</text>
+          <text x="0" y="54" font-size="13.5" font-weight="700" fill="#7C3AED">GTX 1660 SUPER · 6 GB VRAM</text>
+          <text x="380" y="54" text-anchor="end" class="meta-label">PyTorch 2.1.2</text>
+        </g>
+
+        <!-- Two Boxes: Models above Inference Worker -->
+        <g transform="translate(20, 85)">
+          <!-- Top: Models -->
+          <g transform="translate(0, 0)">
+            <rect x="0" y="0" width="380" height="180" rx="10" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.75" />
+            <rect x="16" y="14" width="112" height="20" rx="4" fill="#EDE9FE" />
+            <text x="72" y="28" text-anchor="middle" class="box-badge" fill="#6D28D9">OFFLINE WEIGHTS</text>
+            <text x="16" y="58" class="box-title" fill="#6D28D9">Models:</text>
+            <text x="16" y="78" font-size="15" font-weight="700" fill="#212529">YuNet, BiSeNet, U-Net</text>
+            <line x1="16" y1="92" x2="364" y2="92" stroke="#EDE9FE" stroke-width="1.5" />
+            <text x="16" y="114" class="box-desc">• <tspan font-weight="600" fill="#212529">YuNet:</tspan> Face & landmark ROI detection</text>
+            <text x="16" y="134" class="box-desc">• <tspan font-weight="600" fill="#212529">BiSeNet:</tspan> 19-class semantic face parse</text>
+            <text x="16" y="154" class="box-desc">• <tspan font-weight="600" fill="#212529">FFHQ U-Net:</tspan> Wrinkle segmentation</text>
+          </g>
+
+          <!-- Arrow down from Models to Worker -->
+          <g transform="translate(190, 180)">
+            <line x1="0" y1="0" x2="0" y2="30" stroke="#7C3AED" stroke-width="1.75" marker-end="url(#arrow-purple)" />
+            <rect x="10" y="6" width="124" height="18" rx="3" fill="#EDE9FE" />
+            <text x="72" y="19" text-anchor="middle" font-size="10" font-weight="600" fill="#6D28D9">Model Mount (/models)</text>
+          </g>
+
+          <!-- Bottom: Inference Worker -->
+          <g transform="translate(0, 212)">
+            <rect x="0" y="0" width="380" height="400" rx="10" fill="#FFFFFF" stroke="#7C3AED" stroke-width="1.75" />
+            <rect x="16" y="16" width="112" height="20" rx="4" fill="#EDE9FE" />
+            <text x="72" y="30" text-anchor="middle" class="box-badge" fill="#6D28D9">DOCKER WORKER</text>
+            <text x="16" y="60" class="box-title" fill="#6D28D9">Inference worker</text>
+            <text x="16" y="80" font-size="14" font-weight="500" fill="#7C3AED">(Docker, CUDA 11.8)</text>
+            <line x1="16" y1="94" x2="364" y2="94" stroke="#EDE9FE" stroke-width="1.5" />
+            <text x="16" y="122" class="box-desc">• CUDA 11.8 accelerated inference</text>
+            <text x="16" y="148" class="box-desc">• Polls ARQ job queue via SSH</text>
+            <text x="16" y="174" class="box-desc">• Downloads raw input from MinIO</text>
+            <text x="16" y="200" class="box-desc">• Crops ROI & runs wrinkle U-Net</text>
+            <text x="16" y="226" class="box-desc">• Computes regional wrinkle density</text>
+            <text x="16" y="252" class="box-desc">• Saves result masks back to MinIO</text>
+            <text x="16" y="278" class="box-desc">• Writes metrics & status into Postgres</text>
+            <rect x="16" y="315" width="348" height="65" rx="6" fill="#FAF5FF" stroke="#DDD6FE" stroke-width="1" />
+            <text x="28" y="335" font-size="11.5" font-weight="700" fill="#6D28D9">Container Network Target:</text>
+            <text x="28" y="353" font-size="11" font-weight="500" fill="#4B5563">Connects via <tspan font-weight="600" fill="#7C3AED">host.docker.internal</tspan></text>
+            <text x="28" y="369" font-size="11" font-weight="500" fill="#4B5563">Isolated: zero inbound ports exposed</text>
+          </g>
+        </g>
+      </g>
+
+      <!-- BOTTOM: SECURITY BAR -->
+      <g class="font-sans" transform="translate(80, 935)">
+        <rect x="0" y="0" width="1760" height="70" rx="12" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.5" />
+        <rect x="24" y="20" width="94" height="30" rx="6" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1" />
+        <path d="M 38 31 L 43 27 L 48 31 L 48 37 C 48 40.5 43 43 43 43 C 43 43 38 40.5 38 37 Z" fill="#64748B" />
+        <text x="56" y="40" font-size="12" font-weight="700" fill="#334155" letter-spacing="0.5">OPS & SEC</text>
+        <text x="135" y="41" font-size="15" fill="#334155">
+          <tspan font-weight="700" fill="#0F172A">Security:</tspan> secrets in <tspan font-weight="600" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#0D9488">.env (mode 600)</tspan>, run <tspan font-weight="600" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#2563EB">pnpm audit</tspan> before launch, never use <tspan font-weight="700" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#C2416E">docker compose down -v</tspan>
+        </text>
+        <text x="1736" y="41" text-anchor="end" font-size="13" font-weight="500" fill="#64748B">Preserves persistent data & prevent token leaks</text>
+      </g>
+    </svg>
+  </div>
+
+  <p class="footer-note">
+    💡 Pro-tip: For PowerPoint, Keynote, or Google Slides, you can directly insert the vector <code>.svg</code> file or use the high-resolution <code>.png</code>.
+  </p>
+
+  <script>
+    function copySvg() {
+      const svg = document.getElementById('architectureSvg').outerHTML;
+      navigator.clipboard.writeText(svg).then(() => {
+        alert('SVG code copied to clipboard!');
+      });
+    }
+
+    function downloadSvg() {
+      const svg = document.getElementById('architectureSvg').outerHTML;
+      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'deployment-2machine-slide.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadPng() {
+      const svg = document.getElementById('architectureSvg');
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      
+      img.onload = function() {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 1920, 1080);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const pngUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = 'deployment-2machine-slide.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      };
+      img.src = url;
+    }
+  </script>
+</body>
+</html>
